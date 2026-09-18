@@ -1,0 +1,8 @@
+.env
+.env.local
+node_modules/
+coverage/
+*.log
+.sites-runtime/
+AGENTS.md
+sources/

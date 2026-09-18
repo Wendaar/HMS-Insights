@@ -1,0 +1,15 @@
+{
+  "name": "hms-insights",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "HMS Insights / Priklepy MVP 0.1",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test",
+    "ingest": "node scripts/ingest.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
