@@ -17,7 +17,14 @@ function secondsFromClock(clock) {
 
 function teamFromEvent(event) {
   const team = event.ScoredByTeam ?? event.SavedByTeam ?? event.PenalizedTeam;
-  return team ? { teamId: team.teamId, teamName: team.name } : null;
+  return team ? {
+    teamId: team.teamId,
+    teamName: team.name,
+    logoUrl: team.logo || null,
+    logoTemplateUrl: team.logoUrl || null,
+    primaryColor: team.teamColor1 || team.jerseyColor1 || null,
+    secondaryColor: team.teamColor2 || team.jerseyColor2 || null,
+  } : null;
 }
 
 export function normalizeHmsGame(gameResponse, lineupResponse) {
@@ -37,6 +44,8 @@ export function normalizeHmsGame(gameResponse, lineupResponse) {
     teamId: item.teamId,
     number: item.number ?? null,
     isGoalie: item.ListPosition?.isGoalie === true,
+    playerImageUrl: item.Player?.avatarUrl || null,
+    playerImageTemplateUrl: item.Player?.logoUrl || null,
   }]));
 
   const allEvents = [
@@ -90,6 +99,7 @@ export function normalizeHmsGame(gameResponse, lineupResponse) {
       playerId: save.savedByPlayerId,
       playerName: playerName(save.SavedByPlayer, players.get(save.savedByPlayerId)?.playerName),
       teamId: save.savedByTeamId,
+      playerImageUrl: players.get(save.savedByPlayerId)?.playerImageUrl ?? save.SavedByPlayer?.avatarUrl ?? null,
       saves: 0,
       goalsAgainst: 0,
     };
@@ -111,6 +121,10 @@ export function normalizeHmsGame(gameResponse, lineupResponse) {
       gameId,
       teamId,
       teamName: teamMap.get(teamId)?.teamName ?? teamId,
+      logoUrl: teamMap.get(teamId)?.logoUrl ?? null,
+      logoTemplateUrl: teamMap.get(teamId)?.logoTemplateUrl ?? null,
+      primaryColor: teamMap.get(teamId)?.primaryColor ?? null,
+      secondaryColor: teamMap.get(teamId)?.secondaryColor ?? null,
       side: teamId === gameResponse.homeTeamId ? "HOME" : "AWAY",
       goals: goalsFor,
       goalsAgainst,
@@ -129,8 +143,13 @@ export function normalizeHmsGame(gameResponse, lineupResponse) {
     seasonName: season.name,
     groupId: group.groupId,
     groupName: group.name,
+    groupColor: group.color || null,
+    groupLogoTemplateUrl: group.logoUrl || null,
     phaseId: phase.phaseId,
     phaseName: phase.name,
+    venueId: lineupResponse.Venue?.venueId ?? gameResponse.venueId ?? null,
+    venueName: lineupResponse.Venue?.name ?? null,
+    venueLogoTemplateUrl: lineupResponse.Venue?.logoUrl ?? null,
     status: gameResponse.status,
     playedOn: gameResponse.startDate,
     startedAt: `${gameResponse.startDate}T${gameResponse.startTime}`,
@@ -147,4 +166,3 @@ export function normalizeHmsGame(gameResponse, lineupResponse) {
 }
 
 export { secondsFromClock };
-

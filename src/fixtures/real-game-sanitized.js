@@ -38,9 +38,47 @@ const roster = [
 ];
 
 const byId = new Map(roster.map(([id, firstName, lastName, teamId]) => [id, { playerId: id, firstName, lastName, teamId }]));
+const playerMedia = {
+  "F4F5D9C6-B405-4B68-B366-53DCB40D2900": {
+    avatarUrl: "https://hockeymanagementsystem.s3.amazonaws.com/images/avatars/2022-09-03-iw3ej-hadrbolec-ales-kos-avatar.webp",
+    logoUrl: "https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Player_ALES_HADRBOLEC_UMaXFQ8qs9hO_[size]",
+  },
+  "C9F99BC0-2CDA-439F-BC0D-59382B9E32E0": {
+    avatarUrl: "https://drive.google.com/uc?export=view&id=1WoqDR8Owt61rnrR_TvrGfOAEoeoxWAHq",
+    logoUrl: "https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Player_MANSUR_ISCHOEV_0iJ6GQ59VpoG_[size]",
+  },
+  "6AFF20FA-CA8A-439B-AD60-7DDDD0F9E826": {
+    avatarUrl: "https://drive.google.com/thumbnail?id=1tcXWEnrDjOESyEVtq-Cw9wnhowPTUpom",
+    logoUrl: "https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Player_MAREK_HORACEK_0LWnqHPbhFaM_[size]",
+  },
+  "A087D9A1-8C88-425A-9C06-B7B2008B1EAE": {
+    avatarUrl: "https://hockeymanagementsystem.s3.amazonaws.com/images/avatars/2022-10-09-n4800-tom---prokop.webp",
+    logoUrl: "https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Player_TOMAS_PROKOP_53wvLYigOUaB_[size]",
+  },
+  "AB8AE430-C54D-488A-A569-FC76EB269F13": {
+    avatarUrl: "https://drive.google.com/uc?export=view&id=1j7AwAyUTIco5S05Bz6JnRU4FlLxjs3P2",
+    logoUrl: "https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Player_DAVID_KULICH_e78pLHw5eDyf_[size]",
+  },
+};
 const teams = {
-  [ids.home]: { teamId: ids.home, name: "PUK PAK PIVO" },
-  [ids.away]: { teamId: ids.away, name: "HC Kosti" },
+  [ids.home]: {
+    teamId: ids.home,
+    name: "PUK PAK PIVO",
+    logo: null,
+    logoUrl: "https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Team_PUK_PAK_PIVO_Jj6IxJHme3EM_[size]",
+    teamColor1: null,
+    teamColor2: null,
+    jerseyColor1: "#ffffff",
+  },
+  [ids.away]: {
+    teamId: ids.away,
+    name: "HC Kosti",
+    logo: "https://drive.google.com/thumbnail?id=1yhsW3msPl1CeNU0L0nJwwUtYrh58FpzV",
+    logoUrl: "https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Team_HC_KOSTI_IVpg5MIlQ6sx_[size]",
+    teamColor1: "#ffeb3b",
+    teamColor2: "#000000",
+    jerseyColor1: "#ffeb3b",
+  },
 };
 
 const goalRows = [
@@ -68,7 +106,7 @@ export const lineupResponse = {
     gameId: ids.game,
     playerId,
     teamId,
-    Player: { playerId, firstName, lastName },
+    Player: { playerId, firstName, lastName, ...(playerMedia[playerId] ?? {}) },
     ListPosition: { name: isGoalie ? "Gólman" : "Hráč", isGoalie },
   })),
   Phase: {
@@ -77,12 +115,19 @@ export const lineupResponse = {
     Group: {
       groupId: ids.group,
       name: "SUPER",
+      color: "#a454ff",
+      logoUrl: "https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Group_SUPER_B8dRbKtt6SQX_[size]",
       Season: {
         seasonId: ids.season,
         name: "2026–2027",
         Competition: { competitionId: ids.competition, name: "PHM Cup" },
       },
     },
+  },
+  Venue: {
+    venueId: "8F636684-2091-4209-BA3B-23E9134FBF38",
+    name: "ICERINK (Yellow)",
+    logoUrl: "https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Venue_ICERINK_YELLOW_ohKAiiq5jruu_[size]",
   },
 };
 
@@ -137,4 +182,3 @@ export const gameEventsResponse = {
 };
 
 export { ids };
-

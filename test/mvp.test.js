@@ -47,6 +47,15 @@ test("databázové řádky obsahují tenant vazby a žádné kontaktní údaje",
   assert.doesNotMatch(serialized, /phone|email|birthday/i);
 });
 
+test("normalizace přenáší bezpečné obrazové údaje bez osobních kontaktů", () => {
+  const goalie = analysis.game.players.find((item) => item.playerName === "Aleš Hadrbolec");
+  const kosti = analysis.game.teamStats.find((item) => item.teamName === "HC Kosti");
+  assert.match(goalie.playerImageUrl, /^https:\/\//);
+  assert.match(kosti.logoUrl, /^https:\/\//);
+  assert.equal(analysis.game.groupColor, "#a454ff");
+  assert.equal(analysis.game.venueName, "ICERINK (Yellow)");
+});
+
 test("feed kombinuje reálné a jasně označené ukázkové zápasy", () => {
   assert.ok(feedDemo.length > analysis.priklepy.length);
   assert.equal(feedDemo.filter((item) => item.source === "HMS").length, 10);

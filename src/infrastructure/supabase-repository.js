@@ -26,6 +26,11 @@ function rowsFor(analysis) {
       away_team_name: away.teamName,
       home_score: game.homeScore,
       away_score: game.awayScore,
+      group_color: game.groupColor,
+      group_logo_url: game.groupLogoTemplateUrl,
+      venue_id: game.venueId,
+      venue_name: game.venueName,
+      venue_logo_url: game.venueLogoTemplateUrl,
       updated_at: new Date().toISOString(),
     }],
     player_game_stats: game.playerStats.map((item) => ({
@@ -36,6 +41,8 @@ function rowsFor(analysis) {
       goals: item.goals,
       assists: item.assists,
       pim: item.pim,
+      player_image_url: item.playerImageUrl,
+      player_image_template_url: item.playerImageTemplateUrl,
     })),
     goalie_game_stats: game.goalieStats.map((item) => ({
       game_id: game.gameId,
@@ -44,6 +51,8 @@ function rowsFor(analysis) {
       player_name: item.playerName,
       saves: item.saves,
       goals_against: item.goalsAgainst,
+      player_image_url: item.playerImageUrl,
+      player_image_template_url: game.players.find((player) => player.playerId === item.playerId)?.playerImageTemplateUrl ?? null,
     })),
     team_game_stats: game.teamStats.map((item) => ({
       game_id: game.gameId,
@@ -55,6 +64,10 @@ function rowsFor(analysis) {
       score_difference: item.scoreDifference,
       lineup_size: item.lineupSize,
       result: item.result,
+      team_logo_url: item.logoUrl,
+      team_logo_template_url: item.logoTemplateUrl,
+      primary_color: item.primaryColor,
+      secondary_color: item.secondaryColor,
     })),
     detected_priklepy: priklepy.map((item) => ({
       priklep_id: item.id,
@@ -102,4 +115,3 @@ export async function persistAnalysis(analysis, options = {}) {
 }
 
 export { configFromEnv, rowsFor };
-
