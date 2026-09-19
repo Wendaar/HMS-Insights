@@ -67,6 +67,12 @@ test("feed kombinuje reálné a jasně označené ukázkové zápasy", () => {
   assert.match(feedDemo.find((item) => item.source === "HMS").gameDetailUrl, /prod\.hms\.wootera\.net\/embed\/game/);
 });
 
+test("ukázkové karty přebírají barvu z definice skupiny", () => {
+  assert.equal(feedDemo.find((item) => item.group === "KLASIK").groupColor, "#429BF7");
+  assert.equal(feedDemo.find((item) => item.group === "SUPER").groupColor, "#a454ff");
+  assert.equal(feedDemo.find((item) => item.group === "SPORT").groupColor, "#554CF6");
+});
+
 test("stránka obsahuje vyhledávání, všechny filtry a rozkliknutelné karty", () => {
   const html = renderPriklepyPage(feedDemo);
   assert.match(html, /id="search"/);
