@@ -40,7 +40,7 @@ export const server = createServer(async (request, response) => {
   }
   if (assets[url.pathname]) {
     const [contentType, filename] = assets[url.pathname];
-    response.writeHead(200, { "content-type": contentType, "cache-control": "public, max-age=3600" });
+    response.writeHead(200, { "content-type": contentType, "cache-control": "no-store" });
     response.end(await readFile(join(publicDirectory, filename)));
     return;
   }

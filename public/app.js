@@ -88,6 +88,10 @@ function openDetail(id) {
   const venueLogo = usableImage(item.venueLogoUrl || item.venueLogoTemplateUrl)
     ? `<img src="${escapeHtml(item.venueLogoUrl || item.venueLogoTemplateUrl)}" alt="">`
     : "";
+  const scoreContent = `<span>${escapeHtml(item.homeTeam)}</span><b>${item.homeScore}:${item.awayScore}</b><span>${escapeHtml(item.awayTeam)}</span>`;
+  const score = item.gameDetailUrl
+    ? `<a class="share-score" href="${escapeHtml(item.gameDetailUrl)}" target="_blank" rel="noopener" title="Otevřít detail zápasu v HMS">${scoreContent}</a>`
+    : `<div class="share-score">${scoreContent}</div>`;
   dialogContent.innerHTML = `<article class="share-card" style="--card-team:${safeColor(item.teamColor, "#8fe7ff")};--card-group:${safeColor(item.groupColor, "#a454ff")}">
     ${teamLogo}
     <header class="share-head"><span class="share-brand"><b>HMS</b> PŘÍKLEPY</span><span class="share-group">${groupLogo}${escapeHtml(item.group)}</span></header>
@@ -99,7 +103,7 @@ function openDetail(id) {
     </div>
     <div class="share-player-wrap">${image}</div>
     <footer class="share-foot">
-      <div class="share-score"><span>${escapeHtml(item.homeTeam)}</span><b>${item.homeScore}:${item.awayScore}</b><span>${escapeHtml(item.awayTeam)}</span></div>
+      ${score}
       <div class="share-context"><span>${venueLogo}${escapeHtml(item.venue)}</span><span>${new Intl.DateTimeFormat("cs-CZ").format(new Date(`${item.date}T12:00:00`))}</span><small>síla ${item.importance}</small></div>
     </footer>
   </article>`;
@@ -120,7 +124,14 @@ reset.addEventListener("click", () => {
   applyFilters();
   search.focus();
 });
-cards.forEach((card) => card.addEventListener("click", () => openDetail(card.dataset.id)));
+cards.forEach((card) => card.addEventListener("click", (event) => {
+  const gameLink = event.target.closest("[data-game-url]");
+  if (gameLink) {
+    window.open(gameLink.dataset.gameUrl, "_blank", "noopener");
+    return;
+  }
+  openDetail(card.dataset.id);
+}));
 dialog.querySelector(".dialog-close").addEventListener("click", () => dialog.close());
 dialog.addEventListener("click", (event) => { if (event.target === dialog) dialog.close(); });
 document.querySelectorAll("img").forEach((image) => image.addEventListener("error", () => image.remove()));

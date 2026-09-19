@@ -33,6 +33,7 @@ const realItems = sampleAnalysis.priklepy.map((item) => {
     teamLogoTemplateUrl: team?.logoTemplateUrl ?? null,
     teamColor: team?.primaryColor ?? realGame.groupColor ?? "#8fe7ff",
     source: "HMS",
+    gameDetailUrl: `https://prod.hms.wootera.net/embed/game?gameId=${item.gameId}&lang=cs`,
   };
 });
 

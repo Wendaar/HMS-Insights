@@ -64,6 +64,7 @@ test("feed kombinuje reálné a jasně označené ukázkové zápasy", () => {
   assert.ok(feedDemo.length > analysis.priklepy.length);
   assert.equal(feedDemo.filter((item) => item.source === "HMS").length, 10);
   assert.ok(feedDemo.some((item) => item.source === "DEMO"));
+  assert.match(feedDemo.find((item) => item.source === "HMS").gameDetailUrl, /prod\.hms\.wootera\.net\/embed\/game/);
 });
 
 test("stránka obsahuje vyhledávání, všechny filtry a rozkliknutelné karty", () => {

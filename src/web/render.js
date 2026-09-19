@@ -57,6 +57,9 @@ function card(item, index) {
   const venueMark = item.venueLogoUrl
     ? `<img class="entity-logo venue-logo" src="${escapeHtml(item.venueLogoUrl)}" alt="">`
     : "";
+  const gameLinkAttributes = item.gameDetailUrl
+    ? `data-game-url="${escapeHtml(item.gameDetailUrl)}" title="Otevřít detail zápasu v HMS"`
+    : "";
 
   return `<button class="moment-card ${tier}" type="button"
     data-id="${escapeHtml(item.id)}" data-search="${escapeHtml(search.toLocaleLowerCase("cs"))}"
@@ -71,7 +74,7 @@ function card(item, index) {
         <span class="moment-stat">${escapeHtml(momentStat(item))}</span>
         <strong class="subject-name">${escapeHtml(subject)}</strong>
         <span class="moment-copy">${escapeHtml(item.text)}</span>
-        <span class="game-line"><b>${escapeHtml(item.homeTeam)}</b><i>${item.homeScore}:${item.awayScore}</i><b>${escapeHtml(item.awayTeam)}</b></span>
+        <span class="game-line" ${gameLinkAttributes}><b>${escapeHtml(item.homeTeam)}</b><i>${item.homeScore}:${item.awayScore}</i><b>${escapeHtml(item.awayTeam)}</b></span>
       </span>
       <span class="player-photo"><span class="photo-fallback">${escapeHtml(initials(subject))}</span>${photo}<span class="ice-cut"></span></span>
       <span class="card-foot"><span class="venue-name">${venueMark}${escapeHtml(item.venue)}</span><span>síla ${item.importance}</span></span>
