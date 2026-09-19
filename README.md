@@ -26,6 +26,9 @@ Přepínač `--persist` uloží výsledek přes Supabase REST. Nejdříve spusť
 `SUPABASE_SERVICE_ROLE_KEY` pouze v lokálním prostředí. Klíč se nikdy neukládá
 do repozitáře.
 
+Pro opakovatelné vložení sanitizovaného testovacího zápasu lze vygenerovat SQL
+příkazem `node scripts/seed-sql.js`.
+
 ## Hranice MVP
 
 - Pravidla: `BIG_WIN`, `EARLY_GOAL`, `MULTIPOINT_GAME`, `HATTRICK`, `BIG_SAVES`.
@@ -34,4 +37,3 @@ do repozitáře.
   minimum. Neobsahuje telefon, e-mail, datum narození ani jiné nepotřebné údaje.
 - Supabase je pouze vyměnitelný prototypovací adaptér nad přenositelným SQL
   modelem.
-
