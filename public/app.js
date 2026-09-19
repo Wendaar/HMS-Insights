@@ -44,23 +44,67 @@ function escapeHtml(value) {
   return node.innerHTML;
 }
 
+function usableImage(value) {
+  return typeof value === "string" && value.startsWith("http") && !value.includes("[size]");
+}
+
+function safeColor(value, fallback) {
+  return /^#[0-9a-f]{6}$/i.test(value ?? "") ? value : fallback;
+}
+
+function achievementLabel(type) {
+  return ({
+    BIG_WIN: "VELKÁ VÝHRA",
+    EARLY_GOAL: "RYCHLÝ GÓL",
+    MULTIPOINT_GAME: "VÍCEBODOVÝ ZÁPAS",
+    HATTRICK: "HATTRICK",
+    BIG_SAVES: "BRANKÁŘSKÝ VÝKON",
+  })[type] ?? type.replaceAll("_", " ");
+}
+
+function achievementStat(item) {
+  if (item.type === "HATTRICK") return "HATTRICK";
+  if (item.type === "BIG_SAVES") return `${item.facts?.saves ?? "30+"} ZÁKROKŮ`;
+  if (item.type === "MULTIPOINT_GAME") return `${item.facts?.points ?? "2+"} BODY`;
+  if (item.type === "EARLY_GOAL") return `GÓL ${item.facts?.gameTime ?? "BRZY"}`;
+  if (item.type === "BIG_WIN") return `VÝHRA +${item.facts?.scoreDifference ?? "5"}`;
+  return achievementLabel(item.type);
+}
+
 function openDetail(id) {
   const item = items.find((candidate) => candidate.id === id);
   if (!item) return;
   const subject = item.player || item.team || "Týmový moment";
-  const image = item.playerImageUrl ? `<img class="detail-photo" src="${escapeHtml(item.playerImageUrl)}" alt="${escapeHtml(subject)}" referrerpolicy="no-referrer">` : "";
-  dialogContent.innerHTML = `<article class="detail" style="--detail-color:${escapeHtml(item.teamColor || item.groupColor || "#8fe7ff")}">
-    <div class="detail-hero">${image}<div><span class="kind">${escapeHtml(item.type.replaceAll("_", " "))} · síla ${item.importance}</span><h2>${escapeHtml(subject)}</h2><h3>${escapeHtml(item.title)}</h3></div></div>
-    <p>${escapeHtml(item.text)}</p>
-    <div class="detail-score"><strong>${escapeHtml(item.homeTeam)}</strong><b>${item.homeScore}:${item.awayScore}</b><strong>${escapeHtml(item.awayTeam)}</strong></div>
-    <div class="detail-meta">
-      <div><span>Datum</span><b>${new Intl.DateTimeFormat("cs-CZ").format(new Date(`${item.date}T12:00:00`))}</b></div>
-      <div><span>Soutěž / skupina</span><b>${escapeHtml(item.competition)} · ${escapeHtml(item.group)}</b></div>
-      <div><span>Fáze / stadion</span><b>${escapeHtml(item.phase)} · ${escapeHtml(item.venue)}</b></div>
-      <div><span>Partner</span><b>${escapeHtml(item.sponsor)}</b></div>
+  const subjectInitials = subject.split(/\s+/).map((part) => part[0]).slice(0,2).join("");
+  const image = `<span class="share-player-fallback">${escapeHtml(subjectInitials)}</span>${usableImage(item.playerImageUrl)
+    ? `<img class="share-player" src="${escapeHtml(item.playerImageUrl)}" alt="${escapeHtml(subject)}" referrerpolicy="no-referrer">`
+    : ""}`;
+  const teamLogo = usableImage(item.teamLogoUrl)
+    ? `<img class="share-team-logo" src="${escapeHtml(item.teamLogoUrl)}" alt="">`
+    : `<span class="share-team-fallback">${escapeHtml((item.team || "HMS").split(/\s+/).map((part) => part[0]).slice(0,3).join(""))}</span>`;
+  const groupLogo = usableImage(item.groupLogoUrl || item.groupLogoTemplateUrl)
+    ? `<img src="${escapeHtml(item.groupLogoUrl || item.groupLogoTemplateUrl)}" alt="${escapeHtml(item.group)}">`
+    : `<i style="--group-color:${escapeHtml(item.groupColor || "#a454ff")}"></i>`;
+  const venueLogo = usableImage(item.venueLogoUrl || item.venueLogoTemplateUrl)
+    ? `<img src="${escapeHtml(item.venueLogoUrl || item.venueLogoTemplateUrl)}" alt="">`
+    : "";
+  dialogContent.innerHTML = `<article class="share-card" style="--card-team:${safeColor(item.teamColor, "#8fe7ff")};--card-group:${safeColor(item.groupColor, "#a454ff")}">
+    ${teamLogo}
+    <header class="share-head"><span class="share-brand"><b>HMS</b> PŘÍKLEPY</span><span class="share-group">${groupLogo}${escapeHtml(item.group)}</span></header>
+    <div class="share-copy">
+      <span class="share-achievement">✦ ${escapeHtml(achievementLabel(item.type))}</span>
+      <strong class="share-stat">${escapeHtml(achievementStat(item))}</strong>
+      <h2>${escapeHtml(subject)}</h2>
+      <p>${escapeHtml(item.text)}</p>
     </div>
+    <div class="share-player-wrap">${image}</div>
+    <footer class="share-foot">
+      <div class="share-score"><span>${escapeHtml(item.homeTeam)}</span><b>${item.homeScore}:${item.awayScore}</b><span>${escapeHtml(item.awayTeam)}</span></div>
+      <div class="share-context"><span>${venueLogo}${escapeHtml(item.venue)}</span><span>${new Intl.DateTimeFormat("cs-CZ").format(new Date(`${item.date}T12:00:00`))}</span><small>síla ${item.importance}</small></div>
+    </footer>
   </article>`;
   dialog.showModal();
+  dialogContent.querySelectorAll("img").forEach((imageNode) => imageNode.addEventListener("error", () => imageNode.remove()));
 }
 
 filterToggle.addEventListener("click", () => {
