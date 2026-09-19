@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { analyzeHmsResponses } from "../src/app/analyze.js";
 import { gameEventsResponse, lineupResponse, ids } from "../src/fixtures/real-game-sanitized.js";
 import { rowsFor } from "../src/infrastructure/supabase-repository.js";
+import { feedDemo } from "../src/app/feed-demo.js";
+import { renderPriklepyPage } from "../src/web/render.js";
 
 const analysis = analyzeHmsResponses(gameEventsResponse, lineupResponse);
 
@@ -43,4 +45,19 @@ test("databázové řádky obsahují tenant vazby a žádné kontaktní údaje",
   const serialized = JSON.stringify(rowsFor(analysis));
   assert.match(serialized, new RegExp(ids.org, "i"));
   assert.doesNotMatch(serialized, /phone|email|birthday/i);
+});
+
+test("feed kombinuje reálné a jasně označené ukázkové zápasy", () => {
+  assert.ok(feedDemo.length > analysis.priklepy.length);
+  assert.equal(feedDemo.filter((item) => item.source === "HMS").length, 10);
+  assert.ok(feedDemo.some((item) => item.source === "DEMO"));
+});
+
+test("stránka obsahuje vyhledávání, všechny filtry a rozkliknutelné karty", () => {
+  const html = renderPriklepyPage(feedDemo);
+  assert.match(html, /id="search"/);
+  for (const filter of ["season", "group", "teams", "phase", "venue", "sponsor"]) {
+    assert.match(html, new RegExp(`data-filter="${filter}"`));
+  }
+  assert.match(html, /id="detail-dialog"/);
 });
