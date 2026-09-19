@@ -54,6 +54,10 @@ test("normalizace přenáší bezpečné obrazové údaje bez osobních kontakt�
   assert.match(kosti.logoUrl, /^https:\/\//);
   assert.equal(analysis.game.groupColor, "#a454ff");
   assert.equal(analysis.game.venueName, "ICERINK (Yellow)");
+  assert.match(analysis.game.groupLogoUrl, /_cropped_md$/);
+  assert.match(analysis.game.venueLogoUrl, /_cropped_md$/);
+  assert.match(analysis.game.teamStats.find((item) => item.teamName === "PUK PAK PIVO").logoUrl, /_cropped_md$/);
+  assert.match(analysis.game.players.find((item) => item.playerName === "Jan Šramota").playerImageUrl, /_cropped_md$/);
 });
 
 test("feed kombinuje reálné a jasně označené ukázkové zápasy", () => {

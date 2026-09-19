@@ -51,6 +51,27 @@ const playerMedia = {
     avatarUrl: "https://drive.google.com/thumbnail?id=1tcXWEnrDjOESyEVtq-Cw9wnhowPTUpom",
     logoUrl: "https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Player_MAREK_HORACEK_0LWnqHPbhFaM_[size]",
   },
+  "3E7C1B50-88BE-11F0-B6C8-8587139C7349": {
+    logoUrl: "https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Player_MARTIN_VOSTAREK_mfYU0OkMVGF6_[size]",
+  },
+  "9A532590-5196-11F0-A6FC-87BBDED477B1": {
+    logoUrl: "https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Player_JAN_SRAMOTA_Y0aJk8kytIuh_[size]",
+  },
+  "488E6710-51C3-11F0-A6FC-87BBDED477B1": {
+    logoUrl: "https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Player_LUKAS_NOVAK_YPxcn6KGjAE4_[size]",
+  },
+  "38BDAD40-51C4-11F0-A6FC-87BBDED477B1": {
+    logoUrl: "https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Player_RADIM_CERVENY_tKS43rmQrATl_[size]",
+  },
+  "B21803C0-51C9-11F0-A6FC-87BBDED477B1": {
+    logoUrl: "https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Player_FILIP_SVARICEK_uhuBqPh0yqyE_[size]",
+  },
+  "9954EE3F-C703-4E1F-9C4E-D192CB5566E0": {
+    logoUrl: "https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Player_JAN_URYCH_IEySFiax0sQT_[size]",
+  },
+  "31416E10-99C6-11EE-A083-D573B186FF81": {
+    logoUrl: "https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Player_PETR_LUKASEK_3jqUm02WUCUg_[size]",
+  },
   "A087D9A1-8C88-425A-9C06-B7B2008B1EAE": {
     avatarUrl: "https://hockeymanagementsystem.s3.amazonaws.com/images/avatars/2022-10-09-n4800-tom---prokop.webp",
     logoUrl: "https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Player_TOMAS_PROKOP_53wvLYigOUaB_[size]",

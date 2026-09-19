@@ -15,12 +15,17 @@ function secondsFromClock(clock) {
   return Number(match[1]) * 60 + Number(match[2]);
 }
 
+function resolveHmsMediaUrl(url, variant = "cropped_md") {
+  if (typeof url !== "string" || !url.trim()) return null;
+  return url.replace("[size]", variant);
+}
+
 function teamFromEvent(event) {
   const team = event.ScoredByTeam ?? event.SavedByTeam ?? event.PenalizedTeam;
   return team ? {
     teamId: team.teamId,
     teamName: team.name,
-    logoUrl: team.logo || null,
+    logoUrl: resolveHmsMediaUrl(team.logoUrl) || team.logo || null,
     logoTemplateUrl: team.logoUrl || null,
     primaryColor: team.teamColor1 || team.jerseyColor1 || null,
     secondaryColor: team.teamColor2 || team.jerseyColor2 || null,
@@ -44,7 +49,7 @@ export function normalizeHmsGame(gameResponse, lineupResponse) {
     teamId: item.teamId,
     number: item.number ?? null,
     isGoalie: item.ListPosition?.isGoalie === true,
-    playerImageUrl: item.Player?.avatarUrl || null,
+    playerImageUrl: resolveHmsMediaUrl(item.Player?.logoUrl) || item.Player?.avatarUrl || null,
     playerImageTemplateUrl: item.Player?.logoUrl || null,
   }]));
 
@@ -144,11 +149,13 @@ export function normalizeHmsGame(gameResponse, lineupResponse) {
     groupId: group.groupId,
     groupName: group.name,
     groupColor: group.color || null,
+    groupLogoUrl: resolveHmsMediaUrl(group.logoUrl),
     groupLogoTemplateUrl: group.logoUrl || null,
     phaseId: phase.phaseId,
     phaseName: phase.name,
     venueId: lineupResponse.Venue?.venueId ?? gameResponse.venueId ?? null,
     venueName: lineupResponse.Venue?.name ?? null,
+    venueLogoUrl: resolveHmsMediaUrl(lineupResponse.Venue?.logoUrl),
     venueLogoTemplateUrl: lineupResponse.Venue?.logoUrl ?? null,
     status: gameResponse.status,
     playedOn: gameResponse.startDate,
@@ -165,4 +172,4 @@ export function normalizeHmsGame(gameResponse, lineupResponse) {
   };
 }
 
-export { secondsFromClock };
+export { resolveHmsMediaUrl, secondsFromClock };

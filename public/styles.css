@@ -57,6 +57,7 @@ main { width: min(1260px,calc(100% - 40px)); margin: auto; padding: 28px 0 90px;
 .moment-meta { width: 100%; display: flex; justify-content: space-between; gap: 8px; color: #a3adba; font-size: .69rem; }
 .group-badge { display: flex; align-items: center; gap: 7px; font-weight: 850; letter-spacing: .09em; text-transform: uppercase; }
 .group-badge i { width: 8px; height: 8px; border-radius: 50%; background: var(--group); box-shadow: 0 0 12px color-mix(in srgb,var(--group) 75%,transparent); }
+.entity-logo { flex: none; object-fit: contain; }.group-logo { width: 24px; height: 24px; }.venue-logo { width: 19px; height: 19px; }
 .moment-stat { margin-top: auto; color: var(--acid); font-size: clamp(1.5rem,2.5vw,2.55rem); line-height: .9; font-weight: 950; letter-spacing: -.055em; text-transform: uppercase; text-shadow: 0 0 28px rgba(223,255,63,.16); }
 .subject-name { margin-top: 11px; max-width: 11ch; font-size: clamp(1.85rem,3.2vw,3.45rem); line-height: .91; letter-spacing: -.065em; text-wrap: balance; }
 .standard .subject-name,.compact .subject-name { font-size: clamp(1.65rem,2.4vw,2.5rem); }
@@ -72,6 +73,7 @@ main { width: min(1260px,calc(100% - 40px)); margin: auto; padding: 28px 0 90px;
 .team-watermark { position: absolute; z-index: 0; right: 11%; top: 8%; width: 48%; height: 64%; object-fit: contain; opacity: .13; filter: blur(3px) grayscale(.2); transform: rotate(-8deg) scale(1.08); }
 .team-watermark-fallback { position: absolute; z-index: 0; right: -3%; top: 5%; color: color-mix(in srgb,var(--team) 12%,transparent); font-size: 11rem; font-weight: 950; letter-spacing: -.12em; transform: rotate(-9deg); }
 .card-foot { position: absolute; z-index: 5; left: 25px; right: 22px; bottom: 17px; display: flex; justify-content: space-between; gap: 12px; color: #8390a0; font-size: .65rem; }
+.venue-name { display: flex; align-items: center; gap: 6px; }
 .demo-tag { position: absolute; z-index: 6; top: 0; right: 0; padding: 6px 10px; color: #9da8b6; background: rgba(255,255,255,.07); border-radius: 0 17px 0 10px; font-size: .58rem; font-weight: 850; letter-spacing: .09em; text-transform: uppercase; }
 
 .empty { padding: 70px 20px; text-align: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 16px; }

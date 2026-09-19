@@ -51,6 +51,12 @@ function card(item, index) {
   const watermark = item.teamLogoUrl
     ? `<img class="team-watermark" src="${escapeHtml(item.teamLogoUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer">`
     : `<span class="team-watermark-fallback" aria-hidden="true">${escapeHtml(initials(item.team))}</span>`;
+  const groupMark = item.groupLogoUrl
+    ? `<img class="entity-logo group-logo" src="${escapeHtml(item.groupLogoUrl)}" alt="">`
+    : "<i></i>";
+  const venueMark = item.venueLogoUrl
+    ? `<img class="entity-logo venue-logo" src="${escapeHtml(item.venueLogoUrl)}" alt="">`
+    : "";
 
   return `<button class="moment-card ${tier}" type="button"
     data-id="${escapeHtml(item.id)}" data-search="${escapeHtml(search.toLocaleLowerCase("cs"))}"
@@ -61,14 +67,14 @@ function card(item, index) {
     style="--team:${safeColor(item.teamColor)};--group:${safeColor(item.groupColor, "#a454ff")};--delay:${Math.min(index * 35, 350)}ms">
       ${watermark}
       <span class="moment-main">
-        <span class="moment-meta"><span class="group-badge"><i></i>${escapeHtml(item.group)}</span><span>${formatDate(item.date)}</span></span>
+        <span class="moment-meta"><span class="group-badge">${groupMark}${escapeHtml(item.group)}</span><span>${formatDate(item.date)}</span></span>
         <span class="moment-stat">${escapeHtml(momentStat(item))}</span>
         <strong class="subject-name">${escapeHtml(subject)}</strong>
         <span class="moment-copy">${escapeHtml(item.text)}</span>
         <span class="game-line"><b>${escapeHtml(item.homeTeam)}</b><i>${item.homeScore}:${item.awayScore}</i><b>${escapeHtml(item.awayTeam)}</b></span>
       </span>
       <span class="player-photo"><span class="photo-fallback">${escapeHtml(initials(subject))}</span>${photo}<span class="ice-cut"></span></span>
-      <span class="card-foot"><span>${escapeHtml(item.venue)}</span><span>síla ${item.importance}</span></span>
+      <span class="card-foot"><span class="venue-name">${venueMark}${escapeHtml(item.venue)}</span><span>síla ${item.importance}</span></span>
       ${item.source === "DEMO" ? '<span class="demo-tag">ukázka</span>' : ""}
     </button>`;
 }

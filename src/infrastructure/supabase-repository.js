@@ -27,10 +27,10 @@ function rowsFor(analysis) {
       home_score: game.homeScore,
       away_score: game.awayScore,
       group_color: game.groupColor,
-      group_logo_url: game.groupLogoTemplateUrl,
+      group_logo_url: game.groupLogoUrl,
       venue_id: game.venueId,
       venue_name: game.venueName,
-      venue_logo_url: game.venueLogoTemplateUrl,
+      venue_logo_url: game.venueLogoUrl,
       updated_at: new Date().toISOString(),
     }],
     player_game_stats: game.playerStats.map((item) => ({
