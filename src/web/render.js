@@ -41,16 +41,23 @@ function momentStat(item) {
   return labels[item.type] ?? item.type;
 }
 
+function outstandingStatus(item) {
+  if (item.type === "HATTRICK" || item.importance >= 95) return { className: "on-fire", icon: "🔥", label: "On fire" };
+  if (item.importance >= 88) return { className: "top-moment", icon: "★", label: "Top moment" };
+  if (item.importance >= 82) return { className: "trending", icon: "↗", label: "Trending" };
+  return null;
+}
+
 function card(item, index) {
-  const tier = item.importance >= 85 ? "featured" : item.importance >= 72 ? "standard" : "compact";
+  const outstanding = outstandingStatus(item);
   const subject = item.player || item.team || "Týmový moment";
   const search = [item.title, item.text, item.player, item.team, item.homeTeam, item.awayTeam, labels[item.type]].join(" ");
   const photo = item.playerImageUrl
     ? `<img src="${escapeHtml(item.playerImageUrl)}" alt="${escapeHtml(subject)}" loading="lazy" referrerpolicy="no-referrer">`
     : "";
-  const watermark = item.teamLogoUrl
-    ? `<img class="team-watermark" src="${escapeHtml(item.teamLogoUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer">`
-    : `<span class="team-watermark-fallback" aria-hidden="true">${escapeHtml(initials(item.team))}</span>`;
+  const teamMark = item.teamLogoUrl
+    ? `<img class="row-team-logo" src="${escapeHtml(item.teamLogoUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer">`
+    : `<span class="row-team-fallback" aria-hidden="true">${escapeHtml(initials(item.team))}</span>`;
   const groupMark = item.groupLogoUrl
     ? `<img class="entity-logo group-logo" src="${escapeHtml(item.groupLogoUrl)}" alt="">`
     : "<i></i>";
@@ -61,23 +68,30 @@ function card(item, index) {
     ? `data-game-url="${escapeHtml(item.gameDetailUrl)}" title="Otevřít detail zápasu v HMS"`
     : "";
 
-  return `<button class="moment-card ${tier}" type="button"
+  const outstandingBadge = outstanding
+    ? `<span class="outstanding-badge ${outstanding.className}"><b>${outstanding.icon}</b>${outstanding.label}</span>`
+    : "";
+
+  return `<button class="moment-card feed-row ${outstanding?.className ?? ""}" type="button"
     data-id="${escapeHtml(item.id)}" data-search="${escapeHtml(search.toLocaleLowerCase("cs"))}"
     data-season="${escapeHtml(item.season)}" data-group="${escapeHtml(item.group)}"
     data-teams="${escapeHtml(`${item.homeTeam}|${item.awayTeam}`)}" data-phase="${escapeHtml(item.phase)}"
     data-venue="${escapeHtml(item.venue)}" data-sponsor="${escapeHtml(item.sponsor)}"
     aria-label="Otevřít detail: ${escapeHtml(item.title)}"
     style="--team:${safeColor(item.teamColor)};--group:${safeColor(item.groupColor, "#a454ff")};--delay:${Math.min(index * 35, 350)}ms">
-      ${watermark}
-      <span class="moment-main">
-        <span class="moment-meta"><span class="group-badge">${groupMark}${escapeHtml(item.group)}</span><span>${formatDate(item.date)}</span></span>
-        <span class="moment-stat">${escapeHtml(momentStat(item))}</span>
-        <strong class="subject-name">${escapeHtml(subject)}</strong>
+      <span class="row-accent" aria-hidden="true"></span>
+      <span class="row-avatar"><span class="photo-fallback">${escapeHtml(initials(subject))}</span>${photo}</span>
+      <span class="row-story">
+        <span class="row-flags">${outstandingBadge}<span class="group-badge">${groupMark}${escapeHtml(item.group)}</span></span>
+        <span class="row-title"><strong class="moment-stat">${escapeHtml(momentStat(item))}</strong><b class="subject-name">${escapeHtml(subject)}</b></span>
         <span class="moment-copy">${escapeHtml(item.text)}</span>
-        <span class="game-line" ${gameLinkAttributes}><b>${escapeHtml(item.homeTeam)}</b><i>${item.homeScore}:${item.awayScore}</i><b>${escapeHtml(item.awayTeam)}</b></span>
       </span>
-      <span class="player-photo"><span class="photo-fallback">${escapeHtml(initials(subject))}</span>${photo}<span class="ice-cut"></span></span>
-      <span class="card-foot"><span class="venue-name">${venueMark}${escapeHtml(item.venue)}</span><span>síla ${item.importance}</span></span>
+      <span class="row-game">
+        <span class="game-line" ${gameLinkAttributes}><b>${escapeHtml(item.homeTeam)}</b><i>${item.homeScore}:${item.awayScore}</i><b>${escapeHtml(item.awayTeam)}</b></span>
+        <span class="row-context"><span class="venue-name">${venueMark}${escapeHtml(item.venue)}</span><span>${formatDate(item.date)}</span></span>
+      </span>
+      <span class="row-team">${teamMark}</span>
+      <span class="row-open" aria-hidden="true">›</span>
       ${item.source === "DEMO" ? '<span class="demo-tag">ukázka</span>' : ""}
     </button>`;
 }
@@ -102,7 +116,7 @@ export function renderPriklepyPage(items) {
   const sections = dateSections(items).map((section) => `
     <section class="date-section" data-feed-section>
       <div class="date-heading"><h2>${section.label}</h2><span></span><b data-section-count>${section.items.length}</b></div>
-      <div class="feed-grid">${section.items.map((item) => card(item, cardIndex++)).join("")}</div>
+      <div class="feed-list">${section.items.map((item) => card(item, cardIndex++)).join("")}</div>
     </section>`).join("");
   const teams = [...new Set(items.flatMap((item) => [item.homeTeam, item.awayTeam]))]
     .sort((a, b) => a.localeCompare(b, "cs"))
@@ -116,8 +130,8 @@ export function renderPriklepyPage(items) {
   <meta name="description" content="Přehled automaticky nalezených hokejových momentů z HMS zápasů">
   <title>Příklepy · HMS Insights</title>
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
-  <link rel="stylesheet" href="./styles.css?v=cards-5">
-  <script src="./app.js?v=cards-5" defer></script>
+  <link rel="stylesheet" href="./styles.css?v=stream-1">
+  <script src="./app.js?v=stream-1" defer></script>
 </head>
 <body>
   <header class="topbar">

@@ -71,7 +71,41 @@ function achievementStat(item) {
   return achievementLabel(item.type);
 }
 
-function openDetail(id) {
+function outstandingLabel(item) {
+  if (item.type === "HATTRICK" || item.importance >= 95) return "🔥 ON FIRE";
+  if (item.importance >= 88) return "★ TOP MOMENT";
+  if (item.importance >= 82) return "↗ TRENDING";
+  return "";
+}
+
+function detailUrl(id) {
+  const url = new URL(window.location.href);
+  url.hash = `priklep=${encodeURIComponent(id)}`;
+  return url.toString();
+}
+
+async function shareMoment(item, button) {
+  const subject = item.player || item.team || "Týmový moment";
+  const data = {
+    title: `${achievementStat(item)} · ${subject}`,
+    text: `${item.text} — HMS Příklepy`,
+    url: detailUrl(item.id),
+  };
+  if (navigator.share) {
+    try {
+      await navigator.share(data);
+      return;
+    } catch (error) {
+      if (error.name === "AbortError") return;
+    }
+  }
+  await navigator.clipboard.writeText(data.url);
+  const original = button.innerHTML;
+  button.innerHTML = "✓ Odkaz zkopírován";
+  setTimeout(() => { button.innerHTML = original; }, 1800);
+}
+
+function openDetail(id, updateUrl = true) {
   const item = items.find((candidate) => candidate.id === id);
   if (!item) return;
   const subject = item.player || item.team || "Týmový moment";
@@ -92,23 +126,33 @@ function openDetail(id) {
   const score = item.gameDetailUrl
     ? `<a class="share-score" href="${escapeHtml(item.gameDetailUrl)}" target="_blank" rel="noopener" title="Otevřít detail zápasu v HMS">${scoreContent}</a>`
     : `<div class="share-score">${scoreContent}</div>`;
+  const status = outstandingLabel(item);
   dialogContent.innerHTML = `<article class="share-card" style="--card-team:${safeColor(item.teamColor, "#8fe7ff")};--card-group:${safeColor(item.groupColor, "#a454ff")}">
     ${teamLogo}
     <header class="share-head"><span class="share-brand"><b>HMS</b> PŘÍKLEPY</span><span class="share-group">${groupLogo}${escapeHtml(item.group)}</span></header>
     <div class="share-copy">
+      ${status ? `<span class="share-status">${escapeHtml(status)}</span>` : ""}
       <span class="share-achievement">✦ ${escapeHtml(achievementLabel(item.type))}</span>
       <strong class="share-stat">${escapeHtml(achievementStat(item))}</strong>
       <h2>${escapeHtml(subject)}</h2>
       <p>${escapeHtml(item.text)}</p>
     </div>
     <div class="share-player-wrap">${image}</div>
+    <button class="share-action" type="button" aria-label="Sdílet tento Příklep"><span>↗</span> Sdílet</button>
     <footer class="share-foot">
       ${score}
       <div class="share-context"><span>${venueLogo}${escapeHtml(item.venue)}</span><span>${new Intl.DateTimeFormat("cs-CZ").format(new Date(`${item.date}T12:00:00`))}</span><small>síla ${item.importance}</small></div>
     </footer>
   </article>`;
   dialog.showModal();
+  if (updateUrl) history.replaceState(null, "", `#priklep=${encodeURIComponent(item.id)}`);
+  dialogContent.querySelector(".share-action").addEventListener("click", (event) => shareMoment(item, event.currentTarget));
   dialogContent.querySelectorAll("img").forEach((imageNode) => imageNode.addEventListener("error", () => imageNode.remove()));
+}
+
+function closeDetail() {
+  dialog.close();
+  history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
 }
 
 filterToggle.addEventListener("click", () => {
@@ -132,7 +176,10 @@ cards.forEach((card) => card.addEventListener("click", (event) => {
   }
   openDetail(card.dataset.id);
 }));
-dialog.querySelector(".dialog-close").addEventListener("click", () => dialog.close());
-dialog.addEventListener("click", (event) => { if (event.target === dialog) dialog.close(); });
+dialog.querySelector(".dialog-close").addEventListener("click", closeDetail);
+dialog.addEventListener("click", (event) => { if (event.target === dialog) closeDetail(); });
 document.querySelectorAll("img").forEach((image) => image.addEventListener("error", () => image.remove()));
 applyFilters();
+
+const initialMoment = new URLSearchParams(window.location.hash.slice(1)).get("priklep");
+if (initialMoment) openDetail(initialMoment, false);
