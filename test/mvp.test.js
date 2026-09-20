@@ -80,4 +80,5 @@ test("stránka obsahuje vyhledávání, všechny filtry a rozkliknutelné karty"
     assert.match(html, new RegExp(`data-filter="${filter}"`));
   }
   assert.match(html, /id="detail-dialog"/);
+  assert.match(html, /row-team-placeholder/);
 });

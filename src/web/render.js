@@ -52,8 +52,13 @@ function card(item, index) {
   const outstanding = outstandingStatus(item);
   const subject = item.player || item.team || "Týmový moment";
   const search = [item.title, item.text, item.player, item.team, item.homeTeam, item.awayTeam, labels[item.type]].join(" ");
-  const photo = item.playerImageUrl
+  const avatarImage = item.playerImageUrl
     ? `<img src="${escapeHtml(item.playerImageUrl)}" alt="${escapeHtml(subject)}" loading="lazy" referrerpolicy="no-referrer">`
+    : item.teamLogoUrl
+      ? `<img class="row-team-placeholder" src="${escapeHtml(item.teamLogoUrl)}" alt="${escapeHtml(item.team)}" loading="lazy" referrerpolicy="no-referrer">`
+      : "";
+  const missingPlayerBadge = item.player && !item.playerImageUrl && item.teamLogoUrl
+    ? `<span class="row-player-initials">${escapeHtml(initials(item.player))}</span>`
     : "";
   const teamMark = item.teamLogoUrl
     ? `<img class="row-team-logo" src="${escapeHtml(item.teamLogoUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer">`
@@ -80,7 +85,7 @@ function card(item, index) {
     aria-label="Otevřít detail: ${escapeHtml(item.title)}"
     style="--team:${safeColor(item.teamColor)};--group:${safeColor(item.groupColor, "#a454ff")};--delay:${Math.min(index * 35, 350)}ms">
       <span class="row-accent" aria-hidden="true"></span>
-      <span class="row-avatar"><span class="photo-fallback">${escapeHtml(initials(subject))}</span>${photo}</span>
+      <span class="row-avatar"><span class="photo-fallback">${escapeHtml(initials(subject))}</span>${avatarImage}${missingPlayerBadge}</span>
       <span class="row-story">
         <span class="row-flags">${outstandingBadge}<span class="group-badge">${groupMark}${escapeHtml(item.group)}</span></span>
         <span class="row-title"><strong class="moment-stat">${escapeHtml(momentStat(item))}</strong><b class="subject-name">${escapeHtml(subject)}</b></span>

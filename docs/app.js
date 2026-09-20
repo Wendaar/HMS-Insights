@@ -110,9 +110,17 @@ function openDetail(id, updateUrl = true) {
   if (!item) return;
   const subject = item.player || item.team || "Týmový moment";
   const subjectInitials = subject.split(/\s+/).map((part) => part[0]).slice(0,2).join("");
-  const image = `<span class="share-player-fallback">${escapeHtml(subjectInitials)}</span>${usableImage(item.playerImageUrl)
+  const hasPlayerImage = usableImage(item.playerImageUrl);
+  const hasTeamLogo = usableImage(item.teamLogoUrl);
+  const foregroundImage = hasPlayerImage
     ? `<img class="share-player" src="${escapeHtml(item.playerImageUrl)}" alt="${escapeHtml(subject)}" referrerpolicy="no-referrer">`
-    : ""}`;
+    : hasTeamLogo
+      ? `<img class="share-player share-player-team" src="${escapeHtml(item.teamLogoUrl)}" alt="${escapeHtml(item.team)}" referrerpolicy="no-referrer">`
+      : "";
+  const missingPlayerBadge = item.player && !hasPlayerImage && hasTeamLogo
+    ? `<span class="share-missing-initials">${escapeHtml(subjectInitials)}</span>`
+    : "";
+  const image = `<span class="share-player-fallback">${escapeHtml(subjectInitials)}</span>${foregroundImage}${missingPlayerBadge}`;
   const teamLogo = usableImage(item.teamLogoUrl)
     ? `<img class="share-team-logo" src="${escapeHtml(item.teamLogoUrl)}" alt="">`
     : `<span class="share-team-fallback">${escapeHtml((item.team || "HMS").split(/\s+/).map((part) => part[0]).slice(0,3).join(""))}</span>`;
