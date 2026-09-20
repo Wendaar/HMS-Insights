@@ -6,6 +6,7 @@
   "description": "HMS Insights / Priklepy MVP 0.1",
   "scripts": {
     "start": "node src/server.js",
+    "build:static": "node scripts/build-static.js",
     "test": "node --test",
     "ingest": "node scripts/ingest.js",
     "seed:sql": "node scripts/seed-sql.js"

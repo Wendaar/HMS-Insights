@@ -115,13 +115,13 @@ export function renderPriklepyPage(items) {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Přehled automaticky nalezených hokejových momentů z HMS zápasů">
   <title>Příklepy · HMS Insights</title>
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <link rel="stylesheet" href="/styles.css?v=cards-5">
-  <script src="/app.js?v=cards-5" defer></script>
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <link rel="stylesheet" href="./styles.css?v=cards-5">
+  <script src="./app.js?v=cards-5" defer></script>
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="/priklepy"><span>HMS</span> PŘÍKLEPY</a>
+    <a class="brand" href="./"><span>HMS</span> PŘÍKLEPY</a>
     <span class="feed-state"><i></i> živý přehled</span>
   </header>
   <main>

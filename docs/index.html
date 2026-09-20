@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Přehled automaticky nalezených hokejových momentů z HMS zápasů">
+  <title>Příklepy · HMS Insights</title>
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <link rel="stylesheet" href="./styles.css?v=cards-5">
+  <script src="./app.js?v=cards-5" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="./"><span>HMS</span> PŘÍKLEPY</a>
+    <span class="feed-state"><i></i> živý přehled</span>
+  </header>
+  <main>
+    <section class="control-bar" aria-label="Vyhledávání a filtrování příklepů">
+      <label class="search"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Hledat hráče, tým nebo moment…" autocomplete="off"></label>
+      <button class="filter-toggle" id="filter-toggle" type="button" aria-expanded="false" aria-controls="filters"><span>Filtry</span><b id="active-filter-count" hidden>0</b><i aria-hidden="true">⌄</i></button>
+      <div class="filter-drawer" id="filters" hidden>
+        <div class="filters">
+          <label><span>Sezona</span><select data-filter="season"><option value="">Všechny</option><option value="2025–2026">2025–2026</option><option value="2026–2027">2026–2027</option></select></label>
+          <label><span>Skupina</span><select data-filter="group"><option value="">Všechny</option><option value="KLASIK">KLASIK</option><option value="SPORT">SPORT</option><option value="SUPER">SUPER</option></select></label>
+          <label><span>Tým</span><select data-filter="teams"><option value="">Všechny</option><option value="HC Kosti">HC Kosti</option><option value="HC Meteor">HC Meteor</option><option value="HC Tempo">HC Tempo</option><option value="Ice Wolves">Ice Wolves</option><option value="North Stars">North Stars</option><option value="Predators">Predators</option><option value="PUK PAK PIVO">PUK PAK PIVO</option><option value="Vltava Crew">Vltava Crew</option></select></label>
+          <label><span>Fáze</span><select data-filter="phase"><option value="">Všechny</option><option value="Playoff">Playoff</option><option value="Základní část">Základní část</option></select></label>
+          <label><span>Stadion</span><select data-filter="venue"><option value="">Všechny</option><option value="Aréna Jih">Aréna Jih</option><option value="Aréna Sever">Aréna Sever</option><option value="ICERINK (Yellow)">ICERINK (Yellow)</option><option value="Zimní stadion Centrum">Zimní stadion Centrum</option></select></label>
+          <label><span>Partner</span><select data-filter="sponsor"><option value="">Všichni</option><option value="Bez partnera">Bez partnera</option><option value="GNB Chem">GNB Chem</option><option value="Partner demo">Partner demo</option></select></label>
+        </div>
+        <button id="reset-filters" type="button">Zrušit všechny filtry</button>
+      </div>
+      <p class="result-line"><strong id="result-count">15</strong> příklepů</p>
+    </section>
+
+    <div class="timeline" id="feed" aria-live="polite">
+    <section class="date-section" data-feed-section>
+      <div class="date-heading"><h2>Nejnovější</h2><span></span><b data-section-count>10</b></div>
+      <div class="feed-grid"><button class="moment-card featured" type="button"
+    data-id="F6312E3A-98CA-11F1-8BDF-EF2495D048F3:BIG_WIN:9039B940-3CB3-11F0-B991-9FDE3B856598" data-search="výhra o šest puk pak pivo zvítězilo rozdílem 6 branek.  puk pak pivo puk pak pivo hc kosti velká výhra"
+    data-season="2026–2027" data-group="SUPER"
+    data-teams="PUK PAK PIVO|HC Kosti" data-phase="Základní část"
+    data-venue="ICERINK (Yellow)" data-sponsor="Bez partnera"
+    aria-label="Otevřít detail: Výhra o šest"
+    style="--team:#ffffff;--group:#a454ff;--delay:0ms">
+      <img class="team-watermark" src="https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Team_PUK_PAK_PIVO_Jj6IxJHme3EM_cropped_md" alt="" loading="lazy" referrerpolicy="no-referrer">
+      <span class="moment-main">
+        <span class="moment-meta"><span class="group-badge"><img class="entity-logo group-logo" src="https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Group_SUPER_B8dRbKtt6SQX_cropped_md" alt="">SUPER</span><span>17. září 2026</span></span>
+        <span class="moment-stat">VÝHRA +6</span>
+        <strong class="subject-name">PUK PAK PIVO</strong>
+        <span class="moment-copy">PUK PAK PIVO zvítězilo rozdílem 6 branek.</span>
+        <span class="game-line" data-game-url="https://prod.hms.wootera.net/embed/game?gameId=F6312E3A-98CA-11F1-8BDF-EF2495D048F3&amp;lang=cs" title="Otevřít detail zápasu v HMS"><b>PUK PAK PIVO</b><i>9:3</i><b>HC Kosti</b></span>
+      </span>
+      <span class="player-photo"><span class="photo-fallback">PP</span><span class="ice-cut"></span></span>
+      <span class="card-foot"><span class="venue-name"><img class="entity-logo venue-logo" src="https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Venue_ICERINK_YELLOW_ohKAiiq5jruu_cropped_md" alt="">ICERINK (Yellow)</span><span>síla 90</span></span>
+      
+    </button><button class="moment-card featured" type="button"
+    data-id="F6312E3A-98CA-11F1-8BDF-EF2495D048F3:EARLY_GOAL:C9F99BC0-2CDA-439F-BC0D-59382B9E32E0" data-search="rychlý zásah mansur ischoev skóroval už v čase 0:43. mansur ischoev hc kosti puk pak pivo hc kosti rychlý gól"
+    data-season="2026–2027" data-group="SUPER"
+    data-teams="PUK PAK PIVO|HC Kosti" data-phase="Základní část"
+    data-venue="ICERINK (Yellow)" data-sponsor="Bez partnera"
+    aria-label="Otevřít detail: Rychlý zásah"
+    style="--team:#ffeb3b;--group:#a454ff;--delay:35ms">
+      <img class="team-watermark" src="https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Team_HC_KOSTI_IVpg5MIlQ6sx_cropped_md" alt="" loading="lazy" referrerpolicy="no-referrer">
+      <span class="moment-main">
+        <span class="moment-meta"><span class="group-badge"><img class="entity-logo group-logo" src="https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Group_SUPER_B8dRbKtt6SQX_cropped_md" alt="">SUPER</span><span>17. září 2026</span></span>
+        <span class="moment-stat">GÓL 0:43</span>
+        <strong class="subject-name">Mansur Ischoev</strong>
+        <span class="moment-copy">Mansur Ischoev skóroval už v čase 0:43.</span>
+        <span class="game-line" data-game-url="https://prod.hms.wootera.net/embed/game?gameId=F6312E3A-98CA-11F1-8BDF-EF2495D048F3&amp;lang=cs" title="Otevřít detail zápasu v HMS"><b>PUK PAK PIVO</b><i>9:3</i><b>HC Kosti</b></span>
+      </span>
+      <span class="player-photo"><span class="photo-fallback">MI</span><img src="https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Player_MANSUR_ISCHOEV_0iJ6GQ59VpoG_cropped_md" alt="Mansur Ischoev" loading="lazy" referrerpolicy="no-referrer"><span class="ice-cut"></span></span>
+      <span class="card-foot"><span class="venue-name"><img class="entity-logo venue-logo" src="https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Venue_ICERINK_YELLOW_ohKAiiq5jruu_cropped_md" alt="">ICERINK (Yellow)</span><span>síla 86</span></span>
+      
+    </button><button class="moment-card standard" type="button"
+    data-id="F6312E3A-98CA-11F1-8BDF-EF2495D048F3:MULTIPOINT_GAME:6AFF20FA-CA8A-439B-AD60-7DDDD0F9E826" data-search="4 body v zápase marek horáček zaznamenal 4 body (1+3). marek horáček puk pak pivo puk pak pivo hc kosti vícebodový zápas"
+    data-season="2026–2027" data-group="SUPER"
+    data-teams="PUK PAK PIVO|HC Kosti" data-phase="Základní část"
+    data-venue="ICERINK (Yellow)" data-sponsor="Bez partnera"
+    aria-label="Otevřít detail: 4 body v zápase"
+    style="--team:#ffffff;--group:#a454ff;--delay:70ms">
+      <img class="team-watermark" src="https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Team_PUK_PAK_PIVO_Jj6IxJHme3EM_cropped_md" alt="" loading="lazy" referrerpolicy="no-referrer">
+      <span class="moment-main">
+        <span class="moment-meta"><span class="group-badge"><img class="entity-logo group-logo" src="https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Group_SUPER_B8dRbKtt6SQX_cropped_md" alt="">SUPER</span><span>17. září 2026</span></span>
+        <span class="moment-stat">4 BODY</span>
+        <strong class="subject-name">Marek Horáček</strong>
+        <span class="moment-copy">Marek Horáček zaznamenal 4 body (1+3).</span>
+        <span class="game-line" data-game-url="https://prod.hms.wootera.net/embed/game?gameId=F6312E3A-98CA-11F1-8BDF-EF2495D048F3&amp;lang=cs" title="Otevřít detail zápasu v HMS"><b>PUK PAK PIVO</b><i>9:3</i><b>HC Kosti</b></span>
+      </span>
+      <span class="player-photo"><span class="photo-fallback">MH</span><img src="https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Player_MAREK_HORACEK_0LWnqHPbhFaM_cropped_md" alt="Marek Horáček" loading="lazy" referrerpolicy="no-referrer"><span class="ice-cut"></span></span>
+      <span class="card-foot"><span class="venue-name"><img class="entity-logo venue-logo" src="https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Venue_ICERINK_YELLOW_ohKAiiq5jruu_cropped_md" alt="">ICERINK (Yellow)</span><span>síla 78</span></span>
+      
+    </button><button class="moment-card standard" type="button"
+    data-id="F6312E3A-98CA-11F1-8BDF-EF2495D048F3:BIG_SAVES:31416E10-99C6-11EE-A083-D573B186FF81" data-search="31 zákroků petr lukášek zaznamenal 31 zákroků. petr lukášek puk pak pivo puk pak pivo hc kosti brankářský výkon"
+    data-season="2026–2027" data-group="SUPER"
+    data-teams="PUK PAK PIVO|HC Kosti" data-phase="Základní část"
+    data-venue="ICERINK (Yellow)" data-sponsor="Bez partnera"
+    aria-label="Otevřít detail: 31 zákroků"
+    style="--team:#ffffff;--group:#a454ff;--delay:105ms">
+      <img class="team-watermark" src="https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Team_PUK_PAK_PIVO_Jj6IxJHme3EM_cropped_md" alt="" loading="lazy" referrerpolicy="no-referrer">
+      <span class="moment-main">
+        <span class="moment-meta"><span class="group-badge"><img class="entity-logo group-logo" src="https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Group_SUPER_B8dRbKtt6SQX_cropped_md" alt="">SUPER</span><span>17. září 2026</span></span>
+        <span class="moment-stat">31 ZÁKROKŮ</span>
+        <strong class="subject-name">Petr Lukášek</strong>
+        <span class="moment-copy">Petr Lukášek zaznamenal 31 zákroků.</span>
+        <span class="game-line" data-game-url="https://prod.hms.wootera.net/embed/game?gameId=F6312E3A-98CA-11F1-8BDF-EF2495D048F3&amp;lang=cs" title="Otevřít detail zápasu v HMS"><b>PUK PAK PIVO</b><i>9:3</i><b>HC Kosti</b></span>
+      </span>
+      <span class="player-photo"><span class="photo-fallback">PL</span><img src="https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Player_PETR_LUKASEK_3jqUm02WUCUg_cropped_md" alt="Petr Lukášek" loading="lazy" referrerpolicy="no-referrer"><span class="ice-cut"></span></span>
+      <span class="card-foot"><span class="venue-name"><img class="entity-logo venue-logo" src="https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Venue_ICERINK_YELLOW_ohKAiiq5jruu_cropped_md" alt="">ICERINK (Yellow)</span><span>síla 72</span></span>
+      
+    </button><button class="moment-card standard" type="button"
+    data-id="F6312E3A-98CA-11F1-8BDF-EF2495D048F3:BIG_SAVES:F4F5D9C6-B405-4B68-B366-53DCB40D2900" data-search="34 zákroků aleš hadrbolec zaznamenal 34 zákroků. aleš hadrbolec hc kosti puk pak pivo hc kosti brankářský výkon"
+    data-season="2026–2027" data-group="SUPER"
+    data-teams="PUK PAK PIVO|HC Kosti" data-phase="Základní část"
+    data-venue="ICERINK (Yellow)" data-sponsor="Bez partnera"
+    aria-label="Otevřít detail: 34 zákroků"
+    style="--team:#ffeb3b;--group:#a454ff;--delay:140ms">
+      <img class="team-watermark" src="https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Team_HC_KOSTI_IVpg5MIlQ6sx_cropped_md" alt="" loading="lazy" referrerpolicy="no-referrer">
+      <span class="moment-main">
+        <span class="moment-meta"><span class="group-badge"><img class="entity-logo group-logo" src="https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Group_SUPER_B8dRbKtt6SQX_cropped_md" alt="">SUPER</span><span>17. září 2026</span></span>
+        <span class="moment-stat">34 ZÁKROKŮ</span>
+        <strong class="subject-name">Aleš Hadrbolec</strong>
+        <span class="moment-copy">Aleš Hadrbolec zaznamenal 34 zákroků.</span>
+        <span class="game-line" data-game-url="https://prod.hms.wootera.net/embed/game?gameId=F6312E3A-98CA-11F1-8BDF-EF2495D048F3&amp;lang=cs" title="Otevřít detail zápasu v HMS"><b>PUK PAK PIVO</b><i>9:3</i><b>HC Kosti</b></span>
+      </span>
+      <span class="player-photo"><span class="photo-fallback">AH</span><img src="https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Player_ALES_HADRBOLEC_UMaXFQ8qs9hO_cropped_md" alt="Aleš Hadrbolec" loading="lazy" referrerpolicy="no-referrer"><span class="ice-cut"></span></span>
+      <span class="card-foot"><span class="venue-name"><img class="entity-logo venue-logo" src="https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Venue_ICERINK_YELLOW_ohKAiiq5jruu_cropped_md" alt="">ICERINK (Yellow)</span><span>síla 72</span></span>
+      
+    </button><button class="moment-card compact" type="button"
+    data-id="F6312E3A-98CA-11F1-8BDF-EF2495D048F3:MULTIPOINT_GAME:38BDAD40-51C4-11F0-A6FC-87BBDED477B1" data-search="3 body v zápase radim červený zaznamenal 3 body (0+3). radim červený puk pak pivo puk pak pivo hc kosti vícebodový zápas"
+    data-season="2026–2027" data-group="SUPER"
+    data-teams="PUK PAK PIVO|HC Kosti" data-phase="Základní část"
+    data-venue="ICERINK (Yellow)" data-sponsor="Bez partnera"
+    aria-label="Otevřít detail: 3 body v zápase"
+    style="--team:#ffffff;--group:#a454ff;--delay:175ms">
+      <img class="team-watermark" src="https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Team_PUK_PAK_PIVO_Jj6IxJHme3EM_cropped_md" alt="" loading="lazy" referrerpolicy="no-referrer">
+      <span class="moment-main">
+        <span class="moment-meta"><span class="group-badge"><img class="entity-logo group-logo" src="https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Group_SUPER_B8dRbKtt6SQX_cropped_md" alt="">SUPER</span><span>17. září 2026</span></span>
+        <span class="moment-stat">3 BODY</span>
+        <strong class="subject-name">Radim Červený</strong>
+        <span class="moment-copy">Radim Červený zaznamenal 3 body (0+3).</span>
+        <span class="game-line" data-game-url="https://prod.hms.wootera.net/embed/game?gameId=F6312E3A-98CA-11F1-8BDF-EF2495D048F3&amp;lang=cs" title="Otevřít detail zápasu v HMS"><b>PUK PAK PIVO</b><i>9:3</i><b>HC Kosti</b></span>
+      </span>
+      <span class="player-photo"><span class="photo-fallback">RČ</span><img src="https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Player_RADIM_CERVENY_tKS43rmQrATl_cropped_md" alt="Radim Červený" loading="lazy" referrerpolicy="no-referrer"><span class="ice-cut"></span></span>
+      <span class="card-foot"><span class="venue-name"><img class="entity-logo venue-logo" src="https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Venue_ICERINK_YELLOW_ohKAiiq5jruu_cropped_md" alt="">ICERINK (Yellow)</span><span>síla 66</span></span>
+      
+    </button><button class="moment-card compact" type="button"
+    data-id="F6312E3A-98CA-11F1-8BDF-EF2495D048F3:MULTIPOINT_GAME:9954EE3F-C703-4E1F-9C4E-D192CB5566E0" data-search="3 body v zápase jan urych zaznamenal 3 body (1+2). jan urych puk pak pivo puk pak pivo hc kosti vícebodový zápas"
+    data-season="2026–2027" data-group="SUPER"
+    data-teams="PUK PAK PIVO|HC Kosti" data-phase="Základní část"
+    data-venue="ICERINK (Yellow)" data-sponsor="Bez partnera"
+    aria-label="Otevřít detail: 3 body v zápase"
+    style="--team:#ffffff;--group:#a454ff;--delay:210ms">
+      <img class="team-watermark" src="https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Team_PUK_PAK_PIVO_Jj6IxJHme3EM_cropped_md" alt="" loading="lazy" referrerpolicy="no-referrer">
+      <span class="moment-main">
+        <span class="moment-meta"><span class="group-badge"><img class="entity-logo group-logo" src="https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Group_SUPER_B8dRbKtt6SQX_cropped_md" alt="">SUPER</span><span>17. září 2026</span></span>
+        <span class="moment-stat">3 BODY</span>
+        <strong class="subject-name">Jan Urych</strong>
+        <span class="moment-copy">Jan Urych zaznamenal 3 body (1+2).</span>
+        <span class="game-line" data-game-url="https://prod.hms.wootera.net/embed/game?gameId=F6312E3A-98CA-11F1-8BDF-EF2495D048F3&amp;lang=cs" title="Otevřít detail zápasu v HMS"><b>PUK PAK PIVO</b><i>9:3</i><b>HC Kosti</b></span>
+      </span>
+      <span class="player-photo"><span class="photo-fallback">JU</span><img src="https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Player_JAN_URYCH_IEySFiax0sQT_cropped_md" alt="Jan Urych" loading="lazy" referrerpolicy="no-referrer"><span class="ice-cut"></span></span>
+      <span class="card-foot"><span class="venue-name"><img class="entity-logo venue-logo" src="https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Venue_ICERINK_YELLOW_ohKAiiq5jruu_cropped_md" alt="">ICERINK (Yellow)</span><span>síla 66</span></span>
+      
+    </button><button class="moment-card compact" type="button"
+    data-id="F6312E3A-98CA-11F1-8BDF-EF2495D048F3:MULTIPOINT_GAME:9A532590-5196-11F0-A6FC-87BBDED477B1" data-search="3 body v zápase jan šramota zaznamenal 3 body (1+2). jan šramota puk pak pivo puk pak pivo hc kosti vícebodový zápas"
+    data-season="2026–2027" data-group="SUPER"
+    data-teams="PUK PAK PIVO|HC Kosti" data-phase="Základní část"
+    data-venue="ICERINK (Yellow)" data-sponsor="Bez partnera"
+    aria-label="Otevřít detail: 3 body v zápase"
+    style="--team:#ffffff;--group:#a454ff;--delay:245ms">
+      <img class="team-watermark" src="https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Team_PUK_PAK_PIVO_Jj6IxJHme3EM_cropped_md" alt="" loading="lazy" referrerpolicy="no-referrer">
+      <span class="moment-main">
+        <span class="moment-meta"><span class="group-badge"><img class="entity-logo group-logo" src="https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Group_SUPER_B8dRbKtt6SQX_cropped_md" alt="">SUPER</span><span>17. září 2026</span></span>
+        <span class="moment-stat">3 BODY</span>
+        <strong class="subject-name">Jan Šramota</strong>
+        <span class="moment-copy">Jan Šramota zaznamenal 3 body (1+2).</span>
+        <span class="game-line" data-game-url="https://prod.hms.wootera.net/embed/game?gameId=F6312E3A-98CA-11F1-8BDF-EF2495D048F3&amp;lang=cs" title="Otevřít detail zápasu v HMS"><b>PUK PAK PIVO</b><i>9:3</i><b>HC Kosti</b></span>
+      </span>
+      <span class="player-photo"><span class="photo-fallback">JŠ</span><img src="https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Player_JAN_SRAMOTA_Y0aJk8kytIuh_cropped_md" alt="Jan Šramota" loading="lazy" referrerpolicy="no-referrer"><span class="ice-cut"></span></span>
+      <span class="card-foot"><span class="venue-name"><img class="entity-logo venue-logo" src="https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Venue_ICERINK_YELLOW_ohKAiiq5jruu_cropped_md" alt="">ICERINK (Yellow)</span><span>síla 66</span></span>
+      
+    </button><button class="moment-card compact" type="button"
+    data-id="F6312E3A-98CA-11F1-8BDF-EF2495D048F3:MULTIPOINT_GAME:AB8AE430-C54D-488A-A569-FC76EB269F13" data-search="3 body v zápase david kulich zaznamenal 3 body (2+1). david kulich puk pak pivo puk pak pivo hc kosti vícebodový zápas"
+    data-season="2026–2027" data-group="SUPER"
+    data-teams="PUK PAK PIVO|HC Kosti" data-phase="Základní část"
+    data-venue="ICERINK (Yellow)" data-sponsor="Bez partnera"
+    aria-label="Otevřít detail: 3 body v zápase"
+    style="--team:#ffffff;--group:#a454ff;--delay:280ms">
+      <img class="team-watermark" src="https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Team_PUK_PAK_PIVO_Jj6IxJHme3EM_cropped_md" alt="" loading="lazy" referrerpolicy="no-referrer">
+      <span class="moment-main">
+        <span class="moment-meta"><span class="group-badge"><img class="entity-logo group-logo" src="https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Group_SUPER_B8dRbKtt6SQX_cropped_md" alt="">SUPER</span><span>17. září 2026</span></span>
+        <span class="moment-stat">3 BODY</span>
+        <strong class="subject-name">David Kulich</strong>
+        <span class="moment-copy">David Kulich zaznamenal 3 body (2+1).</span>
+        <span class="game-line" data-game-url="https://prod.hms.wootera.net/embed/game?gameId=F6312E3A-98CA-11F1-8BDF-EF2495D048F3&amp;lang=cs" title="Otevřít detail zápasu v HMS"><b>PUK PAK PIVO</b><i>9:3</i><b>HC Kosti</b></span>
+      </span>
+      <span class="player-photo"><span class="photo-fallback">DK</span><img src="https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Player_DAVID_KULICH_e78pLHw5eDyf_cropped_md" alt="David Kulich" loading="lazy" referrerpolicy="no-referrer"><span class="ice-cut"></span></span>
+      <span class="card-foot"><span class="venue-name"><img class="entity-logo venue-logo" src="https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Venue_ICERINK_YELLOW_ohKAiiq5jruu_cropped_md" alt="">ICERINK (Yellow)</span><span>síla 66</span></span>
+      
+    </button><button class="moment-card compact" type="button"
+    data-id="F6312E3A-98CA-11F1-8BDF-EF2495D048F3:MULTIPOINT_GAME:B21803C0-51C9-11F0-A6FC-87BBDED477B1" data-search="3 body v zápase filip švaříček zaznamenal 3 body (1+2). filip švaříček puk pak pivo puk pak pivo hc kosti vícebodový zápas"
+    data-season="2026–2027" data-group="SUPER"
+    data-teams="PUK PAK PIVO|HC Kosti" data-phase="Základní část"
+    data-venue="ICERINK (Yellow)" data-sponsor="Bez partnera"
+    aria-label="Otevřít detail: 3 body v zápase"
+    style="--team:#ffffff;--group:#a454ff;--delay:315ms">
+      <img class="team-watermark" src="https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Team_PUK_PAK_PIVO_Jj6IxJHme3EM_cropped_md" alt="" loading="lazy" referrerpolicy="no-referrer">
+      <span class="moment-main">
+        <span class="moment-meta"><span class="group-badge"><img class="entity-logo group-logo" src="https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Group_SUPER_B8dRbKtt6SQX_cropped_md" alt="">SUPER</span><span>17. září 2026</span></span>
+        <span class="moment-stat">3 BODY</span>
+        <strong class="subject-name">Filip Švaříček</strong>
+        <span class="moment-copy">Filip Švaříček zaznamenal 3 body (1+2).</span>
+        <span class="game-line" data-game-url="https://prod.hms.wootera.net/embed/game?gameId=F6312E3A-98CA-11F1-8BDF-EF2495D048F3&amp;lang=cs" title="Otevřít detail zápasu v HMS"><b>PUK PAK PIVO</b><i>9:3</i><b>HC Kosti</b></span>
+      </span>
+      <span class="player-photo"><span class="photo-fallback">FŠ</span><img src="https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Player_FILIP_SVARICEK_uhuBqPh0yqyE_cropped_md" alt="Filip Švaříček" loading="lazy" referrerpolicy="no-referrer"><span class="ice-cut"></span></span>
+      <span class="card-foot"><span class="venue-name"><img class="entity-logo venue-logo" src="https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Venue_ICERINK_YELLOW_ohKAiiq5jruu_cropped_md" alt="">ICERINK (Yellow)</span><span>síla 66</span></span>
+      
+    </button></div>
+    </section>
+    <section class="date-section" data-feed-section>
+      <div class="date-heading"><h2>Včera</h2><span></span><b data-section-count>1</b></div>
+      <div class="feed-grid"><button class="moment-card featured" type="button"
+    data-id="demo-1" data-search="tři góly v jednom večeru jakub veselý zkompletoval hattrick a rozhodl zápas ve prospěch ice wolves. jakub veselý ice wolves ice wolves predators hattrick"
+    data-season="2026–2027" data-group="SPORT"
+    data-teams="Ice Wolves|Predators" data-phase="Základní část"
+    data-venue="Zimní stadion Centrum" data-sponsor="GNB Chem"
+    aria-label="Otevřít detail: Tři góly v jednom večeru"
+    style="--team:#4b8dff;--group:#554CF6;--delay:350ms">
+      <span class="team-watermark-fallback" aria-hidden="true">IW</span>
+      <span class="moment-main">
+        <span class="moment-meta"><span class="group-badge"><i></i>SPORT</span><span>16. září 2026</span></span>
+        <span class="moment-stat">HATTRICK</span>
+        <strong class="subject-name">Jakub Veselý</strong>
+        <span class="moment-copy">Jakub Veselý zkompletoval hattrick a rozhodl zápas ve prospěch Ice Wolves.</span>
+        <span class="game-line" ><b>Ice Wolves</b><i>5:2</i><b>Predators</b></span>
+      </span>
+      <span class="player-photo"><span class="photo-fallback">JV</span><span class="ice-cut"></span></span>
+      <span class="card-foot"><span class="venue-name">Zimní stadion Centrum</span><span>síla 98</span></span>
+      <span class="demo-tag">ukázka</span>
+    </button></div>
+    </section>
+    <section class="date-section" data-feed-section>
+      <div class="date-heading"><h2>Dříve</h2><span></span><b data-section-count>4</b></div>
+      <div class="feed-grid"><button class="moment-card standard" type="button"
+    data-id="demo-2" data-search="čtyřicet zákroků daniel král zastavil 40 střel a udržel těsné vedení až do konce. daniel král north stars north stars hc meteor brankářský výkon"
+    data-season="2026–2027" data-group="KLASIK"
+    data-teams="North Stars|HC Meteor" data-phase="Základní část"
+    data-venue="Aréna Jih" data-sponsor="Partner demo"
+    aria-label="Otevřít detail: Čtyřicet zákroků"
+    style="--team:#50d29a;--group:#429BF7;--delay:350ms">
+      <span class="team-watermark-fallback" aria-hidden="true">NS</span>
+      <span class="moment-main">
+        <span class="moment-meta"><span class="group-badge"><i></i>KLASIK</span><span>15. září 2026</span></span>
+        <span class="moment-stat">40 ZÁKROKŮ</span>
+        <strong class="subject-name">Daniel Král</strong>
+        <span class="moment-copy">Daniel Král zastavil 40 střel a udržel těsné vedení až do konce.</span>
+        <span class="game-line" ><b>North Stars</b><i>2:1</i><b>HC Meteor</b></span>
+      </span>
+      <span class="player-photo"><span class="photo-fallback">DK</span><span class="ice-cut"></span></span>
+      <span class="card-foot"><span class="venue-name">Aréna Jih</span><span>síla 82</span></span>
+      <span class="demo-tag">ukázka</span>
+    </button><button class="moment-card standard" type="button"
+    data-id="demo-3" data-search="gól po 29 sekundách pavel mareš otevřel skóre dřív, než se zápas stačil rozběhnout. pavel mareš vltava crew hc tempo vltava crew rychlý gól"
+    data-season="2026–2027" data-group="SUPER"
+    data-teams="HC Tempo|Vltava Crew" data-phase="Playoff"
+    data-venue="Aréna Sever" data-sponsor="GNB Chem"
+    aria-label="Otevřít detail: Gól po 29 sekundách"
+    style="--team:#a454ff;--group:#a454ff;--delay:350ms">
+      <span class="team-watermark-fallback" aria-hidden="true">VC</span>
+      <span class="moment-main">
+        <span class="moment-meta"><span class="group-badge"><i></i>SUPER</span><span>14. září 2026</span></span>
+        <span class="moment-stat">GÓL 0:29</span>
+        <strong class="subject-name">Pavel Mareš</strong>
+        <span class="moment-copy">Pavel Mareš otevřel skóre dřív, než se zápas stačil rozběhnout.</span>
+        <span class="game-line" ><b>HC Tempo</b><i>4:3</i><b>Vltava Crew</b></span>
+      </span>
+      <span class="player-photo"><span class="photo-fallback">PM</span><span class="ice-cut"></span></span>
+      <span class="card-foot"><span class="venue-name">Aréna Sever</span><span>síla 75</span></span>
+      <span class="demo-tag">ukázka</span>
+    </button><button class="moment-card compact" type="button"
+    data-id="demo-4" data-search="čtyři body v play-off ondřej malý posbíral dva góly a dvě asistence. ondřej malý predators predators hc tempo vícebodový zápas"
+    data-season="2025–2026" data-group="SPORT"
+    data-teams="Predators|HC Tempo" data-phase="Playoff"
+    data-venue="Zimní stadion Centrum" data-sponsor="Bez partnera"
+    aria-label="Otevřít detail: Čtyři body v play-off"
+    style="--team:#ff5b62;--group:#554CF6;--delay:350ms">
+      <span class="team-watermark-fallback" aria-hidden="true">P</span>
+      <span class="moment-main">
+        <span class="moment-meta"><span class="group-badge"><i></i>SPORT</span><span>13. září 2026</span></span>
+        <span class="moment-stat">4 BODY</span>
+        <strong class="subject-name">Ondřej Malý</strong>
+        <span class="moment-copy">Ondřej Malý posbíral dva góly a dvě asistence.</span>
+        <span class="game-line" ><b>Predators</b><i>6:4</i><b>HC Tempo</b></span>
+      </span>
+      <span class="player-photo"><span class="photo-fallback">OM</span><span class="ice-cut"></span></span>
+      <span class="card-foot"><span class="venue-name">Zimní stadion Centrum</span><span>síla 68</span></span>
+      <span class="demo-tag">ukázka</span>
+    </button><button class="moment-card featured" type="button"
+    data-id="demo-5" data-search="sedmibrankový rozdíl ice wolves ovládli utkání 8:1 a přidali nejvyšší výhru kola.  ice wolves hc meteor ice wolves velká výhra"
+    data-season="2025–2026" data-group="KLASIK"
+    data-teams="HC Meteor|Ice Wolves" data-phase="Základní část"
+    data-venue="Aréna Jih" data-sponsor="Partner demo"
+    aria-label="Otevřít detail: Sedmibrankový rozdíl"
+    style="--team:#4b8dff;--group:#429BF7;--delay:350ms">
+      <span class="team-watermark-fallback" aria-hidden="true">IW</span>
+      <span class="moment-main">
+        <span class="moment-meta"><span class="group-badge"><i></i>KLASIK</span><span>12. září 2026</span></span>
+        <span class="moment-stat">VÝHRA +7</span>
+        <strong class="subject-name">Ice Wolves</strong>
+        <span class="moment-copy">Ice Wolves ovládli utkání 8:1 a přidali nejvyšší výhru kola.</span>
+        <span class="game-line" ><b>HC Meteor</b><i>1:8</i><b>Ice Wolves</b></span>
+      </span>
+      <span class="player-photo"><span class="photo-fallback">IW</span><span class="ice-cut"></span></span>
+      <span class="card-foot"><span class="venue-name">Aréna Jih</span><span>síla 91</span></span>
+      <span class="demo-tag">ukázka</span>
+    </button></div>
+    </section></div>
+    <div class="empty" id="empty-state" hidden><span>⌕</span><h2>Nic jsme nenašli</h2><p>Zkuste změnit hledání nebo některý z filtrů.</p></div>
+  </main>
+
+  <dialog id="detail-dialog"><button class="dialog-close" type="button" aria-label="Zavřít">×</button><div id="dialog-content"></div></dialog>
+  <script type="application/json" id="feed-data">[{"id":"F6312E3A-98CA-11F1-8BDF-EF2495D048F3:BIG_WIN:9039B940-3CB3-11F0-B991-9FDE3B856598","organizationId":"BB669217-41EB-4162-8040-A73F49A43570","competitionId":"C7C0BB15-5D29-415D-851E-5D777C6CC621","seasonId":"E6134160-47CF-11F1-A223-BFDFBDD3A64B","groupId":"4A4E9670-47D0-11F1-A223-BFDFBDD3A64B","gameId":"F6312E3A-98CA-11F1-8BDF-EF2495D048F3","type":"BIG_WIN","playerId":null,"teamId":"9039B940-3CB3-11F0-B991-9FDE3B856598","importance":90,"title":"Výhra o šest","text":"PUK PAK PIVO zvítězilo rozdílem 6 branek.","facts":{"scoreDifference":6,"goalsFor":9,"goalsAgainst":3},"date":"2026-09-17","competition":"PHM Cup","season":"2026–2027","group":"SUPER","groupColor":"#a454ff","groupLogoUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Group_SUPER_B8dRbKtt6SQX_cropped_md","groupLogoTemplateUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Group_SUPER_B8dRbKtt6SQX_[size]","phase":"Základní část","venue":"ICERINK (Yellow)","venueLogoTemplateUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Venue_ICERINK_YELLOW_ohKAiiq5jruu_[size]","venueLogoUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Venue_ICERINK_YELLOW_ohKAiiq5jruu_cropped_md","sponsor":"Bez partnera","homeTeam":"PUK PAK PIVO","awayTeam":"HC Kosti","homeScore":9,"awayScore":3,"team":"PUK PAK PIVO","player":"","playerImageUrl":null,"playerImageTemplateUrl":null,"teamLogoUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Team_PUK_PAK_PIVO_Jj6IxJHme3EM_cropped_md","teamLogoTemplateUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Team_PUK_PAK_PIVO_Jj6IxJHme3EM_[size]","teamColor":"#ffffff","source":"HMS","gameDetailUrl":"https://prod.hms.wootera.net/embed/game?gameId=F6312E3A-98CA-11F1-8BDF-EF2495D048F3&lang=cs"},{"id":"F6312E3A-98CA-11F1-8BDF-EF2495D048F3:EARLY_GOAL:C9F99BC0-2CDA-439F-BC0D-59382B9E32E0","organizationId":"BB669217-41EB-4162-8040-A73F49A43570","competitionId":"C7C0BB15-5D29-415D-851E-5D777C6CC621","seasonId":"E6134160-47CF-11F1-A223-BFDFBDD3A64B","groupId":"4A4E9670-47D0-11F1-A223-BFDFBDD3A64B","gameId":"F6312E3A-98CA-11F1-8BDF-EF2495D048F3","type":"EARLY_GOAL","playerId":"C9F99BC0-2CDA-439F-BC0D-59382B9E32E0","teamId":"DDEF06E1-1A37-460A-9B1F-5EAF753DBC87","importance":86,"title":"Rychlý zásah","text":"Mansur Ischoev skóroval už v čase 0:43.","facts":{"gameTime":"0:43","elapsedSeconds":43},"date":"2026-09-17","competition":"PHM Cup","season":"2026–2027","group":"SUPER","groupColor":"#a454ff","groupLogoUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Group_SUPER_B8dRbKtt6SQX_cropped_md","groupLogoTemplateUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Group_SUPER_B8dRbKtt6SQX_[size]","phase":"Základní část","venue":"ICERINK (Yellow)","venueLogoTemplateUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Venue_ICERINK_YELLOW_ohKAiiq5jruu_[size]","venueLogoUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Venue_ICERINK_YELLOW_ohKAiiq5jruu_cropped_md","sponsor":"Bez partnera","homeTeam":"PUK PAK PIVO","awayTeam":"HC Kosti","homeScore":9,"awayScore":3,"team":"HC Kosti","player":"Mansur Ischoev","playerImageUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Player_MANSUR_ISCHOEV_0iJ6GQ59VpoG_cropped_md","playerImageTemplateUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Player_MANSUR_ISCHOEV_0iJ6GQ59VpoG_[size]","teamLogoUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Team_HC_KOSTI_IVpg5MIlQ6sx_cropped_md","teamLogoTemplateUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Team_HC_KOSTI_IVpg5MIlQ6sx_[size]","teamColor":"#ffeb3b","source":"HMS","gameDetailUrl":"https://prod.hms.wootera.net/embed/game?gameId=F6312E3A-98CA-11F1-8BDF-EF2495D048F3&lang=cs"},{"id":"F6312E3A-98CA-11F1-8BDF-EF2495D048F3:MULTIPOINT_GAME:6AFF20FA-CA8A-439B-AD60-7DDDD0F9E826","organizationId":"BB669217-41EB-4162-8040-A73F49A43570","competitionId":"C7C0BB15-5D29-415D-851E-5D777C6CC621","seasonId":"E6134160-47CF-11F1-A223-BFDFBDD3A64B","groupId":"4A4E9670-47D0-11F1-A223-BFDFBDD3A64B","gameId":"F6312E3A-98CA-11F1-8BDF-EF2495D048F3","type":"MULTIPOINT_GAME","playerId":"6AFF20FA-CA8A-439B-AD60-7DDDD0F9E826","teamId":"9039B940-3CB3-11F0-B991-9FDE3B856598","importance":78,"title":"4 body v zápase","text":"Marek Horáček zaznamenal 4 body (1+3).","facts":{"goals":1,"assists":3,"points":4},"date":"2026-09-17","competition":"PHM Cup","season":"2026–2027","group":"SUPER","groupColor":"#a454ff","groupLogoUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Group_SUPER_B8dRbKtt6SQX_cropped_md","groupLogoTemplateUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Group_SUPER_B8dRbKtt6SQX_[size]","phase":"Základní část","venue":"ICERINK (Yellow)","venueLogoTemplateUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Venue_ICERINK_YELLOW_ohKAiiq5jruu_[size]","venueLogoUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Venue_ICERINK_YELLOW_ohKAiiq5jruu_cropped_md","sponsor":"Bez partnera","homeTeam":"PUK PAK PIVO","awayTeam":"HC Kosti","homeScore":9,"awayScore":3,"team":"PUK PAK PIVO","player":"Marek Horáček","playerImageUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Player_MAREK_HORACEK_0LWnqHPbhFaM_cropped_md","playerImageTemplateUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Player_MAREK_HORACEK_0LWnqHPbhFaM_[size]","teamLogoUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Team_PUK_PAK_PIVO_Jj6IxJHme3EM_cropped_md","teamLogoTemplateUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Team_PUK_PAK_PIVO_Jj6IxJHme3EM_[size]","teamColor":"#ffffff","source":"HMS","gameDetailUrl":"https://prod.hms.wootera.net/embed/game?gameId=F6312E3A-98CA-11F1-8BDF-EF2495D048F3&lang=cs"},{"id":"F6312E3A-98CA-11F1-8BDF-EF2495D048F3:BIG_SAVES:31416E10-99C6-11EE-A083-D573B186FF81","organizationId":"BB669217-41EB-4162-8040-A73F49A43570","competitionId":"C7C0BB15-5D29-415D-851E-5D777C6CC621","seasonId":"E6134160-47CF-11F1-A223-BFDFBDD3A64B","groupId":"4A4E9670-47D0-11F1-A223-BFDFBDD3A64B","gameId":"F6312E3A-98CA-11F1-8BDF-EF2495D048F3","type":"BIG_SAVES","playerId":"31416E10-99C6-11EE-A083-D573B186FF81","teamId":"9039B940-3CB3-11F0-B991-9FDE3B856598","importance":72,"title":"31 zákroků","text":"Petr Lukášek zaznamenal 31 zákroků.","facts":{"saves":31,"goalsAgainst":3},"date":"2026-09-17","competition":"PHM Cup","season":"2026–2027","group":"SUPER","groupColor":"#a454ff","groupLogoUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Group_SUPER_B8dRbKtt6SQX_cropped_md","groupLogoTemplateUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Group_SUPER_B8dRbKtt6SQX_[size]","phase":"Základní část","venue":"ICERINK (Yellow)","venueLogoTemplateUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Venue_ICERINK_YELLOW_ohKAiiq5jruu_[size]","venueLogoUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Venue_ICERINK_YELLOW_ohKAiiq5jruu_cropped_md","sponsor":"Bez partnera","homeTeam":"PUK PAK PIVO","awayTeam":"HC Kosti","homeScore":9,"awayScore":3,"team":"PUK PAK PIVO","player":"Petr Lukášek","playerImageUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Player_PETR_LUKASEK_3jqUm02WUCUg_cropped_md","playerImageTemplateUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Player_PETR_LUKASEK_3jqUm02WUCUg_[size]","teamLogoUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Team_PUK_PAK_PIVO_Jj6IxJHme3EM_cropped_md","teamLogoTemplateUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Team_PUK_PAK_PIVO_Jj6IxJHme3EM_[size]","teamColor":"#ffffff","source":"HMS","gameDetailUrl":"https://prod.hms.wootera.net/embed/game?gameId=F6312E3A-98CA-11F1-8BDF-EF2495D048F3&lang=cs"},{"id":"F6312E3A-98CA-11F1-8BDF-EF2495D048F3:BIG_SAVES:F4F5D9C6-B405-4B68-B366-53DCB40D2900","organizationId":"BB669217-41EB-4162-8040-A73F49A43570","competitionId":"C7C0BB15-5D29-415D-851E-5D777C6CC621","seasonId":"E6134160-47CF-11F1-A223-BFDFBDD3A64B","groupId":"4A4E9670-47D0-11F1-A223-BFDFBDD3A64B","gameId":"F6312E3A-98CA-11F1-8BDF-EF2495D048F3","type":"BIG_SAVES","playerId":"F4F5D9C6-B405-4B68-B366-53DCB40D2900","teamId":"DDEF06E1-1A37-460A-9B1F-5EAF753DBC87","importance":72,"title":"34 zákroků","text":"Aleš Hadrbolec zaznamenal 34 zákroků.","facts":{"saves":34,"goalsAgainst":9},"date":"2026-09-17","competition":"PHM Cup","season":"2026–2027","group":"SUPER","groupColor":"#a454ff","groupLogoUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Group_SUPER_B8dRbKtt6SQX_cropped_md","groupLogoTemplateUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Group_SUPER_B8dRbKtt6SQX_[size]","phase":"Základní část","venue":"ICERINK (Yellow)","venueLogoTemplateUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Venue_ICERINK_YELLOW_ohKAiiq5jruu_[size]","venueLogoUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Venue_ICERINK_YELLOW_ohKAiiq5jruu_cropped_md","sponsor":"Bez partnera","homeTeam":"PUK PAK PIVO","awayTeam":"HC Kosti","homeScore":9,"awayScore":3,"team":"HC Kosti","player":"Aleš Hadrbolec","playerImageUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Player_ALES_HADRBOLEC_UMaXFQ8qs9hO_cropped_md","playerImageTemplateUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Player_ALES_HADRBOLEC_UMaXFQ8qs9hO_[size]","teamLogoUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Team_HC_KOSTI_IVpg5MIlQ6sx_cropped_md","teamLogoTemplateUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Team_HC_KOSTI_IVpg5MIlQ6sx_[size]","teamColor":"#ffeb3b","source":"HMS","gameDetailUrl":"https://prod.hms.wootera.net/embed/game?gameId=F6312E3A-98CA-11F1-8BDF-EF2495D048F3&lang=cs"},{"id":"F6312E3A-98CA-11F1-8BDF-EF2495D048F3:MULTIPOINT_GAME:38BDAD40-51C4-11F0-A6FC-87BBDED477B1","organizationId":"BB669217-41EB-4162-8040-A73F49A43570","competitionId":"C7C0BB15-5D29-415D-851E-5D777C6CC621","seasonId":"E6134160-47CF-11F1-A223-BFDFBDD3A64B","groupId":"4A4E9670-47D0-11F1-A223-BFDFBDD3A64B","gameId":"F6312E3A-98CA-11F1-8BDF-EF2495D048F3","type":"MULTIPOINT_GAME","playerId":"38BDAD40-51C4-11F0-A6FC-87BBDED477B1","teamId":"9039B940-3CB3-11F0-B991-9FDE3B856598","importance":66,"title":"3 body v zápase","text":"Radim Červený zaznamenal 3 body (0+3).","facts":{"goals":0,"assists":3,"points":3},"date":"2026-09-17","competition":"PHM Cup","season":"2026–2027","group":"SUPER","groupColor":"#a454ff","groupLogoUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Group_SUPER_B8dRbKtt6SQX_cropped_md","groupLogoTemplateUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Group_SUPER_B8dRbKtt6SQX_[size]","phase":"Základní část","venue":"ICERINK (Yellow)","venueLogoTemplateUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Venue_ICERINK_YELLOW_ohKAiiq5jruu_[size]","venueLogoUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Venue_ICERINK_YELLOW_ohKAiiq5jruu_cropped_md","sponsor":"Bez partnera","homeTeam":"PUK PAK PIVO","awayTeam":"HC Kosti","homeScore":9,"awayScore":3,"team":"PUK PAK PIVO","player":"Radim Červený","playerImageUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Player_RADIM_CERVENY_tKS43rmQrATl_cropped_md","playerImageTemplateUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Player_RADIM_CERVENY_tKS43rmQrATl_[size]","teamLogoUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Team_PUK_PAK_PIVO_Jj6IxJHme3EM_cropped_md","teamLogoTemplateUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Team_PUK_PAK_PIVO_Jj6IxJHme3EM_[size]","teamColor":"#ffffff","source":"HMS","gameDetailUrl":"https://prod.hms.wootera.net/embed/game?gameId=F6312E3A-98CA-11F1-8BDF-EF2495D048F3&lang=cs"},{"id":"F6312E3A-98CA-11F1-8BDF-EF2495D048F3:MULTIPOINT_GAME:9954EE3F-C703-4E1F-9C4E-D192CB5566E0","organizationId":"BB669217-41EB-4162-8040-A73F49A43570","competitionId":"C7C0BB15-5D29-415D-851E-5D777C6CC621","seasonId":"E6134160-47CF-11F1-A223-BFDFBDD3A64B","groupId":"4A4E9670-47D0-11F1-A223-BFDFBDD3A64B","gameId":"F6312E3A-98CA-11F1-8BDF-EF2495D048F3","type":"MULTIPOINT_GAME","playerId":"9954EE3F-C703-4E1F-9C4E-D192CB5566E0","teamId":"9039B940-3CB3-11F0-B991-9FDE3B856598","importance":66,"title":"3 body v zápase","text":"Jan Urych zaznamenal 3 body (1+2).","facts":{"goals":1,"assists":2,"points":3},"date":"2026-09-17","competition":"PHM Cup","season":"2026–2027","group":"SUPER","groupColor":"#a454ff","groupLogoUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Group_SUPER_B8dRbKtt6SQX_cropped_md","groupLogoTemplateUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Group_SUPER_B8dRbKtt6SQX_[size]","phase":"Základní část","venue":"ICERINK (Yellow)","venueLogoTemplateUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Venue_ICERINK_YELLOW_ohKAiiq5jruu_[size]","venueLogoUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Venue_ICERINK_YELLOW_ohKAiiq5jruu_cropped_md","sponsor":"Bez partnera","homeTeam":"PUK PAK PIVO","awayTeam":"HC Kosti","homeScore":9,"awayScore":3,"team":"PUK PAK PIVO","player":"Jan Urych","playerImageUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Player_JAN_URYCH_IEySFiax0sQT_cropped_md","playerImageTemplateUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Player_JAN_URYCH_IEySFiax0sQT_[size]","teamLogoUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Team_PUK_PAK_PIVO_Jj6IxJHme3EM_cropped_md","teamLogoTemplateUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Team_PUK_PAK_PIVO_Jj6IxJHme3EM_[size]","teamColor":"#ffffff","source":"HMS","gameDetailUrl":"https://prod.hms.wootera.net/embed/game?gameId=F6312E3A-98CA-11F1-8BDF-EF2495D048F3&lang=cs"},{"id":"F6312E3A-98CA-11F1-8BDF-EF2495D048F3:MULTIPOINT_GAME:9A532590-5196-11F0-A6FC-87BBDED477B1","organizationId":"BB669217-41EB-4162-8040-A73F49A43570","competitionId":"C7C0BB15-5D29-415D-851E-5D777C6CC621","seasonId":"E6134160-47CF-11F1-A223-BFDFBDD3A64B","groupId":"4A4E9670-47D0-11F1-A223-BFDFBDD3A64B","gameId":"F6312E3A-98CA-11F1-8BDF-EF2495D048F3","type":"MULTIPOINT_GAME","playerId":"9A532590-5196-11F0-A6FC-87BBDED477B1","teamId":"9039B940-3CB3-11F0-B991-9FDE3B856598","importance":66,"title":"3 body v zápase","text":"Jan Šramota zaznamenal 3 body (1+2).","facts":{"goals":1,"assists":2,"points":3},"date":"2026-09-17","competition":"PHM Cup","season":"2026–2027","group":"SUPER","groupColor":"#a454ff","groupLogoUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Group_SUPER_B8dRbKtt6SQX_cropped_md","groupLogoTemplateUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Group_SUPER_B8dRbKtt6SQX_[size]","phase":"Základní část","venue":"ICERINK (Yellow)","venueLogoTemplateUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Venue_ICERINK_YELLOW_ohKAiiq5jruu_[size]","venueLogoUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Venue_ICERINK_YELLOW_ohKAiiq5jruu_cropped_md","sponsor":"Bez partnera","homeTeam":"PUK PAK PIVO","awayTeam":"HC Kosti","homeScore":9,"awayScore":3,"team":"PUK PAK PIVO","player":"Jan Šramota","playerImageUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Player_JAN_SRAMOTA_Y0aJk8kytIuh_cropped_md","playerImageTemplateUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Player_JAN_SRAMOTA_Y0aJk8kytIuh_[size]","teamLogoUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Team_PUK_PAK_PIVO_Jj6IxJHme3EM_cropped_md","teamLogoTemplateUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Team_PUK_PAK_PIVO_Jj6IxJHme3EM_[size]","teamColor":"#ffffff","source":"HMS","gameDetailUrl":"https://prod.hms.wootera.net/embed/game?gameId=F6312E3A-98CA-11F1-8BDF-EF2495D048F3&lang=cs"},{"id":"F6312E3A-98CA-11F1-8BDF-EF2495D048F3:MULTIPOINT_GAME:AB8AE430-C54D-488A-A569-FC76EB269F13","organizationId":"BB669217-41EB-4162-8040-A73F49A43570","competitionId":"C7C0BB15-5D29-415D-851E-5D777C6CC621","seasonId":"E6134160-47CF-11F1-A223-BFDFBDD3A64B","groupId":"4A4E9670-47D0-11F1-A223-BFDFBDD3A64B","gameId":"F6312E3A-98CA-11F1-8BDF-EF2495D048F3","type":"MULTIPOINT_GAME","playerId":"AB8AE430-C54D-488A-A569-FC76EB269F13","teamId":"9039B940-3CB3-11F0-B991-9FDE3B856598","importance":66,"title":"3 body v zápase","text":"David Kulich zaznamenal 3 body (2+1).","facts":{"goals":2,"assists":1,"points":3},"date":"2026-09-17","competition":"PHM Cup","season":"2026–2027","group":"SUPER","groupColor":"#a454ff","groupLogoUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Group_SUPER_B8dRbKtt6SQX_cropped_md","groupLogoTemplateUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Group_SUPER_B8dRbKtt6SQX_[size]","phase":"Základní část","venue":"ICERINK (Yellow)","venueLogoTemplateUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Venue_ICERINK_YELLOW_ohKAiiq5jruu_[size]","venueLogoUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Venue_ICERINK_YELLOW_ohKAiiq5jruu_cropped_md","sponsor":"Bez partnera","homeTeam":"PUK PAK PIVO","awayTeam":"HC Kosti","homeScore":9,"awayScore":3,"team":"PUK PAK PIVO","player":"David Kulich","playerImageUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Player_DAVID_KULICH_e78pLHw5eDyf_cropped_md","playerImageTemplateUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Player_DAVID_KULICH_e78pLHw5eDyf_[size]","teamLogoUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Team_PUK_PAK_PIVO_Jj6IxJHme3EM_cropped_md","teamLogoTemplateUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Team_PUK_PAK_PIVO_Jj6IxJHme3EM_[size]","teamColor":"#ffffff","source":"HMS","gameDetailUrl":"https://prod.hms.wootera.net/embed/game?gameId=F6312E3A-98CA-11F1-8BDF-EF2495D048F3&lang=cs"},{"id":"F6312E3A-98CA-11F1-8BDF-EF2495D048F3:MULTIPOINT_GAME:B21803C0-51C9-11F0-A6FC-87BBDED477B1","organizationId":"BB669217-41EB-4162-8040-A73F49A43570","competitionId":"C7C0BB15-5D29-415D-851E-5D777C6CC621","seasonId":"E6134160-47CF-11F1-A223-BFDFBDD3A64B","groupId":"4A4E9670-47D0-11F1-A223-BFDFBDD3A64B","gameId":"F6312E3A-98CA-11F1-8BDF-EF2495D048F3","type":"MULTIPOINT_GAME","playerId":"B21803C0-51C9-11F0-A6FC-87BBDED477B1","teamId":"9039B940-3CB3-11F0-B991-9FDE3B856598","importance":66,"title":"3 body v zápase","text":"Filip Švaříček zaznamenal 3 body (1+2).","facts":{"goals":1,"assists":2,"points":3},"date":"2026-09-17","competition":"PHM Cup","season":"2026–2027","group":"SUPER","groupColor":"#a454ff","groupLogoUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Group_SUPER_B8dRbKtt6SQX_cropped_md","groupLogoTemplateUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Group_SUPER_B8dRbKtt6SQX_[size]","phase":"Základní část","venue":"ICERINK (Yellow)","venueLogoTemplateUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Venue_ICERINK_YELLOW_ohKAiiq5jruu_[size]","venueLogoUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Venue_ICERINK_YELLOW_ohKAiiq5jruu_cropped_md","sponsor":"Bez partnera","homeTeam":"PUK PAK PIVO","awayTeam":"HC Kosti","homeScore":9,"awayScore":3,"team":"PUK PAK PIVO","player":"Filip Švaříček","playerImageUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Player_FILIP_SVARICEK_uhuBqPh0yqyE_cropped_md","playerImageTemplateUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Player_FILIP_SVARICEK_uhuBqPh0yqyE_[size]","teamLogoUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Team_PUK_PAK_PIVO_Jj6IxJHme3EM_cropped_md","teamLogoTemplateUrl":"https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Team_PUK_PAK_PIVO_Jj6IxJHme3EM_[size]","teamColor":"#ffffff","source":"HMS","gameDetailUrl":"https://prod.hms.wootera.net/embed/game?gameId=F6312E3A-98CA-11F1-8BDF-EF2495D048F3&lang=cs"},{"id":"demo-1","type":"HATTRICK","importance":98,"date":"2026-09-16","competition":"PHM Cup","season":"2026–2027","group":"SPORT","phase":"Základní část","venue":"Zimní stadion Centrum","sponsor":"GNB Chem","homeTeam":"Ice Wolves","awayTeam":"Predators","homeScore":5,"awayScore":2,"team":"Ice Wolves","player":"Jakub Veselý","teamColor":"#4b8dff","title":"Tři góly v jednom večeru","text":"Jakub Veselý zkompletoval hattrick a rozhodl zápas ve prospěch Ice Wolves.","facts":{"goals":3},"source":"DEMO","groupColor":"#554CF6","groupLogoUrl":null},{"id":"demo-2","type":"BIG_SAVES","importance":82,"date":"2026-09-15","competition":"PHM Cup","season":"2026–2027","group":"KLASIK","phase":"Základní část","venue":"Aréna Jih","sponsor":"Partner demo","homeTeam":"North Stars","awayTeam":"HC Meteor","homeScore":2,"awayScore":1,"team":"North Stars","player":"Daniel Král","teamColor":"#50d29a","title":"Čtyřicet zákroků","text":"Daniel Král zastavil 40 střel a udržel těsné vedení až do konce.","facts":{"saves":40},"source":"DEMO","groupColor":"#429BF7","groupLogoUrl":null},{"id":"demo-3","type":"EARLY_GOAL","importance":75,"date":"2026-09-14","competition":"PHM Cup","season":"2026–2027","group":"SUPER","phase":"Playoff","venue":"Aréna Sever","sponsor":"GNB Chem","homeTeam":"HC Tempo","awayTeam":"Vltava Crew","homeScore":4,"awayScore":3,"team":"Vltava Crew","player":"Pavel Mareš","teamColor":"#a454ff","title":"Gól po 29 sekundách","text":"Pavel Mareš otevřel skóre dřív, než se zápas stačil rozběhnout.","facts":{"gameTime":"0:29"},"source":"DEMO","groupColor":"#a454ff","groupLogoUrl":null},{"id":"demo-4","type":"MULTIPOINT_GAME","importance":68,"date":"2026-09-13","competition":"PHM Cup","season":"2025–2026","group":"SPORT","phase":"Playoff","venue":"Zimní stadion Centrum","sponsor":"Bez partnera","homeTeam":"Predators","awayTeam":"HC Tempo","homeScore":6,"awayScore":4,"team":"Predators","player":"Ondřej Malý","teamColor":"#ff5b62","title":"Čtyři body v play-off","text":"Ondřej Malý posbíral dva góly a dvě asistence.","facts":{"points":4},"source":"DEMO","groupColor":"#554CF6","groupLogoUrl":null},{"id":"demo-5","type":"BIG_WIN","importance":91,"date":"2026-09-12","competition":"PHM Cup","season":"2025–2026","group":"KLASIK","phase":"Základní část","venue":"Aréna Jih","sponsor":"Partner demo","homeTeam":"HC Meteor","awayTeam":"Ice Wolves","homeScore":1,"awayScore":8,"team":"Ice Wolves","player":"","teamColor":"#4b8dff","title":"Sedmibrankový rozdíl","text":"Ice Wolves ovládli utkání 8:1 a přidali nejvyšší výhru kola.","facts":{"scoreDifference":7},"source":"DEMO","groupColor":"#429BF7","groupLogoUrl":null}]</script>
+</body>
+</html>

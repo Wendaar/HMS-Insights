@@ -13,6 +13,16 @@ npm test
 npm start
 ```
 
+## Veřejná ukázka
+
+Statická demonstrační verze pro GitHub Pages se vytvoří příkazem:
+
+```bash
+npm run build:static
+```
+
+Výstup je ve složce `docs/`. Neobsahuje žádné přístupové klíče ani hesla; jde o stejné ukázkové a očištěné údaje jako v místním náhledu.
+
 Otevřete `http://localhost:3000/priklepy`.
 
 ## Import skutečného HMS response
