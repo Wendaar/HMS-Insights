@@ -5,6 +5,9 @@ import { gameEventsResponse, lineupResponse, ids } from "../src/fixtures/real-ga
 import { rowsFor } from "../src/infrastructure/supabase-repository.js";
 import { feedDemo } from "../src/app/feed-demo.js";
 import { renderPriklepyPage } from "../src/web/render.js";
+import { endpoint } from "../src/hms/client.js";
+import { buildUpsert, publicFeedItem } from "../src/infrastructure/postgres-repository.js";
+import { processFinishedGame } from "../src/app/process-finished-game.js";
 
 const analysis = analyzeHmsResponses(gameEventsResponse, lineupResponse);
 
@@ -81,4 +84,43 @@ test("stránka obsahuje vyhledávání, všechny filtry a rozkliknutelné karty"
   }
   assert.match(html, /id="detail-dialog"/);
   assert.match(html, /row-team-placeholder/);
+});
+
+test("HMS klient bezpečně vloží gameId do smluvené adresy", () => {
+  assert.equal(
+    endpoint("https://hms.example/games/{gameId}/events", ids.game),
+    `https://hms.example/games/${ids.game}/events`,
+  );
+  assert.throws(() => endpoint("https://hms.example/games/events", ids.game), /\{gameId\}/);
+});
+
+test("PostgreSQL upsert používá parametry a přenáší názvy kontextu", () => {
+  const query = buildUpsert("games", rowsFor(analysis).games);
+  assert.match(query.text, /on conflict \(game_id\)/);
+  assert.doesNotMatch(query.text, new RegExp(ids.game, "i"));
+  assert.ok(query.values.includes(ids.game));
+  assert.ok(query.values.includes("PHM Cup"));
+  assert.throws(() => buildUpsert("users", [{}]), /Nepovolená tabulka/);
+});
+
+test("game.finished spustí existující parser a uložení právě jednou", async () => {
+  let persisted;
+  const result = await processFinishedGame(ids.game, {
+    fetchResponses: async () => [gameEventsResponse, lineupResponse],
+    persist: async (value) => { persisted = value; },
+  });
+  assert.equal(result.gameId, ids.game);
+  assert.equal(result.priklepy, 10);
+  assert.equal(persisted.game.homeScore, 9);
+});
+
+test("veřejný databázový řádek se mapuje bez soukromých údajů", () => {
+  const item = publicFeedItem({
+    priklep_id: "x", type: "BIG_WIN", importance: 90, facts: {}, game_id: ids.game,
+    played_on: "2026-09-17", home_team_name: "PUK PAK PIVO", away_team_name: "HC Kosti",
+    home_score: 9, away_score: 3, team_name: "PUK PAK PIVO", group_color: "#a454ff",
+  });
+  assert.equal(item.homeScore, 9);
+  assert.match(item.gameDetailUrl, new RegExp(ids.game, "i"));
+  assert.doesNotMatch(JSON.stringify(item), /email|phone|birthday/i);
 });

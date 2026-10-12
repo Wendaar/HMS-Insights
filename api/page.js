@@ -1,0 +1,15 @@
+import { loadFeedForRequest } from "../src/web/feed-loader.js";
+import { renderPriklepyPage } from "../src/web/render.js";
+
+export default async function handler(request, response) {
+  if (request.method !== "GET") return response.status(405).send("Method not allowed");
+  try {
+    const feed = await loadFeedForRequest(process.env);
+    response.setHeader("content-type", "text/html; charset=utf-8");
+    response.setHeader("cache-control", feed.mode === "database" ? "s-maxage=60, stale-while-revalidate=300" : "no-store");
+    return response.status(200).send(renderPriklepyPage(feed.items));
+  } catch (error) {
+    console.error(error);
+    return response.status(503).send("Příklepy zatím nejsou připojené k databázi.");
+  }
+}
