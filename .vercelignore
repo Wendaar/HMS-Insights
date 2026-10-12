@@ -1,0 +1,9 @@
+all-stars/
+artifacts/
+deploy/
+docs/all-stars/
+sources/
+node_modules/
+coverage/
+.git/
+.vercel/

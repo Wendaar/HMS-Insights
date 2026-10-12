@@ -6,3 +6,5 @@ coverage/
 .sites-runtime/
 AGENTS.md
 sources/
+
+.vercel
