@@ -8,6 +8,7 @@ import { renderPriklepyPage } from "../src/web/render.js";
 import { endpoint } from "../src/hms/client.js";
 import { buildUpsert, publicFeedItem } from "../src/infrastructure/postgres-repository.js";
 import { processFinishedGame } from "../src/app/process-finished-game.js";
+import { loadFeedForRequest } from "../src/web/feed-loader.js";
 
 const analysis = analyzeHmsResponses(gameEventsResponse, lineupResponse);
 
@@ -123,4 +124,23 @@ test("veřejný databázový řádek se mapuje bez soukromých údajů", () => {
   assert.equal(item.homeScore, 9);
   assert.match(item.gameDetailUrl, new RegExp(ids.game, "i"));
   assert.doesNotMatch(JSON.stringify(item), /email|phone|birthday/i);
+});
+
+test("prázdná databáze ponechá demo viditelné, dokud nepřijde první reálný zápas", async () => {
+  const feed = await loadFeedForRequest(
+    { DATABASE_URL: "postgres://example", ALLOW_DEMO_FEED: "true" },
+    { loadFeed: async () => [] },
+  );
+  assert.equal(feed.mode, "demo");
+  assert.equal(feed.items, feedDemo);
+});
+
+test("jakmile databáze obsahuje data, mají přednost před ukázkou", async () => {
+  const databaseItems = [{ id: "real" }];
+  const feed = await loadFeedForRequest(
+    { DATABASE_URL: "postgres://example", ALLOW_DEMO_FEED: "true" },
+    { loadFeed: async () => databaseItems },
+  );
+  assert.equal(feed.mode, "database");
+  assert.equal(feed.items, databaseItems);
 });
