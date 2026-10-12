@@ -12,6 +12,9 @@ kód; Vercel změny z GitHubu sestaví a spustí.
 - PostgreSQL migrace v `db/migrations/`,
 - Vercel Functions nastavené do Frankfurtu (`fra1`, AWS `eu-central-1`).
 
+Projekt používá ve Vercelu preset `Other`, aby serverové funkce z adresáře
+`api/` běžely samostatně vedle stávajícího statického webu.
+
 ## Datový tok
 
 1. HMS pošle `POST` s `{ "type": "game.finished", "gameId": "..." }`.
