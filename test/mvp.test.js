@@ -309,6 +309,7 @@ test("jedna dávka historického importu vrátí kurzor pro bezpečné pokračov
   const requested = [];
   const result = await backfillFinishedGamesPage({
     from: "2026-09-01",
+    seasonId: ids.season,
     skip: 10,
     limit: 2,
     intervalMs: 0,
@@ -319,6 +320,7 @@ test("jedna dávka historického importu vrátí kurzor pro bezpečné pokračov
     processGame: async () => {},
   });
   assert.equal(requested[0].from, "2026-09-01");
+  assert.equal(requested[0].seasonId, ids.season);
   assert.equal(requested[0].skip, 10);
   assert.deepEqual({ processed: result.processed, nextSkip: result.nextSkip, done: result.done }, {
     processed: 1, nextSkip: 11, done: true,
@@ -355,6 +357,7 @@ test("stránka historického importu obsahuje platný dávkový skript", () => {
   const script = rendered.match(/<script>([\s\S]+)<\/script>/)?.[1];
   assert.ok(script);
   assert.match(rendered, /2026-09-01/);
+  assert.match(rendered, new RegExp(ids.season, "i"));
   assert.match(rendered, /CHYBNÉ ZÁPASY/);
   assert.doesNotThrow(() => new Function(script));
 });

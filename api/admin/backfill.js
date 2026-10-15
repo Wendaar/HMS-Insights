@@ -11,14 +11,19 @@ export default async function handler(request, response) {
 
   const body = typeof request.body === "string" ? JSON.parse(request.body) : request.body;
   const from = String(body?.from ?? "");
+  const seasonId = String(body?.seasonId ?? "");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(from)) {
     return response.status(400).json({ error: "Datum od musí být ve formátu YYYY-MM-DD." });
+  }
+  if (!/^[0-9a-f-]{36}$/i.test(seasonId)) {
+    return response.status(400).json({ error: "Neplatné ID sezony." });
   }
 
   try {
     await ensurePenaltyMinutesSchema();
     const result = await backfillFinishedGamesPage({
       from,
+      seasonId,
       skip: Math.max(Number(body?.skip ?? 0), 0),
       limit: 5,
       intervalMs: 1800,

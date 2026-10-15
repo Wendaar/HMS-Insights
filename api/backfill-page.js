@@ -10,8 +10,8 @@ const html = `<!doctype html>
     main{width:min(600px,100%);background:#121821;border:1px solid #293442;border-radius:18px;padding:28px;box-sizing:border-box}
     h1{margin:0 0 8px;font-size:25px}p{color:#aab5c4;line-height:1.5}
     label{display:block;margin:18px 0 7px;font-weight:700;font-size:14px}
-    input,button{width:100%;box-sizing:border-box;border-radius:10px;padding:13px 14px;font:inherit}
-    input{background:#0b1017;color:#fff;border:1px solid #344152}
+    input,select,button{width:100%;box-sizing:border-box;border-radius:10px;padding:13px 14px;font:inherit}
+    input,select{background:#0b1017;color:#fff;border:1px solid #344152}
     button{margin-top:20px;border:0;background:#dfff45;color:#101400;font-weight:900;cursor:pointer}
     button:disabled{opacity:.55;cursor:wait}#result{min-height:48px;margin-top:18px;color:#dfff45;white-space:pre-wrap;line-height:1.5}.error{color:#ff8794!important}
     #feed-link{display:none;margin-top:12px;color:#dfff45;font-weight:800}
@@ -22,6 +22,10 @@ const html = `<!doctype html>
   <h1>Historický import zápasů</h1>
   <p>Postupně načte všechny dokončené zápasy PHM od zvoleného data. Stránku během importu nezavírej.</p>
   <form id="form">
+    <label for="season">Soutěž a sezona</label>
+    <select id="season" required>
+      <option value="E6134160-47CF-11F1-A223-BFDFBDD3A64B">PHM Cup – 2026/2027</option>
+    </select>
     <label for="from">Načíst zápasy od</label>
     <input id="from" required type="date" value="2026-09-01">
     <label for="secret">Webhook secret</label>
@@ -36,12 +40,12 @@ const form=document.querySelector('#form'),button=document.querySelector('#submi
 const wait=(milliseconds)=>new Promise((resolve)=>setTimeout(resolve,milliseconds));
 form.addEventListener('submit',async(event)=>{
   event.preventDefault();button.disabled=true;feedLink.style.display='none';result.className='';
-  const secret=document.querySelector('#secret'),from=document.querySelector('#from').value;
+  const secret=document.querySelector('#secret'),from=document.querySelector('#from').value,seasonId=document.querySelector('#season').value;
   let skip=0,processed=0,failed=0,batches=0,failureDetails=[];
   try{
     while(true){
       result.textContent='Probíhá import…\\nZpracováno: '+processed+' | Chyby: '+failed+' | Načítám od pozice: '+skip;
-      const response=await fetch('/api/admin/backfill',{method:'POST',headers:{'content-type':'application/json','authorization':'Bearer '+secret.value},body:JSON.stringify({from,skip})});
+      const response=await fetch('/api/admin/backfill',{method:'POST',headers:{'content-type':'application/json','authorization':'Bearer '+secret.value},body:JSON.stringify({from,seasonId,skip})});
       const data=await response.json();
       if(!response.ok)throw new Error(data.error||'Historický import se nezdařil.');
       processed+=data.processed;failed+=data.failed;batches+=1;skip=data.nextSkip;failureDetails.push(...(data.failures||[]));
