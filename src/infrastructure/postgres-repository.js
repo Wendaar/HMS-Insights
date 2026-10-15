@@ -58,6 +58,9 @@ function createSql(databaseUrl) {
 export async function persistAnalysisPostgres(analysis, options = {}) {
   const rows = rowsFor(analysis);
   const sql = options.sql ?? createSql(options.databaseUrl ?? databaseUrlFromEnv(options.env));
+  // A corrected finished game is a full snapshot. Removing the previous snapshot
+  // prevents stale players or achievements from surviving a game.updated event.
+  await sql.query("delete from games where game_id = $1", [analysis.game.gameId]);
   for (const table of Object.keys(specs)) {
     const query = buildUpsert(table, rows[table]);
     if (query) await sql.query(query.text, query.values);

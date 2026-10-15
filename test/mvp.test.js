@@ -5,10 +5,11 @@ import { gameEventsResponse, lineupResponse, ids } from "../src/fixtures/real-ga
 import { rowsFor } from "../src/infrastructure/supabase-repository.js";
 import { feedDemo } from "../src/app/feed-demo.js";
 import { renderPriklepyPage } from "../src/web/render.js";
-import { endpoint } from "../src/hms/client.js";
-import { buildUpsert, publicFeedItem } from "../src/infrastructure/postgres-repository.js";
+import { apiUrl, endpoint, fetchFinishedGameResponses } from "../src/hms/client.js";
+import { buildUpsert, persistAnalysisPostgres, publicFeedItem } from "../src/infrastructure/postgres-repository.js";
 import { processFinishedGame } from "../src/app/process-finished-game.js";
 import { loadFeedForRequest } from "../src/web/feed-loader.js";
+import { backfillFinishedGames } from "../src/app/backfill-finished-games.js";
 
 const analysis = analyzeHmsResponses(gameEventsResponse, lineupResponse);
 
@@ -95,6 +96,23 @@ test("HMS klient bezpečně vloží gameId do smluvené adresy", () => {
   assert.throws(() => endpoint("https://hms.example/games/events", ids.game), /\{gameId\}/);
 });
 
+test("HMS klient používá produkční v1 endpointy a gameId v query", async () => {
+  const requested = [];
+  const fetchImpl = async (url) => {
+    requested.push(String(url));
+    return { ok: true, status: 200, json: async () => ({ gameId: ids.game }) };
+  };
+  await fetchFinishedGameResponses(ids.game, {
+    config: { token: "secret", baseUrl: "https://public-api.prod.hms.wootera.net/api/v1" },
+    fetchImpl,
+  });
+  assert.deepEqual(requested.map((url) => new URL(url).pathname), [
+    "/api/v1/game", "/api/v1/gameEvents", "/api/v1/gameLineup",
+  ]);
+  assert.ok(requested.every((url) => new URL(url).searchParams.get("gameId") === ids.game));
+  assert.equal(apiUrl("https://example.test/api/v1", "games", { status: "FINISHED" }).searchParams.get("status"), "FINISHED");
+});
+
 test("PostgreSQL upsert používá parametry a přenáší názvy kontextu", () => {
   const query = buildUpsert("games", rowsFor(analysis).games);
   assert.match(query.text, /on conflict \(game_id\)/);
@@ -102,6 +120,16 @@ test("PostgreSQL upsert používá parametry a přenáší názvy kontextu", () 
   assert.ok(query.values.includes(ids.game));
   assert.ok(query.values.includes("PHM Cup"));
   assert.throws(() => buildUpsert("users", [{}]), /Nepovolená tabulka/);
+});
+
+test("opravený zápas před uložením odstraní starý snapshot a zastaralé Příklepy", async () => {
+  const queries = [];
+  await persistAnalysisPostgres(analysis, {
+    sql: { query: async (text, values) => { queries.push({ text, values }); return []; } },
+  });
+  assert.equal(queries[0].text, "delete from games where game_id = $1");
+  assert.deepEqual(queries[0].values, [ids.game]);
+  assert.match(queries[1].text, /^insert into games/);
 });
 
 test("game.finished spustí existující parser a uložení právě jednou", async () => {
@@ -143,4 +171,25 @@ test("jakmile databáze obsahuje data, mají přednost před ukázkou", async ()
   );
   assert.equal(feed.mode, "database");
   assert.equal(feed.items, databaseItems);
+});
+
+test("historický import stránkuje a pokračuje po jednom chybném zápase", async () => {
+  const pages = [
+    [{ gameId: ids.game, organizationId: ids.org }, { gameId: "11111111-1111-1111-1111-111111111111", organizationId: ids.org }],
+    [{ gameId: "22222222-2222-2222-2222-222222222222", organizationId: ids.org }],
+  ];
+  const processed = [];
+  const result = await backfillFinishedGames({
+    limit: 2,
+    intervalMs: 0,
+    loadGames: async ({ skip }) => pages[skip / 2],
+    processGame: async (gameId) => {
+      if (gameId.startsWith("1111")) throw new Error("test failure");
+      processed.push(gameId);
+    },
+  });
+  assert.deepEqual(processed, [ids.game, "22222222-2222-2222-2222-222222222222"]);
+  assert.deepEqual({ discovered: result.discovered, processed: result.processed, failed: result.failed }, {
+    discovered: 3, processed: 2, failed: 1,
+  });
 });

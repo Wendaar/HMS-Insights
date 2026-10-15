@@ -19,8 +19,8 @@ Projekt používá ve Vercelu preset `Other`, aby serverové funkce z adresáře
 
 1. HMS pošle `POST` s `{ "type": "game.finished", "gameId": "..." }`.
 2. Požadavek nese `Authorization: Bearer <HMS_WEBHOOK_SECRET>`.
-3. Aplikace server-to-server stáhne Game Events a Lineup.
-4. Stávající parser a pravidla vytvoří Příklepy.
+3. Aplikace server-to-server stáhne `/game`, `/gameEvents` a `/gameLineup`.
+4. Parser a pravidla vytvoří Příklepy.
 5. Výsledky se idempotentně uloží do PostgreSQL.
 6. Veřejný feed čte pouze view `public_priklepy_feed`.
 
@@ -41,10 +41,8 @@ URL ani veřejného JavaScriptu.
 
 ## Co musí doplnit Wootera
 
-- tvar a dokumentaci obou read-only HMS endpointů,
-- serverový API token,
-- potvrzený formát a autentizaci `game.finished`,
-- cílovou adresu webhooku pošleme po prvním nasazení.
+- serverový API token dané organizace,
+- webhookový secret uložený pouze v HMS a ve Vercelu.
 
 Pokud bude skutečný HMS payload odlišný od současných reálných vzorků, upraví
 se jen transportní adaptér a normalizace; pravidla Příklepů zůstávají oddělená.

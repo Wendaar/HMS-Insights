@@ -18,12 +18,15 @@ export default async function handler(request, response) {
 
   const payload = typeof request.body === "string" ? JSON.parse(request.body) : request.body;
   const gameId = payload?.gameId;
-  if (payload?.type && payload.type !== "game.finished") {
+  if (payload?.type === "ping") {
+    return response.status(200).json({ accepted: true, type: "ping", eventId: payload.eventId ?? null });
+  }
+  if (!["game.finished", "game.updated"].includes(payload?.type)) {
     return response.status(202).json({ accepted: false, reason: "unsupported_event" });
   }
   try {
-    const result = await processFinishedGame(gameId);
-    return response.status(200).json({ accepted: true, ...result });
+    const result = await processFinishedGame(gameId, { expectedOrganizationId: payload.organizationId });
+    return response.status(200).json({ accepted: true, eventId: payload.eventId ?? null, ...result });
   } catch (error) {
     console.error(error);
     return response.status(422).json({ accepted: false, error: error.message });

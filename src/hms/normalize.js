@@ -20,27 +20,53 @@ function resolveHmsMediaUrl(url, variant = "cropped_md") {
   return url.replace("[size]", variant);
 }
 
-function teamFromEvent(event) {
-  const team = event.ScoredByTeam ?? event.SavedByTeam ?? event.PenalizedTeam;
-  return team ? {
-    teamId: team.teamId,
-    teamName: team.name,
-    logoUrl: resolveHmsMediaUrl(team.logoUrl) || team.logo || null,
-    logoTemplateUrl: team.logoUrl || null,
-    primaryColor: team.teamColor1 || team.jerseyColor1 || null,
-    secondaryColor: team.teamColor2 || team.jerseyColor2 || null,
-  } : null;
+function entityMediaUrl(entity) {
+  return entity?.logoUrls?.md
+    ?? entity?.imageUrls?.md
+    ?? resolveHmsMediaUrl(entity?.logoUrl)
+    ?? entity?.avatarUrl
+    ?? null;
 }
 
-export function normalizeHmsGame(gameResponse, lineupResponse) {
+function entityMediaTemplate(entity) {
+  return entity?.logoUrl ?? null;
+}
+
+function teamRecord(team) {
+  if (!team) return null;
+  return {
+    teamId: team.teamId,
+    teamName: team.name,
+    logoUrl: entityMediaUrl(team) || team.logo || null,
+    logoTemplateUrl: entityMediaTemplate(team),
+    primaryColor: team.teamColor1 || team.jerseyColor1 || null,
+    secondaryColor: team.teamColor2 || team.jerseyColor2 || null,
+  };
+}
+
+function teamFromEvent(event) {
+  const team = event.ScoredByTeam ?? event.SavedByTeam ?? event.PenalizedTeam;
+  return teamRecord(team);
+}
+
+export function normalizeHmsGame(gameEventsResponse, lineupResponse, gameDetailResponse = null) {
+  const gameResponse = gameDetailResponse
+    ? {
+        ...gameDetailResponse,
+        ...gameEventsResponse,
+        GameEventGoals: gameEventsResponse.GameEventGoals ?? gameDetailResponse.GameEventGoals,
+        GameEventSaves: gameEventsResponse.GameEventSaves ?? gameDetailResponse.GameEventSaves,
+        GameEventPenalties: gameEventsResponse.GameEventPenalties ?? gameDetailResponse.GameEventPenalties,
+      }
+    : gameEventsResponse;
   const gameId = required(gameResponse.gameId, "gameId");
   if (lineupResponse.gameId !== gameId) throw new Error("Game Events a Lineup patří k různým zápasům.");
   if (gameResponse.status !== "FINISHED") throw new Error("MVP přijímá pouze dokončený zápas.");
 
-  const phase = required(lineupResponse.Phase, "Phase");
-  const group = required(phase.Group, "Phase.Group");
-  const season = required(group.Season, "Phase.Group.Season");
-  const competition = required(season.Competition, "Phase.Group.Season.Competition");
+  const phase = required(gameResponse.Phase ?? lineupResponse.Phase, "Phase");
+  const group = required(gameResponse.Group ?? phase.Group, "Group");
+  const season = required(gameResponse.Season ?? group.Season, "Season");
+  const competition = required(gameResponse.Competition ?? season.Competition, "Competition");
   const lineups = (lineupResponse.Lineups ?? []).filter((item) => !item.isDeleted);
 
   const players = new Map(lineups.map((item) => [item.playerId, {
@@ -49,8 +75,8 @@ export function normalizeHmsGame(gameResponse, lineupResponse) {
     teamId: item.teamId,
     number: item.number ?? null,
     isGoalie: item.ListPosition?.isGoalie === true,
-    playerImageUrl: resolveHmsMediaUrl(item.Player?.logoUrl) || item.Player?.avatarUrl || null,
-    playerImageTemplateUrl: item.Player?.logoUrl || null,
+    playerImageUrl: entityMediaUrl(item.Player),
+    playerImageTemplateUrl: entityMediaTemplate(item.Player),
   }]));
 
   const allEvents = [
@@ -59,6 +85,9 @@ export function normalizeHmsGame(gameResponse, lineupResponse) {
     ...(gameResponse.GameEventPenalties ?? []),
   ].filter((item) => !item.isDeleted);
   const teamMap = new Map();
+  for (const team of [gameResponse.HomeTeam, gameResponse.AwayTeam].map(teamRecord).filter(Boolean)) {
+    teamMap.set(team.teamId, team);
+  }
   for (const event of allEvents) {
     const team = teamFromEvent(event);
     if (team) teamMap.set(team.teamId, team);
@@ -117,7 +146,9 @@ export function normalizeHmsGame(gameResponse, lineupResponse) {
     }
   }
 
-  const teamIds = [gameResponse.homeTeamId, gameResponse.awayTeamId];
+  const homeTeamId = gameResponse.homeTeamId ?? gameResponse.HomeTeam?.teamId;
+  const awayTeamId = gameResponse.awayTeamId ?? gameResponse.AwayTeam?.teamId;
+  const teamIds = [homeTeamId, awayTeamId];
   const teamStats = teamIds.map((teamId) => {
     const opponentId = teamIds.find((id) => id !== teamId);
     const goalsFor = goals.filter((goal) => goal.teamId === teamId).length;
@@ -130,7 +161,7 @@ export function normalizeHmsGame(gameResponse, lineupResponse) {
       logoTemplateUrl: teamMap.get(teamId)?.logoTemplateUrl ?? null,
       primaryColor: teamMap.get(teamId)?.primaryColor ?? null,
       secondaryColor: teamMap.get(teamId)?.secondaryColor ?? null,
-      side: teamId === gameResponse.homeTeamId ? "HOME" : "AWAY",
+      side: teamId === homeTeamId ? "HOME" : "AWAY",
       goals: goalsFor,
       goalsAgainst,
       scoreDifference: goalsFor - goalsAgainst,
@@ -149,19 +180,19 @@ export function normalizeHmsGame(gameResponse, lineupResponse) {
     groupId: group.groupId,
     groupName: group.name,
     groupColor: group.color || null,
-    groupLogoUrl: resolveHmsMediaUrl(group.logoUrl),
+    groupLogoUrl: entityMediaUrl(group),
     groupLogoTemplateUrl: group.logoUrl || null,
     phaseId: phase.phaseId,
     phaseName: phase.name,
-    venueId: lineupResponse.Venue?.venueId ?? gameResponse.venueId ?? null,
-    venueName: lineupResponse.Venue?.name ?? null,
-    venueLogoUrl: resolveHmsMediaUrl(lineupResponse.Venue?.logoUrl),
-    venueLogoTemplateUrl: lineupResponse.Venue?.logoUrl ?? null,
+    venueId: gameResponse.Venue?.venueId ?? lineupResponse.Venue?.venueId ?? gameResponse.venueId ?? null,
+    venueName: gameResponse.Venue?.name ?? lineupResponse.Venue?.name ?? null,
+    venueLogoUrl: entityMediaUrl(gameResponse.Venue ?? lineupResponse.Venue),
+    venueLogoTemplateUrl: entityMediaTemplate(gameResponse.Venue ?? lineupResponse.Venue),
     status: gameResponse.status,
     playedOn: gameResponse.startDate,
     startedAt: `${gameResponse.startDate}T${gameResponse.startTime}`,
-    homeTeamId: gameResponse.homeTeamId,
-    awayTeamId: gameResponse.awayTeamId,
+    homeTeamId,
+    awayTeamId,
     homeScore: teamStats[0].goals,
     awayScore: teamStats[1].goals,
     players: [...players.values()],

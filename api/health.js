@@ -1,7 +1,18 @@
-export default function handler(_request, response) {
+import { fetchOrganization } from "../src/hms/client.js";
+
+export default async function handler(_request, response) {
+  let hmsApi = false;
+  if (process.env.HMS_API_TOKEN) {
+    try {
+      await fetchOrganization();
+      hmsApi = true;
+    } catch (error) {
+      console.error("HMS health check failed", error.message);
+    }
+  }
   const checks = {
     database: Boolean(process.env.DATABASE_URL),
-    hmsApi: Boolean(process.env.HMS_API_TOKEN && process.env.HMS_GAME_EVENTS_URL_TEMPLATE && process.env.HMS_LINEUP_URL_TEMPLATE),
+    hmsApi,
     webhookSecurity: Boolean(process.env.HMS_WEBHOOK_SECRET),
   };
   response.status(Object.values(checks).every(Boolean) ? 200 : 503).json({
