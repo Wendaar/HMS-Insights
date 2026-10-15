@@ -69,6 +69,20 @@ function optionalNumber(value) {
   return Number.isFinite(number) ? number : null;
 }
 
+function penaltyMinutes(value) {
+  if (value === undefined || value === null || value === "") return 0;
+  const direct = Number(value);
+  if (Number.isFinite(direct)) return direct;
+
+  const parts = String(value).split(":").map(Number);
+  if (parts.length >= 2 && parts.length <= 3 && parts.every(Number.isFinite)) {
+    const [hours, minutes, seconds] = parts.length === 3 ? parts : [0, ...parts];
+    const totalMinutes = hours * 60 + minutes + seconds / 60;
+    if (Number.isInteger(totalMinutes)) return totalMinutes;
+  }
+  throw new Error(`Neplatná délka trestu: ${value}`);
+}
+
 export function normalizeHmsGame(gameEventsResponse, lineupResponse, gameDetailResponse = null) {
   const groupedEvents = eventGroups(gameEventsResponse);
   const gameResponse = gameDetailResponse
@@ -161,7 +175,7 @@ export function normalizeHmsGame(gameEventsResponse, lineupResponse, gameDetailR
 
   for (const penalty of (gameResponse.GameEventPenalties ?? []).filter((item) => !item.isDeleted)) {
     const player = playerStats.get(penalty.penalizedPlayerId);
-    if (player) player.pim += Number(penalty.duration ?? 0);
+    if (player) player.pim += penaltyMinutes(penalty.duration);
   }
   for (const stat of playerStats.values()) stat.points = stat.goals + stat.assists;
 
@@ -248,4 +262,4 @@ export function normalizeHmsGame(gameEventsResponse, lineupResponse, gameDetailR
   };
 }
 
-export { resolveHmsMediaUrl, secondsFromClock };
+export { penaltyMinutes, resolveHmsMediaUrl, secondsFromClock };

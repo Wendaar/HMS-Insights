@@ -38,7 +38,11 @@ function buildUpsert(table, rows) {
   const columns = Object.keys(rows[0]);
   const values = [];
   const tuples = rows.map((row) => `(${columns.map((column) => {
-    values.push(spec.json.includes(column) ? JSON.stringify(row[column] ?? {}) : row[column]);
+    const value = spec.json.includes(column) ? JSON.stringify(row[column] ?? {}) : row[column];
+    if (typeof value === "number" && !Number.isFinite(value)) {
+      throw new Error(`Neplatná číselná hodnota pro ${table}.${column}.`);
+    }
+    values.push(value);
     return `$${values.length}${spec.json.includes(column) ? "::jsonb" : ""}`;
   }).join(", ")})`);
   const updates = columns

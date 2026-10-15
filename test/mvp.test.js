@@ -13,6 +13,7 @@ import { backfillFinishedGames } from "../src/app/backfill-finished-games.js";
 import { hasBearerSecret } from "../src/security/bearer-secret.js";
 import { describeShape } from "../api/admin/import-game.js";
 import importGamePageHandler from "../api/import-game-page.js";
+import { penaltyMinutes } from "../src/hms/normalize.js";
 
 const analysis = analyzeHmsResponses(gameEventsResponse, lineupResponse);
 const nestedGroup = lineupResponse.Phase.Group;
@@ -83,6 +84,13 @@ test("veřejný formát odmítne neúplný seznam gólových událostí", () => 
     ),
     /nesouhlasí s oficiálním skóre/,
   );
+});
+
+test("časová délka trestu z veřejného API se převede na celé minuty", () => {
+  assert.equal(penaltyMinutes("00:02:00"), 2);
+  assert.equal(penaltyMinutes("2:00"), 2);
+  assert.equal(penaltyMinutes("2"), 2);
+  assert.throws(() => penaltyMinutes("neplatné"), /Neplatná délka trestu/);
 });
 
 test("lineup nemusí opakovat gameId, protože je načten parametrem endpointu", () => {
@@ -198,6 +206,10 @@ test("PostgreSQL upsert používá parametry a přenáší názvy kontextu", () 
   assert.ok(query.values.includes(ids.game));
   assert.ok(query.values.includes("PHM Cup"));
   assert.throws(() => buildUpsert("users", [{}]), /Nepovolená tabulka/);
+  assert.throws(
+    () => buildUpsert("player_game_stats", [{ game_id: ids.game, pim: Number.NaN }]),
+    /player_game_stats\.pim/,
+  );
 });
 
 test("opravený zápas před uložením odstraní starý snapshot a zastaralé Příklepy", async () => {
