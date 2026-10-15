@@ -9,9 +9,10 @@ import { apiUrl, endpoint, fetchFinishedGameResponses } from "../src/hms/client.
 import { buildUpsert, dateOnly, ensurePenaltyMinutesSchema, persistAnalysisPostgres, publicFeedItem } from "../src/infrastructure/postgres-repository.js";
 import { processFinishedGame } from "../src/app/process-finished-game.js";
 import { loadFeedForRequest } from "../src/web/feed-loader.js";
-import { backfillFinishedGames } from "../src/app/backfill-finished-games.js";
+import { backfillFinishedGames, backfillFinishedGamesPage } from "../src/app/backfill-finished-games.js";
 import { hasBearerSecret } from "../src/security/bearer-secret.js";
 import importGamePageHandler from "../api/import-game-page.js";
+import backfillPageHandler from "../api/backfill-page.js";
 import { penaltyMinutes } from "../src/hms/normalize.js";
 
 const analysis = analyzeHmsResponses(gameEventsResponse, lineupResponse);
@@ -304,6 +305,26 @@ test("historický import stránkuje a pokračuje po jednom chybném zápase", as
   });
 });
 
+test("jedna dávka historického importu vrátí kurzor pro bezpečné pokračování", async () => {
+  const requested = [];
+  const result = await backfillFinishedGamesPage({
+    from: "2026-09-01",
+    skip: 10,
+    limit: 2,
+    intervalMs: 0,
+    loadGames: async (params) => {
+      requested.push(params);
+      return [{ gameId: ids.game, organizationId: ids.org }];
+    },
+    processGame: async () => {},
+  });
+  assert.equal(requested[0].from, "2026-09-01");
+  assert.equal(requested[0].skip, 10);
+  assert.deepEqual({ processed: result.processed, nextSkip: result.nextSkip, done: result.done }, {
+    processed: 1, nextSkip: 11, done: true,
+  });
+});
+
 test("ruční import používá secret pouze v autorizační hlavičce", () => {
   assert.equal(hasBearerSecret({ headers: { authorization: "Bearer abc123" } }, "abc123"), true);
   assert.equal(hasBearerSecret({ headers: { authorization: "Bearer špatně" } }, "abc123"), false);
@@ -320,5 +341,19 @@ test("skript ručního importu je po vyrenderování platný JavaScript", () => 
   importGamePageHandler({ method: "GET" }, response);
   const script = rendered.match(/<script>([\s\S]+)<\/script>/)?.[1];
   assert.ok(script);
+  assert.doesNotThrow(() => new Function(script));
+});
+
+test("stránka historického importu obsahuje platný dávkový skript", () => {
+  let rendered = "";
+  const response = {
+    setHeader() {},
+    status() { return this; },
+    send(value) { rendered = value; return value; },
+  };
+  backfillPageHandler({ method: "GET" }, response);
+  const script = rendered.match(/<script>([\s\S]+)<\/script>/)?.[1];
+  assert.ok(script);
+  assert.match(rendered, /2026-09-01/);
   assert.doesNotThrow(() => new Function(script));
 });

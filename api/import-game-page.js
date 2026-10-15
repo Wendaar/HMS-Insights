@@ -30,6 +30,7 @@ const html = `<!doctype html>
   </form>
   <div id="result" role="status"></div>
   <a id="feed-link" href="/priklepy">Otevřít Příklepy →</a>
+  <p><a href="/admin/backfill" style="color:#aab5c4">Historický import zápasů</a></p>
   <small>Secret se neukládá do stránky ani do URL. Odešle se pouze přes HTTPS pro ověření tohoto požadavku.</small>
 </main><script>
 const form=document.querySelector('#form'),button=document.querySelector('#submit'),result=document.querySelector('#result'),feedLink=document.querySelector('#feed-link');

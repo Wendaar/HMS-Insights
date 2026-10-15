@@ -15,6 +15,54 @@ function pause(milliseconds) {
     : Promise.resolve();
 }
 
+async function processPage(page, options = {}) {
+  const processGame = options.processGame ?? processFinishedGame;
+  const intervalMs = Math.max(Number(options.intervalMs ?? 1800), 0);
+  let processed = 0;
+  const failures = [];
+
+  for (const game of page) {
+    const gameId = game.gameId ?? game.id;
+    try {
+      await processGame(gameId, {
+        ...options,
+        expectedOrganizationId: game.organizationId ?? options.organizationId,
+      });
+      processed += 1;
+    } catch (error) {
+      failures.push({ gameId, error: error.message });
+    }
+    await pause(intervalMs);
+  }
+  return { processed, failures };
+}
+
+export async function backfillFinishedGamesPage(options = {}) {
+  const loadGames = options.loadGames ?? fetchGames;
+  const limit = Math.min(Math.max(Number(options.limit ?? 5), 1), 10);
+  const skip = Math.max(Number(options.skip ?? 0), 0);
+  const page = gameRows(await loadGames({
+    status: "FINISHED",
+    seasonId: options.seasonId,
+    phaseId: options.phaseId,
+    changedSince: options.changedSince,
+    from: options.from,
+    to: options.to,
+    limit,
+    skip,
+  }, options));
+  const result = await processPage(page, options);
+  return {
+    discovered: page.length,
+    processed: result.processed,
+    failed: result.failures.length,
+    failures: result.failures,
+    skip,
+    nextSkip: skip + page.length,
+    done: page.length < limit,
+  };
+}
+
 export async function backfillFinishedGames(options = {}) {
   const loadGames = options.loadGames ?? fetchGames;
   const processGame = options.processGame ?? processFinishedGame;
@@ -29,7 +77,10 @@ export async function backfillFinishedGames(options = {}) {
     const page = gameRows(await loadGames({
       status: "FINISHED",
       seasonId: options.seasonId,
+      phaseId: options.phaseId,
       changedSince: options.changedSince,
+      from: options.from,
+      to: options.to,
       limit,
       skip,
     }, options));
