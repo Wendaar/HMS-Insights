@@ -13,7 +13,8 @@ const html = `<!doctype html>
     input,button{width:100%;box-sizing:border-box;border-radius:10px;padding:13px 14px;font:inherit}
     input{background:#0b1017;color:#fff;border:1px solid #344152}
     button{margin-top:20px;border:0;background:#dfff45;color:#101400;font-weight:900;cursor:pointer}
-    button:disabled{opacity:.55;cursor:wait}#result{min-height:24px;margin-top:18px;color:#dfff45;white-space:pre-wrap;overflow-wrap:anywhere;font:13px/1.45 ui-monospace,monospace}.error{color:#ff8794!important}
+    button:disabled{opacity:.55;cursor:wait}#result{min-height:24px;margin-top:18px;color:#dfff45}.error{color:#ff8794!important}
+    #feed-link{display:none;margin-top:12px;color:#dfff45;font-weight:800}
     small{display:block;color:#718096;margin-top:15px;line-height:1.45}
   </style>
 </head>
@@ -27,18 +28,19 @@ const html = `<!doctype html>
     <input id="secret" required type="password" autocomplete="off" placeholder="Vlož stejný secret jako ve Vercelu">
     <button id="submit">Načíst a zpracovat zápas</button>
   </form>
-  <pre id="result" role="status"></pre>
+  <div id="result" role="status"></div>
+  <a id="feed-link" href="/priklepy">Otevřít Příklepy →</a>
   <small>Secret se neukládá do stránky ani do URL. Odešle se pouze přes HTTPS pro ověření tohoto požadavku.</small>
 </main><script>
-const form=document.querySelector('#form'),button=document.querySelector('#submit'),result=document.querySelector('#result');
+const form=document.querySelector('#form'),button=document.querySelector('#submit'),result=document.querySelector('#result'),feedLink=document.querySelector('#feed-link');
 form.addEventListener('submit',async(event)=>{
-  event.preventDefault();button.disabled=true;result.className='';result.textContent='Načítám data z HMS…';
+  event.preventDefault();button.disabled=true;result.className='';feedLink.style.display='none';result.textContent='Načítám data z HMS…';
   const secret=document.querySelector('#secret');
   try{
     const response=await fetch('/api/admin/import-game',{method:'POST',headers:{'content-type':'application/json','authorization':'Bearer '+secret.value},body:JSON.stringify({gameId:document.querySelector('#gameId').value.trim()})});
     const data=await response.json();
     if(!response.ok)throw new Error(data.error||'Import se nezdařil.');
-    result.textContent='Hotovo: '+data.score+', vzniklo '+data.priklepy+' Příklepů.\\n\\nDIAGNOSTIKA STRUKTURY:\\n'+JSON.stringify(data.diagnostics,null,2);secret.value='';
+    result.textContent='Hotovo: '+data.score+', vzniklo '+data.priklepy+' Příklepů.';feedLink.style.display='inline-block';secret.value='';
   }catch(error){result.className='error';result.textContent=error.message}finally{button.disabled=false}
 });
 </script></body></html>`;
