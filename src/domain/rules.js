@@ -43,7 +43,13 @@ export function detectPriklepy(game) {
     ));
   }
 
-  for (const goal of game.goals.filter((item) => item.elapsedSeconds <= 60)) {
+  // When the official score overwrites the event score (forfeit/correction),
+  // event-level achievements are not reliable enough for public celebration.
+  const reliableGoals = game.scoreWasOverridden ? [] : game.goals;
+  const reliablePlayerStats = game.scoreWasOverridden ? [] : game.playerStats;
+  const reliableGoalieStats = game.scoreWasOverridden ? [] : game.goalieStats;
+
+  for (const goal of reliableGoals.filter((item) => item.elapsedSeconds !== null && item.elapsedSeconds <= 60)) {
     result.push(priklep(
       game,
       TYPES.EARLY_GOAL,
@@ -55,7 +61,7 @@ export function detectPriklepy(game) {
     ));
   }
 
-  for (const player of game.playerStats.filter((item) => item.points >= 3)) {
+  for (const player of reliablePlayerStats.filter((item) => item.points >= 3)) {
     result.push(priklep(
       game,
       TYPES.MULTIPOINT_GAME,
@@ -67,7 +73,7 @@ export function detectPriklepy(game) {
     ));
   }
 
-  for (const player of game.playerStats.filter((item) => item.goals >= 3)) {
+  for (const player of reliablePlayerStats.filter((item) => item.goals >= 3)) {
     result.push(priklep(
       game,
       TYPES.HATTRICK,
@@ -79,7 +85,7 @@ export function detectPriklepy(game) {
     ));
   }
 
-  for (const goalie of game.goalieStats.filter((item) => item.saves >= 30)) {
+  for (const goalie of reliableGoalieStats.filter((item) => item.saves >= 30)) {
     result.push(priklep(
       game,
       TYPES.BIG_SAVES,

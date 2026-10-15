@@ -75,15 +75,40 @@ test("normalizuje současný veřejný formát HMS se společným seznamem udál
   assert.equal(result.priklepy.length, 10);
 });
 
-test("veřejný formát odmítne neúplný seznam gólových událostí", () => {
-  assert.throws(
-    () => analyzeHmsResponses(
-      { ...publicApiEvents, events: publicApiEvents.events.filter((item) => item.type !== "goal") },
-      publicApiLineup,
-      publicApiDetail,
-    ),
-    /nesouhlasí s oficiálním skóre/,
+test("oficiálně přepsané skóre má přednost před neúplnými událostmi", () => {
+  const result = analyzeHmsResponses(
+    { ...publicApiEvents, events: publicApiEvents.events.filter((item) => item.type !== "goal") },
+    publicApiLineup,
+    publicApiDetail,
   );
+  assert.equal(result.game.homeScore, 9);
+  assert.equal(result.game.awayScore, 3);
+  assert.equal(result.game.scoreWasOverridden, true);
+  assert.equal(result.priklepy.filter((item) => item.playerId).length, 0);
+});
+
+test("gól bez času se započítá, ale nevytvoří rychlý Příklep", () => {
+  const untimedGoalId = publicApiEvents.events.find((item) => item.type === "goal").eventId;
+  const events = publicApiEvents.events.map((item) => (
+    item.eventId === untimedGoalId ? { ...item, gameTime: null } : item
+  ));
+  const result = analyzeHmsResponses({ ...publicApiEvents, events }, publicApiLineup, publicApiDetail);
+  assert.equal(result.game.homeScore, 9);
+  assert.equal(result.game.awayScore, 3);
+  assert.equal(result.game.goals.find((item) => item.eventId === untimedGoalId).elapsedSeconds, null);
+  assert.equal(result.priklepy.some((item) => item.type === "EARLY_GOAL"), false);
+});
+
+test("Quick SAVE bez hráče nevytvoří anonymního gólmana ani nezastaví import", () => {
+  const events = [...publicApiEvents.events, {
+    type: "save",
+    eventId: "quick-save-without-goalie",
+    savedByPlayerId: null,
+    savedByTeamId: ids.home,
+  }];
+  const result = analyzeHmsResponses({ ...publicApiEvents, events }, publicApiLineup, publicApiDetail);
+  assert.equal(result.game.goalieStats.some((item) => !item.playerId), false);
+  assert.deepEqual(result.game.goalieStats.map((item) => item.saves).sort((a, b) => b - a), [34, 31]);
 });
 
 test("časová délka trestu z veřejného API se převede na přesné minuty", () => {

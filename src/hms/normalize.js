@@ -15,6 +15,11 @@ function secondsFromClock(clock) {
   return Number(match[1]) * 60 + Number(match[2]);
 }
 
+function optionalSecondsFromClock(clock) {
+  if (clock === undefined || clock === null || clock === "") return null;
+  return secondsFromClock(clock);
+}
+
 function resolveHmsMediaUrl(url, variant = "cropped_md") {
   if (typeof url !== "string" || !url.trim()) return null;
   return url.replace("[size]", variant);
@@ -155,16 +160,22 @@ export function normalizeHmsGame(gameEventsResponse, lineupResponse, gameDetailR
     .filter((item) => !item.isDeleted)
     .map((item) => ({
       eventId: item.gameEventGoalId ?? item.eventId,
-      gameTime: item.gameTime,
-      elapsedSeconds: secondsFromClock(item.gameTime),
+      gameTime: item.gameTime ?? null,
+      // A manually entered quick goal can legitimately have no clock value.
+      // It still counts, but cannot be used for time-based achievements.
+      elapsedSeconds: optionalSecondsFromClock(item.gameTime),
       period: item.period,
-      playerId: item.scoredByPlayerId,
-      playerName: playerName(item.ScoredByPlayer, players.get(item.scoredByPlayerId)?.playerName),
-      teamId: item.scoredByTeamId,
+      playerId: item.scoredByPlayerId ?? item.ScoredByPlayer?.playerId ?? null,
+      playerName: playerName(
+        item.ScoredByPlayer,
+        players.get(item.scoredByPlayerId ?? item.ScoredByPlayer?.playerId)?.playerName,
+      ),
+      teamId: item.scoredByTeamId ?? item.ScoredByTeam?.teamId,
       assistedByPlayerIds: [item.assistedBy1PlayerId, item.assistedBy2PlayerId].filter(Boolean),
-      allowedByPlayerId: item.allowedByPlayerId ?? null,
+      allowedByPlayerId: item.allowedByPlayerId ?? item.AllowedByPlayer?.playerId ?? null,
     }))
-    .sort((a, b) => a.elapsedSeconds - b.elapsedSeconds);
+    .sort((a, b) => (a.elapsedSeconds ?? Number.POSITIVE_INFINITY)
+      - (b.elapsedSeconds ?? Number.POSITIVE_INFINITY));
 
   for (const goal of goals) {
     const scorer = playerStats.get(goal.playerId);
@@ -183,11 +194,15 @@ export function normalizeHmsGame(gameEventsResponse, lineupResponse, gameDetailR
 
   const saveCounts = new Map();
   for (const save of (gameResponse.GameEventSaves ?? []).filter((item) => !item.isDeleted)) {
-    const existing = saveCounts.get(save.savedByPlayerId) ?? {
-      playerId: save.savedByPlayerId,
-      playerName: playerName(save.SavedByPlayer, players.get(save.savedByPlayerId)?.playerName),
-      teamId: save.savedByTeamId,
-      playerImageUrl: players.get(save.savedByPlayerId)?.playerImageUrl ?? save.SavedByPlayer?.avatarUrl ?? null,
+    const savedByPlayerId = save.savedByPlayerId ?? save.SavedByPlayer?.playerId ?? null;
+    // Quick SAVE may not identify a goalie. Do not invent one and do not let
+    // an unattributable event prevent the whole game from being imported.
+    if (!savedByPlayerId) continue;
+    const existing = saveCounts.get(savedByPlayerId) ?? {
+      playerId: savedByPlayerId,
+      playerName: playerName(save.SavedByPlayer, players.get(savedByPlayerId)?.playerName),
+      teamId: save.savedByTeamId ?? save.SavedByTeam?.teamId ?? players.get(savedByPlayerId)?.teamId,
+      playerImageUrl: players.get(savedByPlayerId)?.playerImageUrl ?? save.SavedByPlayer?.avatarUrl ?? null,
       saves: 0,
       goalsAgainst: 0,
     };
@@ -203,10 +218,20 @@ export function normalizeHmsGame(gameEventsResponse, lineupResponse, gameDetailR
   const homeTeamId = gameResponse.homeTeamId ?? gameResponse.HomeTeam?.teamId;
   const awayTeamId = gameResponse.awayTeamId ?? gameResponse.AwayTeam?.teamId;
   const teamIds = [homeTeamId, awayTeamId];
-  const teamStats = teamIds.map((teamId) => {
+  const eventScores = teamIds.map((teamId) => goals.filter((goal) => goal.teamId === teamId).length);
+  const officialHomeScore = optionalNumber(gameResponse.HomeTeamGoals);
+  const officialAwayScore = optionalNumber(gameResponse.AwayTeamGoals);
+  const officialScores = [officialHomeScore, officialAwayScore];
+  const scoreWasOverridden = officialScores.some((score, index) => score !== null && score !== eventScores[index]);
+
+  const teamStats = teamIds.map((teamId, index) => {
     const opponentId = teamIds.find((id) => id !== teamId);
-    const goalsFor = goals.filter((goal) => goal.teamId === teamId).length;
-    const goalsAgainst = goals.filter((goal) => goal.teamId === opponentId).length;
+    const opponentIndex = teamIds.indexOf(opponentId);
+    // The game detail is the source of truth for an administrative/overwrite
+    // result. Event-derived scores remain useful only when no official value
+    // is available.
+    const goalsFor = officialScores[index] ?? eventScores[index];
+    const goalsAgainst = officialScores[opponentIndex] ?? eventScores[opponentIndex];
     return {
       gameId,
       teamId,
@@ -223,13 +248,6 @@ export function normalizeHmsGame(gameEventsResponse, lineupResponse, gameDetailR
       result: goalsFor > goalsAgainst ? "WIN" : goalsFor < goalsAgainst ? "LOSS" : "DRAW",
     };
   });
-
-  const officialHomeScore = optionalNumber(gameResponse.HomeTeamGoals);
-  const officialAwayScore = optionalNumber(gameResponse.AwayTeamGoals);
-  if ((officialHomeScore !== null && officialHomeScore !== teamStats[0].goals)
-    || (officialAwayScore !== null && officialAwayScore !== teamStats[1].goals)) {
-    throw new Error("Počet gólových událostí nesouhlasí s oficiálním skóre zápasu.");
-  }
 
   return {
     gameId,
@@ -256,6 +274,7 @@ export function normalizeHmsGame(gameEventsResponse, lineupResponse, gameDetailR
     awayTeamId,
     homeScore: teamStats[0].goals,
     awayScore: teamStats[1].goals,
+    scoreWasOverridden,
     players: [...players.values()],
     goals,
     playerStats: [...playerStats.values()],
