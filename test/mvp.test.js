@@ -10,6 +10,7 @@ import { buildUpsert, persistAnalysisPostgres, publicFeedItem } from "../src/inf
 import { processFinishedGame } from "../src/app/process-finished-game.js";
 import { loadFeedForRequest } from "../src/web/feed-loader.js";
 import { backfillFinishedGames } from "../src/app/backfill-finished-games.js";
+import { hasBearerSecret } from "../src/security/bearer-secret.js";
 
 const analysis = analyzeHmsResponses(gameEventsResponse, lineupResponse);
 
@@ -192,4 +193,10 @@ test("historický import stránkuje a pokračuje po jednom chybném zápase", as
   assert.deepEqual({ discovered: result.discovered, processed: result.processed, failed: result.failed }, {
     discovered: 3, processed: 2, failed: 1,
   });
+});
+
+test("ruční import používá secret pouze v autorizační hlavičce", () => {
+  assert.equal(hasBearerSecret({ headers: { authorization: "Bearer abc123" } }, "abc123"), true);
+  assert.equal(hasBearerSecret({ headers: { authorization: "Bearer špatně" } }, "abc123"), false);
+  assert.equal(hasBearerSecret({ headers: {} }, "abc123"), false);
 });

@@ -9,6 +9,7 @@
   },
   "rewrites": [
     { "source": "/", "destination": "/api/page" },
-    { "source": "/priklepy", "destination": "/api/page" }
+    { "source": "/priklepy", "destination": "/api/page" },
+    { "source": "/admin/import-game", "destination": "/api/import-game-page" }
   ]
 }

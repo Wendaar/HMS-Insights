@@ -1,20 +1,9 @@
-import { timingSafeEqual } from "node:crypto";
 import { processFinishedGame } from "../../../src/app/process-finished-game.js";
-
-function authorized(request, secret) {
-  if (!secret) return false;
-  const authorization = request.headers.authorization ?? "";
-  const supplied = authorization.startsWith("Bearer ")
-    ? authorization.slice(7)
-    : request.headers["x-hms-webhook-secret"] ?? "";
-  const expectedBuffer = Buffer.from(secret);
-  const suppliedBuffer = Buffer.from(supplied);
-  return expectedBuffer.length === suppliedBuffer.length && timingSafeEqual(expectedBuffer, suppliedBuffer);
-}
+import { hasBearerSecret } from "../../../src/security/bearer-secret.js";
 
 export default async function handler(request, response) {
   if (request.method !== "POST") return response.status(405).json({ error: "Method not allowed" });
-  if (!authorized(request, process.env.HMS_WEBHOOK_SECRET)) return response.status(401).json({ error: "Unauthorized" });
+  if (!hasBearerSecret(request, process.env.HMS_WEBHOOK_SECRET)) return response.status(401).json({ error: "Unauthorized" });
 
   const payload = typeof request.body === "string" ? JSON.parse(request.body) : request.body;
   const gameId = payload?.gameId;
