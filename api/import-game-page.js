@@ -38,7 +38,7 @@ form.addEventListener('submit',async(event)=>{
     const response=await fetch('/api/admin/import-game',{method:'POST',headers:{'content-type':'application/json','authorization':'Bearer '+secret.value},body:JSON.stringify({gameId:document.querySelector('#gameId').value.trim()})});
     const data=await response.json();
     if(!response.ok)throw new Error(data.error||'Import se nezdařil.');
-    result.textContent='Hotovo: '+data.score+', vzniklo '+data.priklepy+' Příklepů.\n\nDIAGNOSTIKA STRUKTURY:\n'+JSON.stringify(data.diagnostics,null,2);secret.value='';
+    result.textContent='Hotovo: '+data.score+', vzniklo '+data.priklepy+' Příklepů.\\n\\nDIAGNOSTIKA STRUKTURY:\\n'+JSON.stringify(data.diagnostics,null,2);secret.value='';
   }catch(error){result.className='error';result.textContent=error.message}finally{button.disabled=false}
 });
 </script></body></html>`;

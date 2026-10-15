@@ -12,6 +12,7 @@ import { loadFeedForRequest } from "../src/web/feed-loader.js";
 import { backfillFinishedGames } from "../src/app/backfill-finished-games.js";
 import { hasBearerSecret } from "../src/security/bearer-secret.js";
 import { describeShape } from "../api/admin/import-game.js";
+import importGamePageHandler from "../api/import-game-page.js";
 
 const analysis = analyzeHmsResponses(gameEventsResponse, lineupResponse);
 
@@ -224,4 +225,17 @@ test("diagnostika importu ukazuje pouze strukturu, nikoli hodnoty", () => {
   });
   assert.doesNotMatch(JSON.stringify(shape), new RegExp(ids.game, "i"));
   assert.doesNotMatch(JSON.stringify(shape), /private-value/);
+});
+
+test("skript ručního importu je po vyrenderování platný JavaScript", () => {
+  let rendered = "";
+  const response = {
+    setHeader() {},
+    status() { return this; },
+    send(value) { rendered = value; return value; },
+  };
+  importGamePageHandler({ method: "GET" }, response);
+  const script = rendered.match(/<script>([\s\S]+)<\/script>/)?.[1];
+  assert.ok(script);
+  assert.doesNotThrow(() => new Function(script));
 });
