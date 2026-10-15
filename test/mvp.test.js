@@ -355,5 +355,6 @@ test("stránka historického importu obsahuje platný dávkový skript", () => {
   const script = rendered.match(/<script>([\s\S]+)<\/script>/)?.[1];
   assert.ok(script);
   assert.match(rendered, /2026-09-01/);
+  assert.match(rendered, /CHYBNÉ ZÁPASY/);
   assert.doesNotThrow(() => new Function(script));
 });

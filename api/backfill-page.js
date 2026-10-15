@@ -37,19 +37,20 @@ const wait=(milliseconds)=>new Promise((resolve)=>setTimeout(resolve,millisecond
 form.addEventListener('submit',async(event)=>{
   event.preventDefault();button.disabled=true;feedLink.style.display='none';result.className='';
   const secret=document.querySelector('#secret'),from=document.querySelector('#from').value;
-  let skip=0,processed=0,failed=0,batches=0;
+  let skip=0,processed=0,failed=0,batches=0,failureDetails=[];
   try{
     while(true){
       result.textContent='Probíhá import…\\nZpracováno: '+processed+' | Chyby: '+failed+' | Načítám od pozice: '+skip;
       const response=await fetch('/api/admin/backfill',{method:'POST',headers:{'content-type':'application/json','authorization':'Bearer '+secret.value},body:JSON.stringify({from,skip})});
       const data=await response.json();
       if(!response.ok)throw new Error(data.error||'Historický import se nezdařil.');
-      processed+=data.processed;failed+=data.failed;batches+=1;skip=data.nextSkip;
+      processed+=data.processed;failed+=data.failed;batches+=1;skip=data.nextSkip;failureDetails.push(...(data.failures||[]));
       if(data.done)break;
       if(batches>1000)throw new Error('Import byl zastaven kvůli neobvykle vysokému počtu dávek.');
       await wait(500);
     }
-    result.textContent='Hotovo.\\nÚspěšně zpracováno: '+processed+' zápasů.\\nChyby: '+failed+'.';feedLink.style.display='inline-block';secret.value='';
+    const details=failureDetails.length?'\\n\\nCHYBNÉ ZÁPASY:\\n'+failureDetails.map((item)=>item.gameId+' — '+item.error).join('\\n'):'';
+    result.textContent='Hotovo.\\nÚspěšně zpracováno: '+processed+' zápasů.\\nChyby: '+failed+'.'+details;feedLink.style.display='inline-block';secret.value='';
   }catch(error){result.className='error';result.textContent=error.message+'\\nImport lze bezpečně spustit znovu.'}finally{button.disabled=false}
 });
 </script></body></html>`;
