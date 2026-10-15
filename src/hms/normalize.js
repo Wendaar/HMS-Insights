@@ -77,8 +77,10 @@ function penaltyMinutes(value) {
   const parts = String(value).split(":").map(Number);
   if (parts.length >= 2 && parts.length <= 3 && parts.every(Number.isFinite)) {
     const [hours, minutes, seconds] = parts.length === 3 ? parts : [0, ...parts];
-    const totalMinutes = hours * 60 + minutes + seconds / 60;
-    if (Number.isInteger(totalMinutes)) return totalMinutes;
+    if (minutes >= 0 && minutes < 60 && seconds >= 0 && seconds < 60 && hours >= 0) {
+      const totalMinutes = hours * 60 + minutes + seconds / 60;
+      return Math.round(totalMinutes * 1_000_000) / 1_000_000;
+    }
   }
   throw new Error(`Neplatná délka trestu: ${value}`);
 }

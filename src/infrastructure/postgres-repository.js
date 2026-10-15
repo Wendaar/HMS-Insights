@@ -59,6 +59,16 @@ function createSql(databaseUrl) {
   return neon(databaseUrl);
 }
 
+export async function ensurePenaltyMinutesSchema(options = {}) {
+  const sql = options.sql ?? createSql(options.databaseUrl ?? databaseUrlFromEnv(options.env));
+  const columns = await sql.query(
+    "select data_type from information_schema.columns where table_schema = 'public' and table_name = 'player_game_stats' and column_name = 'pim'",
+  );
+  if (columns[0]?.data_type === "numeric") return false;
+  await sql.query("alter table player_game_stats alter column pim type numeric(10,6) using pim::numeric");
+  return true;
+}
+
 export async function persistAnalysisPostgres(analysis, options = {}) {
   const rows = rowsFor(analysis);
   const sql = options.sql ?? createSql(options.databaseUrl ?? databaseUrlFromEnv(options.env));

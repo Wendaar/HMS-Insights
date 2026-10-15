@@ -6,7 +6,7 @@ import { rowsFor } from "../src/infrastructure/supabase-repository.js";
 import { feedDemo } from "../src/app/feed-demo.js";
 import { renderPriklepyPage } from "../src/web/render.js";
 import { apiUrl, endpoint, fetchFinishedGameResponses } from "../src/hms/client.js";
-import { buildUpsert, persistAnalysisPostgres, publicFeedItem } from "../src/infrastructure/postgres-repository.js";
+import { buildUpsert, ensurePenaltyMinutesSchema, persistAnalysisPostgres, publicFeedItem } from "../src/infrastructure/postgres-repository.js";
 import { processFinishedGame } from "../src/app/process-finished-game.js";
 import { loadFeedForRequest } from "../src/web/feed-loader.js";
 import { backfillFinishedGames } from "../src/app/backfill-finished-games.js";
@@ -86,11 +86,25 @@ test("veřejný formát odmítne neúplný seznam gólových událostí", () => 
   );
 });
 
-test("časová délka trestu z veřejného API se převede na celé minuty", () => {
+test("časová délka trestu z veřejného API se převede na přesné minuty", () => {
+  assert.equal(penaltyMinutes("1:45"), 1.75);
   assert.equal(penaltyMinutes("00:02:00"), 2);
   assert.equal(penaltyMinutes("2:00"), 2);
+  assert.equal(penaltyMinutes("20:00"), 20);
   assert.equal(penaltyMinutes("2"), 2);
   assert.throws(() => penaltyMinutes("neplatné"), /Neplatná délka trestu/);
+});
+
+test("databázová migrace povolí desetinné trestné minuty jen když je potřeba", async () => {
+  const queries = [];
+  const changed = await ensurePenaltyMinutesSchema({
+    sql: { query: async (text) => { queries.push(text); return queries.length === 1 ? [{ data_type: "integer" }] : []; } },
+  });
+  assert.equal(changed, true);
+  assert.match(queries[1], /numeric\(10,6\)/);
+
+  const unchanged = await ensurePenaltyMinutesSchema({ sql: { query: async () => [{ data_type: "numeric" }] } });
+  assert.equal(unchanged, false);
 });
 
 test("lineup nemusí opakovat gameId, protože je načten parametrem endpointu", () => {

@@ -1,6 +1,7 @@
 import { processFinishedGame } from "../../src/app/process-finished-game.js";
 import { fetchFinishedGameResponses } from "../../src/hms/client.js";
 import { hasBearerSecret } from "../../src/security/bearer-secret.js";
+import { ensurePenaltyMinutesSchema } from "../../src/infrastructure/postgres-repository.js";
 
 export function describeShape(value, depth = 0) {
   if (value === null) return "null";
@@ -40,6 +41,7 @@ export default async function handler(request, response) {
   const body = typeof request.body === "string" ? JSON.parse(request.body) : request.body;
   let diagnostics = null;
   try {
+    await ensurePenaltyMinutesSchema();
     const responses = await fetchFinishedGameResponses(body?.gameId);
     diagnostics = {
       game: describeShape(responses[0]),
