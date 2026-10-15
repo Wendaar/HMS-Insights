@@ -22,6 +22,20 @@ test("normalizuje reálný dokončený zápas", () => {
   assert.equal(analysis.game.teamStats[1].lineupSize, 14);
 });
 
+test("lineup nemusí opakovat gameId, protože je načten parametrem endpointu", () => {
+  const lineupWithoutRepeatedId = { ...lineupResponse };
+  delete lineupWithoutRepeatedId.gameId;
+  const result = analyzeHmsResponses(gameEventsResponse, lineupWithoutRepeatedId);
+  assert.equal(result.game.gameId, ids.game);
+});
+
+test("lineup s přítomným cizím gameId je odmítnut", () => {
+  assert.throws(
+    () => analyzeHmsResponses(gameEventsResponse, { ...lineupResponse, gameId: "11111111-1111-1111-1111-111111111111" }),
+    /různým zápasům/,
+  );
+});
+
 test("první gól dal Mansur Ischoev v 0:43", () => {
   assert.equal(analysis.game.goals[0].playerName, "Mansur Ischoev");
   assert.equal(analysis.game.goals[0].gameTime, "0:43");

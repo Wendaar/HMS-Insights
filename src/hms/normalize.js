@@ -60,7 +60,12 @@ export function normalizeHmsGame(gameEventsResponse, lineupResponse, gameDetailR
       }
     : gameEventsResponse;
   const gameId = required(gameResponse.gameId, "gameId");
-  if (lineupResponse.gameId !== gameId) throw new Error("Game Events a Lineup patří k různým zápasům.");
+  // The gameLineup endpoint is already scoped by the gameId query parameter and
+  // does not have to repeat that id in its response body. Compare it only when
+  // HMS includes it; a present, different id is still rejected.
+  if (lineupResponse.gameId && lineupResponse.gameId.toLowerCase() !== gameId.toLowerCase()) {
+    throw new Error("Game Events a Lineup patří k různým zápasům.");
+  }
   if (gameResponse.status !== "FINISHED") throw new Error("MVP přijímá pouze dokončený zápas.");
 
   const phase = required(gameResponse.Phase ?? lineupResponse.Phase, "Phase");
