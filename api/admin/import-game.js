@@ -5,10 +5,21 @@ import { hasBearerSecret } from "../../src/security/bearer-secret.js";
 export function describeShape(value, depth = 0) {
   if (value === null) return "null";
   if (Array.isArray(value)) {
+    const typedItems = value.filter((item) => item && typeof item === "object" && typeof item.type === "string");
+    const variants = {};
+    for (const item of typedItems) {
+      if (!variants[item.type] && Object.keys(variants).length < 30) {
+        variants[item.type] = {
+          count: typedItems.filter((candidate) => candidate.type === item.type).length,
+          shape: depth < 3 ? describeShape(item, depth + 1) : "object",
+        };
+      }
+    }
     return {
       type: "array",
       length: value.length,
       first: value.length && depth < 3 ? describeShape(value[0], depth + 1) : undefined,
+      ...(Object.keys(variants).length ? { variants } : {}),
     };
   }
   if (typeof value !== "object") return typeof value;

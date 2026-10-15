@@ -227,6 +227,18 @@ test("diagnostika importu ukazuje pouze strukturu, nikoli hodnoty", () => {
   assert.doesNotMatch(JSON.stringify(shape), /private-value/);
 });
 
+test("diagnostika rozliší strukturu jednotlivých typů herních událostí", () => {
+  const shape = describeShape([
+    { type: "GOAL", scoredByPlayerId: "player-a" },
+    { type: "SAVE", savedByPlayerId: "player-b" },
+    { type: "SAVE", savedByPlayerId: "player-c" },
+  ]);
+  assert.equal(shape.variants.GOAL.count, 1);
+  assert.equal(shape.variants.SAVE.count, 2);
+  assert.equal(shape.variants.GOAL.shape.scoredByPlayerId, "string");
+  assert.doesNotMatch(JSON.stringify(shape), /player-[abc]/);
+});
+
 test("skript ručního importu je po vyrenderování platný JavaScript", () => {
   let rendered = "";
   const response = {
