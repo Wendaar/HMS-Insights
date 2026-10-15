@@ -59,6 +59,12 @@ function createSql(databaseUrl) {
   return neon(databaseUrl);
 }
 
+function dateOnly(value) {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return value.toISOString().slice(0, 10);
+  const match = /^(\d{4}-\d{2}-\d{2})/.exec(String(value ?? ""));
+  return match?.[1] ?? null;
+}
+
 export async function ensurePenaltyMinutesSchema(options = {}) {
   const sql = options.sql ?? createSql(options.databaseUrl ?? databaseUrlFromEnv(options.env));
   const columns = await sql.query(
@@ -91,7 +97,7 @@ function publicFeedItem(row) {
     text: row.body,
     facts: row.facts ?? {},
     gameId: row.game_id,
-    date: row.played_on,
+    date: dateOnly(row.played_on),
     competition: row.competition_name,
     season: row.season_name,
     group: row.group_name,
@@ -126,4 +132,4 @@ export async function loadPublicFeed(options = {}) {
   return result.map(publicFeedItem);
 }
 
-export { buildUpsert, databaseUrlFromEnv, publicFeedItem };
+export { buildUpsert, databaseUrlFromEnv, dateOnly, publicFeedItem };

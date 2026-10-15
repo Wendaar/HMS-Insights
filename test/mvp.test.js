@@ -6,7 +6,7 @@ import { rowsFor } from "../src/infrastructure/supabase-repository.js";
 import { feedDemo } from "../src/app/feed-demo.js";
 import { renderPriklepyPage } from "../src/web/render.js";
 import { apiUrl, endpoint, fetchFinishedGameResponses } from "../src/hms/client.js";
-import { buildUpsert, ensurePenaltyMinutesSchema, persistAnalysisPostgres, publicFeedItem } from "../src/infrastructure/postgres-repository.js";
+import { buildUpsert, dateOnly, ensurePenaltyMinutesSchema, persistAnalysisPostgres, publicFeedItem } from "../src/infrastructure/postgres-repository.js";
 import { processFinishedGame } from "../src/app/process-finished-game.js";
 import { loadFeedForRequest } from "../src/web/feed-loader.js";
 import { backfillFinishedGames } from "../src/app/backfill-finished-games.js";
@@ -255,6 +255,13 @@ test("veřejný databázový řádek se mapuje bez soukromých údajů", () => {
   assert.equal(item.homeScore, 9);
   assert.match(item.gameDetailUrl, new RegExp(ids.game, "i"));
   assert.doesNotMatch(JSON.stringify(item), /email|phone|birthday/i);
+});
+
+test("PostgreSQL datum se pro web normalizuje na YYYY-MM-DD", () => {
+  assert.equal(dateOnly(new Date("2026-09-17T00:00:00.000Z")), "2026-09-17");
+  assert.equal(dateOnly("2026-09-17T00:00:00Z"), "2026-09-17");
+  assert.equal(dateOnly("2026-09-17"), "2026-09-17");
+  assert.equal(dateOnly(null), null);
 });
 
 test("prázdná databáze ponechá demo viditelné, dokud nepřijde první reálný zápas", async () => {
