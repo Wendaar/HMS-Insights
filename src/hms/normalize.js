@@ -49,21 +49,50 @@ function teamFromEvent(event) {
   return teamRecord(team);
 }
 
+function eventGroups(response) {
+  const events = Array.isArray(response?.events) ? response.events : [];
+  return {
+    goals: response?.GameEventGoals ?? events.filter((item) => item.type?.toLowerCase() === "goal"),
+    saves: response?.GameEventSaves ?? events.filter((item) => item.type?.toLowerCase() === "save"),
+    penalties: response?.GameEventPenalties ?? events.filter((item) => item.type?.toLowerCase() === "penalty"),
+  };
+}
+
+function lineupRows(response) {
+  if (Array.isArray(response)) return response;
+  return response?.Lineups ?? [];
+}
+
+function optionalNumber(value) {
+  if (value === undefined || value === null || value === "") return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
 export function normalizeHmsGame(gameEventsResponse, lineupResponse, gameDetailResponse = null) {
+  const groupedEvents = eventGroups(gameEventsResponse);
   const gameResponse = gameDetailResponse
     ? {
         ...gameDetailResponse,
         ...gameEventsResponse,
-        GameEventGoals: gameEventsResponse.GameEventGoals ?? gameDetailResponse.GameEventGoals,
-        GameEventSaves: gameEventsResponse.GameEventSaves ?? gameDetailResponse.GameEventSaves,
-        GameEventPenalties: gameEventsResponse.GameEventPenalties ?? gameDetailResponse.GameEventPenalties,
+        GameEventGoals: groupedEvents.goals.length ? groupedEvents.goals : gameDetailResponse.GameEventGoals,
+        GameEventSaves: groupedEvents.saves.length ? groupedEvents.saves : gameDetailResponse.GameEventSaves,
+        GameEventPenalties: groupedEvents.penalties.length ? groupedEvents.penalties : gameDetailResponse.GameEventPenalties,
       }
-    : gameEventsResponse;
+    : {
+        ...gameEventsResponse,
+        GameEventGoals: groupedEvents.goals,
+        GameEventSaves: groupedEvents.saves,
+        GameEventPenalties: groupedEvents.penalties,
+      };
   const gameId = required(gameResponse.gameId, "gameId");
   // The gameLineup endpoint is already scoped by the gameId query parameter and
   // does not have to repeat that id in its response body. Compare it only when
   // HMS includes it; a present, different id is still rejected.
-  if (lineupResponse.gameId && lineupResponse.gameId.toLowerCase() !== gameId.toLowerCase()) {
+  const lineupGameIds = Array.isArray(lineupResponse)
+    ? lineupResponse.map((item) => item.gameId).filter(Boolean)
+    : [lineupResponse.gameId].filter(Boolean);
+  if (lineupGameIds.some((lineupGameId) => lineupGameId.toLowerCase() !== gameId.toLowerCase())) {
     throw new Error("Game Events a Lineup patří k různým zápasům.");
   }
   if (gameResponse.status !== "FINISHED") throw new Error("MVP přijímá pouze dokončený zápas.");
@@ -72,14 +101,18 @@ export function normalizeHmsGame(gameEventsResponse, lineupResponse, gameDetailR
   const group = required(gameResponse.Group ?? phase.Group, "Group");
   const season = required(gameResponse.Season ?? group.Season, "Season");
   const competition = required(gameResponse.Competition ?? season.Competition, "Competition");
-  const lineups = (lineupResponse.Lineups ?? []).filter((item) => !item.isDeleted);
+  const lineups = lineupRows(lineupResponse).filter((item) => !item.isDeleted);
+  const goalieIds = new Set([
+    ...(gameResponse.GameEventSaves ?? []).map((item) => item.savedByPlayerId),
+    ...(gameResponse.GameEventGoals ?? []).map((item) => item.allowedByPlayerId),
+  ].filter(Boolean));
 
   const players = new Map(lineups.map((item) => [item.playerId, {
     playerId: item.playerId,
     playerName: playerName(item.Player, item.name),
     teamId: item.teamId,
     number: item.number ?? null,
-    isGoalie: item.ListPosition?.isGoalie === true,
+    isGoalie: item.ListPosition?.isGoalie === true || goalieIds.has(item.playerId),
     playerImageUrl: entityMediaUrl(item.Player),
     playerImageTemplateUrl: entityMediaTemplate(item.Player),
   }]));
@@ -105,7 +138,7 @@ export function normalizeHmsGame(gameEventsResponse, lineupResponse, gameDetailR
   const goals = (gameResponse.GameEventGoals ?? [])
     .filter((item) => !item.isDeleted)
     .map((item) => ({
-      eventId: item.gameEventGoalId,
+      eventId: item.gameEventGoalId ?? item.eventId,
       gameTime: item.gameTime,
       elapsedSeconds: secondsFromClock(item.gameTime),
       period: item.period,
@@ -174,6 +207,13 @@ export function normalizeHmsGame(gameEventsResponse, lineupResponse, gameDetailR
       result: goalsFor > goalsAgainst ? "WIN" : goalsFor < goalsAgainst ? "LOSS" : "DRAW",
     };
   });
+
+  const officialHomeScore = optionalNumber(gameResponse.HomeTeamGoals);
+  const officialAwayScore = optionalNumber(gameResponse.AwayTeamGoals);
+  if ((officialHomeScore !== null && officialHomeScore !== teamStats[0].goals)
+    || (officialAwayScore !== null && officialAwayScore !== teamStats[1].goals)) {
+    throw new Error("Počet gólových událostí nesouhlasí s oficiálním skóre zápasu.");
+  }
 
   return {
     gameId,

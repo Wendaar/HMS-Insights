@@ -15,6 +15,46 @@ import { describeShape } from "../api/admin/import-game.js";
 import importGamePageHandler from "../api/import-game-page.js";
 
 const analysis = analyzeHmsResponses(gameEventsResponse, lineupResponse);
+const nestedGroup = lineupResponse.Phase.Group;
+const nestedSeason = nestedGroup.Season;
+const publicApiDetail = {
+  gameId: ids.game,
+  organizationId: ids.org,
+  status: "FINISHED",
+  startDate: gameEventsResponse.startDate,
+  startTime: gameEventsResponse.startTime,
+  homeTeamId: ids.home,
+  awayTeamId: ids.away,
+  HomeTeamGoals: 9,
+  AwayTeamGoals: 3,
+  HomeTeam: gameEventsResponse.GameEventGoals.find((item) => item.scoredByTeamId === ids.home).ScoredByTeam,
+  AwayTeam: gameEventsResponse.GameEventGoals.find((item) => item.scoredByTeamId === ids.away).ScoredByTeam,
+  Venue: lineupResponse.Venue,
+  Phase: { phaseId: ids.phase, name: lineupResponse.Phase.name },
+  Group: { groupId: ids.group, name: nestedGroup.name, color: nestedGroup.color, logoUrl: nestedGroup.logoUrl },
+  Season: { seasonId: ids.season, name: nestedSeason.name },
+  Competition: { competitionId: ids.competition, name: nestedSeason.Competition.name },
+};
+const publicApiEvents = {
+  gameId: ids.game,
+  events: [
+    ...gameEventsResponse.GameEventGoals.map((item) => ({
+      type: "goal", eventId: item.gameEventGoalId, gameTime: item.gameTime, period: item.period,
+      scoredByPlayerId: item.scoredByPlayerId, scoredByTeamId: item.scoredByTeamId,
+      assistedBy1PlayerId: item.assistedBy1PlayerId, assistedBy2PlayerId: item.assistedBy2PlayerId,
+      allowedByPlayerId: item.allowedByPlayerId,
+    })),
+    ...gameEventsResponse.GameEventSaves.map((item) => ({
+      type: "save", eventId: item.gameEventSaveId, savedByPlayerId: item.savedByPlayerId,
+      savedByTeamId: item.savedByTeamId,
+    })),
+    ...gameEventsResponse.GameEventPenalties.map((item) => ({ type: "penalty", ...item })),
+  ],
+};
+const publicApiLineup = lineupResponse.Lineups.map((item) => ({
+  ...item,
+  ListPosition: { ...item.ListPosition, isGoalie: null },
+}));
 
 test("normalizuje reálný dokončený zápas", () => {
   assert.equal(analysis.game.gameId, ids.game);
@@ -22,6 +62,27 @@ test("normalizuje reálný dokončený zápas", () => {
   assert.equal(analysis.game.awayScore, 3);
   assert.equal(analysis.game.teamStats[0].lineupSize, 11);
   assert.equal(analysis.game.teamStats[1].lineupSize, 14);
+});
+
+test("normalizuje současný veřejný formát HMS se společným seznamem událostí", () => {
+  const result = analyzeHmsResponses(publicApiEvents, publicApiLineup, publicApiDetail);
+  assert.equal(result.game.homeScore, 9);
+  assert.equal(result.game.awayScore, 3);
+  assert.equal(result.game.goals[0].playerName, "Mansur Ischoev");
+  assert.equal(result.game.goals[0].gameTime, "0:43");
+  assert.deepEqual(result.game.goalieStats.map((item) => item.saves).sort((a, b) => b - a), [34, 31]);
+  assert.equal(result.priklepy.length, 10);
+});
+
+test("veřejný formát odmítne neúplný seznam gólových událostí", () => {
+  assert.throws(
+    () => analyzeHmsResponses(
+      { ...publicApiEvents, events: publicApiEvents.events.filter((item) => item.type !== "goal") },
+      publicApiLineup,
+      publicApiDetail,
+    ),
+    /nesouhlasí s oficiálním skóre/,
+  );
 });
 
 test("lineup nemusí opakovat gameId, protože je načten parametrem endpointu", () => {
