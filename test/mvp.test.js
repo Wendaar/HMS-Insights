@@ -384,5 +384,7 @@ test("stránka historického importu obsahuje platný dávkový skript", () => {
   assert.match(rendered, /2026-09-01/);
   assert.match(rendered, new RegExp(ids.season, "i"));
   assert.match(rendered, /CHYBNÉ ZÁPASY/);
+  assert.match(rendered, /limit|po jednom/);
+  assert.match(rendered, /attempt<=3/);
   assert.doesNotThrow(() => new Function(script));
 });

@@ -34,10 +34,27 @@ const html = `<!doctype html>
   </form>
   <div id="result" role="status"></div>
   <a id="feed-link" href="/priklepy">Otevřít Příklepy →</a>
-  <small>Import probíhá v bezpečných dávkách po pěti zápasech. Opakované spuštění je bezpečné a existující zápasy pouze přepočítá.</small>
+  <small>Import probíhá bezpečně po jednom zápase. Opakované spuštění je bezpečné a existující zápasy pouze přepočítá.</small>
 </main><script>
 const form=document.querySelector('#form'),button=document.querySelector('#submit'),result=document.querySelector('#result'),feedLink=document.querySelector('#feed-link');
 const wait=(milliseconds)=>new Promise((resolve)=>setTimeout(resolve,milliseconds));
+async function loadBatch(payload,secret){
+  let lastError;
+  for(let attempt=1;attempt<=3;attempt+=1){
+    try{
+      const response=await fetch('/api/admin/backfill',{method:'POST',headers:{'content-type':'application/json','authorization':'Bearer '+secret},body:JSON.stringify(payload)});
+      const text=await response.text();
+      let data;
+      try{data=JSON.parse(text)}catch{throw new Error(response.ok?'Server vrátil nečitelnou odpověď.':'Vercel dočasně přerušil zpracování zápasu.')}
+      if(!response.ok)throw new Error(data.error||'Historický import se nezdařil.');
+      return data;
+    }catch(error){
+      lastError=error;
+      if(attempt<3)await wait(attempt*2500);
+    }
+  }
+  throw lastError;
+}
 form.addEventListener('submit',async(event)=>{
   event.preventDefault();button.disabled=true;feedLink.style.display='none';result.className='';
   const secret=document.querySelector('#secret'),from=document.querySelector('#from').value,seasonId=document.querySelector('#season').value;
@@ -45,13 +62,13 @@ form.addEventListener('submit',async(event)=>{
   try{
     while(true){
       result.textContent='Probíhá import…\\nZpracováno: '+processed+' | Chyby: '+failed+' | Načítám od pozice: '+skip;
-      const response=await fetch('/api/admin/backfill',{method:'POST',headers:{'content-type':'application/json','authorization':'Bearer '+secret.value},body:JSON.stringify({from,seasonId,skip})});
-      const data=await response.json();
-      if(!response.ok)throw new Error(data.error||'Historický import se nezdařil.');
+      const data=await loadBatch({from,seasonId,skip},secret.value);
       processed+=data.processed;failed+=data.failed;batches+=1;skip=data.nextSkip;failureDetails.push(...(data.failures||[]));
       if(data.done)break;
       if(batches>1000)throw new Error('Import byl zastaven kvůli neobvykle vysokému počtu dávek.');
-      await wait(500);
+      // /games + game + gameEvents + gameLineup = four HMS requests per loop.
+      // This pause leaves comfortable room below 120 requests/token/minute.
+      await wait(2500);
     }
     const details=failureDetails.length?'\\n\\nCHYBNÉ ZÁPASY:\\n'+failureDetails.map((item)=>item.gameId+' — '+item.error).join('\\n'):'';
     result.textContent='Hotovo.\\nÚspěšně zpracováno: '+processed+' zápasů.\\nChyby: '+failed+'.'+details;feedLink.style.display='inline-block';secret.value='';

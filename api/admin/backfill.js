@@ -25,8 +25,11 @@ export default async function handler(request, response) {
       from,
       seasonId,
       skip: Math.max(Number(body?.skip ?? 0), 0),
-      limit: 5,
-      intervalMs: 1800,
+      // One game per invocation keeps the HMS fetch + database snapshot well
+      // below Vercel's function duration limit. The browser paces requests to
+      // remain below the HMS API rate limit.
+      limit: 1,
+      intervalMs: 0,
     });
     return response.status(200).json(result);
   } catch (error) {
