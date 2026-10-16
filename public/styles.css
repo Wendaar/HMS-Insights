@@ -86,6 +86,7 @@ main { width: min(1260px,calc(100% - 40px)); margin: auto; padding: 28px 0 90px;
 .demo-tag { position: absolute; z-index: 6; top: 0; right: 0; padding: 4px 8px; color: #7f8b9b; background: rgba(255,255,255,.055); border-radius: 0 17px 0 8px; font-size: .5rem; font-weight: 850; letter-spacing: .09em; text-transform: uppercase; }
 
 .empty { padding: 70px 20px; text-align: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 16px; }
+.feed-sentinel { padding: 28px 16px; text-align: center; color: var(--muted); font-size: .78rem; }
 .empty>span { color: var(--ice); font-size: 2rem; }.empty h2 { margin: 12px 0 6px; color: var(--ink); }.empty p { margin: 0; }
 dialog { width: min(520px,calc(100% - 24px)); max-height: calc(100vh - 28px); padding: 0; color: var(--ink); background: #0a0f15; border: 1px solid rgba(255,255,255,.2); border-radius: 22px; box-shadow: 0 40px 120px rgba(0,0,0,.82); }
 dialog::backdrop { background: rgba(2,5,8,.8); backdrop-filter: blur(5px); }

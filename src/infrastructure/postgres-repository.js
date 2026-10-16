@@ -132,4 +132,82 @@ export async function loadPublicFeed(options = {}) {
   return result.map(publicFeedItem);
 }
 
-export { buildUpsert, databaseUrlFromEnv, dateOnly, publicFeedItem };
+function feedWhere(options, values) {
+  const clauses = [];
+  const exact = [
+    ["season", "season_name"],
+    ["group", "group_name"],
+    ["phase", "phase_name"],
+  ];
+  for (const [key, column] of exact) {
+    if (!options[key]) continue;
+    values.push(String(options[key]));
+    clauses.push(`${column} = $${values.length}`);
+  }
+  if (options.team) {
+    values.push(String(options.team));
+    clauses.push(`(home_team_name = $${values.length} or away_team_name = $${values.length})`);
+  }
+  if (options.venue) {
+    if (options.venue === "Neuvedený stadion") clauses.push("venue_name is null");
+    else {
+      values.push(String(options.venue));
+      clauses.push(`venue_name = $${values.length}`);
+    }
+  }
+  if (options.sponsor) {
+    if (options.sponsor === "Bez partnera") clauses.push("sponsor_name is null");
+    else {
+      values.push(String(options.sponsor));
+      clauses.push(`sponsor_name = $${values.length}`);
+    }
+  }
+  if (String(options.query ?? "").trim()) {
+    const escaped = String(options.query).trim().replace(/[\\%_]/g, "\\$&");
+    values.push(`%${escaped}%`);
+    clauses.push(`concat_ws(' ', title, body, player_name, team_name, home_team_name, away_team_name) ilike $${values.length} escape '\\'`);
+  }
+  return clauses.length ? ` where ${clauses.join(" and ")}` : "";
+}
+
+export async function loadPublicFeedPage(options = {}) {
+  const requestedLimit = Number(options.limit ?? 40);
+  const requestedOffset = Number(options.offset ?? 0);
+  const limit = Number.isFinite(requestedLimit) ? Math.min(Math.max(Math.trunc(requestedLimit), 1), 100) : 40;
+  const offset = Number.isFinite(requestedOffset) ? Math.max(Math.trunc(requestedOffset), 0) : 0;
+  const sql = options.sql ?? createSql(options.databaseUrl ?? databaseUrlFromEnv(options.env));
+  const filterValues = [];
+  const where = feedWhere(options, filterValues);
+  const countRows = await sql.query(`select count(*)::integer as total from public_priklepy_feed${where}`, filterValues);
+  const pageValues = [...filterValues, limit, offset];
+  const rows = await sql.query(
+    `select * from public_priklepy_feed${where} order by played_on desc, importance desc, priklep_id limit $${filterValues.length + 1} offset $${filterValues.length + 2}`,
+    pageValues,
+  );
+  const total = Number(countRows[0]?.total ?? 0);
+  return {
+    items: rows.map(publicFeedItem),
+    total,
+    offset,
+    hasMore: offset + rows.length < total,
+  };
+}
+
+export async function loadPublicFeedOptions(options = {}) {
+  const sql = options.sql ?? createSql(options.databaseUrl ?? databaseUrlFromEnv(options.env));
+  const rows = await sql.query(`select distinct
+    season_name, group_name, phase_name, venue_name, sponsor_name, home_team_name, away_team_name
+    from public_priklepy_feed`);
+  const unique = (values, fallback = null) => [...new Set(values.map((value) => value ?? fallback).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, "cs"));
+  return {
+    seasons: unique(rows.map((row) => row.season_name)),
+    groups: unique(rows.map((row) => row.group_name)),
+    teams: unique(rows.flatMap((row) => [row.home_team_name, row.away_team_name])),
+    phases: unique(rows.map((row) => row.phase_name)),
+    venues: unique(rows.map((row) => row.venue_name), "Neuvedený stadion"),
+    sponsors: unique(rows.map((row) => row.sponsor_name), "Bez partnera"),
+  };
+}
+
+export { buildUpsert, databaseUrlFromEnv, dateOnly, feedWhere, publicFeedItem };

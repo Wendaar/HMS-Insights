@@ -32,6 +32,10 @@ function options(items, key) {
     .join("");
 }
 
+function optionValues(values = []) {
+  return values.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("");
+}
+
 function momentStat(item) {
   if (item.type === "HATTRICK") return "HATTRICK";
   if (item.type === "BIG_SAVES") return `${item.facts?.saves ?? "30+"} ZÁKROKŮ`;
@@ -79,6 +83,7 @@ function card(item, index) {
 
   return `<button class="moment-card feed-row ${outstanding?.className ?? ""}" type="button"
     data-id="${escapeHtml(item.id)}" data-search="${escapeHtml(search.toLocaleLowerCase("cs"))}"
+    data-date="${escapeHtml(item.date)}"
     data-season="${escapeHtml(item.season)}" data-group="${escapeHtml(item.group)}"
     data-teams="${escapeHtml(`${item.homeTeam}|${item.awayTeam}`)}" data-phase="${escapeHtml(item.phase)}"
     data-venue="${escapeHtml(item.venue)}" data-sponsor="${escapeHtml(item.sponsor)}"
@@ -101,6 +106,10 @@ function card(item, index) {
     </button>`;
 }
 
+export function renderFeedCards(items, startIndex = 0) {
+  return items.map((item, index) => card(item, startIndex + index)).join("");
+}
+
 function dateSections(items) {
   const newest = items.map((item) => item.date).sort().at(-1);
   const newestTime = new Date(`${newest}T12:00:00`).getTime();
@@ -116,10 +125,13 @@ function dateSections(items) {
   return groups.filter((group) => group.items.length);
 }
 
-export function renderPriklepyPage(items) {
+export function renderPriklepyPage(items, config = {}) {
+  const filterOptions = config.filterOptions ?? {};
+  const total = Number(config.total ?? items.length);
+  const hasMore = Boolean(config.hasMore);
   let cardIndex = 0;
   const sections = dateSections(items).map((section) => `
-    <section class="date-section" data-feed-section>
+    <section class="date-section" data-feed-section data-section-key="${section.key}">
       <div class="date-heading"><h2>${section.label}</h2><span></span><b data-section-count>${section.items.length}</b></div>
       <div class="feed-list">${section.items.map((item) => card(item, cardIndex++)).join("")}</div>
     </section>`).join("");
@@ -135,8 +147,8 @@ export function renderPriklepyPage(items) {
   <meta name="description" content="Přehled automaticky nalezených hokejových momentů z HMS zápasů">
   <title>Příklepy · HMS Insights</title>
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
-  <link rel="stylesheet" href="./styles.css?v=stream-1">
-  <script src="./app.js?v=stream-1" defer></script>
+  <link rel="stylesheet" href="./styles.css?v=stream-2">
+  <script src="./app.js?v=stream-2" defer></script>
 </head>
 <body>
   <header class="topbar">
@@ -149,24 +161,26 @@ export function renderPriklepyPage(items) {
       <button class="filter-toggle" id="filter-toggle" type="button" aria-expanded="false" aria-controls="filters"><span>Filtry</span><b id="active-filter-count" hidden>0</b><i aria-hidden="true">⌄</i></button>
       <div class="filter-drawer" id="filters" hidden>
         <div class="filters">
-          <label><span>Sezona</span><select data-filter="season"><option value="">Všechny</option>${options(items, "season")}</select></label>
-          <label><span>Skupina</span><select data-filter="group"><option value="">Všechny</option>${options(items, "group")}</select></label>
-          <label><span>Tým</span><select data-filter="teams"><option value="">Všechny</option>${teams}</select></label>
-          <label><span>Fáze</span><select data-filter="phase"><option value="">Všechny</option>${options(items, "phase")}</select></label>
-          <label><span>Stadion</span><select data-filter="venue"><option value="">Všechny</option>${options(items, "venue")}</select></label>
-          <label><span>Partner</span><select data-filter="sponsor"><option value="">Všichni</option>${options(items, "sponsor")}</select></label>
+          <label><span>Sezona</span><select data-filter="season"><option value="">Všechny</option>${filterOptions.seasons ? optionValues(filterOptions.seasons) : options(items, "season")}</select></label>
+          <label><span>Skupina</span><select data-filter="group"><option value="">Všechny</option>${filterOptions.groups ? optionValues(filterOptions.groups) : options(items, "group")}</select></label>
+          <label><span>Tým</span><select data-filter="teams"><option value="">Všechny</option>${filterOptions.teams ? optionValues(filterOptions.teams) : teams}</select></label>
+          <label><span>Fáze</span><select data-filter="phase"><option value="">Všechny</option>${filterOptions.phases ? optionValues(filterOptions.phases) : options(items, "phase")}</select></label>
+          <label><span>Stadion</span><select data-filter="venue"><option value="">Všechny</option>${filterOptions.venues ? optionValues(filterOptions.venues) : options(items, "venue")}</select></label>
+          <label><span>Partner</span><select data-filter="sponsor"><option value="">Všichni</option>${filterOptions.sponsors ? optionValues(filterOptions.sponsors) : options(items, "sponsor")}</select></label>
         </div>
         <button id="reset-filters" type="button">Zrušit všechny filtry</button>
       </div>
-      <p class="result-line"><strong id="result-count">${items.length}</strong> příklepů</p>
+      <p class="result-line"><strong id="result-count">${total}</strong> příklepů</p>
     </section>
 
     <div class="timeline" id="feed" aria-live="polite">${sections}</div>
+    <div id="feed-sentinel" class="feed-sentinel" ${hasMore ? "" : "hidden"}>Načítám starší Příklepy…</div>
     <div class="empty" id="empty-state" hidden><span>⌕</span><h2>Nic jsme nenašli</h2><p>Zkuste změnit hledání nebo některý z filtrů.</p></div>
   </main>
 
   <dialog id="detail-dialog"><button class="dialog-close" type="button" aria-label="Zavřít">×</button><div id="dialog-content"></div></dialog>
   <script type="application/json" id="feed-data">${JSON.stringify(items).replace(/</g, "\\u003c")}</script>
+  <script type="application/json" id="feed-meta">${JSON.stringify({ total, hasMore }).replace(/</g, "\\u003c")}</script>
 </body>
 </html>`;
 }

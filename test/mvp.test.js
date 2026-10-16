@@ -6,7 +6,7 @@ import { rowsFor } from "../src/infrastructure/supabase-repository.js";
 import { feedDemo } from "../src/app/feed-demo.js";
 import { renderPriklepyPage } from "../src/web/render.js";
 import { apiUrl, endpoint, fetchFinishedGameResponses } from "../src/hms/client.js";
-import { buildUpsert, dateOnly, ensurePenaltyMinutesSchema, persistAnalysisPostgres, publicFeedItem } from "../src/infrastructure/postgres-repository.js";
+import { buildUpsert, dateOnly, ensurePenaltyMinutesSchema, loadPublicFeedPage, persistAnalysisPostgres, publicFeedItem } from "../src/infrastructure/postgres-repository.js";
 import { processFinishedGame } from "../src/app/process-finished-game.js";
 import { loadFeedForRequest } from "../src/web/feed-loader.js";
 import { backfillFinishedGames, backfillFinishedGamesPage } from "../src/app/backfill-finished-games.js";
@@ -211,6 +211,31 @@ test("stránka obsahuje vyhledávání, všechny filtry a rozkliknutelné karty"
   }
   assert.match(html, /id="detail-dialog"/);
   assert.match(html, /row-team-placeholder/);
+  assert.match(html, /id="feed-sentinel"/);
+  assert.match(html, /id="feed-meta"/);
+});
+
+test("serverové filtrování hledá v celé historii a stránkuje výsledky", async () => {
+  const queries = [];
+  const row = {
+    priklep_id: "older", type: "MULTIPOINT_GAME", importance: 66, facts: { points: 3 },
+    game_id: ids.game, played_on: "2026-09-10", season_name: "2026/2027", group_name: "HOBBY FIRE",
+    home_team_name: "A", away_team_name: "B", home_score: 3, away_score: 2, player_name: "Petr Urban",
+  };
+  const sql = {
+    query: async (text, values) => {
+      queries.push({ text, values });
+      return queries.length === 1 ? [{ total: 1 }] : [row];
+    },
+  };
+  const page = await loadPublicFeedPage({ sql, query: "Petr Urban", group: "HOBBY FIRE", limit: 40, offset: 0 });
+  assert.equal(page.total, 1);
+  assert.equal(page.items[0].player, "Petr Urban");
+  assert.equal(page.hasMore, false);
+  assert.match(queries[0].text, /group_name = \$1/);
+  assert.match(queries[0].text, /ilike \$2/);
+  assert.deepEqual(queries[0].values, ["HOBBY FIRE", "%Petr Urban%"]);
+  assert.deepEqual(queries[1].values.slice(-2), [40, 0]);
 });
 
 test("HMS klient bezpečně vloží gameId do smluvené adresy", () => {

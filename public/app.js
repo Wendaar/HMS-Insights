@@ -1,41 +1,99 @@
-const cards = [...document.querySelectorAll(".moment-card")];
-const sections = [...document.querySelectorAll("[data-feed-section]")];
 const search = document.querySelector("#search");
 const selects = [...document.querySelectorAll("[data-filter]")];
 const count = document.querySelector("#result-count");
 const empty = document.querySelector("#empty-state");
+const feed = document.querySelector("#feed");
+const sentinel = document.querySelector("#feed-sentinel");
 const reset = document.querySelector("#reset-filters");
 const filterToggle = document.querySelector("#filter-toggle");
 const filterDrawer = document.querySelector("#filters");
 const activeFilterCount = document.querySelector("#active-filter-count");
 const dialog = document.querySelector("#detail-dialog");
 const dialogContent = document.querySelector("#dialog-content");
-const items = JSON.parse(document.querySelector("#feed-data").textContent);
+let items = JSON.parse(document.querySelector("#feed-data").textContent);
+let feedMeta = JSON.parse(document.querySelector("#feed-meta").textContent);
+let newestDate = items[0]?.date ?? null;
+let loading = false;
+let requestVersion = 0;
 
-function applyFilters() {
-  const query = search.value.trim().toLocaleLowerCase("cs");
+function updateControls() {
   const active = selects.filter((select) => select.value).length;
-  let visible = 0;
-  cards.forEach((card) => {
-    const matchesSearch = !query || card.dataset.search.includes(query);
-    const matchesFilters = selects.every((select) => {
-      if (!select.value) return true;
-      const value = card.dataset[select.dataset.filter] ?? "";
-      return select.dataset.filter === "teams" ? value.split("|").includes(select.value) : value === select.value;
-    });
-    card.hidden = !(matchesSearch && matchesFilters);
-    if (!card.hidden) visible += 1;
-  });
-  sections.forEach((section) => {
-    const sectionVisible = [...section.querySelectorAll(".moment-card")].filter((card) => !card.hidden).length;
-    section.hidden = sectionVisible === 0;
-    section.querySelector("[data-section-count]").textContent = sectionVisible;
-  });
-  count.textContent = visible;
-  empty.hidden = visible !== 0;
+  count.textContent = feedMeta.total;
+  empty.hidden = feedMeta.total !== 0;
+  sentinel.hidden = !feedMeta.hasMore;
   activeFilterCount.textContent = active;
   activeFilterCount.hidden = active === 0;
-  reset.disabled = !query && active === 0;
+  reset.disabled = !search.value.trim() && active === 0;
+}
+
+function sectionFor(date) {
+  if (!newestDate) return { key: "latest", label: "Nejnovější" };
+  const days = Math.round((new Date(`${newestDate}T12:00:00`) - new Date(`${date}T12:00:00`)) / 86400000);
+  return days === 0
+    ? { key: "latest", label: "Nejnovější" }
+    : days === 1
+      ? { key: "yesterday", label: "Včera" }
+      : { key: "earlier", label: "Dříve" };
+}
+
+function ensureSection(info) {
+  let section = feed.querySelector(`[data-section-key="${info.key}"]`);
+  if (section) return section;
+  section = document.createElement("section");
+  section.className = "date-section";
+  section.dataset.feedSection = "";
+  section.dataset.sectionKey = info.key;
+  section.innerHTML = `<div class="date-heading"><h2>${info.label}</h2><span></span><b data-section-count>0</b></div><div class="feed-list"></div>`;
+  feed.append(section);
+  return section;
+}
+
+function appendPage(page, replace) {
+  if (replace) {
+    feed.replaceChildren();
+    items = [];
+    newestDate = page.items[0]?.date ?? null;
+  }
+  const holder = document.createElement("div");
+  holder.innerHTML = page.html;
+  const cards = [...holder.children];
+  page.items.forEach((item, index) => {
+    const section = ensureSection(sectionFor(item.date));
+    section.querySelector(".feed-list").append(cards[index]);
+    section.querySelector("[data-section-count]").textContent = section.querySelectorAll(".moment-card").length;
+  });
+  items.push(...page.items);
+  feedMeta = { total: page.total, hasMore: page.hasMore };
+  updateControls();
+}
+
+function feedParams(offset) {
+  const params = new URLSearchParams({ limit: "40", offset: String(offset) });
+  if (search.value.trim()) params.set("q", search.value.trim());
+  selects.forEach((select) => {
+    if (!select.value) return;
+    params.set(select.dataset.filter === "teams" ? "team" : select.dataset.filter, select.value);
+  });
+  return params;
+}
+
+async function loadPage(replace = false) {
+  if (loading && !replace) return;
+  const version = replace ? ++requestVersion : requestVersion;
+  loading = true;
+  sentinel.textContent = "Načítám starší Příklepy…";
+  try {
+    const response = await fetch(`/api/feed?${feedParams(replace ? 0 : items.length)}`);
+    const page = await response.json();
+    if (!response.ok) throw new Error(page.error || "Příklepy se nepodařilo načíst.");
+    if (version !== requestVersion) return;
+    appendPage(page, replace);
+  } catch (error) {
+    sentinel.hidden = false;
+    sentinel.textContent = `${error.message} Posuňte stránku znovu pro další pokus.`;
+  } finally {
+    if (version === requestVersion) loading = false;
+  }
 }
 
 function escapeHtml(value) {
@@ -168,26 +226,38 @@ filterToggle.addEventListener("click", () => {
   filterDrawer.hidden = !open;
   filterToggle.setAttribute("aria-expanded", String(open));
 });
-search.addEventListener("input", applyFilters);
-selects.forEach((select) => select.addEventListener("change", applyFilters));
+let searchTimer;
+search.addEventListener("input", () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => loadPage(true), 350);
+  updateControls();
+});
+selects.forEach((select) => select.addEventListener("change", () => loadPage(true)));
 reset.addEventListener("click", () => {
   search.value = "";
   selects.forEach((select) => { select.value = ""; });
-  applyFilters();
+  loadPage(true);
   search.focus();
 });
-cards.forEach((card) => card.addEventListener("click", (event) => {
+feed.addEventListener("click", (event) => {
+  const card = event.target.closest(".moment-card");
+  if (!card) return;
   const gameLink = event.target.closest("[data-game-url]");
   if (gameLink) {
     window.open(gameLink.dataset.gameUrl, "_blank", "noopener");
     return;
   }
   openDetail(card.dataset.id);
-}));
+});
 dialog.querySelector(".dialog-close").addEventListener("click", closeDetail);
 dialog.addEventListener("click", (event) => { if (event.target === dialog) closeDetail(); });
-document.querySelectorAll("img").forEach((image) => image.addEventListener("error", () => image.remove()));
-applyFilters();
+document.addEventListener("error", (event) => { if (event.target instanceof HTMLImageElement) event.target.remove(); }, true);
+updateControls();
+
+const observer = new IntersectionObserver((entries) => {
+  if (entries.some((entry) => entry.isIntersecting) && feedMeta.hasMore) loadPage(false);
+}, { rootMargin: "500px 0px" });
+observer.observe(sentinel);
 
 const initialMoment = new URLSearchParams(window.location.hash.slice(1)).get("priklep");
 if (initialMoment) openDetail(initialMoment, false);
