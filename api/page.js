@@ -1,4 +1,4 @@
-import { loadPublicSelection } from "../src/infrastructure/postgres-repository.js";
+import { loadPublicFeedOptions, loadPublicSelection } from "../src/infrastructure/postgres-repository.js";
 import { renderPriklepyPage } from "../src/web/render.js";
 
 export default async function handler(request, response) {
@@ -8,11 +8,15 @@ export default async function handler(request, response) {
     const teamId = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestedTeamId)
       ? requestedTeamId
       : null;
-    const feed = await loadPublicSelection({ env: process.env, teamId, limit: 30 });
+    const [feed, filterOptions] = await Promise.all([
+      loadPublicSelection({ env: process.env, teamId, limit: 30 }),
+      loadPublicFeedOptions({ env: process.env }),
+    ]);
     response.setHeader("content-type", "text/html; charset=utf-8");
     response.setHeader("cache-control", "s-maxage=60, stale-while-revalidate=300");
     return response.status(200).send(renderPriklepyPage(feed.items, {
       ...feed,
+      filterOptions,
       mode: "selection",
       teamId,
       teamName: teamId ? feed.items.find((item) => item.team)?.team : null,

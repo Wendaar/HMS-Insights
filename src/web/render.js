@@ -150,8 +150,8 @@ export function renderPriklepyPage(items, config = {}) {
   <meta name="description" content="Přehled automaticky nalezených hokejových momentů z HMS zápasů">
   <title>Příklepy · HMS Insights</title>
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
-  <link rel="stylesheet" href="./styles.css?v=selection-1">
-  <script src="./app.js?v=selection-1" defer></script>
+  <link rel="stylesheet" href="./styles.css?v=selection-2">
+  <script src="./app.js?v=selection-2" defer></script>
 </head>
 <body>
   <header class="topbar">
@@ -166,23 +166,23 @@ export function renderPriklepyPage(items, config = {}) {
     ${isSelection ? `<section class="selection-intro">
       <div><span>VÝBĚR PŘÍKLEPŮ</span><h1>${escapeHtml(selectionTitle)}</h1><p>Nejsilnější momenty posledních dnů. U jednoho hráče v jednom zápase ukazujeme vždy jen jeho nejvýznamnější příběh.</p></div>
       <p class="selection-count"><strong id="result-count">${total}</strong><span>vybraných momentů</span></p>
-    </section>` : `<section class="archive-intro"><span>ÚPLNÁ HISTORIE</span><h1>Archiv Příklepů</h1><p>Procházejte všechny nalezené momenty napříč zápasy, hráči a týmy.</p></section>
+    </section>` : `<section class="archive-intro"><span>ÚPLNÁ HISTORIE</span><h1>Archiv Příklepů</h1><p>Procházejte všechny nalezené momenty napříč zápasy, hráči a týmy.</p></section>`}
     <section class="control-bar" aria-label="Vyhledávání a filtrování příklepů">
       <label class="search"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Hledat hráče, tým nebo moment…" autocomplete="off"></label>
       <button class="filter-toggle" id="filter-toggle" type="button" aria-expanded="false" aria-controls="filters"><span>Filtry</span><b id="active-filter-count" hidden>0</b><i aria-hidden="true">⌄</i></button>
-      <div class="filter-drawer" id="filters" hidden>
+      <div class="filter-drawer ${isSelection ? "selection-filters" : ""}" id="filters" hidden>
         <div class="filters">
-          <label><span>Sezona</span><select data-filter="season"><option value="">Všechny</option>${filterOptions.seasons ? optionValues(filterOptions.seasons) : options(items, "season")}</select></label>
+          ${isSelection ? "" : `<label><span>Sezona</span><select data-filter="season"><option value="">Všechny</option>${filterOptions.seasons ? optionValues(filterOptions.seasons) : options(items, "season")}</select></label>`}
           <label><span>Skupina</span><select data-filter="group"><option value="">Všechny</option>${filterOptions.groups ? optionValues(filterOptions.groups) : options(items, "group")}</select></label>
           <label><span>Tým</span><select data-filter="teams"><option value="">Všechny</option>${filterOptions.teams ? optionValues(filterOptions.teams) : teams}</select></label>
-          <label><span>Fáze</span><select data-filter="phase"><option value="">Všechny</option>${filterOptions.phases ? optionValues(filterOptions.phases) : options(items, "phase")}</select></label>
+          ${isSelection ? "" : `<label><span>Fáze</span><select data-filter="phase"><option value="">Všechny</option>${filterOptions.phases ? optionValues(filterOptions.phases) : options(items, "phase")}</select></label>
           <label><span>Stadion</span><select data-filter="venue"><option value="">Všechny</option>${filterOptions.venues ? optionValues(filterOptions.venues) : options(items, "venue")}</select></label>
-          <label><span>Partner</span><select data-filter="sponsor"><option value="">Všichni</option>${filterOptions.sponsors ? optionValues(filterOptions.sponsors) : options(items, "sponsor")}</select></label>
+          <label><span>Partner</span><select data-filter="sponsor"><option value="">Všichni</option>${filterOptions.sponsors ? optionValues(filterOptions.sponsors) : options(items, "sponsor")}</select></label>`}
         </div>
         <button id="reset-filters" type="button">Zrušit všechny filtry</button>
       </div>
-      <p class="result-line"><strong id="result-count">${total}</strong> příklepů</p>
-    </section>`}
+      ${isSelection ? "" : `<p class="result-line"><strong id="result-count">${total}</strong> příklepů</p>`}
+    </section>
 
     <div class="timeline" id="feed" aria-live="polite">${sections}</div>
     <div id="feed-sentinel" class="feed-sentinel" ${!isSelection && hasMore ? "" : "hidden"}>Načítám starší Příklepy…</div>
@@ -191,7 +191,7 @@ export function renderPriklepyPage(items, config = {}) {
 
   <dialog id="detail-dialog"><button class="dialog-close" type="button" aria-label="Zavřít">×</button><div id="dialog-content"></div></dialog>
   <script type="application/json" id="feed-data">${JSON.stringify(items).replace(/</g, "\\u003c")}</script>
-  <script type="application/json" id="feed-meta">${JSON.stringify({ total, hasMore: !isSelection && hasMore, mode }).replace(/</g, "\\u003c")}</script>
+  <script type="application/json" id="feed-meta">${JSON.stringify({ total, hasMore: !isSelection && hasMore, mode, teamId: config.teamId ?? null }).replace(/</g, "\\u003c")}</script>
 </body>
 </html>`;
 }

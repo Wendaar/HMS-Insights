@@ -219,12 +219,24 @@ export async function loadPublicSelection(options = {}) {
   const requestedPerGame = Number(options.perGame ?? 3);
   const perGame = Number.isFinite(requestedPerGame) ? Math.min(Math.max(Math.trunc(requestedPerGame), 1), 5) : 3;
   const values = [];
-  const teamClause = options.teamId
-    ? (() => {
-        values.push(String(options.teamId));
-        return `and team_id = $${values.length}::uuid`;
-      })()
-    : "";
+  const filters = [];
+  if (options.teamId) {
+    values.push(String(options.teamId));
+    filters.push(`team_id = $${values.length}::uuid`);
+  }
+  if (options.group) {
+    values.push(String(options.group));
+    filters.push(`group_name = $${values.length}`);
+  }
+  if (options.team) {
+    values.push(String(options.team));
+    filters.push(`team_name = $${values.length}`);
+  }
+  if (String(options.query ?? "").trim()) {
+    const escaped = String(options.query).trim().replace(/[\\%_]/g, "\\$&");
+    values.push(`%${escaped}%`);
+    filters.push(`concat_ws(' ', title, body, player_name, team_name, home_team_name, away_team_name) ilike $${values.length} escape '\\'`);
+  }
   values.push(days);
   const daysParameter = values.length;
   values.push(perGame);
@@ -246,7 +258,7 @@ export async function loadPublicSelection(options = {}) {
       select max(played_on) - ($${daysParameter}::integer - 1) * interval '1 day'
       from public_priklepy_feed
     )
-    ${teamClause}
+    ${filters.length ? `and ${filters.join(" and ")}` : ""}
   ), ranked as (
     select *, row_number() over (
       partition by game_id order by importance desc, priklep_id

@@ -15,11 +15,13 @@ let feedMeta = JSON.parse(document.querySelector("#feed-meta").textContent);
 let newestDate = items[0]?.date ?? null;
 let loading = false;
 let requestVersion = 0;
+const isArchive = feedMeta.mode === "archive";
+const embeddedTeamId = feedMeta.teamId;
 
-function updateControls() {
+function updateControls(resultTotal = feedMeta.total) {
   const active = selects.filter((select) => select.value).length;
-  if (count) count.textContent = feedMeta.total;
-  empty.hidden = feedMeta.total !== 0;
+  if (count) count.textContent = resultTotal;
+  empty.hidden = resultTotal !== 0;
   sentinel.hidden = !feedMeta.hasMore;
   if (activeFilterCount) {
     activeFilterCount.textContent = active;
@@ -71,6 +73,7 @@ function appendPage(page, replace) {
 
 function feedParams(offset) {
   const params = new URLSearchParams({ limit: "40", offset: String(offset) });
+  if (embeddedTeamId) params.set("teamId", embeddedTeamId);
   if (search?.value.trim()) params.set("q", search.value.trim());
   selects.forEach((select) => {
     if (!select.value) return;
@@ -85,7 +88,8 @@ async function loadPage(replace = false) {
   loading = true;
   sentinel.textContent = "Načítám starší Příklepy…";
   try {
-    const response = await fetch(`/api/feed?${feedParams(replace ? 0 : items.length)}`);
+    const endpoint = isArchive ? "/api/feed" : "/api/selection";
+    const response = await fetch(`${endpoint}?${feedParams(replace ? 0 : items.length)}`);
     const page = await response.json();
     if (!response.ok) throw new Error(page.error || "Příklepy se nepodařilo načíst.");
     if (version !== requestVersion) return;
@@ -256,7 +260,7 @@ dialog.addEventListener("click", (event) => { if (event.target === dialog) close
 document.addEventListener("error", (event) => { if (event.target instanceof HTMLImageElement) event.target.remove(); }, true);
 updateControls();
 
-if (feedMeta.mode === "archive") {
+if (isArchive) {
   const observer = new IntersectionObserver((entries) => {
     if (entries.some((entry) => entry.isIntersecting) && feedMeta.hasMore) loadPage(false);
   }, { rootMargin: "500px 0px" });

@@ -222,8 +222,11 @@ test("veřejný výběr je oddělený od úplného archivu", () => {
   assert.match(html, /To nejlepší z ledu/);
   assert.doesNotMatch(html, /href="\/archiv"/);
   assert.match(html, /"mode":"selection"/);
-  assert.doesNotMatch(html, /id="search"/);
-  assert.doesNotMatch(html, /data-filter=/);
+  assert.match(html, /id="search"/);
+  assert.match(html, /data-filter="group"/);
+  assert.match(html, /data-filter="teams"/);
+  assert.doesNotMatch(html, /data-filter="season"/);
+  assert.doesNotMatch(html, /data-filter="venue"/);
 });
 
 test("veřejný výběr slučuje momenty hráče a omezuje počet momentů ze zápasu", async () => {
@@ -242,6 +245,23 @@ test("veřejný výběr slučuje momenty hráče a omezuje počet momentů ze z�
   assert.match(queries[0].text, /game_rank <= \$3/);
   assert.match(queries[0].text, /team_id = \$1::uuid/);
   assert.deepEqual(queries[0].values, [ids.home, 14, 3, 30]);
+});
+
+test("filtry veřejného výběru sestaví nový Top 30 pro skupinu a tým momentu", async () => {
+  const queries = [];
+  const sql = { query: async (text, values) => { queries.push({ text, values }); return []; } };
+  await loadPublicSelection({
+    sql,
+    group: "HOBBY FIRE",
+    team: "HC Papoušci",
+    query: "hattrick",
+    limit: 30,
+  });
+  assert.match(queries[0].text, /group_name = \$1/);
+  assert.match(queries[0].text, /team_name = \$2/);
+  assert.match(queries[0].text, /ilike \$3/);
+  assert.doesNotMatch(queries[0].text, /home_team_name = \$2 or away_team_name = \$2/);
+  assert.deepEqual(queries[0].values, ["HOBBY FIRE", "HC Papoušci", "%hattrick%", 14, 3, 30]);
 });
 
 test("serverové filtrování hledá v celé historii a stránkuje výsledky", async () => {

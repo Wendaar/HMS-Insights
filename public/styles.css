@@ -50,6 +50,7 @@ main { width: min(1260px,calc(100% - 40px)); margin: auto; padding: 28px 0 90px;
 .result-line strong { color: var(--ink); }
 .filter-drawer { position: absolute; top: 64px; left: 0; right: 0; padding: 15px; background: rgba(15,22,31,.98); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 28px 90px rgba(0,0,0,.55); }
 .filters { display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); gap: 9px; }
+.selection-filters .filters { grid-template-columns: repeat(2,minmax(0,1fr)); }
 .filters label>span { display: block; margin: 0 0 6px 2px; color: #8390a2; font-size: .7rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 .filters select { width: 100%; height: 42px; padding: 0 10px; color: #e3e8ee; background: #0c1219; border: 1px solid var(--line); border-radius: 8px; outline: 0; }
 .filter-drawer>button { margin-top: 11px; padding: 5px 0; color: var(--ice); background: none; border: 0; cursor: pointer; font-size: .78rem; }
