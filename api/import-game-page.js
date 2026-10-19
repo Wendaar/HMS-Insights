@@ -23,13 +23,13 @@ const html = `<!doctype html>
   <p>Bezpečný kontrolní import z HMS do databáze Příklepů.</p>
   <form id="form">
     <label for="gameId">HMS Game ID</label>
-    <input id="gameId" required value="F6312E3A-98CA-11F1-8BDF-EF2495D048F3" autocomplete="off">
+    <input id="gameId" required value="F6321894-98CA-11F1-8BDF-EF2495D048F3" autocomplete="off">
     <label for="secret">Webhook secret</label>
     <input id="secret" required type="password" autocomplete="off" placeholder="Vlož stejný secret jako ve Vercelu">
     <button id="submit">Načíst a zpracovat zápas</button>
   </form>
   <div id="result" role="status"></div>
-  <a id="feed-link" href="/priklepy">Otevřít Příklepy →</a>
+  <a id="feed-link" href="/priklepy">Otevřít Game Report →</a>
   <p><a href="/admin/backfill" style="color:#aab5c4">Historický import zápasů</a></p>
   <small>Secret se neukládá do stránky ani do URL. Odešle se pouze přes HTTPS pro ověření tohoto požadavku.</small>
 </main><script>
@@ -41,7 +41,7 @@ form.addEventListener('submit',async(event)=>{
     const response=await fetch('/api/admin/import-game',{method:'POST',headers:{'content-type':'application/json','authorization':'Bearer '+secret.value},body:JSON.stringify({gameId:document.querySelector('#gameId').value.trim()})});
     const data=await response.json();
     if(!response.ok)throw new Error(data.error||'Import se nezdařil.');
-    result.textContent='Hotovo: '+data.score+', vzniklo '+data.priklepy+' Příklepů.';feedLink.style.display='inline-block';secret.value='';
+    result.textContent='Hotovo: '+data.score+', vzniklo '+data.priklepy+' Příklepů.'+(data.events?' Uloženo '+data.events.goal+' gólů a '+data.events.penalty+' trestů.':'');feedLink.href='/game-center/'+encodeURIComponent(data.gameId);feedLink.style.display='inline-block';secret.value='';
   }catch(error){result.className='error';result.textContent=error.message}finally{button.disabled=false}
 });
 </script></body></html>`;

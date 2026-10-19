@@ -28,6 +28,7 @@ export function rowsFor(analysis) {
       venue_id: game.venueId,
       venue_name: game.venueName,
       venue_logo_url: game.venueLogoUrl,
+      event_snapshot: game.eventSnapshot ?? null,
       updated_at: new Date().toISOString(),
     }],
     player_game_stats: game.playerStats.map((item) => ({

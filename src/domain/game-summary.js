@@ -1,3 +1,5 @@
+import { buildGameTimeline } from "./game-timeline.js";
+
 // Public, versioned read model shared by Game Center and future media consumers.
 // Accepts stored normalized rows, never raw HMS responses or environment values.
 export const isGameId = (value) => typeof value === "string"
@@ -9,6 +11,7 @@ function date(value) {
 }
 
 export function buildGameSummary({ game, teams = [], players = [], goalies = [], priklepy = [] }) {
+  const timeline = buildGameTimeline(game);
   const team = (side) => {
     const row = teams.find((item) => item.side === side);
     const prefix = side === "HOME" ? "home" : "away";
@@ -19,6 +22,7 @@ export function buildGameSummary({ game, teams = [], players = [], goalies = [],
   };
   return {
     schemaVersion: 1,
+    timeline,
     gameId: game.game_id,
     status: game.status,
     playedOn: date(game.played_on),
@@ -44,8 +48,9 @@ export function buildGameSummary({ game, teams = [], players = [], goalies = [],
     provenance: {
       source: "HMS", updatedAt: game.updated_at ?? null,
       score: "stored-hms-result", statistics: "recorded-events",
-      // Event coverage and overwrite provenance were not persisted by the MVP.
-      eventCoverage: "unknown", timelineAvailable: false,
+      eventCoverage: timeline.coverage, timelineAvailable: timeline.available,
+      scoreWasOverridden: typeof game.event_snapshot?.scoreWasOverridden === "boolean"
+        ? game.event_snapshot.scoreWasOverridden : null,
     },
   };
 }

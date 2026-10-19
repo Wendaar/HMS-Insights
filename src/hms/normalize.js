@@ -1,3 +1,5 @@
+import { buildEventSnapshot, selectEventGroup, uniqueEvents } from "./event-snapshot.js";
+
 function required(value, label) {
   if (value === undefined || value === null || value === "") {
     throw new Error(`Chybí povinná hodnota: ${label}`);
@@ -54,12 +56,11 @@ function teamFromEvent(event) {
   return teamRecord(team);
 }
 
-function eventGroups(response) {
-  const events = Array.isArray(response?.events) ? response.events : [];
+function eventGroups(response, detail) {
   return {
-    goals: response?.GameEventGoals ?? events.filter((item) => item.type?.toLowerCase() === "goal"),
-    saves: response?.GameEventSaves ?? events.filter((item) => item.type?.toLowerCase() === "save"),
-    penalties: response?.GameEventPenalties ?? events.filter((item) => item.type?.toLowerCase() === "penalty"),
+    goals: selectEventGroup(response, detail, "GameEventGoals", "goal"),
+    saves: selectEventGroup(response, detail, "GameEventSaves", "save"),
+    penalties: selectEventGroup(response, detail, "GameEventPenalties", "penalty"),
   };
 }
 
@@ -91,21 +92,20 @@ function penaltyMinutes(value) {
 }
 
 export function normalizeHmsGame(gameEventsResponse, lineupResponse, gameDetailResponse = null) {
-  const groupedEvents = eventGroups(gameEventsResponse);
-  const gameResponse = gameDetailResponse
-    ? {
-        ...gameDetailResponse,
-        ...gameEventsResponse,
-        GameEventGoals: groupedEvents.goals.length ? groupedEvents.goals : gameDetailResponse.GameEventGoals,
-        GameEventSaves: groupedEvents.saves.length ? groupedEvents.saves : gameDetailResponse.GameEventSaves,
-        GameEventPenalties: groupedEvents.penalties.length ? groupedEvents.penalties : gameDetailResponse.GameEventPenalties,
-      }
-    : {
-        ...gameEventsResponse,
-        GameEventGoals: groupedEvents.goals,
-        GameEventSaves: groupedEvents.saves,
-        GameEventPenalties: groupedEvents.penalties,
-      };
+  if (gameDetailResponse?.gameId && gameEventsResponse?.gameId
+    && gameDetailResponse.gameId.toLowerCase() !== gameEventsResponse.gameId.toLowerCase()) {
+    throw new Error("Game Detail a Events patří k různým zápasům.");
+  }
+  const groupedEvents = eventGroups(gameEventsResponse, gameDetailResponse);
+  for (const [group, type] of [["goals", "goal"], ["saves", "save"], ["penalties", "penalty"]]) {
+    groupedEvents[group].events = uniqueEvents(groupedEvents[group].events, type);
+  }
+  const gameResponse = {
+    ...gameEventsResponse, ...gameDetailResponse,
+    GameEventGoals: groupedEvents.goals.events,
+    GameEventSaves: groupedEvents.saves.events,
+    GameEventPenalties: groupedEvents.penalties.events,
+  };
   const gameId = required(gameResponse.gameId, "gameId");
   // The gameLineup endpoint is already scoped by the gameId query parameter and
   // does not have to repeat that id in its response body. Compare it only when
@@ -249,7 +249,7 @@ export function normalizeHmsGame(gameEventsResponse, lineupResponse, gameDetailR
     };
   });
 
-  return {
+  const normalized = {
     gameId,
     organizationId: required(gameResponse.organizationId, "organizationId"),
     competitionId: competition.competitionId,
@@ -281,6 +281,8 @@ export function normalizeHmsGame(gameEventsResponse, lineupResponse, gameDetailR
     goalieStats: [...saveCounts.values()],
     teamStats,
   };
+  normalized.eventSnapshot = buildEventSnapshot(normalized, groupedEvents, players, penaltyMinutes);
+  return normalized;
 }
 
 export { penaltyMinutes, resolveHmsMediaUrl, secondsFromClock };

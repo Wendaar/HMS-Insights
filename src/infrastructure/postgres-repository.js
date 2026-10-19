@@ -4,7 +4,7 @@ import { rowsFor } from "./analysis-rows.js";
 const specs = {
   games: {
     conflict: ["game_id"],
-    json: [],
+    json: ["event_snapshot"],
   },
   player_game_stats: {
     conflict: ["game_id", "player_id"],
@@ -38,7 +38,7 @@ function buildUpsert(table, rows) {
   const columns = Object.keys(rows[0]);
   const values = [];
   const tuples = rows.map((row) => `(${columns.map((column) => {
-    const value = spec.json.includes(column) ? JSON.stringify(row[column] ?? {}) : row[column];
+    const value = spec.json.includes(column) ? (row[column] == null ? null : JSON.stringify(row[column])) : row[column];
     if (typeof value === "number" && !Number.isFinite(value)) {
       throw new Error(`Neplatná číselná hodnota pro ${table}.${column}.`);
     }
@@ -78,6 +78,7 @@ export async function ensurePenaltyMinutesSchema(options = {}) {
 export async function persistAnalysisPostgres(analysis, options = {}) {
   const rows = rowsFor(analysis);
   const sql = options.sql ?? createSql(options.databaseUrl ?? databaseUrlFromEnv(options.env));
+  await ensureEventSnapshotSchema({ sql });
   // A corrected finished game is a full snapshot. Removing the previous snapshot
   // prevents stale players or achievements from surviving a game.updated event.
   const queries = [
@@ -91,6 +92,16 @@ export async function persistAnalysisPostgres(analysis, options = {}) {
   }
   await sql.transaction(queries);
   return rows;
+}
+
+// Follow the existing import-time schema upgrade pattern. Public readers never
+// mutate schema, and to_jsonb(g) also works before this nullable column exists.
+export async function ensureEventSnapshotSchema(options = {}) {
+  const sql = options.sql ?? createSql(options.databaseUrl ?? databaseUrlFromEnv(options.env));
+  const columns = await sql.query("select data_type from information_schema.columns where table_schema = 'public' and table_name = 'games' and column_name = 'event_snapshot'");
+  if (columns[0]?.data_type === "jsonb") return false;
+  await sql.query("alter table games add column if not exists event_snapshot jsonb");
+  return true;
 }
 
 // One statement observes a single committed snapshot, including games with no Příklepy.

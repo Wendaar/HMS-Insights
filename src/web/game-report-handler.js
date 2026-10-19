@@ -2,7 +2,7 @@ import { getGameSummary } from "../app/game-summary.js";
 import { isGameId } from "../domain/game-summary.js";
 import { renderGameReport } from "./game-report.js";
 
-export function createGameReportHandler({ json = false, loadSummary = getGameSummary } = {}) {
+export function createGameReportHandler({ json = false, loadSummary = getGameSummary, preview = false } = {}) {
   return async (request, response) => {
     response.setHeader("cache-control", "no-store");
     response.setHeader("x-content-type-options", "nosniff");
@@ -22,7 +22,7 @@ export function createGameReportHandler({ json = false, loadSummary = getGameSum
       if (json) return response.status(200).json(summary);
       response.setHeader("content-type", "text/html; charset=utf-8");
       response.setHeader("content-security-policy", "default-src 'none'; style-src 'self'; img-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'");
-      return response.status(200).send(renderGameReport(summary));
+      return response.status(200).send(renderGameReport(summary, { preview }));
     } catch {
       // Do not serialize database errors, connection strings or HMS responses.
       return fail(503, "Data zápasu jsou dočasně nedostupná.");

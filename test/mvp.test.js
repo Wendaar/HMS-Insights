@@ -330,7 +330,10 @@ test("opravený zápas atomicky nahradí starý snapshot a zastaralé Příklepy
   let transaction;
   await persistAnalysisPostgres(analysis, {
     sql: {
-      query: (text, values) => { const query = { text, values }; queries.push(query); return query; },
+      query: (text, values) => {
+        if (text.startsWith("select data_type")) return [{ data_type: "jsonb" }];
+        const query = { text, values }; queries.push(query); return query;
+      },
       transaction: async (batch) => { transaction = batch; },
     },
   });

@@ -9,10 +9,13 @@ import { createGameReportHandler } from "./web/game-report-handler.js";
 import { getGameSummary } from "./app/game-summary.js";
 import { buildGameSummary } from "./domain/game-summary.js";
 import { rowsFor } from "./infrastructure/analysis-rows.js";
+import { analyzeHmsResponses } from "./app/analyze.js";
+import { gameEvents as zbraslavEvents, lineup as zbraslavLineup } from "./fixtures/zbraslav-kosti.js";
 
 const directory = dirname(fileURLToPath(import.meta.url));
 const publicDirectory = join(directory, "..", "public");
 const port = Number(process.env.PORT ?? 3000);
+const zbraslavAnalysis = analyzeHmsResponses(zbraslavEvents, zbraslavLineup);
 
 const assets = {
   "/styles.css": ["text/css; charset=utf-8", "styles.css"],
@@ -33,12 +36,13 @@ export const server = createServer(async (request, response) => {
       json(body) { response.setHeader("content-type", "application/json; charset=utf-8"); response.end(JSON.stringify(body)); },
     };
     const loadSummary = process.env.DATABASE_URL ? getGameSummary : async (gameId) => {
-      if (gameId.toLowerCase() !== sampleAnalysis.game.gameId.toLowerCase()) return null;
-      const rows = rowsFor(sampleAnalysis);
+      const preview = [zbraslavAnalysis, sampleAnalysis].find((item) => item.game.gameId.toLowerCase() === gameId.toLowerCase());
+      if (!preview) return null;
+      const rows = rowsFor(preview);
       return buildGameSummary({ game: rows.games[0], teams: rows.team_game_stats,
         players: rows.player_game_stats, goalies: rows.goalie_game_stats, priklepy: rows.detected_priklepy });
     };
-    await createGameReportHandler({ json: !reportMatch, loadSummary })(request, adapter);
+    await createGameReportHandler({ json: !reportMatch, loadSummary, preview: !process.env.DATABASE_URL })(request, adapter);
     return;
   }
   if (url.pathname === "/") {

@@ -1,0 +1,286 @@
+{
+  "schemaVersion": 1,
+  "gameId": "f6321894-98ca-11f1-8bdf-ef2495d048f3",
+  "status": "FINISHED",
+  "playedOn": "2026-10-18",
+  "competition": "PHM Cup",
+  "season": "2026-2027",
+  "group": "SUPER",
+  "phase": "Základní část",
+  "venue": "ICERINK (Yellow)",
+  "home": {
+    "id": "e036fad9-60e7-4bd3-8964-4d170d3ce781",
+    "name": "Hc Slavoj Zbraslav",
+    "score": 5,
+    "lineupSize": 13
+  },
+  "away": {
+    "id": "ddef06e1-1a37-460a-9b1f-5eaf753dbc87",
+    "name": "HC Kosti",
+    "score": 10,
+    "lineupSize": 12
+  },
+  "players": [
+    {
+      "id": "c9f99bc0-2cda-439f-bc0d-59382b9e32e0",
+      "teamId": "ddef06e1-1a37-460a-9b1f-5eaf753dbc87",
+      "name": "Mansur Ischoev",
+      "goals": 3,
+      "assists": 5,
+      "points": 8,
+      "penaltyMinutes": 1.75
+    },
+    {
+      "id": "95ec0a60-76c3-11f0-b499-8b0f26f64cd9",
+      "teamId": "ddef06e1-1a37-460a-9b1f-5eaf753dbc87",
+      "name": "Adam Patočka",
+      "goals": 4,
+      "assists": 3,
+      "points": 7,
+      "penaltyMinutes": 0
+    },
+    {
+      "id": "9847c8c7-bcb0-49f8-84dd-6498d7f55c2b",
+      "teamId": "e036fad9-60e7-4bd3-8964-4d170d3ce781",
+      "name": "Daniel Fišer",
+      "goals": 2,
+      "assists": 0,
+      "points": 2,
+      "penaltyMinutes": 1.75
+    },
+    {
+      "id": "94d1c60a-77ae-48ff-8865-7390878719bf",
+      "teamId": "ddef06e1-1a37-460a-9b1f-5eaf753dbc87",
+      "name": "David Mekleš",
+      "goals": 1,
+      "assists": 1,
+      "points": 2,
+      "penaltyMinutes": 0
+    },
+    {
+      "id": "8b6895b0-abed-11ee-95ad-91d90c299f63",
+      "teamId": "ddef06e1-1a37-460a-9b1f-5eaf753dbc87",
+      "name": "David Polomis",
+      "goals": 1,
+      "assists": 1,
+      "points": 2,
+      "penaltyMinutes": 0
+    },
+    {
+      "id": "4c9bce26-0643-4d8b-a956-32100953585f",
+      "teamId": "e036fad9-60e7-4bd3-8964-4d170d3ce781",
+      "name": "Dominik Velas",
+      "goals": 1,
+      "assists": 1,
+      "points": 2,
+      "penaltyMinutes": 0
+    },
+    {
+      "id": "a84d9700-9b51-4afa-9594-6c5387a260b9",
+      "teamId": "e036fad9-60e7-4bd3-8964-4d170d3ce781",
+      "name": "Lukáš Miščík",
+      "goals": 1,
+      "assists": 1,
+      "points": 2,
+      "penaltyMinutes": 0
+    },
+    {
+      "id": "7fe5b430-bda1-11f0-b0dd-056614f46829",
+      "teamId": "ddef06e1-1a37-460a-9b1f-5eaf753dbc87",
+      "name": "Martin Bernát",
+      "goals": 0,
+      "assists": 2,
+      "points": 2,
+      "penaltyMinutes": 0
+    },
+    {
+      "id": "30968c03-5c4d-4ce8-bddd-4b6255497114",
+      "teamId": "e036fad9-60e7-4bd3-8964-4d170d3ce781",
+      "name": "Vojtěch Mikoláš",
+      "goals": 0,
+      "assists": 2,
+      "points": 2,
+      "penaltyMinutes": 1.75
+    },
+    {
+      "id": "25969f80-d03f-11ef-a836-7d74ee179a86",
+      "teamId": "e036fad9-60e7-4bd3-8964-4d170d3ce781",
+      "name": "Michal Každan",
+      "goals": 1,
+      "assists": 0,
+      "points": 1,
+      "penaltyMinutes": 0
+    },
+    {
+      "id": "43e18580-c878-11f1-a15a-9bd977e3b481",
+      "teamId": "ddef06e1-1a37-460a-9b1f-5eaf753dbc87",
+      "name": "Michal Orgoník",
+      "goals": 1,
+      "assists": 0,
+      "points": 1,
+      "penaltyMinutes": 0
+    },
+    {
+      "id": "d9779170-85b6-11f1-ba1b-8979fd172926",
+      "teamId": "ddef06e1-1a37-460a-9b1f-5eaf753dbc87",
+      "name": "Antonín Janků",
+      "goals": 0,
+      "assists": 1,
+      "points": 1,
+      "penaltyMinutes": 0
+    },
+    {
+      "id": "0b7dfa10-4fbe-11ee-8e5c-31117de2b309",
+      "teamId": "e036fad9-60e7-4bd3-8964-4d170d3ce781",
+      "name": "Jakub Chmel",
+      "goals": 0,
+      "assists": 1,
+      "points": 1,
+      "penaltyMinutes": 0
+    },
+    {
+      "id": "c4db4981-75af-46f6-b7a8-76d6e65f3be8",
+      "teamId": "ddef06e1-1a37-460a-9b1f-5eaf753dbc87",
+      "name": "Ladislav Kolář",
+      "goals": 0,
+      "assists": 1,
+      "points": 1,
+      "penaltyMinutes": 0
+    },
+    {
+      "id": "c28d6f84-f9cc-4acd-8798-8e4a274fd148",
+      "teamId": "ddef06e1-1a37-460a-9b1f-5eaf753dbc87",
+      "name": "Martin Hruška",
+      "goals": 0,
+      "assists": 1,
+      "points": 1,
+      "penaltyMinutes": 0
+    },
+    {
+      "id": "6b2b7a53-632d-4fd7-be5d-063c7c5bbed5",
+      "teamId": "e036fad9-60e7-4bd3-8964-4d170d3ce781",
+      "name": "Pavel Nejdl",
+      "goals": 0,
+      "assists": 1,
+      "points": 1,
+      "penaltyMinutes": 0
+    },
+    {
+      "id": "0dde08ea-a8b4-4e8f-8677-670c92851a5a",
+      "teamId": "e036fad9-60e7-4bd3-8964-4d170d3ce781",
+      "name": "Stanislav Veselý",
+      "goals": 0,
+      "assists": 1,
+      "points": 1,
+      "penaltyMinutes": 0
+    },
+    {
+      "id": "f13e68f5-43d9-4ccc-96ad-ecce88801357",
+      "teamId": "ddef06e1-1a37-460a-9b1f-5eaf753dbc87",
+      "name": "Tomáš Borovanský",
+      "goals": 0,
+      "assists": 1,
+      "points": 1,
+      "penaltyMinutes": 0
+    },
+    {
+      "id": "ace58eed-ad16-4492-b8b0-10b409f67d59",
+      "teamId": "e036fad9-60e7-4bd3-8964-4d170d3ce781",
+      "name": "Benjamín Velas",
+      "goals": 0,
+      "assists": 0,
+      "points": 0,
+      "penaltyMinutes": 0
+    },
+    {
+      "id": "10c4c3b0-d3b4-11f0-95eb-db61eb025e54",
+      "teamId": "e036fad9-60e7-4bd3-8964-4d170d3ce781",
+      "name": "Jakub Káš",
+      "goals": 0,
+      "assists": 0,
+      "points": 0,
+      "penaltyMinutes": 1.75
+    },
+    {
+      "id": "71cf34f4-31ed-488a-bf68-ce96b8583430",
+      "teamId": "e036fad9-60e7-4bd3-8964-4d170d3ce781",
+      "name": "Jakub Morávek",
+      "goals": 0,
+      "assists": 0,
+      "points": 0,
+      "penaltyMinutes": 0
+    },
+    {
+      "id": "327aabd0-adc8-11f0-af1c-99146a84e13b",
+      "teamId": "e036fad9-60e7-4bd3-8964-4d170d3ce781",
+      "name": "Nikolas Tverďák",
+      "goals": 0,
+      "assists": 0,
+      "points": 0,
+      "penaltyMinutes": 0
+    },
+    {
+      "id": "a087d9a1-8c88-425a-9c06-b7b2008b1eae",
+      "teamId": "ddef06e1-1a37-460a-9b1f-5eaf753dbc87",
+      "name": "Tomáš Prokop",
+      "goals": 0,
+      "assists": 0,
+      "points": 0,
+      "penaltyMinutes": 0
+    }
+  ],
+  "goalies": [
+    {
+      "id": "25c82648-6b07-466c-beb3-37893e33a808",
+      "teamId": "e036fad9-60e7-4bd3-8964-4d170d3ce781",
+      "name": "Petr Salaquarda",
+      "saves": 27,
+      "goalsAgainst": 10
+    },
+    {
+      "id": "f4f5d9c6-b405-4b68-b366-53dcb40d2900",
+      "teamId": "ddef06e1-1a37-460a-9b1f-5eaf753dbc87",
+      "name": "Aleš Hadrbolec",
+      "saves": 19,
+      "goalsAgainst": 5
+    }
+  ],
+  "priklepy": [
+    {
+      "id": "F6321894-98CA-11F1-8BDF-EF2495D048F3:HATTRICK:95EC0A60-76C3-11F0-B499-8B0F26F64CD9",
+      "type": "HATTRICK",
+      "title": "Hattrick",
+      "text": "Adam Patočka vstřelil 4 góly.",
+      "importance": 92
+    },
+    {
+      "id": "F6321894-98CA-11F1-8BDF-EF2495D048F3:HATTRICK:C9F99BC0-2CDA-439F-BC0D-59382B9E32E0",
+      "type": "HATTRICK",
+      "title": "Hattrick",
+      "text": "Mansur Ischoev vstřelil 3 góly.",
+      "importance": 92
+    },
+    {
+      "id": "F6321894-98CA-11F1-8BDF-EF2495D048F3:MULTIPOINT_GAME:95EC0A60-76C3-11F0-B499-8B0F26F64CD9",
+      "type": "MULTIPOINT_GAME",
+      "title": "7 body v zápase",
+      "text": "Adam Patočka zaznamenal 7 body (4+3).",
+      "importance": 78
+    },
+    {
+      "id": "F6321894-98CA-11F1-8BDF-EF2495D048F3:MULTIPOINT_GAME:C9F99BC0-2CDA-439F-BC0D-59382B9E32E0",
+      "type": "MULTIPOINT_GAME",
+      "title": "8 body v zápase",
+      "text": "Mansur Ischoev zaznamenal 8 body (3+5).",
+      "importance": 78
+    }
+  ],
+  "provenance": {
+    "source": "HMS",
+    "updatedAt": "2026-10-18T15:05:01.527+00:00",
+    "score": "stored-hms-result",
+    "statistics": "recorded-events",
+    "eventCoverage": "unknown",
+    "timelineAvailable": false
+  }
+}

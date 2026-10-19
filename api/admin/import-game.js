@@ -9,13 +9,13 @@ export default async function handler(request, response) {
     return response.status(401).json({ error: "Nesprávný secret." });
   }
 
-  const body = typeof request.body === "string" ? JSON.parse(request.body) : request.body;
   try {
+    const body = typeof request.body === "string" ? JSON.parse(request.body) : request.body;
     await ensurePenaltyMinutesSchema();
     const result = await processFinishedGame(body?.gameId);
     return response.status(200).json({ imported: true, ...result });
   } catch (error) {
-    console.error(error);
-    return response.status(422).json({ imported: false, error: error.message });
+    console.error("HMS manual import failed.");
+    return response.status(422).json({ imported: false, error: "Import zápasu se nezdařil. Zkontrolujte Game ID a serverovou konfiguraci." });
   }
 }

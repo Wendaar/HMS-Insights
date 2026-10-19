@@ -27,7 +27,7 @@ test("GameSummary preserves 9:3, all ten Příklepy and ranked public stats", ()
 });
 
 test("official result survives missing events and no achievements; never infer coverage", () => {
-  const summary = buildGameSummary({ game: snapshot.game });
+  const summary = buildGameSummary({ game: { ...snapshot.game, event_snapshot: null } });
   assert.equal(summary.home.score, 9);
   assert.deepEqual(summary.priklepy, []);
   assert.equal(summary.provenance.eventCoverage, "unknown");
@@ -143,6 +143,7 @@ test("real Neon driver sends replacement as one transaction request", async () =
   try {
     neonConfig.fetchFunction = async (_url, init) => {
       const body = JSON.parse(init.body);
+      if (!body.queries) return { ok: true, json: async () => ({ fields: [{ name: "data_type", dataTypeID: 25 }], rows: [["jsonb"]] }) };
       requests.push(body);
       return { ok: true, json: async () => ({ results: body.queries.map(() => ({ fields: [], rows: [] })) }) };
     };
