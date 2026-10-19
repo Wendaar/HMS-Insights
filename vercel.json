@@ -8,6 +8,7 @@
     }
   },
   "rewrites": [
+    { "source": "/game-center/:gameId", "destination": "/api/game-report-page?gameId=:gameId" },
     { "source": "/", "destination": "/api/page" },
     { "source": "/priklepy", "destination": "/api/page" },
     { "source": "/archiv", "destination": "/api/archive-page" },

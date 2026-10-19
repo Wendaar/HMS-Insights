@@ -1,5 +1,8 @@
 # HMS Insights / Příklepy — MVP 0.1
 
+Game Center MVP: veřejný `/game-center/:gameId` a sdílený JSON GameSummary v1.
+Architektura, spuštění a ověření: [Game Center](docs/GAME-CENTER.md).
+
 Úzký vertical slice nad jedním dokončeným HMS zápasem:
 
 `Game Events + Lineup → normalizace → zápasové statistiky → 5 pravidel → /priklepy`

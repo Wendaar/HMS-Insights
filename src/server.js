@@ -5,6 +5,10 @@ import { dirname, join } from "node:path";
 import { sampleAnalysis } from "./app/sample.js";
 import { feedDemo } from "./app/feed-demo.js";
 import { renderPriklepyPage } from "./web/render.js";
+import { createGameReportHandler } from "./web/game-report-handler.js";
+import { getGameSummary } from "./app/game-summary.js";
+import { buildGameSummary } from "./domain/game-summary.js";
+import { rowsFor } from "./infrastructure/analysis-rows.js";
 
 const directory = dirname(fileURLToPath(import.meta.url));
 const publicDirectory = join(directory, "..", "public");
@@ -13,11 +17,30 @@ const port = Number(process.env.PORT ?? 3000);
 const assets = {
   "/styles.css": ["text/css; charset=utf-8", "styles.css"],
   "/app.js": ["text/javascript; charset=utf-8", "app.js"],
+  "/game-report.css": ["text/css; charset=utf-8", "game-report.css"],
   "/favicon.svg": ["image/svg+xml", "favicon.svg"],
 };
 
 export const server = createServer(async (request, response) => {
   const url = new URL(request.url, `http://${request.headers.host ?? "localhost"}`);
+  const reportMatch = /^\/game-center\/([^/]+)$/.exec(url.pathname);
+  if (reportMatch || url.pathname === "/api/game-summary") {
+    request.query = { gameId: reportMatch?.[1] ?? url.searchParams.get("gameId") };
+    const adapter = {
+      setHeader: (key, value) => response.setHeader(key, value),
+      status(code) { response.statusCode = code; return this; },
+      send(body) { response.end(body); },
+      json(body) { response.setHeader("content-type", "application/json; charset=utf-8"); response.end(JSON.stringify(body)); },
+    };
+    const loadSummary = process.env.DATABASE_URL ? getGameSummary : async (gameId) => {
+      if (gameId.toLowerCase() !== sampleAnalysis.game.gameId.toLowerCase()) return null;
+      const rows = rowsFor(sampleAnalysis);
+      return buildGameSummary({ game: rows.games[0], teams: rows.team_game_stats,
+        players: rows.player_game_stats, goalies: rows.goalie_game_stats, priklepy: rows.detected_priklepy });
+    };
+    await createGameReportHandler({ json: !reportMatch, loadSummary })(request, adapter);
+    return;
+  }
   if (url.pathname === "/") {
     response.writeHead(302, { location: "/priklepy" });
     response.end();

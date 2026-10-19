@@ -80,12 +80,29 @@ export async function persistAnalysisPostgres(analysis, options = {}) {
   const sql = options.sql ?? createSql(options.databaseUrl ?? databaseUrlFromEnv(options.env));
   // A corrected finished game is a full snapshot. Removing the previous snapshot
   // prevents stale players or achievements from surviving a game.updated event.
-  await sql.query("delete from games where game_id = $1", [analysis.game.gameId]);
+  const queries = [
+    // Serialize replacements of the same game, including its first import.
+    sql.query("select pg_advisory_xact_lock(hashtextextended(lower($1::text), 0))", [analysis.game.gameId]),
+    sql.query("delete from games where game_id = $1", [analysis.game.gameId]),
+  ];
   for (const table of Object.keys(specs)) {
     const query = buildUpsert(table, rows[table]);
-    if (query) await sql.query(query.text, query.values);
+    if (query) queries.push(sql.query(query.text, query.values));
   }
+  await sql.transaction(queries);
   return rows;
+}
+
+// One statement observes a single committed snapshot, including games with no Příklepy.
+export async function loadGameSnapshot(gameId, options = {}) {
+  const sql = options.sql ?? createSql(options.databaseUrl ?? databaseUrlFromEnv(options.env));
+  const rows = await sql.query(`select to_jsonb(g) as game,
+    coalesce((select jsonb_agg(t) from team_game_stats t where t.game_id = g.game_id), '[]'::jsonb) as teams,
+    coalesce((select jsonb_agg(p) from player_game_stats p where p.game_id = g.game_id), '[]'::jsonb) as players,
+    coalesce((select jsonb_agg(k) from goalie_game_stats k where k.game_id = g.game_id), '[]'::jsonb) as goalies,
+    coalesce((select jsonb_agg(d) from detected_priklepy d where d.game_id = g.game_id), '[]'::jsonb) as priklepy
+    from games g where g.game_id = $1::uuid`, [gameId]);
+  return rows[0] ?? null;
 }
 
 function publicFeedItem(row) {
@@ -118,6 +135,7 @@ function publicFeedItem(row) {
     teamLogoUrl: row.team_logo_url,
     teamColor: row.team_color ?? row.group_color ?? "#8fe7ff",
     source: "HMS",
+    gameReportUrl: `/game-center/${row.game_id}`,
     gameDetailUrl: `https://prod.hms.wootera.net/embed/game?gameId=${row.game_id}&lang=cs`,
   };
 }

@@ -325,14 +325,21 @@ test("PostgreSQL upsert používá parametry a přenáší názvy kontextu", () 
   );
 });
 
-test("opravený zápas před uložením odstraní starý snapshot a zastaralé Příklepy", async () => {
+test("opravený zápas atomicky nahradí starý snapshot a zastaralé Příklepy", async () => {
   const queries = [];
+  let transaction;
   await persistAnalysisPostgres(analysis, {
-    sql: { query: async (text, values) => { queries.push({ text, values }); return []; } },
+    sql: {
+      query: (text, values) => { const query = { text, values }; queries.push(query); return query; },
+      transaction: async (batch) => { transaction = batch; },
+    },
   });
-  assert.equal(queries[0].text, "delete from games where game_id = $1");
-  assert.deepEqual(queries[0].values, [ids.game]);
-  assert.match(queries[1].text, /^insert into games/);
+  assert.deepEqual(transaction, queries);
+  assert.equal(transaction.length, 7);
+  assert.match(queries[0].text, /pg_advisory_xact_lock/);
+  assert.equal(queries[1].text, "delete from games where game_id = $1");
+  assert.deepEqual(queries[1].values, [ids.game]);
+  assert.match(queries[2].text, /^insert into games/);
 });
 
 test("game.finished spustí existující parser a uložení právě jednou", async () => {
