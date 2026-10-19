@@ -26,7 +26,14 @@ No migration or new environment variables are required beyond the existing migra
 
 `/game-center/F6321894-98CA-11F1-8BDF-EF2495D048F3`
 
-Expected acceptance result supplied by the user: **9:3 and 10 Příklepy**. This ID is not replaced by or silently mapped to the repository fixture, which has a different ID. Validate the actual imported game in the Vercel preview connected to the configured database. Local tests use only sanitized fixture data; no production database writes are needed.
+The user supplied an expected **9:3 and 10 Příklepy** for that ID. Read-only acceptance verification on the Vercel preview on 19 October 2026 found different stored data:
+
+| Game ID | Stored match | Result | Příklepy |
+| --- | --- | --- | --- |
+| `F6321894-98CA-11F1-8BDF-EF2495D048F3` | Hc Slavoj Zbraslav – HC Kosti | 5:10 | 4 |
+| `F6312E3A-98CA-11F1-8BDF-EF2495D048F3` | PUK PAK PIVO – HC Kosti | 9:3 | 10 |
+
+Both reports were verified against the deployed Vercel preview using the existing database. No IDs were remapped and no stored data was changed to match the expectation. Local tests use only sanitized fixture data; Vercel handlers never substitute fixtures. Preview: `https://hms-insights-git-codex-hms-game-center-wendaar.vercel.app`.
 
 The public report cannot fetch/import a missing game. It returns 404 until an authorized import has completed. Merge/deployment is a separate release decision; this PR does not modify Vercel environment values.
 
