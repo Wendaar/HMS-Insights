@@ -5,6 +5,9 @@ import { ensurePenaltyMinutesSchema } from "../../src/infrastructure/postgres-re
 export default async function handler(request, response) {
   response.setHeader("cache-control", "no-store");
   if (request.method !== "POST") return response.status(405).json({ error: "Method not allowed" });
+  if (!process.env.HMS_WEBHOOK_SECRET?.trim() || !process.env.HMS_API_TOKEN?.trim()) {
+    return response.status(503).json({ error: "Import na tomto nasazení není nakonfigurovaný. Ve Vercelu nastavte HMS_API_TOKEN a HMS_WEBHOOK_SECRET pro toto prostředí a proveďte nové nasazení." });
+  }
   if (!hasBearerSecret(request, process.env.HMS_WEBHOOK_SECRET)) {
     return response.status(401).json({ error: "Nesprávný secret." });
   }
