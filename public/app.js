@@ -18,12 +18,14 @@ let requestVersion = 0;
 
 function updateControls() {
   const active = selects.filter((select) => select.value).length;
-  count.textContent = feedMeta.total;
+  if (count) count.textContent = feedMeta.total;
   empty.hidden = feedMeta.total !== 0;
   sentinel.hidden = !feedMeta.hasMore;
-  activeFilterCount.textContent = active;
-  activeFilterCount.hidden = active === 0;
-  reset.disabled = !search.value.trim() && active === 0;
+  if (activeFilterCount) {
+    activeFilterCount.textContent = active;
+    activeFilterCount.hidden = active === 0;
+  }
+  if (reset) reset.disabled = !(search?.value.trim()) && active === 0;
 }
 
 function sectionFor(date) {
@@ -69,7 +71,7 @@ function appendPage(page, replace) {
 
 function feedParams(offset) {
   const params = new URLSearchParams({ limit: "40", offset: String(offset) });
-  if (search.value.trim()) params.set("q", search.value.trim());
+  if (search?.value.trim()) params.set("q", search.value.trim());
   selects.forEach((select) => {
     if (!select.value) return;
     params.set(select.dataset.filter === "teams" ? "team" : select.dataset.filter, select.value);
@@ -221,19 +223,19 @@ function closeDetail() {
   history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
 }
 
-filterToggle.addEventListener("click", () => {
+if (filterToggle && filterDrawer) filterToggle.addEventListener("click", () => {
   const open = filterDrawer.hidden;
   filterDrawer.hidden = !open;
   filterToggle.setAttribute("aria-expanded", String(open));
 });
 let searchTimer;
-search.addEventListener("input", () => {
+search?.addEventListener("input", () => {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(() => loadPage(true), 350);
   updateControls();
 });
 selects.forEach((select) => select.addEventListener("change", () => loadPage(true)));
-reset.addEventListener("click", () => {
+reset?.addEventListener("click", () => {
   search.value = "";
   selects.forEach((select) => { select.value = ""; });
   loadPage(true);
@@ -254,10 +256,12 @@ dialog.addEventListener("click", (event) => { if (event.target === dialog) close
 document.addEventListener("error", (event) => { if (event.target instanceof HTMLImageElement) event.target.remove(); }, true);
 updateControls();
 
-const observer = new IntersectionObserver((entries) => {
-  if (entries.some((entry) => entry.isIntersecting) && feedMeta.hasMore) loadPage(false);
-}, { rootMargin: "500px 0px" });
-observer.observe(sentinel);
+if (feedMeta.mode === "archive") {
+  const observer = new IntersectionObserver((entries) => {
+    if (entries.some((entry) => entry.isIntersecting) && feedMeta.hasMore) loadPage(false);
+  }, { rootMargin: "500px 0px" });
+  observer.observe(sentinel);
+}
 
 const initialMoment = new URLSearchParams(window.location.hash.slice(1)).get("priklep");
 if (initialMoment) openDetail(initialMoment, false);

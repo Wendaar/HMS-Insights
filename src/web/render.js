@@ -129,6 +129,9 @@ export function renderPriklepyPage(items, config = {}) {
   const filterOptions = config.filterOptions ?? {};
   const total = Number(config.total ?? items.length);
   const hasMore = Boolean(config.hasMore);
+  const mode = config.mode ?? "archive";
+  const isSelection = mode === "selection";
+  const selectionTitle = config.teamName ? `To nejlepší pro ${config.teamName}` : "To nejlepší z ledu";
   let cardIndex = 0;
   const sections = dateSections(items).map((section) => `
     <section class="date-section" data-feed-section data-section-key="${section.key}">
@@ -147,15 +150,23 @@ export function renderPriklepyPage(items, config = {}) {
   <meta name="description" content="Přehled automaticky nalezených hokejových momentů z HMS zápasů">
   <title>Příklepy · HMS Insights</title>
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
-  <link rel="stylesheet" href="./styles.css?v=stream-2">
-  <script src="./app.js?v=stream-2" defer></script>
+  <link rel="stylesheet" href="./styles.css?v=selection-1">
+  <script src="./app.js?v=selection-1" defer></script>
 </head>
 <body>
   <header class="topbar">
     <a class="brand" href="./"><span>HMS</span> PŘÍKLEPY</a>
+    <nav class="view-nav" aria-label="Pohled Příklepů">
+      <a href="/priklepy" ${isSelection ? 'aria-current="page"' : ""}>Výběr</a>
+      ${isSelection ? "" : '<a href="/archiv" aria-current="page">Archiv</a>'}
+    </nav>
     <span class="feed-state"><i></i> živý přehled</span>
   </header>
   <main>
+    ${isSelection ? `<section class="selection-intro">
+      <div><span>VÝBĚR PŘÍKLEPŮ</span><h1>${escapeHtml(selectionTitle)}</h1><p>Nejsilnější momenty posledních dnů. U jednoho hráče v jednom zápase ukazujeme vždy jen jeho nejvýznamnější příběh.</p></div>
+      <p class="selection-count"><strong id="result-count">${total}</strong><span>vybraných momentů</span></p>
+    </section>` : `<section class="archive-intro"><span>ÚPLNÁ HISTORIE</span><h1>Archiv Příklepů</h1><p>Procházejte všechny nalezené momenty napříč zápasy, hráči a týmy.</p></section>
     <section class="control-bar" aria-label="Vyhledávání a filtrování příklepů">
       <label class="search"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Hledat hráče, tým nebo moment…" autocomplete="off"></label>
       <button class="filter-toggle" id="filter-toggle" type="button" aria-expanded="false" aria-controls="filters"><span>Filtry</span><b id="active-filter-count" hidden>0</b><i aria-hidden="true">⌄</i></button>
@@ -171,16 +182,16 @@ export function renderPriklepyPage(items, config = {}) {
         <button id="reset-filters" type="button">Zrušit všechny filtry</button>
       </div>
       <p class="result-line"><strong id="result-count">${total}</strong> příklepů</p>
-    </section>
+    </section>`}
 
     <div class="timeline" id="feed" aria-live="polite">${sections}</div>
-    <div id="feed-sentinel" class="feed-sentinel" ${hasMore ? "" : "hidden"}>Načítám starší Příklepy…</div>
+    <div id="feed-sentinel" class="feed-sentinel" ${!isSelection && hasMore ? "" : "hidden"}>Načítám starší Příklepy…</div>
     <div class="empty" id="empty-state" hidden><span>⌕</span><h2>Nic jsme nenašli</h2><p>Zkuste změnit hledání nebo některý z filtrů.</p></div>
   </main>
 
   <dialog id="detail-dialog"><button class="dialog-close" type="button" aria-label="Zavřít">×</button><div id="dialog-content"></div></dialog>
   <script type="application/json" id="feed-data">${JSON.stringify(items).replace(/</g, "\\u003c")}</script>
-  <script type="application/json" id="feed-meta">${JSON.stringify({ total, hasMore }).replace(/</g, "\\u003c")}</script>
+  <script type="application/json" id="feed-meta">${JSON.stringify({ total, hasMore: !isSelection && hasMore, mode }).replace(/</g, "\\u003c")}</script>
 </body>
 </html>`;
 }

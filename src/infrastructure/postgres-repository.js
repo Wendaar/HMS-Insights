@@ -210,4 +210,57 @@ export async function loadPublicFeedOptions(options = {}) {
   };
 }
 
+export async function loadPublicSelection(options = {}) {
+  const sql = options.sql ?? createSql(options.databaseUrl ?? databaseUrlFromEnv(options.env));
+  const requestedLimit = Number(options.limit ?? 30);
+  const limit = Number.isFinite(requestedLimit) ? Math.min(Math.max(Math.trunc(requestedLimit), 1), 60) : 30;
+  const requestedDays = Number(options.days ?? 14);
+  const days = Number.isFinite(requestedDays) ? Math.min(Math.max(Math.trunc(requestedDays), 1), 90) : 14;
+  const requestedPerGame = Number(options.perGame ?? 3);
+  const perGame = Number.isFinite(requestedPerGame) ? Math.min(Math.max(Math.trunc(requestedPerGame), 1), 5) : 3;
+  const values = [];
+  const teamClause = options.teamId
+    ? (() => {
+        values.push(String(options.teamId));
+        return `and team_id = $${values.length}::uuid`;
+      })()
+    : "";
+  values.push(days);
+  const daysParameter = values.length;
+  values.push(perGame);
+  const perGameParameter = values.length;
+  values.push(limit);
+  const limitParameter = values.length;
+
+  const rows = await sql.query(`with recent as (
+    select *, row_number() over (
+      partition by game_id, case
+        when player_id is not null then 'player:' || player_id::text
+        when team_id is not null then 'team:' || team_id::text
+        else priklep_id
+      end
+      order by importance desc, priklep_id
+    ) as subject_rank
+    from public_priklepy_feed
+    where played_on >= (
+      select max(played_on) - ($${daysParameter}::integer - 1) * interval '1 day'
+      from public_priklepy_feed
+    )
+    ${teamClause}
+  ), ranked as (
+    select *, row_number() over (
+      partition by game_id order by importance desc, priklep_id
+    ) as game_rank
+    from recent
+    where subject_rank = 1
+  )
+  select * from ranked
+  where game_rank <= $${perGameParameter}
+  order by played_on desc, importance desc, priklep_id
+  limit $${limitParameter}`, values);
+
+  const items = rows.map(publicFeedItem);
+  return { items, total: items.length, hasMore: false, mode: "selection" };
+}
+
 export { buildUpsert, databaseUrlFromEnv, dateOnly, feedWhere, publicFeedItem };

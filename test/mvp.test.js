@@ -6,7 +6,7 @@ import { rowsFor } from "../src/infrastructure/supabase-repository.js";
 import { feedDemo } from "../src/app/feed-demo.js";
 import { renderPriklepyPage } from "../src/web/render.js";
 import { apiUrl, endpoint, fetchFinishedGameResponses } from "../src/hms/client.js";
-import { buildUpsert, dateOnly, ensurePenaltyMinutesSchema, loadPublicFeedPage, persistAnalysisPostgres, publicFeedItem } from "../src/infrastructure/postgres-repository.js";
+import { buildUpsert, dateOnly, ensurePenaltyMinutesSchema, loadPublicFeedPage, loadPublicSelection, persistAnalysisPostgres, publicFeedItem } from "../src/infrastructure/postgres-repository.js";
 import { processFinishedGame } from "../src/app/process-finished-game.js";
 import { loadFeedForRequest } from "../src/web/feed-loader.js";
 import { backfillFinishedGames, backfillFinishedGamesPage } from "../src/app/backfill-finished-games.js";
@@ -213,6 +213,35 @@ test("stránka obsahuje vyhledávání, všechny filtry a rozkliknutelné karty"
   assert.match(html, /row-team-placeholder/);
   assert.match(html, /id="feed-sentinel"/);
   assert.match(html, /id="feed-meta"/);
+  assert.match(html, /Archiv Příklepů/);
+  assert.match(html, /href="\/archiv" aria-current="page"/);
+});
+
+test("veřejný výběr je oddělený od úplného archivu", () => {
+  const html = renderPriklepyPage(feedDemo.slice(0, 3), { mode: "selection", total: 3 });
+  assert.match(html, /To nejlepší z ledu/);
+  assert.doesNotMatch(html, /href="\/archiv"/);
+  assert.match(html, /"mode":"selection"/);
+  assert.doesNotMatch(html, /id="search"/);
+  assert.doesNotMatch(html, /data-filter=/);
+});
+
+test("veřejný výběr slučuje momenty hráče a omezuje počet momentů ze zápasu", async () => {
+  const queries = [];
+  const row = {
+    priklep_id: "selected", type: "HATTRICK", importance: 95, facts: { goals: 3 },
+    game_id: ids.game, played_on: "2026-10-18", home_team_name: "A", away_team_name: "B",
+    home_score: 5, away_score: 2, team_name: "A", player_name: "Petr Urban",
+  };
+  const sql = { query: async (text, values) => { queries.push({ text, values }); return [row]; } };
+  const result = await loadPublicSelection({ sql, teamId: ids.home, days: 14, perGame: 3, limit: 30 });
+  assert.equal(result.mode, "selection");
+  assert.equal(result.items[0].player, "Petr Urban");
+  assert.match(queries[0].text, /partition by game_id, case/);
+  assert.match(queries[0].text, /subject_rank = 1/);
+  assert.match(queries[0].text, /game_rank <= \$3/);
+  assert.match(queries[0].text, /team_id = \$1::uuid/);
+  assert.deepEqual(queries[0].values, [ids.home, 14, 3, 30]);
 });
 
 test("serverové filtrování hledá v celé historii a stránkuje výsledky", async () => {

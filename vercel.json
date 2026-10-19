@@ -10,6 +10,7 @@
   "rewrites": [
     { "source": "/", "destination": "/api/page" },
     { "source": "/priklepy", "destination": "/api/page" },
+    { "source": "/archiv", "destination": "/api/archive-page" },
     { "source": "/admin/import-game", "destination": "/api/import-game-page" },
     { "source": "/admin/backfill", "destination": "/api/backfill-page" }
   ]
