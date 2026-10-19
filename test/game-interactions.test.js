@@ -26,9 +26,8 @@ test('coincidental penalties and same-second uncertainty never imply PP', () => 
   assert.equal(classify([penalty(60), penalty(60, 'away'), goal(90)])[0].code, 'UNKNOWN');
   assert.ok(classify([penalty(60), goal(90), penalty(90, 'away'), goal(100)]).every((s) => s.code === 'UNKNOWN'));
 });
-test('unknown, queued and major penalties, clock resets and incomplete snapshots disable estimation', () => {
+test('queued and major penalties, clock resets and incomplete snapshots disable estimation', () => {
   for (const events of [
-    [penalty(60, 'home', { penaltyDetails: null }), goal(90)],
     [penalty(60, 'home', { penaltyDetails: { type: { name: 'Major' } } }), goal(90)],
     [penalty(60, 'home', { penaltyMinutes: 4 }), goal(90)],
     [penalty(60), penalty(80), goal(90)],
@@ -37,6 +36,11 @@ test('unknown, queued and major penalties, clock resets and incomplete snapshots
   ]) assert.ok(classify(events).every((s) => s.code === 'UNKNOWN'));
   assert.equal(classify([penalty(60), goal(90)], { consistent: false })[0].code, 'UNKNOWN');
   assert.equal(classify([penalty(60), goal(90)], { penaltiesAvailable: false })[0].code, 'UNKNOWN');
+});
+test('short untyped penalties support an explicitly disclosed duration assumption', () => {
+  const [s] = classify([penalty(60, 'home', { penaltyDetails: null }), goal(90)]);
+  assert.equal(s.code, 'PP'); assert.equal(s.source, 'penalty-model'); assert.equal(s.basis, 'duration-assumption');
+  assert.equal(classify([penalty(60), goal(90)])[0].basis, 'minor-penalty');
 });
 test('recorded HMS strength wins and penalty shots are not classified from penalties', () => {
   const marked = goal(90, 'away', { details: { goalType: { name: 'Even strength' } } });

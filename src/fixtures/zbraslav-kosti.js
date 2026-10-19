@@ -43,6 +43,9 @@ export const gameEvents = {
   HomeTeam: { teamId: reference.home.id, name: reference.home.name },
   AwayTeam: { teamId: reference.away.id, name: reference.away.name },
   HomeTeamGoals: 5, AwayTeamGoals: 10,
+  // Team counters verified in the public HMS game endpoint on 2026-10-20.
+  // Quick faceoffs are not listed as individual public GameEvents.
+  HomeTeamFaceOffs: 25, AwayTeamFaceOffs: 19,
   GameEventGoals: goals.map(([gameTime, scorer, a1, a2], i) => {
     const teamId = byName.get(scorer).teamId;
     return { gameEventGoalId: `reconstructed-goal-${i}`, gameTime, period: null,

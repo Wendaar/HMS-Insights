@@ -1,5 +1,6 @@
 import { buildEventSnapshot, selectEventGroup, uniqueEvents } from "./event-snapshot.js";
 import { enrichEventGroups } from "./public-event-metadata.js";
+import { faceoffSnapshot } from './faceoffs.js';
 
 function required(value, label) {
   if (value === undefined || value === null || value === "") {
@@ -212,9 +213,14 @@ export function normalizeHmsGame(gameEventsResponse, lineupResponse, gameDetailR
     saveCounts.set(existing.playerId, existing);
   }
   for (const goal of goals) {
-    if (goal.allowedByPlayerId && saveCounts.has(goal.allowedByPlayerId)) {
-      saveCounts.get(goal.allowedByPlayerId).goalsAgainst += 1;
-    }
+    if (!goal.allowedByPlayerId) continue;
+    const keeper = players.get(goal.allowedByPlayerId);
+    const existing = saveCounts.get(goal.allowedByPlayerId) ?? {
+      playerId: goal.allowedByPlayerId, playerName: keeper?.playerName ?? 'Neznámý hráč',
+      teamId: keeper?.teamId ?? null, playerImageUrl: keeper?.playerImageUrl ?? null, saves: 0, goalsAgainst: 0,
+    };
+    existing.goalsAgainst++;
+    saveCounts.set(goal.allowedByPlayerId, existing);
   }
 
   const homeTeamId = gameResponse.homeTeamId ?? gameResponse.HomeTeam?.teamId;
@@ -284,6 +290,7 @@ export function normalizeHmsGame(gameEventsResponse, lineupResponse, gameDetailR
     teamStats,
   };
   normalized.eventSnapshot = buildEventSnapshot(normalized, groupedEvents, players, penaltyMinutes);
+  normalized.eventSnapshot.faceoffs = faceoffSnapshot(gameEventsResponse, gameDetailResponse, publicMetadata, normalized, players);
   return normalized;
 }
 

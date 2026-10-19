@@ -1,4 +1,5 @@
 import { buildGameTimeline } from "./game-timeline.js";
+import { buildFaceoffs, goalieStatistics } from './recorded-statistics.js';
 
 // Public, versioned read model shared by Game Center and future media consumers.
 // Accepts stored normalized rows, never raw HMS responses or environment values.
@@ -23,6 +24,7 @@ export function buildGameSummary({ game, teams = [], players = [], goalies = [],
   return {
     schemaVersion: 1,
     timeline,
+    faceoffs: buildFaceoffs(game.event_snapshot),
     gameId: game.game_id,
     status: game.status,
     playedOn: date(game.played_on),
@@ -39,7 +41,7 @@ export function buildGameSummary({ game, teams = [], players = [], goalies = [],
     })).sort((a, b) => b.points - a.points || b.goals - a.goals || a.name.localeCompare(b.name, "cs") || a.id.localeCompare(b.id)),
     goalies: goalies.map((row) => ({
       id: row.player_id, teamId: row.team_id, name: row.player_name,
-      saves: Number(row.saves), goalsAgainst: Number(row.goals_against),
+      ...goalieStatistics(row),
     })).sort((a, b) => b.saves - a.saves || a.id.localeCompare(b.id)),
     priklepy: priklepy.map((row) => ({
       id: row.priklep_id, type: row.type, title: row.title, text: row.body,

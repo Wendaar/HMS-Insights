@@ -1,6 +1,6 @@
 import { isMinorPenalty, recordedSituation } from "./goal-details.js";
 
-// A conservative subset: one active, known minor penalty, an elapsed game clock,
+// A conservative subset: one active short penalty, an elapsed game clock,
 // and a score-consistent event log. No PP/PK percentage or opportunity denominator
 // is inferred. Unsupported penalties, queued same-team overlaps or reset clocks
 // disable inference; direct HMS goal labels always take precedence.
@@ -10,7 +10,8 @@ export function applySpecialTeams(events, { consistent, ordered, penaltiesAvaila
   let supported = consistent && ordered && penaltiesAvailable
     && relevant.every((event) => event.clockSeconds !== null && [homeId, awayId].includes(event.teamId))
     && relevant.every((event, index) => !index || event.clockSeconds >= relevant[index - 1].clockSeconds)
-    && penalties.every((event) => isMinorPenalty(event) && event.penaltyMinutes > 0 && event.penaltyMinutes <= 2);
+    && penalties.every((event) => (isMinorPenalty(event) || (!event.penaltyDetails?.type?.name && !event.penaltyDetails?.type?.code))
+      && event.penaltyMinutes > 0 && event.penaltyMinutes <= 2);
   // Queued/double-minor mechanics are not represented by this subset.
   for (let i = 0; i < penalties.length; i++) for (let j = i + 1; j < penalties.length; j++) {
     if (penalties[i].teamId === penalties[j].teamId
@@ -22,7 +23,8 @@ export function applySpecialTeams(events, { consistent, ordered, penaltiesAvaila
   for (const event of relevant) {
     active = active.filter((penalty) => penalty.end > event.clockSeconds);
     if (event.type === "penalty") {
-      active.push({ id: event.id, teamId: event.teamId, end: event.clockSeconds + event.penaltyMinutes * 60 });
+      active.push({ id: event.id, teamId: event.teamId, end: event.clockSeconds + event.penaltyMinutes * 60,
+        basis: isMinorPenalty(event) ? 'minor-penalty' : 'duration-assumption' });
       continue;
     }
     const recorded = recordedSituation(event);
@@ -30,7 +32,7 @@ export function applySpecialTeams(events, { consistent, ordered, penaltiesAvaila
       && !/shootout|penalty shot|trestn[ée] střílen/i.test(event.details?.goalSubtype?.name ?? "");
     const candidate = canDerive ? active[0].teamId === event.teamId ? "SH" : "PP" : null;
     event.situation = recorded.source === "hms" ? recorded
-      : candidate ? { code: candidate, source: "penalty-model", label: candidate === "PP" ? "Přesilovkový gól" : "Gól v oslabení" }
+      : candidate ? { code: candidate, source: "penalty-model", basis: active[0].basis, label: candidate === "PP" ? "Přesilovkový gól" : "Gól v oslabení" }
         : recorded;
     if (candidate === "PP" && ["PP", "UNKNOWN"].includes(recorded.code)) active = [];
     if (candidate && recorded.source === "hms" && recorded.code !== candidate) supported = false;

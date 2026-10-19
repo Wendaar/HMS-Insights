@@ -64,7 +64,9 @@ function openEvent(id) {
     row('Odkud', event.details?.shotZone?.label ?? event.details?.shotZone?.sourceName);
     row('Kam', event.details?.netZone?.label ?? event.details?.netZone?.sourceName);
     row('Početní situace', event.situation?.label);
-    row('Určení situace', event.situation?.source === 'hms' ? 'Zapsáno v HMS' : event.situation?.source === 'penalty-model' ? 'Odhad podle časů a menších trestů' : 'Chybí dostatečné údaje');
+    row('Určení situace', event.situation?.source === 'hms' ? 'Zapsáno v HMS' : event.situation?.source === 'penalty-model'
+      ? event.situation.basis === 'duration-assumption' ? 'Odhad z času a délky trestu do 2 minut; typ trestu neuveden, předpokládáme menší trest' : 'Odhad podle časů a menších trestů'
+      : 'Chybí dostatečné údaje');
   } else if (event.type === 'penalty') {
     row('Délka trestu', event.penaltyMinutes === null ? null : durationLabel(event.penaltyMinutes));
     row('Typ trestu', event.penaltyDetails?.type?.name);
