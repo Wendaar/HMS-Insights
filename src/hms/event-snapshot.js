@@ -1,3 +1,5 @@
+import { goalDetails, penaltyDetails } from "../domain/goal-details.js";
+
 // Keep only sporting facts. Raw HMS payloads and contact fields never enter storage.
 const id = (value) => typeof value === "string" && value ? value.toLowerCase() : null;
 const name = (player) => [player?.firstName, player?.lastName].filter(Boolean).join(" ").trim() || null;
@@ -62,6 +64,8 @@ export function buildEventSnapshot(game, groups, players, penaltyMinutes) {
       ...base(event, "goal", index),
       teamId: id(event.scoredByTeamId ?? event.ScoredByTeam?.teamId),
       player: player(event.scoredByPlayerId, event.ScoredByPlayer),
+      allowedBy: player(event.allowedByPlayerId, event.AllowedByPlayer),
+      details: goalDetails(event),
       assists: [
         player(event.assistedBy1PlayerId, event.AssistedBy1Player),
         player(event.assistedBy2PlayerId, event.AssistedBy2Player),
@@ -72,6 +76,7 @@ export function buildEventSnapshot(game, groups, players, penaltyMinutes) {
       teamId: id(event.penalizedTeamId ?? event.PenalizedTeam?.teamId ?? players.get(event.penalizedPlayerId)?.teamId),
       player: player(event.penalizedPlayerId, event.PenalizedPlayer),
       penaltyMinutes: penaltyMinutes(event.duration),
+      penaltyDetails: penaltyDetails(event),
     })),
     ...groups.saves.events.filter((event) => !event.isDeleted).map((event, index) => ({
       ...base(event, "save", index),

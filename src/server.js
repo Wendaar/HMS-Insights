@@ -20,6 +20,8 @@ const zbraslavAnalysis = analyzeHmsResponses(zbraslavEvents, zbraslavLineup);
 const assets = {
   "/styles.css": ["text/css; charset=utf-8", "styles.css"],
   "/app.js": ["text/javascript; charset=utf-8", "app.js"],
+  "/game-report.js": ["text/javascript; charset=utf-8", "game-report.js"],
+  "/game-report-data.js": ["text/javascript; charset=utf-8", "game-report-data.js"],
   "/game-report.css": ["text/css; charset=utf-8", "game-report.css"],
   "/favicon.svg": ["image/svg+xml", "favicon.svg"],
 };

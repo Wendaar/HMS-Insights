@@ -306,7 +306,7 @@ test("HMS klient používá produkční v1 endpointy a gameId v query", async ()
     fetchImpl,
   });
   assert.deepEqual(requested.map((url) => new URL(url).pathname), [
-    "/api/v1/game", "/api/v1/gameEvents", "/api/v1/gameLineup",
+    "/api/v1/game", "/api/v1/gameEvents", "/api/v1/gameLineup", "/public/game",
   ]);
   assert.ok(requested.every((url) => new URL(url).searchParams.get("gameId") === ids.game));
   assert.equal(apiUrl("https://example.test/api/v1", "games", { status: "FINISHED" }).searchParams.get("status"), "FINISHED");

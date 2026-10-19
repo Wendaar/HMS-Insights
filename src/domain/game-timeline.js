@@ -1,3 +1,6 @@
+import { publicGoalDetails, publicReference } from "./goal-details.js";
+import { applySpecialTeams } from "./special-teams.js";
+
 const string = (value) => typeof value === "string" ? value : null;
 const id = (value) => string(value)?.toLowerCase() ?? null;
 const person = (value) => ({ id: id(value?.id), name: string(value?.name) });
@@ -12,8 +15,9 @@ export function buildGameTimeline(game) {
     clock: string(event.clock),
     clockSeconds: Number.isFinite(event.clockSeconds) && event.clockSeconds >= 0 ? event.clockSeconds : null,
     player: person(event.player),
-    ...(event.type === "goal" ? { assists: (Array.isArray(event.assists) ? event.assists : []).map(person) } : {}),
-    ...(event.type === "penalty" ? { penaltyMinutes: Number.isFinite(event.penaltyMinutes) && event.penaltyMinutes >= 0 ? event.penaltyMinutes : null } : {}),
+    ...(event.type === "goal" ? { assists: (Array.isArray(event.assists) ? event.assists : []).map(person), allowedBy: person(event.allowedBy), details: publicGoalDetails(event.details) } : {}),
+    ...(event.type === "penalty" ? { penaltyMinutes: Number.isFinite(event.penaltyMinutes) && event.penaltyMinutes >= 0 ? event.penaltyMinutes : null,
+      penaltyDetails: { type: publicReference(event.penaltyDetails?.type), subtype: publicReference(event.penaltyDetails?.subtype) } } : {}),
   }));
   const goals = events.filter((event) => event.type === "goal");
   const homeId = id(game.home_team_id);
@@ -46,6 +50,7 @@ export function buildGameTimeline(game) {
       period, home: goals.filter((event) => event.period === period && side(event) === "home").length,
       away: goals.filter((event) => event.period === period && side(event) === "away").length,
     })) : [];
+  applySpecialTeams(events, { consistent, ordered, penaltiesAvailable: snapshot.collections?.penalties === true, homeId, awayId });
   return {
     available: Object.values(snapshot.collections ?? {}).some((value) => value === true),
     collections: Object.fromEntries(["goals", "penalties", "saves"].map((key) => [key, snapshot.collections?.[key] === true])),

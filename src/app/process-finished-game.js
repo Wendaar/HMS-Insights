@@ -8,10 +8,10 @@ export async function processFinishedGame(gameId, options = {}) {
   const fetchResponses = options.fetchResponses ?? fetchFinishedGameResponses;
   const persist = options.persist ?? persistAnalysisPostgres;
   const responses = await fetchResponses(gameId, options);
-  const [gameDetail, gameEvents, lineup] = responses.length === 3
+  const [gameDetail, gameEvents, lineup, publicMetadata] = responses.length >= 3
     ? responses
     : [null, responses[0], responses[1]];
-  const analysis = analyzeHmsResponses(gameEvents, lineup, gameDetail);
+  const analysis = analyzeHmsResponses(gameEvents, lineup, gameDetail, publicMetadata);
   if (analysis.game.gameId.toLowerCase() !== gameId.toLowerCase()) {
     throw new Error("HMS API vrátilo jiný zápas, než požadoval webhook.");
   }

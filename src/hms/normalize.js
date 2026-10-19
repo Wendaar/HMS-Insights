@@ -1,4 +1,5 @@
 import { buildEventSnapshot, selectEventGroup, uniqueEvents } from "./event-snapshot.js";
+import { enrichEventGroups } from "./public-event-metadata.js";
 
 function required(value, label) {
   if (value === undefined || value === null || value === "") {
@@ -91,7 +92,7 @@ function penaltyMinutes(value) {
   throw new Error(`Neplatná délka trestu: ${value}`);
 }
 
-export function normalizeHmsGame(gameEventsResponse, lineupResponse, gameDetailResponse = null) {
+export function normalizeHmsGame(gameEventsResponse, lineupResponse, gameDetailResponse = null, publicMetadata = null) {
   if (gameDetailResponse?.gameId && gameEventsResponse?.gameId
     && gameDetailResponse.gameId.toLowerCase() !== gameEventsResponse.gameId.toLowerCase()) {
     throw new Error("Game Detail a Events patří k různým zápasům.");
@@ -106,6 +107,7 @@ export function normalizeHmsGame(gameEventsResponse, lineupResponse, gameDetailR
     GameEventSaves: groupedEvents.saves.events,
     GameEventPenalties: groupedEvents.penalties.events,
   };
+  enrichEventGroups(groupedEvents, publicMetadata, gameResponse);
   const gameId = required(gameResponse.gameId, "gameId");
   // The gameLineup endpoint is already scoped by the gameId query parameter and
   // does not have to repeat that id in its response body. Compare it only when
