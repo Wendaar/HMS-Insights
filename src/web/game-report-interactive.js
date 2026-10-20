@@ -27,6 +27,7 @@ export function renderInteractiveTimeline(summary){
   <dialog id="event-dialog" aria-labelledby="event-detail-title"><div class="event-dialog-head"><p class="eyebrow" id="event-detail-kicker"></p><button id="event-dialog-close" type="button" aria-label="Zavřít detail události">×</button></div><h2 id="event-detail-title"></h2><p id="event-detail-context"></p><div id="event-detail-content"></div><p><a id="event-permalink">Odkaz na událost ↗</a></p></dialog><noscript><details><summary>Textový průběh zápasu</summary><ol>${events.map(e=>`<li>${html([e.clock,e.type==='goal'?'Gól':'Trest',known(e.player.name)?e.player.name:null].filter(Boolean).join(' · '))}</li>`).join('')}</ol></details></noscript>`;
 }
 export function renderSpecialTeams(summary){
+  if(!summary.timeline?.available || summary.timeline.coverage!=='matches-result')return '<section aria-labelledby="special-teams"><p class="eyebrow">TÝM PROTI TÝMU</p><h2 id="special-teams">Přesilovky a oslabení</h2><p class="section-copy">Týmové srovnání bude dostupné po načtení úplného průběhu zápasu.</p></section>';
   const model=summary.timeline?.specialTeams,palette=teamPalette(summary);
   const sides=[summary.home,summary.away];
   const stats=t=>model?.teams[t.id.toLowerCase()]??{...Object.fromEntries(['EV','PP','SH'].map(k=>[k,(summary.timeline?.events??[]).filter(e=>e.type==='goal'&&e.teamId===t.id&&e.situation?.code===k).length]))};

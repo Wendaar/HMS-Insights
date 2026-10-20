@@ -46,9 +46,13 @@ test('staggered opposing penalties create two advantage phases separated by equa
 });
 test('comparison keeps teams and goal detail actions clearly separate',()=>{
   const events=[penalty('away',0,'p'),goal('home',30,'g'),penalty('home',200,'q')];
-  const s={home:{id:'home',name:'Team <A>'},away:{id:'away',name:'Team B'},timeline:{events,specialTeams:specialTeamTotals(events,options)}};
+  const s={home:{id:'home',name:'Team <A>'},away:{id:'away',name:'Team B'},timeline:{available:true,coverage:'matches-result',events,specialTeams:specialTeamTotals(events,options)}};
   const html=renderSpecialTeams(s);
   assert.match(html,/Team &lt;A&gt;/);assert.match(html,/100 %/);
   assert.match(html,/data-strength="PP" data-strength-team="home"/);
   assert.match(html,/comparison-track/);
+});
+test('missing event snapshot does not present missing data as zero goals',()=>{
+  const html=renderSpecialTeams({timeline:{available:false}});
+  assert.match(html,/po načtení úplného průběhu/);assert.doesNotMatch(html,/PP góly: 0/);
 });
