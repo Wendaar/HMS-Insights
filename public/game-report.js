@@ -59,7 +59,7 @@ function openEvent(id){
       const note=document.createElement('p');note.className='map-caption';note.textContent=event.situation.basis==='no-active-penalty'?'5 na 5 dle průběhu: v evidenci v tuto chvíli neběží trest.':'Početní situace doplněná podle průběhu trestů.';content.append(note);
     }
   }else if(event.type==='penalty'){
-    row(list,'Délka trestu',event.penaltyMinutes!=null?durationLabel(event.penaltyMinutes):null);
+    row(list,'Délka trestu',event.penaltyMinutes>0?durationLabel(event.penaltyMinutes):null);
     row(list,'Typ trestu',event.penaltyDetails?.type?.name);row(list,'Přestupek',event.penaltyDetails?.subtype?.name);
   }
   content.append(list);

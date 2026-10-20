@@ -75,7 +75,7 @@ export function buildEventSnapshot(game, groups, players, penaltyMinutes) {
       ...base(event, "penalty", index),
       teamId: id(event.penalizedTeamId ?? event.PenalizedTeam?.teamId ?? players.get(event.penalizedPlayerId)?.teamId),
       player: player(event.penalizedPlayerId, event.PenalizedPlayer),
-      penaltyMinutes: penaltyMinutes(event.duration),
+      penaltyMinutes: event.duration == null || event.duration === '' ? null : penaltyMinutes(event.duration),
       penaltyDetails: penaltyDetails(event),
     })),
     ...groups.saves.events.filter((event) => !event.isDeleted).map((event, index) => ({

@@ -9,6 +9,11 @@ import { ensureEventSnapshotSchema, persistAnalysisPostgres } from "../src/infra
 import { processFinishedGame } from "../src/app/process-finished-game.js";
 
 const analyze = (events = gameEvents, detail = null) => analyzeHmsResponses(events, lineup, detail);
+test('a penalty without a recorded duration remains null rather than displaying a zero-minute penalty',()=>{
+  const source=structuredClone(gameEvents);source.GameEventPenalties[0].duration=null;
+  const penalty=summarize(analyze(source)).timeline.events.find(e=>e.type==='penalty');
+  assert.equal(penalty.penaltyMinutes,null);
+});
 function summarize(analysis) {
   const r = rowsFor(analysis);
   return buildGameSummary({ game: r.games[0], teams: r.team_game_stats,
