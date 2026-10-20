@@ -100,7 +100,7 @@ test("HTML escapes HMS text in content and attributes", () => {
   summary.home.name = '<script>alert("x")</script>';
   summary.priklepy[0].text = '<img src=x onerror="alert(1)">';
   const rendered = renderGameReport(summary);
-  assert.doesNotMatch(rendered, /<script>|<img/);
+  assert.doesNotMatch(rendered, /<script>|<img src=x/);
   assert.match(rendered, /&lt;script&gt;/);
   assert.match(rendered, /&lt;img/);
 });

@@ -20,6 +20,8 @@ const port = Number(process.env.PORT ?? 3000);
 const zbraslavAnalysis = analyzeHmsResponses(zbraslavEvents, zbraslavLineup);
 
 const assets = {
+  "/game-report-premium.css": ["text/css; charset=utf-8", "game-report-premium.css"],
+  "/game-report-media.js": ["text/javascript; charset=utf-8", "game-report-media.js"],
   "/styles.css": ["text/css; charset=utf-8", "styles.css"],
   "/app.js": ["text/javascript; charset=utf-8", "app.js"],
   "/game-report-graphics.js": ["text/javascript; charset=utf-8", "game-report-graphics.js"],

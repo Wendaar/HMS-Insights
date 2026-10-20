@@ -95,3 +95,9 @@ Validation now includes 89 passing tests, symbolic mark stability and bounds, te
 The conservative short-penalty model counts advantage transitions, including staggered opposing penalties separated by equal strength. Equal coincidental pairs create no advantage. PP goals end the minor, SH goals do not. Missing collections, inconsistent results, reset clocks, goal/penalty timestamp ties, queued same-team penalties, unsupported durations/types or contradictory HMS goal labels suppress denominators and percentages. Counts remain available from HMS goal labels. This is a model of recorded short penalties, not official competition-certified PP/PK totals.
 
 Timeline periods use successively darker bands and explicit period labels. Player cards show a leader or Top 10 badge only for current HMS rankings in the selected competition group; rankings from the imported-game fallback do not earn league badges.
+
+### Sporting visual identity and media
+
+The editorial report combines a broadcast-style team-logo scoreboard, a light main column and a compact team-comparison sidebar. Scoring leaders are selected from the sorted game stats for each team and clearly described as scoring leaders, not official stars. Stored HMS portraits appear in leader panels, rosters, the timeline, goalie cards and player dialogs. Missing/broken images use initials. No fabricated photos or NHL imagery are used.
+
+GameSummary exposes safe sporting image URLs from the two existing HMS S3 buckets only, preferring stored templates resolved to cropped_md. Credentials, query strings and arbitrary hosts are rejected; CSP permits those exact buckets, with no extra script/connect origins. Existing imported photos/logos need no reimport. New imports retain a validated Flickr album URL in event_snapshot.media; the report offers an external gallery link when present. Flickr photos are not automatically fetched or selected as covers in this increment.

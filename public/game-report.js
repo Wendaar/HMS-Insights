@@ -1,3 +1,4 @@
+import {sportingImage} from './game-report-media.js';
 import { filterReportEvents,durationLabel } from './game-report-data.js';
 import { rinkSvg,netSvg,unknownGoals,miniGoalMaps } from './game-report-graphics.js';
 const {summary}=JSON.parse(document.getElementById('game-report-data').textContent);
@@ -74,6 +75,8 @@ function openGoals(ids){
   for(const goal of goals){const b=document.createElement('button');b.type='button';b.dataset.eventId=goal.id;b.textContent=[goal.clock,goal.player.name,goal.scoreAfter?`${goal.scoreAfter.home}:${goal.scoreAfter.away}`:null].filter(known).join(' · ');list.append(b);}
   $('event-detail-content').replaceChildren(list);if(!dialog.open)dialog.showModal();
 }
+document.addEventListener('error',event=>{if(event.target instanceof HTMLImageElement)event.target.hidden=true;},true);
+document.querySelectorAll('img').forEach(img=>{if(img.complete&&!img.naturalWidth)img.hidden=true;});
 const playerCache=new Map();let playerRequest=0;
 async function openPlayer(id){
   if(!/^[a-f0-9-]{36}$/i.test(id)||!playerDialog)return;
@@ -87,7 +90,10 @@ async function openPlayer(id){
     if(request!==playerRequest||!playerDialog.open)return;
     if(!card.available){$('player-card-content').textContent='Souhrnné statistiky tohoto hráče zatím nejsou k dispozici.';return;}
     $('player-card-title').textContent=card.name||knownPlayer?.name||'Hráč';
-    const fragment=document.createDocumentFragment(),context=document.createElement('p');context.className='player-scope';context.textContent=[card.scope.competition,card.scope.season,card.scope.group].filter(known).join(' · ');fragment.append(context);
+    const fragment=document.createDocumentFragment();
+    const image=sportingImage(knownPlayer?.imageUrl);
+    if(image){const photo=document.createElement('img');photo.src=image;photo.alt='';photo.className='player-card-photo';photo.referrerPolicy='no-referrer';fragment.append(photo);}
+    const context=document.createElement('p');context.className='player-scope';context.textContent=[card.scope.competition,card.scope.season,card.scope.group].filter(known).join(' · ');fragment.append(context);
     const labels=card.role==='goalie'?{GP:'Zápasy',Svs:'Zákroky',GA:'Inkasované góly',SvP:'Úspěšnost %',SO:'Čistá konta',W:'Výhry',D:'Remízy',L:'Prohry',PIM:'Trestné minuty'}:{GP:'Zápasy',G:'Góly',A:'Asistence',P:'Body',PIM:'Trestné minuty',PPG:'PP góly',SHG:'SH góly',Stars:'Hvězda zápasu'};
     if(card.rank){
       const rank=document.createElement('p');rank.className='player-rank';rank.textContent=`#${card.rank} v bodování soutěže`;fragment.append(rank);

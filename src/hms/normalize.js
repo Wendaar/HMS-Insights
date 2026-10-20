@@ -1,6 +1,7 @@
 import { buildEventSnapshot, selectEventGroup, uniqueEvents } from "./event-snapshot.js";
 import { enrichEventGroups } from "./public-event-metadata.js";
 import { faceoffSnapshot } from './faceoffs.js';
+import { flickrAlbum } from '../../public/game-report-media.js';
 
 function required(value, label) {
   if (value === undefined || value === null || value === "") {
@@ -291,6 +292,8 @@ export function normalizeHmsGame(gameEventsResponse, lineupResponse, gameDetailR
   };
   normalized.eventSnapshot = buildEventSnapshot(normalized, groupedEvents, players, penaltyMinutes);
   normalized.eventSnapshot.faceoffs = faceoffSnapshot(gameEventsResponse, gameDetailResponse, publicMetadata, normalized, players);
+  normalized.eventSnapshot.media = { albumUrl: flickrAlbum(gameResponse.flickrAlbum)
+    ?? (publicMetadata?.gameId?.toLowerCase()===gameId.toLowerCase()?flickrAlbum(publicMetadata.flickrAlbum):null) };
   return normalized;
 }
 

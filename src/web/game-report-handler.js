@@ -1,6 +1,7 @@
 import { getGameSummary } from "../app/game-summary.js";
 import { isGameId } from "../domain/game-summary.js";
 import { renderGameReport } from "./game-report.js";
+import { mediaHosts } from '../../public/game-report-media.js';
 
 export function createGameReportHandler({ json = false, loadSummary = getGameSummary, preview = false } = {}) {
   return async (request, response) => {
@@ -21,7 +22,7 @@ export function createGameReportHandler({ json = false, loadSummary = getGameSum
       response.setHeader("cache-control", "public, s-maxage=60, stale-while-revalidate=300");
       if (json) return response.status(200).json(summary);
       response.setHeader("content-type", "text/html; charset=utf-8");
-      response.setHeader("content-security-policy", "default-src 'none'; style-src 'self'; script-src 'self'; connect-src 'self'; img-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'");
+      response.setHeader("content-security-policy", `default-src 'none'; style-src 'self'; script-src 'self'; connect-src 'self'; img-src 'self' ${mediaHosts.map(h=>'https://'+h).join(' ')}; base-uri 'none'; frame-ancestors 'none'; form-action 'none'`);
       return response.status(200).send(renderGameReport(summary, { preview }));
     } catch {
       // Do not serialize database errors, connection strings or HMS responses.

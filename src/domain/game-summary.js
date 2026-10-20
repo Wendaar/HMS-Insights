@@ -1,5 +1,6 @@
 import { buildGameTimeline } from "./game-timeline.js";
 import { buildFaceoffs, goalieStatistics } from './recorded-statistics.js';
+import { sportingImage,flickrAlbum } from '../../public/game-report-media.js';
 
 // Public, versioned read model shared by Game Center and future media consumers.
 // Accepts stored normalized rows, never raw HMS responses or environment values.
@@ -19,6 +20,7 @@ export function buildGameSummary({ game, teams = [], players = [], goalies = [],
     return {
       id: game[`${prefix}_team_id`], name: game[`${prefix}_team_name`],
       score: game[`${prefix}_score`], lineupSize: row?.lineup_size ?? null,
+      logoUrl: sportingImage(row?.team_logo_template_url) ?? sportingImage(row?.team_logo_url),
       color: /^#[\da-f]{6}$/i.test(row?.primary_color ?? '') ? row.primary_color : null,
       secondaryColor: /^#[\da-f]{6}$/i.test(row?.secondary_color ?? '') ? row.secondary_color : null,
     };
@@ -26,6 +28,7 @@ export function buildGameSummary({ game, teams = [], players = [], goalies = [],
   return {
     schemaVersion: 1,
     timeline,
+    media: { albumUrl: flickrAlbum(game.event_snapshot?.media?.albumUrl) },
     faceoffs: buildFaceoffs(game.event_snapshot),
     gameId: game.game_id,
     status: game.status,
@@ -38,11 +41,13 @@ export function buildGameSummary({ game, teams = [], players = [], goalies = [],
     home: team("HOME"), away: team("AWAY"),
     players: players.map((row) => ({
       id: row.player_id, teamId: row.team_id, name: row.player_name,
+      imageUrl: sportingImage(row.player_image_template_url) ?? sportingImage(row.player_image_url),
       goals: Number(row.goals), assists: Number(row.assists),
       points: Number(row.goals) + Number(row.assists), penaltyMinutes: Number(row.pim),
     })).sort((a, b) => b.points - a.points || b.goals - a.goals || a.name.localeCompare(b.name, "cs") || a.id.localeCompare(b.id)),
     goalies: goalies.map((row) => ({
       id: row.player_id, teamId: row.team_id, name: row.player_name,
+      imageUrl: sportingImage(row.player_image_template_url) ?? sportingImage(row.player_image_url),
       ...goalieStatistics(row),
     })).sort((a, b) => b.saves - a.saves || a.id.localeCompare(b.id)),
     priklepy: priklepy.map((row) => ({
