@@ -4,7 +4,7 @@ import { rowsFor } from "./analysis-rows.js";
 const specs = {
   games: {
     conflict: ["game_id"],
-    json: [],
+    json: ["event_snapshot"],
   },
   player_game_stats: {
     conflict: ["game_id", "player_id"],
@@ -38,7 +38,7 @@ function buildUpsert(table, rows) {
   const columns = Object.keys(rows[0]);
   const values = [];
   const tuples = rows.map((row) => `(${columns.map((column) => {
-    const value = spec.json.includes(column) ? JSON.stringify(row[column] ?? {}) : row[column];
+    const value = spec.json.includes(column) ? (row[column] == null ? null : JSON.stringify(row[column])) : row[column];
     if (typeof value === "number" && !Number.isFinite(value)) {
       throw new Error(`Neplatná číselná hodnota pro ${table}.${column}.`);
     }
@@ -78,14 +78,55 @@ export async function ensurePenaltyMinutesSchema(options = {}) {
 export async function persistAnalysisPostgres(analysis, options = {}) {
   const rows = rowsFor(analysis);
   const sql = options.sql ?? createSql(options.databaseUrl ?? databaseUrlFromEnv(options.env));
+  await ensureEventSnapshotSchema({ sql });
   // A corrected finished game is a full snapshot. Removing the previous snapshot
   // prevents stale players or achievements from surviving a game.updated event.
-  await sql.query("delete from games where game_id = $1", [analysis.game.gameId]);
+  const queries = [
+    // Serialize replacements of the same game, including its first import.
+    sql.query("select pg_advisory_xact_lock(hashtextextended(lower($1::text), 0))", [analysis.game.gameId]),
+    sql.query("delete from games where game_id = $1", [analysis.game.gameId]),
+  ];
   for (const table of Object.keys(specs)) {
     const query = buildUpsert(table, rows[table]);
-    if (query) await sql.query(query.text, query.values);
+    if (query) queries.push(sql.query(query.text, query.values));
   }
+  await sql.transaction(queries);
   return rows;
+}
+
+// Follow the existing import-time schema upgrade pattern. Public readers never
+// mutate schema, and to_jsonb(g) also works before this nullable column exists.
+export async function ensureEventSnapshotSchema(options = {}) {
+  const sql = options.sql ?? createSql(options.databaseUrl ?? databaseUrlFromEnv(options.env));
+  const columns = await sql.query("select data_type from information_schema.columns where table_schema = 'public' and table_name = 'games' and column_name = 'event_snapshot'");
+  if (columns[0]?.data_type === "jsonb") return false;
+  await sql.query("alter table games add column if not exists event_snapshot jsonb");
+  return true;
+}
+
+// One statement observes a single committed snapshot, including games with no Příklepy.
+export async function loadGameSnapshot(gameId, options = {}) {
+  const sql = options.sql ?? createSql(options.databaseUrl ?? databaseUrlFromEnv(options.env));
+  const rows = await sql.query(`select to_jsonb(g) as game,
+    coalesce((select jsonb_agg(t) from team_game_stats t where t.game_id = g.game_id), '[]'::jsonb) as teams,
+    coalesce((select jsonb_agg(p) from player_game_stats p where p.game_id = g.game_id), '[]'::jsonb) as players,
+    coalesce((select jsonb_agg(k) from goalie_game_stats k where k.game_id = g.game_id), '[]'::jsonb) as goalies,
+    coalesce((select jsonb_agg(d) from detected_priklepy d where d.game_id = g.game_id), '[]'::jsonb) as priklepy
+    from games g where g.game_id = $1::uuid`, [gameId]);
+  return rows[0] ?? null;
+}
+
+export async function loadPlayerSeasonRecords(gameId,role,options={}) {
+  const sql=options.sql??createSql(options.databaseUrl??databaseUrlFromEnv(options.env));
+  const keeper=role==='goalie';
+  // Fixed identifiers selected by a server-side role, never user SQL. Scope is
+  // the game's season/group; current local date excludes future scheduled games.
+  return sql.query(`with scope as (select season_id,group_id from games where game_id=$1::uuid)
+    select p.player_id::text as "PlayerId", max(p.player_name) as "FirstName", '' as "LastName",
+      count(distinct p.game_id)::int as "GP",
+      ${keeper?'sum(p.saves)::int as "Svs",sum(p.goals_against)::int as "GA"':'sum(p.goals)::int as "G",sum(p.assists)::int as "A",sum(p.pim)::numeric as "PIM"'}
+    from ${keeper?'goalie_game_stats':'player_game_stats'} p join games g on g.game_id=p.game_id join scope s on g.season_id=s.season_id and g.group_id=s.group_id
+    where g.status='FINISHED' and g.played_on <= (now() at time zone 'Europe/Prague')::date group by p.player_id`,[gameId]);
 }
 
 function publicFeedItem(row) {
@@ -118,6 +159,7 @@ function publicFeedItem(row) {
     teamLogoUrl: row.team_logo_url,
     teamColor: row.team_color ?? row.group_color ?? "#8fe7ff",
     source: "HMS",
+    gameReportUrl: `/game-center/${row.game_id}/public`,
     gameDetailUrl: `https://prod.hms.wootera.net/embed/game?gameId=${row.game_id}&lang=cs`,
   };
 }

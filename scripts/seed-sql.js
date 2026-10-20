@@ -19,7 +19,7 @@ function insert(table, rows, conflictColumns, updateColumns) {
 const rows = rowsFor(sampleAnalysis);
 const statements = [
   "begin;",
-  insert("games", rows.games, ["game_id"], ["organization_id", "competition_id", "season_id", "group_id", "phase_id", "status", "played_on", "started_at", "home_team_id", "away_team_id", "home_team_name", "away_team_name", "home_score", "away_score", "updated_at"]),
+  insert("games", rows.games, ["game_id"], ["organization_id", "competition_id", "season_id", "group_id", "phase_id", "status", "played_on", "started_at", "home_team_id", "away_team_id", "home_team_name", "away_team_name", "home_score", "away_score", "event_snapshot", "updated_at"]),
   insert("player_game_stats", rows.player_game_stats, ["game_id", "player_id"], ["team_id", "player_name", "goals", "assists", "pim"]),
   insert("goalie_game_stats", rows.goalie_game_stats, ["game_id", "player_id"], ["team_id", "player_name", "saves", "goals_against"]),
   insert("team_game_stats", rows.team_game_stats, ["game_id", "team_id"], ["team_name", "side", "goals", "goals_against", "score_difference", "lineup_size", "result"]),

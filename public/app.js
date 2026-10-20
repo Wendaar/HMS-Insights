@@ -216,6 +216,13 @@ function openDetail(id, updateUrl = true) {
       <div class="share-context"><span>${venueLogo}${escapeHtml(item.venue)}</span><span>${new Intl.DateTimeFormat("cs-CZ").format(new Date(`${item.date}T12:00:00`))}</span><small>síla ${item.importance}</small></div>
     </footer>
   </article>`;
+  if (/^\/game-center\/[0-9a-f-]{36}$/i.test(item.gameReportUrl ?? "")) {
+    const reportLink = document.createElement("a");
+    reportLink.href = item.gameReportUrl;
+    reportLink.textContent = "Otevřít Game Report →";
+    reportLink.className = "game-report-link";
+    dialogContent.append(reportLink);
+  }
   dialog.showModal();
   if (updateUrl) history.replaceState(null, "", `#priklep=${encodeURIComponent(item.id)}`);
   dialogContent.querySelector(".share-action").addEventListener("click", (event) => shareMoment(item, event.currentTarget));

@@ -5,7 +5,12 @@ export default async function handler(request, response) {
   if (request.method !== "POST") return response.status(405).json({ error: "Method not allowed" });
   if (!hasBearerSecret(request, process.env.HMS_WEBHOOK_SECRET)) return response.status(401).json({ error: "Unauthorized" });
 
-  const payload = typeof request.body === "string" ? JSON.parse(request.body) : request.body;
+  let payload;
+  try {
+    payload = typeof request.body === "string" ? JSON.parse(request.body) : request.body;
+  } catch {
+    return response.status(400).json({ accepted: false, error: "Neplatný JSON." });
+  }
   const gameId = payload?.gameId;
   if (payload?.type === "ping") {
     return response.status(200).json({ accepted: true, type: "ping", eventId: payload.eventId ?? null });
@@ -17,7 +22,7 @@ export default async function handler(request, response) {
     const result = await processFinishedGame(gameId, { expectedOrganizationId: payload.organizationId });
     return response.status(200).json({ accepted: true, eventId: payload.eventId ?? null, ...result });
   } catch (error) {
-    console.error(error);
-    return response.status(422).json({ accepted: false, error: error.message });
+    console.error("HMS webhook import failed.");
+    return response.status(422).json({ accepted: false, error: "Zápas se nepodařilo načíst nebo uložit." });
   }
 }

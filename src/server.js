@@ -1,3 +1,6 @@
+import {createGameExtrasHandler} from './web/game-extras-handler.js';
+import { createPlayerCardHandler } from "./web/player-card-handler.js";
+import { playerCard } from "./app/player-card.js";
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
@@ -5,19 +8,69 @@ import { dirname, join } from "node:path";
 import { sampleAnalysis } from "./app/sample.js";
 import { feedDemo } from "./app/feed-demo.js";
 import { renderPriklepyPage } from "./web/render.js";
+import { createGameReportHandler } from "./web/game-report-handler.js";
+import { getGameSummary } from "./app/game-summary.js";
+import { buildGameSummary } from "./domain/game-summary.js";
+import { rowsFor } from "./infrastructure/analysis-rows.js";
+import { analyzeHmsResponses } from "./app/analyze.js";
+import { gameEvents as zbraslavEvents, lineup as zbraslavLineup } from "./fixtures/zbraslav-kosti.js";
 
 const directory = dirname(fileURLToPath(import.meta.url));
 const publicDirectory = join(directory, "..", "public");
 const port = Number(process.env.PORT ?? 3000);
+const zbraslavAnalysis = analyzeHmsResponses(zbraslavEvents, zbraslavLineup);
 
 const assets = {
+  "/game-report-extras.js": ["text/javascript; charset=utf-8", "game-report-extras.js"],
+  "/game-report-premium.css": ["text/css; charset=utf-8", "game-report-premium.css"],
+  "/game-report-media.js": ["text/javascript; charset=utf-8", "game-report-media.js"],
   "/styles.css": ["text/css; charset=utf-8", "styles.css"],
   "/app.js": ["text/javascript; charset=utf-8", "app.js"],
+  "/game-report-graphics.js": ["text/javascript; charset=utf-8", "game-report-graphics.js"],
+  "/game-report.js": ["text/javascript; charset=utf-8", "game-report.js"],
+  "/game-report-data.js": ["text/javascript; charset=utf-8", "game-report-data.js"],
+  "/game-report.css": ["text/css; charset=utf-8", "game-report.css"],
   "/favicon.svg": ["image/svg+xml", "favicon.svg"],
 };
 
 export const server = createServer(async (request, response) => {
   const url = new URL(request.url, `http://${request.headers.host ?? "localhost"}`);
+  if(url.pathname === "/api/player-card") {
+    request.query={gameId:url.searchParams.get('gameId'),playerId:url.searchParams.get('playerId')};
+    const loadCard=process.env.DATABASE_URL?undefined:async(gameId,playerId)=>{
+      const a=[zbraslavAnalysis,sampleAnalysis].find(a=>a.game.gameId.toLowerCase()===gameId?.toLowerCase());
+      if(!a)return null;
+      const r=rowsFor(a),known=[...r.player_game_stats,...r.goalie_game_stats].some(p=>p.player_id.toLowerCase()===playerId?.toLowerCase());
+      if(!known)return null;
+      const keeper=r.goalie_game_stats.some(p=>p.player_id.toLowerCase()===playerId?.toLowerCase());
+      const rows=(keeper?r.goalie_game_stats:r.player_game_stats).map(p=>({PlayerId:p.player_id,FirstName:p.player_name,GP:1,G:p.goals,A:p.assists,PIM:p.pim,Svs:p.saves,GA:p.goals_against}));
+      return playerCard(rows,playerId,r.games[0],{role:keeper?'goalie':'skater',source:'imported-games'});
+    };
+    await createPlayerCardHandler({loadCard})(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json');response.end(JSON.stringify(body));}});return;
+  }
+  if(url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='extras'){
+    request.query={gameId:url.searchParams.get('gameId')};
+    await createGameExtrasHandler()(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json');response.end(JSON.stringify(body));}});return;
+  }
+  const reportMatch = /^\/game-center\/([^/]+)(?:\/public)?$/.exec(url.pathname);
+  if (reportMatch || url.pathname === "/api/game-summary") {
+    request.query = { gameId: reportMatch?.[1] ?? url.searchParams.get("gameId") };
+    const adapter = {
+      setHeader: (key, value) => response.setHeader(key, value),
+      status(code) { response.statusCode = code; return this; },
+      send(body) { response.end(body); },
+      json(body) { response.setHeader("content-type", "application/json; charset=utf-8"); response.end(JSON.stringify(body)); },
+    };
+    const loadSummary = process.env.DATABASE_URL ? getGameSummary : async (gameId) => {
+      const preview = [zbraslavAnalysis, sampleAnalysis].find((item) => item.game.gameId.toLowerCase() === gameId.toLowerCase());
+      if (!preview) return null;
+      const rows = rowsFor(preview);
+      return buildGameSummary({ game: rows.games[0], teams: rows.team_game_stats,
+        players: rows.player_game_stats, goalies: rows.goalie_game_stats, priklepy: rows.detected_priklepy });
+    };
+    await createGameReportHandler({ json: !reportMatch, loadSummary, preview: !process.env.DATABASE_URL })(request, adapter);
+    return;
+  }
   if (url.pathname === "/") {
     response.writeHead(302, { location: "/priklepy" });
     response.end();

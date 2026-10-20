@@ -68,7 +68,23 @@ export async function fetchFinishedGameResponses(gameId, options = {}) {
     request("game", { gameId }, options),
     request("gameEvents", { gameId }, options),
     request("gameLineup", { gameId }, options),
+    fetchPublicGameMetadata(gameId, options),
   ]);
+}
+
+export async function fetchPublicGameMetadata(gameId, options = {}) {
+  try {
+    const url = new URL("https://api.prod.hms.wootera.net/public/game");
+    url.searchParams.set("gameId", gameId);
+    // Deliberately no Authorization header: never send the integration token to
+    // a different service. Optional labels must not break core game ingestion.
+    const response = await (options.fetchImpl ?? fetch)(url, {
+      headers: { accept: "application/json" }, signal: AbortSignal.timeout(5000),
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    return Array.isArray(data?.GameEvents) ? data : null;
+  } catch { return null; }
 }
 
 export { DEFAULT_BASE_URL, apiUrl, endpoint };

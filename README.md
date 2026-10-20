@@ -1,12 +1,16 @@
 # HMS Insights / Příklepy — MVP 0.1
 
+Game Center MVP: veřejný `/game-center/:gameId`, sdílený JSON GameSummary v1
+a ukládaný průběh zápasu s góly, asistencemi, tresty a vývojem skóre.
+Architektura, spuštění a ověření: [Game Center](docs/GAME-CENTER.md).
+
 Úzký vertical slice nad jedním dokončeným HMS zápasem:
 
 `Game Events + Lineup → normalizace → zápasové statistiky → 5 pravidel → /priklepy`
 
 ## Spuštění
 
-Požaduje pouze Node.js 20+; nejsou potřeba žádné balíčky třetích stran.
+Požaduje Node.js 20.10+ a instalaci závislostí z `package.json`.
 
 ```bash
 npm test
