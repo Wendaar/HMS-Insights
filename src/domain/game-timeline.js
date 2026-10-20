@@ -1,5 +1,5 @@
 import { publicGoalDetails, publicReference } from "./goal-details.js";
-import { applySpecialTeams } from "./special-teams.js";
+import { applySpecialTeams, specialTeamTotals } from "./special-teams.js";
 
 const string = (value) => typeof value === "string" ? value : null;
 const id = (value) => string(value)?.toLowerCase() ?? null;
@@ -56,5 +56,6 @@ export function buildGameTimeline(game) {
     collections: Object.fromEntries(["goals", "penalties", "saves"].map((key) => [key, snapshot.collections?.[key] === true])),
     unplacedEvents: events.filter((event) => event.type !== "save" && !positioned(event)).length,
     coverage, ordered, events, periodScores,
+    specialTeams: specialTeamTotals(events, { consistent, ordered, penaltiesAvailable: snapshot.collections?.penalties === true, homeId, awayId }),
   };
 }

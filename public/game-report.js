@@ -1,4 +1,4 @@
-import { filterReportEvents,situationCounts,durationLabel } from './game-report-data.js';
+import { filterReportEvents,durationLabel } from './game-report-data.js';
 import { rinkSvg,netSvg,unknownGoals,miniGoalMaps } from './game-report-graphics.js';
 const {summary}=JSON.parse(document.getElementById('game-report-data').textContent);
 const events=summary.timeline?.events??[],byId=new Map(events.map(e=>[e.id,e]));
@@ -11,6 +11,8 @@ function refresh(){
   if(!rail)return;
   const visible=new Set(filterReportEvents(events,filters).map(e=>e.id));
   document.querySelectorAll('.rail-item').forEach(item=>{item.hidden=!visible.has(item.dataset.eventId);});
+  let previousPeriod=null;
+  document.querySelectorAll('.rail-item').forEach(item=>{item.classList.remove('period-start');if(!item.hidden){if(item.dataset.period!==previousPeriod)item.classList.add('period-start');previousPeriod=item.dataset.period;}});
   $('rail-count').textContent=`${visible.size} událostí`;$('rail-empty').hidden=visible.size>0;$('clear-zone-filter').hidden=!filters.zoneKind;
   const goals=filterReportEvents(events,{team:filters.team,period:filters.period,type:'goal'});
   for(const map of document.querySelectorAll('[data-map]')){
@@ -18,10 +20,7 @@ function refresh(){
     const subset=map.dataset.mapScorer?goals.filter(e=>e.teamId?.toLowerCase()===map.dataset.mapScorer.toLowerCase()):goals;
     map.querySelector('.map-content').innerHTML=(field==='shotZone'?rinkSvg(summary,subset,{uid:map.dataset.mapId}):netSvg(summary,subset,{uid:map.dataset.mapId}))+unknownGoals(summary,subset,field);
   }
-  const c=situationCounts(goals);
-  $('strength-ev').textContent=c.recorded.EV+c.estimated.EV;
-  $('strength-pp').textContent=c.recorded.PP+c.estimated.PP;
-  $('strength-sh').textContent=c.recorded.SH+c.estimated.SH;
+
 }
 function playerButton(player){
   if(!/^[a-f0-9-]{36}$/i.test(player.id??'')){const name=document.createElement('span');name.textContent=player.name;return name;}
@@ -70,7 +69,7 @@ function openGoals(ids){
   const goals=ids.map(id=>byId.get(id)).filter(Boolean);
   if(goals.length===1){openEvent(goals[0].id);return;}
   if(!goals.length||!dialog)return;
-  $('event-detail-kicker').textContent='GÓLY V ZÓNĚ';$('event-detail-title').textContent=`${goals.length} góly`;$('event-detail-context').textContent='Vyberte gól pro detail';$('event-permalink').hidden=true;
+  $('event-detail-kicker').textContent='VYBRANÉ GÓLY';$('event-detail-title').textContent=`${goals.length} góly`;$('event-detail-context').textContent='Vyberte gól pro detail';$('event-permalink').hidden=true;
   const list=document.createElement('div');list.className='goal-picker';
   for(const goal of goals){const b=document.createElement('button');b.type='button';b.dataset.eventId=goal.id;b.textContent=[goal.clock,goal.player.name,goal.scoreAfter?`${goal.scoreAfter.home}:${goal.scoreAfter.away}`:null].filter(known).join(' · ');list.append(b);}
   $('event-detail-content').replaceChildren(list);if(!dialog.open)dialog.showModal();
@@ -90,7 +89,15 @@ async function openPlayer(id){
     $('player-card-title').textContent=card.name||knownPlayer?.name||'Hráč';
     const fragment=document.createDocumentFragment(),context=document.createElement('p');context.className='player-scope';context.textContent=[card.scope.competition,card.scope.season,card.scope.group].filter(known).join(' · ');fragment.append(context);
     const labels=card.role==='goalie'?{GP:'Zápasy',Svs:'Zákroky',GA:'Inkasované góly',SvP:'Úspěšnost %',SO:'Čistá konta',W:'Výhry',D:'Remízy',L:'Prohry',PIM:'Trestné minuty'}:{GP:'Zápasy',G:'Góly',A:'Asistence',P:'Body',PIM:'Trestné minuty',PPG:'PP góly',SHG:'SH góly',Stars:'Hvězda zápasu'};
-    if(card.rank){const rank=document.createElement('p');rank.className='player-rank';rank.textContent=`#${card.rank} v bodování soutěže`;fragment.append(rank);}
+    if(card.rank){
+      const rank=document.createElement('p');rank.className='player-rank';rank.textContent=`#${card.rank} v bodování soutěže`;fragment.append(rank);
+      if(card.rank<=10&&card.role!=='goalie'&&card.source==='hms'){
+        const badge=document.createElement('div');badge.className=`league-badge ${card.rank===1?'league-leader':'league-top'}`;
+        const icon=document.createElement('span');icon.setAttribute('aria-hidden','true');icon.textContent=card.rank===1?'★':'◆';
+        const text=document.createElement('span');text.textContent=card.rank===1?'LÍDR BODOVÁNÍ':'TOP 10 BODOVÁNÍ';
+        const scope=document.createElement('small');scope.textContent='V této skupině soutěže';text.append(scope);badge.append(icon,text);fragment.append(badge);
+      }
+    }
     const grid=document.createElement('div');grid.className='player-stat-grid';
     for(const [key,label]of Object.entries(labels)){if(!Number.isFinite(card.stats[key]))continue;const cell=document.createElement('div'),value=document.createElement('strong'),name=document.createElement('small');value.textContent=new Intl.NumberFormat('cs-CZ',{maximumFractionDigits:2}).format(card.stats[key]);name.textContent=label;cell.append(value,name);grid.append(cell);}fragment.append(grid);
     const source=document.createElement('p');source.className='map-caption';source.textContent=(card.source==='hms'?'Souhrnné statistiky HMS pro tuto skupinu soutěže.':'Součet z dosud načtených zápasů v této skupině soutěže.')+(card.asOf?' K '+new Intl.DateTimeFormat('cs-CZ',{timeZone:'Europe/Prague'}).format(new Date(card.asOf)):'');fragment.append(source);
@@ -98,6 +105,10 @@ async function openPlayer(id){
   }catch{if(request===playerRequest&&playerDialog.open)$('player-card-content').textContent='Statistiky se nyní nepodařilo načíst. Zkuste kartu otevřít znovu.';}
 }
 document.addEventListener('click',event=>{
+  const strength=event.target.closest('button[data-strength]');if(strength){
+    const goals=events.filter(e=>e.type==='goal'&&e.teamId?.toLowerCase()===strength.dataset.strengthTeam.toLowerCase()&&e.situation?.code===strength.dataset.strength);
+    openGoals(goals.map(e=>e.id));return;
+  }
   const player=event.target.closest('button[data-player-id]');if(player){openPlayer(player.dataset.playerId);return;}
   const goal=event.target.closest('button[data-event-id]');if(goal){openEvent(goal.dataset.eventId);return;}
   const mark=event.target.closest('[data-goal-ids]');if(mark){try{openGoals(JSON.parse(mark.dataset.goalIds));}catch{}}
