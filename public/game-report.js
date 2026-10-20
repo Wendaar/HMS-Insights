@@ -45,6 +45,7 @@ function openEvent(id){
     const mini=document.createElement('div');mini.innerHTML=miniGoalMaps(summary,event);content.append(mini);
   }
   const list=document.createElement('dl');
+  if(!event.clock&&event.recordedAt)row(list,'Čas zápisu',new Intl.DateTimeFormat('cs-CZ',{timeZone:'Europe/Prague',dateStyle:'short',timeStyle:'medium'}).format(new Date(event.recordedAt)));
   if(event.type==='goal'){
     row(list,'Skóre po gólu',event.scoreAfter?`${event.scoreAfter.home}:${event.scoreAfter.away}`:null);
     const assists=event.assists.filter(p=>known(p.name));

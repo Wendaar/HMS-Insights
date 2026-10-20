@@ -1,5 +1,6 @@
 import { publicGoalDetails, publicReference } from "./goal-details.js";
 import { applySpecialTeams, specialTeamTotals } from "./special-teams.js";
+import {eventRecordedAt} from '../hms/event-snapshot.js';
 
 const string = (value) => typeof value === "string" ? value : null;
 const id = (value) => string(value)?.toLowerCase() ?? null;
@@ -14,6 +15,7 @@ export function buildGameTimeline(game) {
     period: Number.isInteger(event.period) && event.period > 0 && event.period <= 9 ? event.period : null,
     clock: string(event.clock),
     clockSeconds: Number.isFinite(event.clockSeconds) && event.clockSeconds >= 0 ? event.clockSeconds : null,
+    recordedAt:eventRecordedAt(event),
     player: person(event.player),
     ...(event.type === "goal" ? { assists: (Array.isArray(event.assists) ? event.assists : []).map(person), allowedBy: person(event.allowedBy), details: publicGoalDetails(event.details) } : {}),
     ...(event.type === "penalty" ? { penaltyMinutes: Number.isFinite(event.penaltyMinutes) && event.penaltyMinutes >= 0 ? event.penaltyMinutes : null,
@@ -32,8 +34,16 @@ export function buildGameTimeline(game) {
   const positioned = (event) => event.clockSeconds !== null
     && (byPeriod ? event.period !== null : snapshot.clockBasis === "game-elapsed");
   const uniqueGoalTimes = new Set(goals.map((event) => `${byPeriod ? event.period : "game"}:${event.clockSeconds}`)).size === goals.length;
-  const ordered = goalsAvailable && goals.every(positioned) && uniqueGoalTimes;
-  events.sort((a, b) => Number(positioned(b)) - Number(positioned(a))
+  const clockOrdered = goalsAvailable && goals.every(positioned) && uniqueGoalTimes;
+  const relevant=events.filter(e=>e.type!=='save');
+  const recordingOrdered=(!clockOrdered||relevant.some(e=>!positioned(e)))&&relevant.length>0&&relevant.every(e=>e.recordedAt!==null);
+  const recordingByPeriod=relevant.every(e=>e.period!==null);
+  const ordered=clockOrdered&&!recordingOrdered;
+  events.sort(recordingOrdered?(a,b)=>(recordingByPeriod?(a.period??Infinity)-(b.period??Infinity):0)
+    || (a.recordedAt===null)-(b.recordedAt===null)
+    || (a.recordedAt??'').localeCompare(b.recordedAt??'')
+    || `${a.type}:${a.id}`.localeCompare(`${b.type}:${b.id}`)
+    :(a, b) => Number(positioned(b)) - Number(positioned(a))
     || (byPeriod ? (a.period ?? Infinity) - (b.period ?? Infinity) : 0)
     || (a.clockSeconds ?? Infinity) - (b.clockSeconds ?? Infinity)
     || `${a.type}:${a.id}`.localeCompare(`${b.type}:${b.id}`));
@@ -54,7 +64,8 @@ export function buildGameTimeline(game) {
   return {
     available: Object.values(snapshot.collections ?? {}).some((value) => value === true),
     collections: Object.fromEntries(["goals", "penalties", "saves"].map((key) => [key, snapshot.collections?.[key] === true])),
-    unplacedEvents: events.filter((event) => event.type !== "save" && !positioned(event)).length,
+    unplacedEvents: events.filter((event) => event.type !== "save" && !positioned(event)&&!(recordingOrdered&&event.recordedAt)).length,
+    displayOrder:recordingOrdered?'recorded-at':ordered?'game-clock':'partial',
     coverage, ordered, events, periodScores,
     specialTeams: specialTeamTotals(events, { consistent, ordered, penaltiesAvailable: snapshot.collections?.penalties === true, homeId, awayId }),
   };

@@ -1,4 +1,4 @@
-import { eventClock, eventPeriod } from "./event-snapshot.js";
+import { eventClock, eventPeriod,eventRecordedAt } from "./event-snapshot.js";
 
 const entities = { goal: "GameEventGoal", penalty: "GameEventPenalty", save: "GameEventSave" };
 const fields = ["ListShotType", "ListGoalType", "ListGoalSubtype", "ListEventLocation", "ListGoalLocation", "ListPenaltyType", "ListPenaltySubtype"];
@@ -6,8 +6,9 @@ const clean = (value) => typeof value === "string" && value.trim() ? value.trim(
 function fingerprint(event, type) {
   const clock = eventClock(event.gameTime);
   const team = event.scoredByTeamId ?? event.penalizedTeamId ?? event.savedByTeamId;
-  if (clock === null || !team) return null;
-  return `${type}:${eventPeriod(event.period) ?? "?"}:${clock}:${String(team).toLowerCase()}`;
+  const recorded=eventRecordedAt(event);
+  if ((clock === null&&!recorded) || !team) return null;
+  return `${type}:${eventPeriod(event.period) ?? "?"}:${clock===null?'recorded:'+recorded:clock}:${String(team).toLowerCase()}`;
 }
 
 // Public HMS embeds expose rulebook labels even when the integration feed only

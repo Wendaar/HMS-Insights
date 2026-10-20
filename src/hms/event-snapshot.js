@@ -15,6 +15,12 @@ export function eventPeriod(value) {
   const match = /^([1-9])(?:\.?\s*(?:třetina|tretina|period))?$/i.exec(String(value ?? "").trim());
   return match ? Number(match[1]) : null;
 }
+export function eventRecordedAt(event){
+  for(const value of [event?.timestamp,event?.createdAt,event?.recordedAt]){
+    if(typeof value==='string'&&/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?(?:Z|[+-]\d\d:\d\d)$/.test(value)&&Number.isFinite(Date.parse(value)))return new Date(value).toISOString();
+  }
+  return null;
+}
 
 // Explicit empty collections are authoritative; never resurrect deleted events
 // from an older embedded list in game detail.
@@ -58,6 +64,7 @@ export function buildEventSnapshot(game, groups, players, penaltyMinutes) {
     type, period: eventPeriod(event.period),
     clock: eventClock(event.gameTime) === null ? null : String(event.gameTime),
     clockSeconds: eventClock(event.gameTime),
+    recordedAt:eventRecordedAt(event),
   });
   const events = [
     ...groups.goals.events.filter((event) => !event.isDeleted).map((event, index) => ({
