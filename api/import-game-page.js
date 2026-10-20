@@ -23,7 +23,7 @@ const html = `<!doctype html>
   <p>Bezpečný kontrolní import z HMS do databáze Příklepů.</p>
   <form id="form">
     <label for="gameId">HMS Game ID</label>
-    <input id="gameId" required value="F6321894-98CA-11F1-8BDF-EF2495D048F3" autocomplete="off">
+    <input id="gameId" required placeholder="Vlož HMS Game ID" autocomplete="off">
     <label for="secret">Webhook secret</label>
     <input id="secret" required type="password" autocomplete="off" placeholder="Vlož stejný secret jako ve Vercelu">
     <button id="submit">Načíst a zpracovat zápas</button>
@@ -51,5 +51,7 @@ export default function handler(request, response) {
   response.setHeader("content-type", "text/html; charset=utf-8");
   response.setHeader("cache-control", "no-store");
   response.setHeader("x-robots-tag", "noindex, nofollow");
-  return response.status(200).send(html);
+  const gameId=request.query?.gameId;
+  const selected=typeof gameId==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(gameId)?gameId:'';
+  return response.status(200).send(html.replace('id="gameId" required',`id="gameId" value="${selected}" required`));
 }
