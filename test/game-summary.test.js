@@ -133,7 +133,7 @@ test("failed transaction propagates and all replacement statements stay in one b
 
 test("Příklepy keep their HMS link and add a local report link", () => {
   const item = publicFeedItem({ game_id: id });
-  assert.equal(item.gameReportUrl, `/game-center/${id}`);
+  assert.equal(item.gameReportUrl, `/game-center/${id}/public`);
   assert.match(item.gameDetailUrl, /prod.hms.wootera.net\/embed\/game/);
 });
 

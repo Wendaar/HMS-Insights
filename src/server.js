@@ -46,7 +46,7 @@ export const server = createServer(async (request, response) => {
     };
     await createPlayerCardHandler({loadCard})(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json');response.end(JSON.stringify(body));}});return;
   }
-  const reportMatch = /^\/game-center\/([^/]+)$/.exec(url.pathname);
+  const reportMatch = /^\/game-center\/([^/]+)(?:\/public)?$/.exec(url.pathname);
   if (reportMatch || url.pathname === "/api/game-summary") {
     request.query = { gameId: reportMatch?.[1] ?? url.searchParams.get("gameId") };
     const adapter = {

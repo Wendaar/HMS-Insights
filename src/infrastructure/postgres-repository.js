@@ -159,7 +159,7 @@ function publicFeedItem(row) {
     teamLogoUrl: row.team_logo_url,
     teamColor: row.team_color ?? row.group_color ?? "#8fe7ff",
     source: "HMS",
-    gameReportUrl: `/game-center/${row.game_id}`,
+    gameReportUrl: `/game-center/${row.game_id}/public`,
     gameDetailUrl: `https://prod.hms.wootera.net/embed/game?gameId=${row.game_id}&lang=cs`,
   };
 }

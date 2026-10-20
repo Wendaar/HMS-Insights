@@ -41,7 +41,7 @@ form.addEventListener('submit',async(event)=>{
     const response=await fetch('/api/admin/import-game',{method:'POST',headers:{'content-type':'application/json','authorization':'Bearer '+secret.value},body:JSON.stringify({gameId:document.querySelector('#gameId').value.trim()})});
     const data=await response.json();
     if(!response.ok)throw new Error(data.error||'Import se nezdařil.');
-    result.textContent='Hotovo: '+data.score+', vzniklo '+data.priklepy+' Příklepů.'+(data.events?' Uloženo '+data.events.goal+' gólů a '+data.events.penalty+' trestů.':'');feedLink.href='/game-center/'+encodeURIComponent(data.gameId);feedLink.style.display='inline-block';secret.value='';
+    result.textContent='Hotovo: '+data.score+', vzniklo '+data.priklepy+' Příklepů.'+(data.events?' Uloženo '+data.events.goal+' gólů a '+data.events.penalty+' trestů.':'');feedLink.href='/game-center/'+encodeURIComponent(data.gameId)+'/public';feedLink.style.display='inline-block';secret.value='';
   }catch(error){result.className='error';result.textContent=error.message}finally{button.disabled=false}
 });
 </script></body></html>`;

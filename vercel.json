@@ -9,6 +9,7 @@
   },
   "rewrites": [
     { "source": "/api/player-card", "destination": "/api/game-summary?view=player-card" },
+    { "source": "/game-center/:gameId/public", "destination": "/api/game-report-page?gameId=:gameId" },
     { "source": "/game-center/:gameId", "destination": "/api/game-report-page?gameId=:gameId" },
     { "source": "/", "destination": "/api/page" },
     { "source": "/priklepy", "destination": "/api/page" },
