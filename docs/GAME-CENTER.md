@@ -105,3 +105,11 @@ GameSummary exposes safe sporting image URLs from the two existing HMS S3 bucket
 ### Permanent public match URLs
 
 `/game-center/:gameId/public` serves the same read-only report for every imported game, without application login or a per-match access toggle. The original `/game-center/:gameId` remains compatible. Import confirmation and Příklepy feed links use the explicit public URL. Invalid IDs and absent imports still return 400 / 404. This route does not bypass Vercel Deployment Protection: the deployment/domain must independently allow anonymous access. Admin ingestion still requires its existing secret.
+
+### Official stars, roster counts and current rank markers
+
+`/api/game-summary?view=extras&gameId=...` reuses the existing function for optional read-only display metadata. It loads the stored game, then fixed public HMS game/gameMultimedia and group playersStats endpoints without credentials, with five-second timeouts and a bounded two-minute memory cache. No ingestion or database writes occur. Public game responses often omit gameId: match both teams, date and final score before accepting stars/lineups; conflicting explicit IDs are rejected. Responses expose only sporting fields, allowlisted media and ranks for game players.
+
+All non-deleted GameStars are displayed in an accessible horizontal carousel above game scoring leaders, without a fixed star limit. Stats are from the imported game; a selected non-playing goalie can be displayed without fabricated zero stats. Lineup role counts include non-playing goalies. Current HMS group Top 10 / leader icons appear directly in the roster and leader cards. Missing metadata remains hidden and never becomes fabricated awards.
+
+The hero uses stored competition-group and venue logos. Neon green goal markers match green G-column styling. Album and YouTube links sit outside the horizontal section navigation so mobile visitors can find them. YouTube URLs are normalized to a valid 11-character video ID on official YouTube hosts. Flickr album links come from the imported HMS field; public gameMultimedia supplies the YouTube URL but does not expose the original Flickr album URL. Album changes require reimport; stars, public lineup counts, ranks and YouTube refresh independently.

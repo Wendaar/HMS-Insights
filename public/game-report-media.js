@@ -9,3 +9,9 @@ export function flickrAlbum(value){
   if(/^https:\/\/www\.flickr\.com\/(photos\/[a-zA-Z0-9@_-]+\/albums\/\d+|gp\/[a-zA-Z0-9@_-]+\/[a-zA-Z0-9]+)\/?$/.test(value)||/^https:\/\/flic\.kr\/s\/[a-zA-Z0-9]+\/?$/.test(value))return value;
   return null;
 }
+export function youtubeVideo(value){
+  try{const u=new URL(value);if(u.protocol!=='https:'||u.username||u.password)return null;
+    const id=u.hostname==='youtu.be'?u.pathname.slice(1):['youtube.com','www.youtube.com','m.youtube.com'].includes(u.hostname)?u.pathname==='/watch'?u.searchParams.get('v'):/^\/(live|embed|shorts)\//.test(u.pathname)?u.pathname.split('/')[2]:null:null;
+    return /^[\w-]{11}$/.test(id??'')?`https://www.youtube.com/watch?v=${id}`:null;
+  }catch{return null;}
+}

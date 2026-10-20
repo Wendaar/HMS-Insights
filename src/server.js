@@ -1,3 +1,4 @@
+import {createGameExtrasHandler} from './web/game-extras-handler.js';
 import { createPlayerCardHandler } from "./web/player-card-handler.js";
 import { playerCard } from "./app/player-card.js";
 import { createServer } from "node:http";
@@ -20,6 +21,7 @@ const port = Number(process.env.PORT ?? 3000);
 const zbraslavAnalysis = analyzeHmsResponses(zbraslavEvents, zbraslavLineup);
 
 const assets = {
+  "/game-report-extras.js": ["text/javascript; charset=utf-8", "game-report-extras.js"],
   "/game-report-premium.css": ["text/css; charset=utf-8", "game-report-premium.css"],
   "/game-report-media.js": ["text/javascript; charset=utf-8", "game-report-media.js"],
   "/styles.css": ["text/css; charset=utf-8", "styles.css"],
@@ -45,6 +47,10 @@ export const server = createServer(async (request, response) => {
       return playerCard(rows,playerId,r.games[0],{role:keeper?'goalie':'skater',source:'imported-games'});
     };
     await createPlayerCardHandler({loadCard})(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json');response.end(JSON.stringify(body));}});return;
+  }
+  if(url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='extras'){
+    request.query={gameId:url.searchParams.get('gameId')};
+    await createGameExtrasHandler()(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json');response.end(JSON.stringify(body));}});return;
   }
   const reportMatch = /^\/game-center\/([^/]+)(?:\/public)?$/.exec(url.pathname);
   if (reportMatch || url.pathname === "/api/game-summary") {

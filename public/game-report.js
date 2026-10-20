@@ -1,3 +1,4 @@
+import './game-report-extras.js';
 import {sportingImage} from './game-report-media.js';
 import { filterReportEvents,durationLabel } from './game-report-data.js';
 import { rinkSvg,netSvg,unknownGoals,miniGoalMaps } from './game-report-graphics.js';

@@ -34,7 +34,7 @@ export function playerCard(rows,playerId,scope,{role='skater',source='hms',asOf=
   return {available:true,...player,role,scope:{competition:text(scope.competition_name),season:text(scope.season_name),group:text(scope.group_name)},source,asOf};
 }
 
-async function publicStats(groupId,role,options){
+export async function publicStats(groupId,role,options={}){
   if(!isGameId(groupId))return null;
   const key=`${role}:${groupId.toLowerCase()}`;
   if(!options.fetchImpl&&cache.get(key)?.until>Date.now())return cache.get(key).rows;

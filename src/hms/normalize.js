@@ -292,6 +292,7 @@ export function normalizeHmsGame(gameEventsResponse, lineupResponse, gameDetailR
   };
   normalized.eventSnapshot = buildEventSnapshot(normalized, groupedEvents, players, penaltyMinutes);
   normalized.eventSnapshot.faceoffs = faceoffSnapshot(gameEventsResponse, gameDetailResponse, publicMetadata, normalized, players);
+  normalized.eventSnapshot.roster=[...players.values()].map(p=>({id:p.playerId,teamId:p.teamId,isGoalie:p.isGoalie}));
   normalized.eventSnapshot.media = { albumUrl: flickrAlbum(gameResponse.flickrAlbum)
     ?? (publicMetadata?.gameId?.toLowerCase()===gameId.toLowerCase()?flickrAlbum(publicMetadata.flickrAlbum):null) };
   return normalized;
