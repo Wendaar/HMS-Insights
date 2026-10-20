@@ -19,6 +19,8 @@ export function buildGameSummary({ game, teams = [], players = [], goalies = [],
     return {
       id: game[`${prefix}_team_id`], name: game[`${prefix}_team_name`],
       score: game[`${prefix}_score`], lineupSize: row?.lineup_size ?? null,
+      color: /^#[\da-f]{6}$/i.test(row?.primary_color ?? '') ? row.primary_color : null,
+      secondaryColor: /^#[\da-f]{6}$/i.test(row?.secondary_color ?? '') ? row.secondary_color : null,
     };
   };
   return {

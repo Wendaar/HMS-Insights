@@ -116,6 +116,19 @@ export async function loadGameSnapshot(gameId, options = {}) {
   return rows[0] ?? null;
 }
 
+export async function loadPlayerSeasonRecords(gameId,role,options={}) {
+  const sql=options.sql??createSql(options.databaseUrl??databaseUrlFromEnv(options.env));
+  const keeper=role==='goalie';
+  // Fixed identifiers selected by a server-side role, never user SQL. Scope is
+  // the game's season/group; current local date excludes future scheduled games.
+  return sql.query(`with scope as (select season_id,group_id from games where game_id=$1::uuid)
+    select p.player_id::text as "PlayerId", max(p.player_name) as "FirstName", '' as "LastName",
+      count(distinct p.game_id)::int as "GP",
+      ${keeper?'sum(p.saves)::int as "Svs",sum(p.goals_against)::int as "GA"':'sum(p.goals)::int as "G",sum(p.assists)::int as "A",sum(p.pim)::numeric as "PIM"'}
+    from ${keeper?'goalie_game_stats':'player_game_stats'} p join games g on g.game_id=p.game_id join scope s on g.season_id=s.season_id and g.group_id=s.group_id
+    where g.status='FINISHED' and g.played_on <= (now() at time zone 'Europe/Prague')::date group by p.player_id`,[gameId]);
+}
+
 function publicFeedItem(row) {
   return {
     id: row.priklep_id,

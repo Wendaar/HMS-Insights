@@ -40,7 +40,7 @@ test('HMS faceoff totals survive storage rows and map to both teams', () => {
   assert.match(filter, /Oba týmy<\/option><option value=/);
   assert.equal(summary.timeline.events.find((event) => event.clock === '26:16').situation.code, 'PP');
   assert.equal(summary.timeline.events.find((event) => event.clock === '33:09').situation.code, 'PP');
-  assert.equal(summary.timeline.events.filter((event) => event.situation?.source === 'penalty-model').length, 3);
+  assert.equal(summary.timeline.events.filter((event) => event.situation?.source === 'penalty-model' && event.situation.code === 'PP').length, 3);
 });
 const match = { homeTeamId: 'home', awayTeamId: 'away', homeScore: 1, awayScore: 0 };
 test('faceoffs use official totals before events and matching public totals only as fallback', () => {

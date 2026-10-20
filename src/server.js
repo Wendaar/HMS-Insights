@@ -1,3 +1,5 @@
+import { createPlayerCardHandler } from "./web/player-card-handler.js";
+import { playerCard } from "./app/player-card.js";
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
@@ -20,6 +22,7 @@ const zbraslavAnalysis = analyzeHmsResponses(zbraslavEvents, zbraslavLineup);
 const assets = {
   "/styles.css": ["text/css; charset=utf-8", "styles.css"],
   "/app.js": ["text/javascript; charset=utf-8", "app.js"],
+  "/game-report-graphics.js": ["text/javascript; charset=utf-8", "game-report-graphics.js"],
   "/game-report.js": ["text/javascript; charset=utf-8", "game-report.js"],
   "/game-report-data.js": ["text/javascript; charset=utf-8", "game-report-data.js"],
   "/game-report.css": ["text/css; charset=utf-8", "game-report.css"],
@@ -28,6 +31,19 @@ const assets = {
 
 export const server = createServer(async (request, response) => {
   const url = new URL(request.url, `http://${request.headers.host ?? "localhost"}`);
+  if(url.pathname === "/api/player-card") {
+    request.query={gameId:url.searchParams.get('gameId'),playerId:url.searchParams.get('playerId')};
+    const loadCard=process.env.DATABASE_URL?undefined:async(gameId,playerId)=>{
+      const a=[zbraslavAnalysis,sampleAnalysis].find(a=>a.game.gameId.toLowerCase()===gameId?.toLowerCase());
+      if(!a)return null;
+      const r=rowsFor(a),known=[...r.player_game_stats,...r.goalie_game_stats].some(p=>p.player_id.toLowerCase()===playerId?.toLowerCase());
+      if(!known)return null;
+      const keeper=r.goalie_game_stats.some(p=>p.player_id.toLowerCase()===playerId?.toLowerCase());
+      const rows=(keeper?r.goalie_game_stats:r.player_game_stats).map(p=>({PlayerId:p.player_id,FirstName:p.player_name,GP:1,G:p.goals,A:p.assists,PIM:p.pim,Svs:p.saves,GA:p.goals_against}));
+      return playerCard(rows,playerId,r.games[0],{role:keeper?'goalie':'skater',source:'imported-games'});
+    };
+    await createPlayerCardHandler({loadCard})(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json');response.end(JSON.stringify(body));}});return;
+  }
   const reportMatch = /^\/game-center\/([^/]+)$/.exec(url.pathname);
   if (reportMatch || url.pathname === "/api/game-summary") {
     request.query = { gameId: reportMatch?.[1] ?? url.searchParams.get("gameId") };

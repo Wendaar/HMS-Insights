@@ -60,6 +60,9 @@ export function penaltyDetails(event) {
 export function recordedSituation(event) {
   const label = clean(event.details?.goalType?.name);
   const type = key(label);
+  const numbers = /([3-6])\s*(?:on|na|v|vs|x|:)\s*([3-6])/i.exec(label ?? '');
+  const manpower = numbers ? { for: Number(numbers[1]), against: Number(numbers[2]) } : null;
+  if (manpower) return { code: manpower.for > manpower.against ? 'PP' : manpower.for < manpower.against ? 'SH' : 'EV', source: 'hms', label, manpower };
   if (/powerplay|presilov/.test(type)) return { code: "PP", source: "hms", label };
   if (/shorthanded|oslabeni/.test(type)) return { code: "SH", source: "hms", label };
   if (/evenstrength|rovnovaz/.test(type)) return { code: "EV", source: "hms", label };

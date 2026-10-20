@@ -28,11 +28,15 @@ export function applySpecialTeams(events, { consistent, ordered, penaltiesAvaila
       continue;
     }
     const recorded = recordedSituation(event);
-    const canDerive = supported && active.length === 1 && !penaltyTimes.has(event.clockSeconds)
+    const canDerive = supported && !penaltyTimes.has(event.clockSeconds)
       && !/shootout|penalty shot|trestn[ée] střílen/i.test(event.details?.goalSubtype?.name ?? "");
-    const candidate = canDerive ? active[0].teamId === event.teamId ? "SH" : "PP" : null;
+    const own = active.filter(p=>p.teamId===event.teamId).length;
+    const opposing = active.length-own;
+    const manpower = canDerive ? { for: 5-own, against: 5-opposing } : null;
+    const candidate = !manpower ? null : manpower.for > manpower.against ? 'PP' : manpower.for < manpower.against ? 'SH' : 'EV';
     event.situation = recorded.source === "hms" ? recorded
-      : candidate ? { code: candidate, source: "penalty-model", basis: active[0].basis, label: candidate === "PP" ? "Přesilovkový gól" : "Gól v oslabení" }
+      : candidate ? { code: candidate, source: "penalty-model", basis: active.length ? active.some(p=>p.basis==='duration-assumption') ? 'duration-assumption' : 'minor-penalty' : 'no-active-penalty',
+        manpower, label: `${manpower.for} na ${manpower.against}` }
         : recorded;
     if (candidate === "PP" && ["PP", "UNKNOWN"].includes(recorded.code)) active = [];
     if (candidate && recorded.source === "hms" && recorded.code !== candidate) supported = false;

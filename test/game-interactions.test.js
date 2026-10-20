@@ -15,15 +15,15 @@ const penalty = (time, team = 'home', extra = {}) => ({ id: `p${time}`, type: 'p
 const goal = (time, team = 'away', extra = {}) => ({ id: `g${time}`, type: 'goal', teamId: team, clockSeconds: time, details: {}, ...extra });
 const classify = (events, options = {}) => { applySpecialTeams(events, { consistent: true, ordered: true, penaltiesAvailable: true, homeId: 'home', awayId: 'away', ...options }); return events.filter((event) => event.type === 'goal').map((event) => event.situation); };
 
-test('a PP goal ends the minor penalty; a subsequent goal has unknown strength', () => {
-  assert.deepEqual(classify([penalty(60), goal(90), goal(100)]).map((s) => s.code), ['PP', 'UNKNOWN']);
+test('a PP goal ends the minor penalty; a subsequent goal defaults to 5 on 5', () => {
+  assert.deepEqual(classify([penalty(60), goal(90), goal(100)]).map((s) => s.code), ['PP', 'EV']);
 });
 test('a short-handed goal does not end the penalty; exact expiration does', () => {
   assert.deepEqual(classify([penalty(60), goal(90, 'home'), goal(100)]).map((s) => s.code), ['SH', 'PP']);
-  assert.equal(classify([penalty(60), goal(180)])[0].code, 'UNKNOWN');
+  assert.equal(classify([penalty(60), goal(180)])[0].code, 'EV');
 });
 test('coincidental penalties and same-second uncertainty never imply PP', () => {
-  assert.equal(classify([penalty(60), penalty(60, 'away'), goal(90)])[0].code, 'UNKNOWN');
+  assert.equal(classify([penalty(60), penalty(60, 'away'), goal(90)])[0].code, 'EV');
   assert.ok(classify([penalty(60), goal(90), penalty(90, 'away'), goal(100)]).every((s) => s.code === 'UNKNOWN'));
 });
 test('queued and major penalties, clock resets and incomplete snapshots disable estimation', () => {
@@ -93,7 +93,7 @@ test('enriched sporting details survive normalization, storage rows and the publ
   const source = structuredClone(gameEvents);
   const first = source.GameEventGoals[0];
   const metadata = { HomeTeamGoals: 5, AwayTeamGoals: 10, GameEvents: [
-    { ...first, entity: 'GameEventGoal', ListEventLocation: { name: 'Left circle' }, ListGoalLocation: { name: 'Top shelf' }, ListShotType: { name: 'Forehand' }, ListGoalType: { name: 'Power play 5 on 4' }, privateContact: 'hidden' },
+    { ...first, entity: 'GameEventGoal', ListEventLocation: { name: 'Left circle' }, ListGoalLocation: { name: 'Top shelf' }, ListShotType: { name: 'Forehand' }, ListGoalType: { name: 'Even strength 5 on 5' }, privateContact: 'hidden' },
     ...source.GameEventPenalties.map((event) => ({ ...event, entity: 'GameEventPenalty', ListPenaltyType: { name: 'Menší trest' } })),
   ] };
   const analysis = analyzeHmsResponses(source, lineup, null, metadata);

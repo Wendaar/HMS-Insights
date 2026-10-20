@@ -32,7 +32,7 @@ export function goalZoneCounts(events, field, catalog) {
 }
 
 export function situationCounts(events) {
-  const result = { recorded: { PP: 0, SH: 0, EV: 0, OTHER: 0 }, estimated: { PP: 0, SH: 0 }, unknown: 0, total: 0 };
+  const result = { recorded: { PP: 0, SH: 0, EV: 0, OTHER: 0 }, estimated: { PP: 0, SH: 0, EV: 0 }, unknown: 0, total: 0 };
   for (const event of events.filter((item) => item.type === "goal")) {
     result.total++;
     const situation = event.situation;

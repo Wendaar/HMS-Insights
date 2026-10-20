@@ -1,8 +1,9 @@
-import { escapeHtml as html } from './game-report-interactive.js';
+import { escape as html } from '../../public/game-report-graphics.js';
 const percent = (value) => value === null || value === undefined ? '—' : `${new Intl.NumberFormat('cs-CZ', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(value)} %`;
 
 export function renderFaceoffs(summary) {
   const f = summary.faceoffs;
+  if(!f?.available)return "";
   return `<section aria-labelledby="faceoffs"><p class="eyebrow">SOUBOJE NA BODU</p><h2 id="faceoffs">Vhazování</h2>${f?.available
     ? `<div class="faceoff-comparison">${[[summary.home, f.homeWins, f.homePercentage], [summary.away, f.awayWins, f.awayPercentage]].map(([team, wins, efficiency]) => `<article><h3>${html(team.name)}</h3><strong class="stat-percentage">${percent(efficiency)}</strong><p>${wins} vyhraných vhazování</p></article>`).join('')}</div><p class="section-copy">${f.total} evidovaných vhazování celkem${f.unattributed ? ` · ${f.unattributed} bez určeného vítěze; procenta nelze určit` : ''}. ${f.source === 'recorded-events' ? 'Spočítáno z evidovaných událostí.' : 'Součty ze zápisu HMS.'}</p>`
     : '<p class="section-copy">Údaje o vhazování ještě nejsou uložené. Doplní je nové načtení zápasu z HMS.</p>'}</section>`;

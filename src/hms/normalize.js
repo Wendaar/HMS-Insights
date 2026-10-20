@@ -48,8 +48,8 @@ function teamRecord(team) {
     teamName: team.name,
     logoUrl: entityMediaUrl(team) || team.logo || null,
     logoTemplateUrl: entityMediaTemplate(team),
-    primaryColor: team.teamColor1 || team.jerseyColor1 || null,
-    secondaryColor: team.teamColor2 || team.jerseyColor2 || null,
+    primaryColor: team.jerseyColor1 || team.teamColor1 || null,
+    secondaryColor: team.jerseyColor2 || team.teamColor2 || null,
   };
 }
 

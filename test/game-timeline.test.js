@@ -73,7 +73,7 @@ test("unpositioned penalties are disclosed separately from known goal order", ()
   assert.equal(summary.timeline.ordered, true);
   assert.equal(summary.timeline.unplacedEvents, 1);
   assert.deepEqual(summary.timeline.collections, { goals: true, penalties: true, saves: true });
-  assert.match(renderGameReport(summary), /Některé události nemají úplný čas/);
+  assert.match(renderGameReport(summary), /Další události bez úplného času/);
 });
 
 test("missing or tied goal clocks never manufacture a score order", () => {
