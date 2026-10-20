@@ -2,15 +2,27 @@
 export const escape = (value) => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const eq = (a,b) => a && b && a.toLowerCase() === b.toLowerCase();
 const hex = value => typeof value === 'string' && /^#[\da-f]{6}$/i.test(value) ? value : null;
+export function jerseyColor(value){
+  if(typeof value!=='string')return null;
+  if(/^#[\da-f]{3}$/i.test(value))return '#'+[...value.slice(1)].map(c=>c+c).join('').toLowerCase();
+  return hex(value)?.toLowerCase()??null;
+}
+const rgb=color=>color.slice(1).match(/../g).map(v=>parseInt(v,16));
+const distance=(a,b)=>Math.hypot(...rgb(a).map((v,i)=>v-rgb(b)[i]));
 export function teamPalette(summary) {
-  const home = hex(summary.home.color) ?? '#008d9f';
-  const away = [summary.away.color, summary.away.secondaryColor, '#9c428f', '#de8422'].map(hex).find(c => c && c.toLowerCase() !== home.toLowerCase());
+  const homeJersey=jerseyColor(summary.home.jerseyColor),awayJersey=jerseyColor(summary.away.jerseyColor);
+  let home = homeJersey ?? hex(summary.home.color) ?? '#008d9f';
+  if(!homeJersey&&awayJersey&&distance(home,awayJersey)<100)home=[summary.home.secondaryColor,'#008d9f','#9c428f','#de8422'].map(hex).find(c=>c&&distance(c,awayJersey)>=100);
+  // An explicit match jersey is never recolored. Only inferred display colors
+  // may be adjusted when club palettes are too similar to distinguish.
+  const away = awayJersey ?? [summary.away.color, summary.away.secondaryColor, '#9c428f', '#de8422'].map(hex).find(c => c && distance(c,home)>=100);
   return {[summary.home.id.toLowerCase()]:home, [summary.away.id.toLowerCase()]:away};
 }
 function ink(color) {
   const rgb = color.slice(1).match(/../g).map(v=>parseInt(v,16));
   return rgb[0]*.299+rgb[1]*.587+rgb[2]*.114 > 160 ? '#102133' : '#ffffff';
 }
+export const colorOutline=color=>ink(color)==='#102133'?'#536779':'#ffffff';
 export const rinkZones = {
   'left-corner':[38,72,58,42], 'behind-net':[145,27,70,26], 'right-corner':[264,72,58,42],
   'left-circle':[63,143,76,64], 'between-circles':[146,128,68,75], 'right-circle':[221,143,76,64],
@@ -63,7 +75,7 @@ function marksSvg(summary,events,field,{mini=false,uid='map'}={}) {
     const label=cluster?`×${mark.events.length}`:`${numberOf(summary,mark.events[0])}`;
     const title=mark.events.map(e=>`Gól ${numberOf(summary,e)} · ${e.player.name??''}${e.clock?` · ${e.clock}`:''}`).join(' / ');
     const attributes=mini?'':` role="button" tabindex="0" data-goal-ids="${escape(JSON.stringify(mark.events.map(e=>e.id)))}" aria-label="${escape(title)}"`;
-    return `<g class="goal-pin${cluster?' goal-cluster':''}" transform="translate(${mark.x} ${mark.y})"${attributes}><title>${escape(title)}</title><circle r="${cluster?17:14}" fill="${color}" stroke="#fff" stroke-width="2.5"/><text text-anchor="middle" dy=".35em" fill="${ink(color)}">${label}</text></g>`;
+    return `<g class="goal-pin${cluster?' goal-cluster':''}" transform="translate(${mark.x} ${mark.y})"${attributes}><title>${escape(title)}</title><circle r="${cluster?17:14}" fill="${color}" stroke="${colorOutline(color)}" stroke-width="2.5"/><text text-anchor="middle" dy=".35em" fill="${ink(color)}">${label}</text></g>`;
   }).join('');
 }
 
@@ -84,7 +96,7 @@ export function unknownGoals(summary,events,field) {
 
 export function teamLegend(summary) {
   const palette=teamPalette(summary);
-  return `<div class="team-legend">${[summary.home,summary.away].map(team=>`<span><svg viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="6" fill="${palette[team.id.toLowerCase()]}" stroke="#aebdcc"/></svg>${escape(team.name)}</span>`).join('')}</div>`;
+  return `<div class="team-legend">${[summary.home,summary.away].map(team=>`<span><svg viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="6" fill="${palette[team.id.toLowerCase()]}" stroke="#62798d"/></svg>${escape(team.name)}</span>`).join('')}</div>`;
 }
 
 export function miniGoalMaps(summary,event) {

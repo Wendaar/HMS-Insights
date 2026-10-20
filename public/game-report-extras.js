@@ -32,8 +32,16 @@ function applyExtras(data){
   }
   const links=document.getElementById('report-media-links');if(links){
     const album=flickrAlbum(data.media?.albumUrl),youtube=youtubeVideo(data.media?.youtubeUrl),items=[];
-    for(const [href,label,cls] of [[album,'▧ Fotogalerie Flickr ↗','album-link'],[youtube,'▶ Záznam na YouTube ↗','broadcast-link']])if(href){const a=el('a',cls,label);a.href=href;a.target='_blank';a.rel='noopener noreferrer';items.push(a);}
+    for(const [href,label,cls] of [[album,'▧ Photos here ↗','album-link']])if(href){const a=el('a',cls,label);a.href=href;a.target='_blank';a.rel='noopener noreferrer';items.push(a);}
     if(items.length)links.replaceChildren(...items);
+    const panel=document.getElementById('broadcast-panel'),player=document.getElementById('broadcast-player');
+    if(youtube&&panel&&player){
+      const id=new URL(youtube).searchParams.get('v'),frame=el('iframe');
+      frame.src='https://www.youtube-nocookie.com/embed/'+id;frame.title='Záznam zápasu na YouTube';frame.loading='lazy';frame.allow='encrypted-media; picture-in-picture; fullscreen';frame.allowFullscreen=true;frame.referrerPolicy='strict-origin-when-cross-origin';player.replaceChildren(frame);
+      document.getElementById('broadcast-youtube-link').href=youtube;panel.hidden=false;
+      const narrow=matchMedia('(max-width:850px)'),sidebar=document.querySelector('.match-sidebar'),slot=document.getElementById('broadcast-mobile-slot');
+      const place=()=>{if(narrow.matches&&slot)slot.append(panel);else sidebar.prepend(panel);};place();narrow.addEventListener('change',place);
+    }
   }
 }
 fetch(`/api/game-summary?view=extras&gameId=${encodeURIComponent(s.gameId)}`,{headers:{accept:'application/json'}}).then(r=>r.ok?r.json():null).then(data=>{if(data)applyExtras(data);}).catch(()=>{});

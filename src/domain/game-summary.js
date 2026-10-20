@@ -1,6 +1,7 @@
 import { buildGameTimeline } from "./game-timeline.js";
 import { buildFaceoffs, goalieStatistics } from './recorded-statistics.js';
 import { sportingImage,flickrAlbum } from '../../public/game-report-media.js';
+import {jerseyColor} from '../../public/game-report-graphics.js';
 
 // Public, versioned read model shared by Game Center and future media consumers.
 // Accepts stored normalized rows, never raw HMS responses or environment values.
@@ -22,6 +23,7 @@ export function buildGameSummary({ game, teams = [], players = [], goalies = [],
       score: game[`${prefix}_score`], lineupSize: row?.lineup_size ?? null,
       logoUrl: sportingImage(row?.team_logo_template_url) ?? sportingImage(row?.team_logo_url),
       color: /^#[\da-f]{6}$/i.test(row?.primary_color ?? '') ? row.primary_color : null,
+      jerseyColor:jerseyColor(game.event_snapshot?.jerseyColors?.[prefix]),
       secondaryColor: /^#[\da-f]{6}$/i.test(row?.secondary_color ?? '') ? row.secondary_color : null,
     };
   };

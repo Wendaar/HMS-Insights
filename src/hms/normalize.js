@@ -2,6 +2,7 @@ import { buildEventSnapshot, selectEventGroup, uniqueEvents } from "./event-snap
 import { enrichEventGroups } from "./public-event-metadata.js";
 import { faceoffSnapshot } from './faceoffs.js';
 import { flickrAlbum } from '../../public/game-report-media.js';
+import {jerseyColor} from '../../public/game-report-graphics.js';
 
 function required(value, label) {
   if (value === undefined || value === null || value === "") {
@@ -293,6 +294,7 @@ export function normalizeHmsGame(gameEventsResponse, lineupResponse, gameDetailR
   normalized.eventSnapshot = buildEventSnapshot(normalized, groupedEvents, players, penaltyMinutes);
   normalized.eventSnapshot.faceoffs = faceoffSnapshot(gameEventsResponse, gameDetailResponse, publicMetadata, normalized, players);
   normalized.eventSnapshot.roster=[...players.values()].map(p=>({id:p.playerId,teamId:p.teamId,isGoalie:p.isGoalie}));
+  normalized.eventSnapshot.jerseyColors={home:jerseyColor(gameResponse.homeJerseyColor),away:jerseyColor(gameResponse.awayJerseyColor)};
   normalized.eventSnapshot.media = { albumUrl: flickrAlbum(gameResponse.flickrAlbum)
     ?? (publicMetadata?.gameId?.toLowerCase()===gameId.toLowerCase()?flickrAlbum(publicMetadata.flickrAlbum):null) };
   return normalized;
