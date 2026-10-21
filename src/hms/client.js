@@ -63,7 +63,7 @@ export function fetchGames(params = {}, options = {}) {
   return request("games", params, options);
 }
 
-export async function fetchFinishedGameResponses(gameId, options = {}) {
+export async function fetchGameResponses(gameId, options = {}) {
   return Promise.all([
     request("game", { gameId }, options),
     request("gameEvents", { gameId }, options),
@@ -88,3 +88,6 @@ export async function fetchPublicGameMetadata(gameId, options = {}) {
 }
 
 export { DEFAULT_BASE_URL, apiUrl, endpoint };
+
+// Backward-compatible import path; transport itself supports any game state.
+export const fetchFinishedGameResponses = fetchGameResponses;

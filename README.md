@@ -1,5 +1,7 @@
 # HMS Insights / Příklepy — MVP 0.1
 
+Media Studio MVP 1.0, Sprint 1: `/studio`. [Implementation and verification](docs/MEDIA-STUDIO.md).
+
 Game Center MVP: veřejný `/game-center/:gameId`, sdílený JSON GameSummary v1
 a ukládaný průběh zápasu s góly, asistencemi, tresty a vývojem skóre.
 Architektura, spuštění a ověření: [Game Center](docs/GAME-CENTER.md).

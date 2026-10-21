@@ -95,7 +95,7 @@ function penaltyMinutes(value) {
   throw new Error(`Neplatná délka trestu: ${value}`);
 }
 
-export function normalizeHmsGame(gameEventsResponse, lineupResponse, gameDetailResponse = null, publicMetadata = null) {
+export function normalizeHmsGame(gameEventsResponse, lineupResponse, gameDetailResponse = null, publicMetadata = null, options = {}) {
   if (gameDetailResponse?.gameId && gameEventsResponse?.gameId
     && gameDetailResponse.gameId.toLowerCase() !== gameEventsResponse.gameId.toLowerCase()) {
     throw new Error("Game Detail a Events patří k různým zápasům.");
@@ -121,7 +121,7 @@ export function normalizeHmsGame(gameEventsResponse, lineupResponse, gameDetailR
   if (lineupGameIds.some((lineupGameId) => lineupGameId.toLowerCase() !== gameId.toLowerCase())) {
     throw new Error("Game Events a Lineup patří k různým zápasům.");
   }
-  if (gameResponse.status !== "FINISHED") throw new Error("MVP přijímá pouze dokončený zápas.");
+  if (!options.allowUnfinished && gameResponse.status !== "FINISHED") throw new Error("MVP přijímá pouze dokončený zápas.");
 
   const phase = required(gameResponse.Phase ?? lineupResponse.Phase, "Phase");
   const group = required(gameResponse.Group ?? phase.Group, "Group");

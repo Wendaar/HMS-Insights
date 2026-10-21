@@ -318,3 +318,19 @@ export async function loadPublicSelection(options = {}) {
 }
 
 export { buildUpsert, databaseUrlFromEnv, dateOnly, feedWhere, publicFeedItem };
+
+// Bounded, organization-scoped Studio reader. Reuses the existing public feed projection.
+export async function loadStudioPage(options = {}) {
+  const sql = options.sql ?? createSql(databaseUrlFromEnv(options.env));
+  const values = [options.organizationId, options.from, options.to, options.limit + 1, options.offset];
+  const insights = options.section === 'insights';
+  const rows = await sql.query(insights
+    ? `select f.* from public_priklepy_feed f join games g on g.game_id=f.game_id
+       where g.organization_id=$1::uuid and g.played_on between $2::date and $3::date
+       order by f.played_on desc, f.importance desc, f.priklep_id limit $4 offset $5`
+    : `select game_id,played_on,status,home_team_name,away_team_name from games
+       where organization_id=$1::uuid and played_on between $2::date and $3::date
+       order by played_on,game_id limit $4 offset $5`, values);
+  return { items:rows.slice(0,options.limit).map(insights ? publicFeedItem : r=>({gameId:r.game_id,playedOn:dateOnly(r.played_on),status:r.status,home:{name:r.home_team_name},away:{name:r.away_team_name}})),
+    hasMore:rows.length>options.limit,offset:options.offset,source:'imported-snapshot',from:options.from,to:options.to };
+}
