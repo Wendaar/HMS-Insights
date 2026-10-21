@@ -1,3 +1,4 @@
+import {displayExtras} from './game-extras.js';
 import {hmsMediaContext} from '../hms/media-context.js';
 // Trigger-neutral read model. No writes to HMS, imported snapshots or Příklepy.
 import { fetchGames, fetchGameDetail, fetchOrganization, fetchPublicGameMetadata, fetchGameResponses, hmsConfigFromEnv } from '../hms/client.js';
@@ -98,13 +99,18 @@ export async function browseMedia({org,filter='Today',offset=0,windowPage=0,sect
   const range=timeWindow(filter,options.now,windowPage);
   if(!config.token)return (options.loadPage??loadStudioPage)({organizationId:config.id,...range,offset,limit,section,env});
   const hmsConfig={...hmsConfigFromEnv({...env,HMS_API_TOKEN:config.token}),token:config.token,timeoutMs:5000,retries:0};
-  const rows=gameRows(await (options.fetchGames??fetchGames)({...range,limit,skip:offset}, {config:hmsConfig}));
+  // HMS deployments can interpret `to` as an exclusive date. Request the next
+  // calendar boundary, then keep only the selected Prague dates. Offset always
+  // counts source rows, including any inclusive-endpoint lookahead rows.
+  const end=new Date(`${range.to}T12:00:00Z`);end.setUTCDate(end.getUTCDate()+1);
+  const sourceTo=end.toISOString().slice(0,10);
+  const rows=gameRows(await (options.fetchGames??fetchGames)({...range,to:sourceTo,limit,skip:offset}, {config:hmsConfig}));
   if(rows.length>limit) throw new Error('HMS nerespektuje stránkování.');
   for(const g of rows) {
     assertOrg(g.organizationId,config.id);
-    if(!isGameId(g.gameId) || !/^\d{4}-\d{2}-\d{2}$/.test(g.startDate??'') || g.startDate<range.from || g.startDate>range.to) throw new Error('HMS nerespektuje časový rozsah.');
+    if(!isGameId(g.gameId) || !/^\d{4}-\d{2}-\d{2}$/.test(g.startDate??'') || g.startDate<range.from || g.startDate>sourceTo) throw new Error('HMS nerespektuje časový rozsah.');
   }
-  return {items:await pageLabels(rows,config,options,hmsConfig),hasMore:rows.length===limit,offset,source:'HMS',...range};
+  return {items:await pageLabels(rows.filter(g=>g.startDate<=range.to),config,options,hmsConfig),hasMore:rows.length===limit,offset,source:'HMS',...range};
 }
 export async function mediaGame(org,gameId,options={}) {
   if(!isGameId(gameId)) throw new TypeError('Neplatné gameId.');
@@ -121,6 +127,7 @@ export async function mediaGame(org,gameId,options={}) {
     }
     let summary;
     let publicMetadata;
+    let normalizedRows;
     if(snapshot) summary=buildGameSummary(snapshot);
     else {
       const hmsConfig={...hmsConfigFromEnv({...env,HMS_API_TOKEN:config.token}),timeoutMs:6000,retries:0};
@@ -130,7 +137,7 @@ export async function mediaGame(org,gameId,options={}) {
       if(!same(detail?.gameId,gameId)) throw new Error('Zdroj vrátil jiný zápas.');
       const game=normalizeHmsGame(events,lineup,detail,metadata,{allowUnfinished:true});
       assertOrg(game.organizationId,config.id);
-      const rows=rowsFor({game,priklepy:[]});
+      const rows=rowsFor({game,priklepy:[]});normalizedRows=rows;
       // Missing official counters AND unavailable goal history are unknown, not 0:0.
       if(game.eventSnapshot?.collections?.goals!==true) {
         if(detail.HomeTeamGoals==null)rows.games[0].home_score=null;
@@ -148,8 +155,10 @@ export async function mediaGame(org,gameId,options={}) {
       const stored=await (options.loadSnapshot??loadGameSnapshot)(gameId,{env});
       if(stored) { assertOrg(stored.game.organization_id,config.id); summary.priklepy=buildGameSummary(stored).priklepy; }
     }
-    if(!summary.home.logoUrl||!summary.away.logoUrl||!summary.competitionLogoUrl||!summary.groupLogoUrl||(summary.players??[]).some(p=>!p.imageUrl))publicMetadata??=await (options.fetchMetadata??fetchPublicGameMetadata)(gameId);
+    if(!publicMetadata||!summary.home.logoUrl||!summary.away.logoUrl||!summary.competitionLogoUrl||!summary.groupLogoUrl||(summary.players??[]).some(p=>!p.imageUrl))publicMetadata??=await (options.fetchMetadata??fetchPublicGameMetadata)(gameId);
     applyPublicMedia(summary,publicMetadata);
+    // Use the same official-star validation as the existing Game Report.
+    if(publicMetadata){const source=snapshot??{game:normalizedRows.games[0],teams:normalizedRows.team_game_stats,players:normalizedRows.player_game_stats,goalies:normalizedRows.goalie_game_stats};summary.stars=displayExtras(source,publicMetadata,null,null).stars;}
     if((!summary.competitionLogoUrl||!summary.groupLogoUrl)&&config.token){
       try {const detail=await (options.fetchBrandingDetail??fetchGameDetail)(gameId,{config:{...hmsConfigFromEnv({...env,HMS_API_TOKEN:config.token}),timeoutMs:4000,retries:0}});
         assertOrg(detail.organizationId,config.id);if(!same(detail.gameId,gameId))throw new Error('Jiný zápas');

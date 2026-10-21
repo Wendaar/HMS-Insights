@@ -13,7 +13,7 @@ export function resolveInsightSubject(game,insight){
     teamLogoUrl:(team?.logoUrl??(team&&same(team.id,insight.teamId)?insight.teamLogoUrl:null))??null,photoUrl:photo??null,
     stats,identityAvailable:!!(team&&(!playerId||player)),type:insight.type};
 }
-export const insightLabel=type=>({HATTRICK:'HATTRICK HERO',MULTIPOINT_GAME:'POINT MACHINE',BIG_SAVES:'THE WALL',EARLY_GOAL:'FAST START',BIG_WIN:'BIG WIN'}[type]??'GAME MOMENT');
+export const insightLabel=type=>({OFFICIAL_STAR:'MATCH STAR',HATTRICK:'HATTRICK HERO',MULTIPOINT_GAME:'POINT MACHINE',BIG_SAVES:'THE WALL',EARLY_GOAL:'FAST START',BIG_WIN:'BIG WIN'}[type]??'GAME MOMENT');
 export function insightStat(subject){
   const s=subject?.stats??{};
   const pair=subject?.type==='HATTRICK'?['goals','GÓLY']:subject?.type==='BIG_SAVES'?['saves','ZÁKROKŮ']:subject?.type==='MULTIPOINT_GAME'?['points','BODY']:null;

@@ -214,3 +214,28 @@ preview cookies could also block image fetches. Both paths now have browser
 regression checks. Competition logos absent from source data use explicit name
 fallback plus the scoped local override; source-provided hierarchy logos are
 retained in snapshot branding and supplemented by identity-checked reads.
+
+## Review iteration: archive and four styles
+
+- PNG download/share names start with organization and match date, then output,
+  player (when applicable), fixture, ratio and style, e.g.
+  `PHM 2026-10-20 Final Score Domynos Berkut 1x1 Clean.png`. Unsafe filesystem
+  characters are stripped; Czech names are preserved.
+- Clean, Crazy, Artistic (gold light, serif headline and laurels) and Technical
+  (grid, sharp frame and dramatic beam) share the same verified data and safe areas.
+- Games exposes existing stored Příklepy alongside score/period templates.
+  Official single-player Star of the Match cards reuse Game Report's
+  `displayExtras` identity/lineup validation. No award is computed from points.
+  Missing official stars or unavailable period history suppress those choices.
+- Games requests through the calendar day after the chosen end date to tolerate
+  exclusive HMS `to` semantics, then removes endpoint lookahead rows locally.
+  Source offsets still advance by 20 rows, so filtering never changes pagination
+  offsets or organization scope. Future filters remain useful for later previews;
+  result graphics still require completed games or verified completed periods.
+- Empty date ranges now display an explicit message rather than a blank list.
+
+Verification: 142 Node tests and static build; browser checks cover four styles
+in both PNG ratios for results and Insights (16 PNGs), archive names, period/official-star selection, all filter requests, portrait/team identity, org preferences and
+390px controls using synthetic API responses. Live HMS Today and credentialed
+preview database behavior require verification in the connected preview; local
+checks do not establish the upstream service's actual date-boundary semantics.

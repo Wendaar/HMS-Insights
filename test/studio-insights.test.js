@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {resolveInsightSubject,insightStat,brandingScope} from '../public/studio/subjects.js';
-import {safeArea,imageSources} from '../public/studio/graphics.js';
+import {safeArea,imageSources,gameOutputs,exportFilename,designs} from '../public/studio/graphics.js';
 import {loadStudioInsights} from '../src/infrastructure/postgres-repository.js';
 import {browseMedia,applyPublicMedia} from '../src/app/media-engine.js';
 const gameId='f6293ef1-98ca-11f1-8bdf-ef2495d048f3',playerId='da0ba510-648c-11ef-8a7f-3b932af99033',homeId='8c035c24-5703-4628-9f71-e0b6280196db',awayId='baed154a-5e0f-4c57-bd3e-9a4d02fe7072';
@@ -44,4 +44,18 @@ test('local branding scopes separate orgs, competitions and groups',()=>{
  assert.notEqual(brandingScope('PHM',{competition:'Cup',group:'A'},'groupLogo'),brandingScope('PHM',{competition:'Cup',group:'B'},'groupLogo'));
  assert.notEqual(brandingScope('PHM',{competition:'Cup'},'competitionLogo'),brandingScope('EUCHL',{competition:'Cup'},'competitionLogo'));
  assert.equal(brandingScope('PHM',{competition:'Cup',group:'A'},'competitionLogo'),brandingScope('PHM',{competition:'Cup',group:'B'},'competitionLogo'));
+});
+
+test('archive filenames contain date, output, subject, fixture, ratio and design with safe characters',()=>{
+ const g={...game,org:'PHM',playedOn:'2026-10-20'};
+ assert.equal(exportFilename(g,{label:'Final Score'},{format:'1:1',design:'clean'}),'PHM 2026-10-20 Final Score Domynos Berkut 1x1 Clean.png');
+ assert.match(exportFilename(g,null,{format:'9:16',design:'artistic'},insight),/PHM 2026-10-20 HATTRICK HERO Matěj Kuracina Domynos Berkut 9x16 Artistic.png/);
+ assert.doesNotMatch(exportFilename({...g,home:{name:'A/B: C?'}},null,{format:'1:1'}),/[<>:"/\\|?*]/);
+ assert.deepEqual(designs,['clean','crazy','artistic','technical']);
+});
+test('Games output library reuses stored achievements and official stars without generating awards',()=>{
+ const g={...game,status:'FINISHED',priklepy:[insight],stars:[{id:playerId,teamId:awayId,name:'Matěj Kuracina'}]};
+ const outputs=gameOutputs(g);assert.equal(outputs.length,2);assert.equal(outputs[0].insight.playerId,playerId);assert.equal(outputs[1].insight.type,'OFFICIAL_STAR');
+ assert.deepEqual(gameOutputs({...g,status:'LIVE'}),[]);
+ assert.deepEqual(gameOutputs({...g,priklepy:[],stars:[]}),[]);
 });

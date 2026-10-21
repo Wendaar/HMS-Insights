@@ -1,6 +1,7 @@
 import {resolveInsightSubject,insightLabel,insightStat} from './subjects.js';
 import {sportingImage} from '../game-report-media.js';
 export const formats={'1:1':[1080,1080],'9:16':[1080,1920]};
+export const designs=['clean','crazy','artistic','technical'];
 export const fonts=['Barlow Condensed','Oswald','Roboto Condensed','Noto Sans','Noto Serif'];
 export function safeArea(format){return format==='9:16'?{x:96,y:220,w:864,h:1360}:{x:64,y:64,w:952,h:952};}
 export function imageSources(game,insight,settings){const subject=resolveInsightSubject(game,insight);return {background:settings.background,home:game.home.logoUrl,away:game.away.logoUrl,organization:game.organizationLogoUrl,competition:settings.competitionLogo||game.competitionLogoUrl,group:settings.groupLogo||game.groupLogoUrl,phase:game.phaseLogoUrl,partner:settings.partnerLogo,player:subject?.playerId?(settings.playerPhoto||subject.photoUrl):null,subjectTeam:subject?.teamLogoUrl};}
@@ -17,6 +18,30 @@ export function templates(game) {
     }
   }
   return result;
+}
+// Reuse stored achievements and official HMS stars, never infer awards from points.
+export function gameOutputs(game){
+  const result=templates(game);
+  if(game?.status!=='FINISHED')return result;
+  for(const p of game.priklepy??[]){
+    if(!['HATTRICK','MULTIPOINT_GAME','BIG_SAVES','EARLY_GOAL','BIG_WIN'].includes(p.type))continue;
+    const id=p.id?.split(':').at(-1),player=[...game.players??[],...game.goalies??[]].find(x=>x.id?.toLowerCase()===id?.toLowerCase());
+    const team=[game.home,game.away].find(x=>x.id?.toLowerCase()===id?.toLowerCase());
+    if(!player&&!team)continue;
+    const insight={...p,gameId:game.gameId,playerId:player?.id,player:player?.name,teamId:player?.teamId??team?.id,team:team?.name};
+    result.push({id:`moment-${p.id}`,label:`${insightLabel(p.type)} · ${player?.name??team.name}`,insight});
+  }
+  for(const star of game.stars??[]){
+    if(![...game.players??[],...game.goalies??[]].some(p=>p.id?.toLowerCase()===star.id?.toLowerCase()&&p.teamId?.toLowerCase()===star.teamId?.toLowerCase()))continue;
+    result.push({id:`star-${star.id}`,label:`Star of the Match · ${star.name}`,insight:{gameId:game.gameId,type:'OFFICIAL_STAR',title:'Star of the Match',playerId:star.id,player:star.name,teamId:star.teamId,text:'Oficiální hvězda zápasu dle HMS.'}});
+  }
+  return result;
+}
+export function exportFilename(game,template,settings,insight=null){
+  const label=insight?insightLabel(insight.type):template?.label||'Game';
+  const subject=insight?resolveInsightSubject(game,insight)?.playerName:null;
+  const clean=v=>String(v??'').normalize('NFC').replace(/[<>:"/\\|?*\u0000-\u001f]/g,' ').replace(/\s+/g,' ').trim();
+  return [game.org,game.playedOn,label,subject,game.home.name,game.away.name,settings.format?.replace(':','x'),({clean:'Clean',crazy:'Crazy',artistic:'Artistic',technical:'Technical'}[settings.design]??settings.design)].filter(Boolean).map(clean).join(' ').slice(0,220).trim()+'.png';
 }
 export function publicImageUrl(value) {
   try {const u=new URL(value);const h=u.hostname.toLowerCase();
@@ -80,6 +105,27 @@ function effects(c,w,h,accent,crazy){
   for(let i=0;i<90;i++){const x=((i*193+37)%997)/997*w,y=((i*347+19)%991)/991*h;c.fillStyle=i%3?accent+'85':'#ffffffb0';c.fillRect(x,y,i%4+1,i%4+1);}
   c.restore();
 }
+function laurels(c,x,y,r){
+  c.save();c.strokeStyle='#dfbd70b0';c.fillStyle='#dfbd7090';c.lineWidth=2;
+  for(const side of [-1,1]){c.beginPath();c.ellipse(x,y,r*.89,r,0,side<0?Math.PI*.58:Math.PI*1.52,side<0?Math.PI*1.48:Math.PI*2.42);c.stroke();
+    for(let i=0;i<12;i++){const a=(side<0?Math.PI*.62:Math.PI*1.56)+i*.22;c.save();c.translate(x+Math.cos(a)*r*.89,y+Math.sin(a)*r);c.rotate(a+side*.65);c.beginPath();c.ellipse(0,0,7,18,0,0,Math.PI*2);c.fill();c.restore();}}
+  c.restore();
+}
+function designAtmosphere(c,w,h,artistic,technical,accent){
+  if(artistic){
+    const gold=c.createRadialGradient(w*.58,h*.44,0,w*.58,h*.44,w*.8);gold.addColorStop(0,'#d6a34765');gold.addColorStop(.5,'#6b402520');gold.addColorStop(1,'#00000000');c.fillStyle=gold;c.fillRect(0,0,w,h);
+    c.save();c.globalCompositeOperation='screen';
+    for(let i=0;i<18;i++){c.fillStyle=i%2?'#ffe2a508':'#f9db9712';c.beginPath();c.moveTo(w*.65,h*.45);const a=i*.35;c.lineTo(w*.65+Math.cos(a)*h,h*.45+Math.sin(a)*h);c.lineTo(w*.65+Math.cos(a+.07)*h,h*.45+Math.sin(a+.07)*h);c.fill();}
+    for(let i=0;i<125;i++){c.fillStyle=i%3?'#e9c56e80':'#fff1c6b0';c.beginPath();c.arc((i*193%1069),((i*353)%1913)/1920*h,i%3+1,0,Math.PI*2);c.fill();}c.restore();
+    c.strokeStyle='#e3c17b80';c.lineWidth=2;c.strokeRect(36,36,w-72,h-72);c.strokeStyle='#e3c17b25';c.strokeRect(44,44,w-88,h-88);
+  }
+  if(technical){
+    c.fillStyle='#02081270';c.fillRect(0,0,w,h);c.strokeStyle=accent+'18';c.lineWidth=1;
+    for(let x=0;x<w;x+=54){c.beginPath();c.moveTo(x,0);c.lineTo(x,h);c.stroke();}for(let y=0;y<h;y+=54){c.beginPath();c.moveTo(0,y);c.lineTo(w,y);c.stroke();}
+    c.save();c.globalCompositeOperation='screen';const beam=c.createLinearGradient(0,h, w,0);beam.addColorStop(0,'#00000000');beam.addColorStop(.48,accent+'00');beam.addColorStop(.50,accent+'60');beam.addColorStop(.54,accent+'00');beam.addColorStop(1,'#00000000');c.fillStyle=beam;c.fillRect(0,0,w,h);c.restore();
+    c.strokeStyle=accent+'b0';c.lineWidth=3;for(const [x,y,sx,sy] of [[40,40,1,1],[w-40,40,-1,1],[40,h-40,1,-1],[w-40,h-40,-1,-1]]){c.beginPath();c.moveTo(x+sx*45,y);c.lineTo(x,y);c.lineTo(x,y+sy*45);c.stroke();}
+  }
+}
 function transparentPortrait(image){const c=document.createElement('canvas');c.width=8;c.height=8;const x=c.getContext('2d');x.drawImage(image,0,0,8,8);const d=x.getImageData(0,0,8,8).data;return [3,31,227,255].some(i=>d[i]<240);}
 function statTile(c,value,label,x,y,w,h,font,accent,crazy){
   plate(c,x,y,w,h,crazy?'#081326e8':'#102439',accent+'90',16);
@@ -92,10 +138,10 @@ function badgePlate(c,img,label,x,y,size,font,crazy=false){
 }
 export async function renderGraphic(canvas,game,template,settings,insight=null) {
   const [w,h]=formats[settings.format]??formats['1:1'],area=safeArea(settings.format);
-  const story=h>w,crazy=settings.design==='crazy',font=fonts.includes(settings.font)?settings.font:fonts[0];
+  const story=h>w,crazy=settings.design==='crazy',artistic=settings.design==='artistic',technical=settings.design==='technical',font=fonts.includes(settings.font)?settings.font:fonts[0];
   const subject=resolveInsightSubject(game,insight),stat=insightStat(subject),accent=/^#[a-f0-9]{6}$/i.test(settings.accent)?settings.accent:'#79dfca';
   const sample=[game.home.name,game.away.name,game.competition,game.group,game.phase,template.heading,insight?.title,insight?.text,subject?.playerName,subject?.teamName,settings.partner,'Příliš žluťoučký kůň'].filter(Boolean).join(' ');
-  const loaded=await Promise.all([document.fonts.load(`bold 48px "${font}"`,sample),document.fonts.load('400 80px "Anton"',sample),document.fonts.load('400 80px "Permanent Marker"','HATTRICK HERO BIG WIN THE WALL FAST START POINT MACHINE FINAL')]);
+  const loaded=await Promise.all([...(artistic?[document.fonts.load('bold 80px "Noto Serif"',sample)]:[]),document.fonts.load(`bold 48px "${font}"`,sample),document.fonts.load('400 80px "Anton"',sample),document.fonts.load('400 80px "Permanent Marker"','HATTRICK HERO BIG WIN THE WALL FAST START POINT MACHINE FINAL')]);
   if(loaded.some(faces=>!faces.length))throw new Error('Font se nepodařilo načíst. Obnovte stránku a zkuste export znovu.');
   await document.fonts.ready;
   const sources=imageSources(game,insight,settings),keys=Object.keys(sources),pictures=await Promise.all(keys.map(k=>loadImage(sources[k],{required:!!sources[k]&&['background','partner','player'].includes(k)&&!!(k!=='player'||settings.playerPhoto)})));
@@ -107,6 +153,7 @@ export async function renderGraphic(canvas,game,template,settings,insight=null) 
     else {const g=c.createLinearGradient(0,0,w,h);g.addColorStop(0,'#071529');g.addColorStop(.5,settings.base||'#102c43');g.addColorStop(1,crazy?'#111337':'#061321');c.fillStyle=g;c.fillRect(0,0,w,h);}
     const shade=Number(settings.shade)||0;c.fillStyle=shade<0?`rgba(255,255,255,${-shade/100})`:`rgba(0,0,0,${shade/100})`;c.fillRect(0,0,w,h);
     effects(c,w,h,accent,crazy);
+    designAtmosphere(c,w,h,artistic,technical,accent);
     // Everything semantic is contained inside a conservative social safe area.
     c.save();c.translate(area.x,area.y);c.beginPath();c.rect(0,0,area.w,area.h);c.clip();
     const W=area.w,H=area.h,pad=26,headerH=story?124:108,brandH=86,heroY=headerH+brandH+30;
@@ -131,11 +178,14 @@ export async function renderGraphic(canvas,game,template,settings,insight=null) 
       fit(c,label||'HMS',bx+(im[key]?100:20),brandY+51,W/2-(im[key]?122:38),24,font,'#e9f0fc','left');
     }
     // Main card: strong foreground shadow and an illuminated accent edge.
-    plate(c,4,heroY,W-8,heroH,im.background?(crazy?'#05112690':'#10243ba0'):(crazy?'#051126e5':'#10243be8'),crazy?accent+'a0':'#ffffff28',28);
+    plate(c,4,heroY,W-8,heroH,im.background?(crazy?'#05112690':'#10243ba0'):(crazy?'#051126e5':'#10243be8'),crazy?accent+'a0':artistic?'#dfbd70b0':technical?accent+'a0':'#ffffff28',technical?4:28);
     c.save();panel(c,4,heroY,W-8,heroH,28);c.clip();effects(c,W,heroY+heroH,accent,crazy);
+    if(artistic&&insight){c.strokeStyle='#dfbd7080';c.lineWidth=2;c.beginPath();c.arc(W*.72,heroY+heroH*.55,heroH*.43,0,Math.PI*2);c.stroke();}
+    if(technical){c.fillStyle=accent;fit(c,'/// MATCH DATA',28,heroY+28,W*.45,17,font,accent,'left');}
     if(insight){
-      const headline=insightLabel(insight.type),words=headline.split(' '),titleFont=crazy?'Permanent Marker':'Anton';
+      const headline=insightLabel(insight.type),words=headline.split(' '),titleFont=crazy?'Permanent Marker':artistic?'Noto Serif':'Anton';
       const photoW=W*(crazy?.56:.53),photoH=heroH*(crazy?.84:.80),px=W-photoW-20,py=heroY+heroH-photoH;
+      if(artistic){laurels(c,W*.74,heroY+heroH*.53,heroH*.43);}
       if(im.player){
         const cutout=transparentPortrait(im.player);
         c.save();c.shadowColor=crazy?accent+'b0':'#00000095';c.shadowBlur=crazy?45:28;c.shadowOffsetY=12;
@@ -146,12 +196,13 @@ export async function renderGraphic(canvas,game,template,settings,insight=null) 
       const tx=30,headlineW=W*.50-35;
       c.save();if(crazy){c.translate(tx,heroY+70);c.rotate(-.075);}else c.translate(tx,heroY+65);
       fit(c,words[0],0,story?50:25,headlineW,story?86:60,titleFont,'#fff','left');
-      fit(c,words.slice(1).join(' '),0,story?155:105,headlineW,story?92:66,titleFont,accent,'left');c.restore();
+      fit(c,words.slice(1).join(' '),0,story?155:105,headlineW,story?92:66,titleFont,artistic?'#ebcf91':accent,'left');c.restore();
       if(stat)statTile(c,stat.value,stat.label,30,heroY+heroH-(story?230:145),Math.min(210,W*.32),story?200:125,font,accent,crazy);
       if(crazy){c.fillStyle=accent+'ce';c.beginPath();c.moveTo(0,heroY+heroH-12);c.lineTo(W*.52,heroY+heroH-60);c.lineTo(W*.60,heroY+heroH);c.lineTo(0,heroY+heroH);c.fill();}
     }else{
-      fit(c,template.id==='final'?'FINAL':template.heading,W/2,heroY+(story?140:88),W-70,template.id==='final'?(story?132:92):(story?60:46),template.id==='final'?(crazy?'Permanent Marker':'Anton'):font,'#f4f4eb');
+      fit(c,template.id==='final'?'FINAL':template.heading,W/2,heroY+(story?140:88),W-70,template.id==='final'?(story?132:92):(story?60:46),template.id==='final'?(crazy?'Permanent Marker':artistic?'Noto Serif':'Anton'):font,'#f4f4eb');
       const ly=heroY+heroH*.65,size=story?208:165;
+      if(artistic){laurels(c,W*.27,ly,size*.68);laurels(c,W*.73,ly,size*.68);}
       badgePlate(c,im.home,game.home.name,W*.27,ly,size,font,crazy);badgePlate(c,im.away,game.away.name,W*.73,ly,size,font,crazy);
       fit(c,'VS',W/2,ly+11,90,32,font,accent);
     }

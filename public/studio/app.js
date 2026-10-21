@@ -1,5 +1,5 @@
 import {resolveInsightSubject,brandingScope} from './subjects.js';
-import {fonts,formats,templates,renderGraphic,publicImageUrl,safeArea} from './graphics.js';
+import {fonts,formats,designs,gameOutputs,exportFilename,renderGraphic,publicImageUrl,safeArea} from './graphics.js';
 const $=id=>document.getElementById(id);
 const defaults={design:'clean',format:'1:1',font:fonts[0],base:'#0b1c32',accent:'#78e5b8',shade:'30',partner:'',partnerLogo:'',background:''};
 let settings={...defaults}, section='games',filter='Today',offset=0,windowPage=0,game=null,insight=null,requestId=0,renderId=0,blob=null,renderQueue=Promise.resolve();
@@ -7,7 +7,8 @@ const assetVersions={background:0,partnerLogo:0,playerPhoto:0,competitionLogo:0,
 const playerPhotos=new Map();let brandOverrides=new Map(),searchTimer;
 function brandKey(kind){return brandingScope($('org').value,game,kind);}
 function saveBrands(){try{localStorage.setItem(`hms-studio:brands:v1:${$('org').value}`,JSON.stringify([...brandOverrides]));}catch{status('Logo je použité, ale úložiště zařízení je plné.');}}
-function subjectKey(){const s=resolveInsightSubject(game??{},insight);return s?.playerId?`${$('org').value}:${game.gameId}:${s.playerId}`:null;}
+function activeInsight(){return $('template').value==='insight'?insight:gameOutputs(game).find(t=>t.id===$('template').value)?.insight??null;}
+function subjectKey(){const s=resolveInsightSubject(game??{},activeInsight());return s?.playerId?`${$('org').value}:${game.gameId}:${s.playerId}`:null;}
 function guide(){const r=safeArea(settings.format),h=settings.format==='9:16'?1920:1080,g=$('safeGuide');g.style.left=`${r.x/1080*100}%`;g.style.top=`${r.y/h*100}%`;g.style.width=`${r.w/1080*100}%`;g.style.height=`${r.h/h*100}%`;g.hidden=!game||!$('safeZones').checked;}
 const filters=['Today','Yesterday','Tomorrow','-7 days','+7 days','Past','Future'];
 fonts.forEach(f=>{const o=document.createElement('option');o.textContent=f;$('font').append(o);});
@@ -17,7 +18,7 @@ function editorSettings() {
   try {const s=JSON.parse(localStorage.getItem(`hms-studio:v1:${$('org').value}`)||'{}');settings={...defaults};
     for(const k of Object.keys(defaults))if(typeof s[k]==='string')settings[k]=s[k];
     if(!formats[settings.format])settings.format=defaults.format;if(!fonts.includes(settings.font))settings.font=defaults.font;
-    if(!['clean','crazy'].includes(settings.design))settings.design='clean';
+    if(!designs.includes(settings.design))settings.design='clean';
     for(const k of ['base','accent'])if(!/^#[a-f0-9]{6}$/i.test(settings[k]))settings[k]=defaults[k];
   }catch{settings={...defaults};}
   for(const k of Object.keys(defaults))$(k).value=settings[k].startsWith('data:')?'':settings[k];
@@ -44,6 +45,7 @@ async function browse(){const id=++requestId;$('list').textContent='Načítám�
       }
       b.onclick=()=>select(item.gameId,section==='insights'?item:null);$('list').append(b);
     }
+    if(!data.items.length){const empty=document.createElement('p');empty.className='muted';empty.textContent=section==='insights'?'Žádné výkony neodpovídají hledání.':`V období ${data.from} – ${data.to} nejsou dostupné žádné zápasy.`;$('list').append(empty);}
     $('next').disabled=!data.hasMore;$('previous').disabled=offset===0;$('windowPrev').disabled=windowPage===0;
   }catch(e){if(id===requestId){$('list').textContent=e.message;$('range').textContent='Data nejsou připojena nebo zdroj neodpovídá organizaci.';}}
 }
@@ -55,7 +57,7 @@ async function select(id,selectedInsight=null,refresh=false){const version=++req
     if(game.groupColor&&settings.accent===defaults.accent)settings.accent=game.groupColor;
     $('accent').value=settings.accent;
     $('selected').textContent=insight?`${insight.title} · ${subject?.playerName||subject?.teamName||insight.player||insight.team}`:`${game.home.name} × ${game.away.name}`;$('empty').hidden=true;
-    const choices=templates(game);$('template').replaceChildren();
+    const choices=gameOutputs(game);$('template').replaceChildren();
     for(const t of choices){const o=document.createElement('option');o.value=t.id;o.textContent=t.label;$('template').append(o);}
     if(insight){const o=document.createElement('option');o.value='insight';o.textContent=insight.title;$('template').append(o);$('template').value='insight';}
     $('template').disabled=!$('template').options.length;$('refresh').disabled=false;
@@ -66,10 +68,11 @@ async function select(id,selectedInsight=null,refresh=false){const version=++req
 }
 function draw(){const id=++renderId,selectedGame=game,selectedInsight=insight,s={...settings,playerPhoto:playerPhotos.get(subjectKey())??'',competitionLogo:brandOverrides.get(brandKey('competitionLogo'))??'',groupLogo:brandOverrides.get(brandKey('groupLogo'))??''},choice=$('template').value;blob=null;$('download').disabled=true;$('share').disabled=true;
   renderQueue=renderQueue.catch(()=>{}).then(async()=>{if(id!==renderId||!selectedGame)return;
-    $('availability').textContent=choice==='insight'?'Fotografie a tým patří k vybranému hráči v tomto zápase.':'Skóre po třetině je průběžné, pouze z ověřených událostí.';
-    const t=templates(selectedGame).find(t=>t.id===choice);if(!t&&choice!=='insight'){status('Pro tento stav zápasu není výstup dostupný.');return;}
+    $('availability').textContent=(choice==='insight'||choice.startsWith('moment-')||choice.startsWith('star-'))?'Uložený výkon nebo oficiální hvězda HMS. Fotografie a tým patří k hráči v tomto zápase.':'Skóre po třetině je průběžné, pouze z ověřených událostí.';
+    const t=gameOutputs(selectedGame).find(t=>t.id===choice);if(!t&&choice!=='insight'){status('Pro tento stav zápasu není výstup dostupný.');return;}
+    const outputInsight=choice==='insight'?selectedInsight:t?.insight;
     const offscreen=document.createElement('canvas');
-    try{const warnings=await renderGraphic(offscreen,selectedGame,t??{},s,choice==='insight'?selectedInsight:null);const png=await new Promise((resolve,reject)=>offscreen.toBlob(b=>b?resolve(b):reject(new Error('PNG se nepodařilo vytvořit.')),'image/png'));
+    try{const warnings=await renderGraphic(offscreen,selectedGame,t??{},s,outputInsight);const png=await new Promise((resolve,reject)=>offscreen.toBlob(b=>b?resolve(b):reject(new Error('PNG se nepodařilo vytvořit.')),'image/png'));
       if(id!==renderId)return;const c=$('canvas');c.width=offscreen.width;c.height=offscreen.height;c.getContext('2d').drawImage(offscreen,0,0);blob=png;$('warnings').textContent=warnings.join(' ');$('download').disabled=false;guide();
       const f=new File([blob],'hms.png',{type:'image/png'});$('share').disabled=!navigator.canShare?.({files:[f]});
     }catch(e){if(id===renderId){$('warnings').textContent=e.message;status('Export čeká na opravu obrázku.');}}
@@ -80,7 +83,7 @@ for(const name of ['games','insights'])$(name).onclick=()=>{section=name;offset=
 for(const f of filters){const b=document.createElement('button');b.textContent=f;b.setAttribute('aria-pressed',String(f===filter));b.onclick=()=>{filter=f;offset=0;windowPage=0;for(const child of $('filters').children)child.setAttribute('aria-pressed',String(child===b));browse();};$('filters').append(b);}
 $('previous').onclick=()=>{offset=Math.max(0,offset-20);browse();};$('next').onclick=()=>{offset+=20;browse();};
 $('windowPrev').onclick=()=>{windowPage=Math.max(0,windowPage-1);offset=0;browse();};$('windowNext').onclick=()=>{windowPage++;offset=0;browse();};
-$('refresh').onclick=()=>game&&select(game.gameId,insight,true);$('template').onchange=()=>{$('subjectEditor').hidden=$('template').value!=='insight'||!resolveInsightSubject(game,insight)?.playerId;draw();};
+$('refresh').onclick=()=>game&&select(game.gameId,insight,true);$('template').onchange=()=>{const subject=resolveInsightSubject(game,activeInsight());$('subjectEditor').hidden=!subject?.playerId;$('subjectInfo').textContent=subject?`${subject.playerName||''} · ${subject.teamName||'Neověřený tým'} · ${game.playedOn}`:'';draw();};
 $('safeZones').onchange=guide;
 $('search').oninput=()=>{clearTimeout(searchTimer);searchTimer=setTimeout(()=>{offset=0;if(section==='insights')browse();},300);};
 $('insightType').onchange=()=>{offset=0;browse();};
@@ -104,7 +107,7 @@ $('clearBrands').onclick=()=>{for(const key of ['competitionLogo','groupLogo']){
 $('clearPlayer').onclick=()=>{assetVersions.playerPhoto++;playerPhotos.delete(subjectKey());$('playerUpload').value='';draw();};
 $('clearBackground').onclick=()=>{assetVersions.background++;settings.background='';$('background').value='';$('upload').value='';save();draw();};
 $('clearPartner').onclick=()=>{assetVersions.partnerLogo++;settings.partnerLogo='';$('partnerLogo').value='';$('partnerUpload').value='';save();draw();};
-function exportFile(){return new File([blob],`HMS-${$('org').value}-${game.gameId}-${$('template').value}-${settings.format.replace(':','x')}.png`,{type:'image/png'});}
+function exportFile(){return new File([blob],exportFilename(game,gameOutputs(game).find(t=>t.id===$('template').value),settings,activeInsight()),{type:'image/png'});}
 $('download').onclick=()=>{if(!blob)return;const f=exportFile(),url=URL.createObjectURL(f),a=document.createElement('a');a.href=url;a.download=f.name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);};
 $('share').onclick=async()=>{if(!blob)return;try{await navigator.share({files:[exportFile()],title:'HMS Media Studio'});}catch(e){if(e.name!=='AbortError')status('Sdílení není dostupné. Použijte Stáhnout PNG.');}};
 editorSettings();browse();

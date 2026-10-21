@@ -23,7 +23,7 @@ test('orgs fail closed, games use bounded dates/offset and reject foreign/out-of
   let query;
   const opts={env,now:new Date('2026-10-21T12:00Z'),fetchGames:async q=>{query=q;return [{gameId:ids.game,organizationId:ids.org,startDate:'2026-10-21',HomeTeam:{name:'A'},AwayTeam:{name:'B'},secret:'no'}];}};
   const result=await browseMedia({org:'PHM',offset:20},opts);
-  assert.deepEqual(query,{from:'2026-10-21',to:'2026-10-21',limit:20,skip:20});assert.equal(result.items[0].secret,undefined);
+  assert.deepEqual(query,{from:'2026-10-21',to:'2026-10-22',limit:20,skip:20});assert.equal(result.items[0].secret,undefined);
   await assert.rejects(browseMedia({org:'PHM'},{...opts,fetchGames:async()=>[{gameId:ids.game,organizationId:'foreign',startDate:'2026-10-21'}]}));
   await assert.rejects(browseMedia({org:'PHM'},{...opts,fetchGames:async()=>[{gameId:ids.game,organizationId:ids.org,startDate:'2026-10-20'}]}));
   await assert.rejects(browseMedia({org:'PHM'},{...opts,fetchGames:async()=>[{gameId:ids.game,organizationId:ids.org}]}));
@@ -104,4 +104,17 @@ test('thin event team references retain richer detail logos during shared normal
   const events={...gameEventsResponse,GameEventGoals:gameEventsResponse.GameEventGoals.map(g=>({...g,ScoredByTeam:{teamId:g.scoredByTeamId,name:g.ScoredByTeam?.name}})),GameEventSaves:gameEventsResponse.GameEventSaves.map(g=>({...g,SavedByTeam:{teamId:g.savedByTeamId,name:g.SavedByTeam?.name}}))};
   const result=normalizeHmsGame(events,lineupResponse,detail);
   assert.ok(result.teamStats.every(team=>team.logoTemplateUrl===image));
+});
+
+test('single-day Games handles exclusive and inclusive HMS end boundaries without exposing tomorrow',async()=>{
+  const base={gameId:ids.game,organizationId:ids.org,HomeTeam:{name:'Home'},AwayTeam:{name:'Away'}};
+  for(const filter of ['Today','Tomorrow','Yesterday','-7 days','+7 days','Past','Future']){
+    const range=timeWindow(filter,new Date('2026-10-21T12:00Z'));
+    const opts={env,now:new Date('2026-10-21T12:00Z'),fetchGames:async q=>{
+      assert.ok(q.to>range.to);return [{...base,startDate:range.from},{...base,startDate:q.to}];
+    }};
+    const page=await browseMedia({org:'PHM',filter},opts);assert.equal(page.items.length,1);assert.equal(page.items[0].playedOn,range.from);assert.equal(page.to,range.to);
+  }
+  const page=await browseMedia({org:'PHM'}, {env,now:new Date('2026-10-21T12:00Z'),fetchGames:async q=>Array.from({length:20},()=>({...base,startDate:q.to}))});
+  assert.equal(page.items.length,0);assert.equal(page.hasMore,true);
 });
