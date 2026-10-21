@@ -1,3 +1,4 @@
+import {hmsMediaContext} from './media-context.js';
 import { buildEventSnapshot, selectEventGroup, uniqueEvents } from "./event-snapshot.js";
 import { enrichEventGroups } from "./public-event-metadata.js";
 import { faceoffSnapshot } from './faceoffs.js';
@@ -95,7 +96,7 @@ function penaltyMinutes(value) {
   throw new Error(`Neplatná délka trestu: ${value}`);
 }
 
-export function normalizeHmsGame(gameEventsResponse, lineupResponse, gameDetailResponse = null, publicMetadata = null) {
+export function normalizeHmsGame(gameEventsResponse, lineupResponse, gameDetailResponse = null, publicMetadata = null, options = {}) {
   if (gameDetailResponse?.gameId && gameEventsResponse?.gameId
     && gameDetailResponse.gameId.toLowerCase() !== gameEventsResponse.gameId.toLowerCase()) {
     throw new Error("Game Detail a Events patří k různým zápasům.");
@@ -121,7 +122,7 @@ export function normalizeHmsGame(gameEventsResponse, lineupResponse, gameDetailR
   if (lineupGameIds.some((lineupGameId) => lineupGameId.toLowerCase() !== gameId.toLowerCase())) {
     throw new Error("Game Events a Lineup patří k různým zápasům.");
   }
-  if (gameResponse.status !== "FINISHED") throw new Error("MVP přijímá pouze dokončený zápas.");
+  if (!options.allowUnfinished && gameResponse.status !== "FINISHED") throw new Error("MVP přijímá pouze dokončený zápas.");
 
   const phase = required(gameResponse.Phase ?? lineupResponse.Phase, "Phase");
   const group = required(gameResponse.Group ?? phase.Group, "Group");
@@ -154,7 +155,10 @@ export function normalizeHmsGame(gameEventsResponse, lineupResponse, gameDetailR
   }
   for (const event of allEvents) {
     const team = teamFromEvent(event);
-    if (team) teamMap.set(team.teamId, team);
+    if (team) {
+      const known=teamMap.get(team.teamId);
+      teamMap.set(team.teamId,Object.fromEntries(Object.keys(team).map(key=>[key,team[key]??known?.[key]??null])));
+    }
   }
 
   const playerStats = new Map([...players.values()]
@@ -292,6 +296,7 @@ export function normalizeHmsGame(gameEventsResponse, lineupResponse, gameDetailR
     teamStats,
   };
   normalized.eventSnapshot = buildEventSnapshot(normalized, groupedEvents, players, penaltyMinutes);
+  normalized.eventSnapshot.branding=hmsMediaContext({Phase:phase,Group:group,Season:season,Competition:competition});
   normalized.eventSnapshot.faceoffs = faceoffSnapshot(gameEventsResponse, gameDetailResponse, publicMetadata, normalized, players);
   normalized.eventSnapshot.roster=[...players.values()].map(p=>({id:p.playerId,teamId:p.teamId,isGoalie:p.isGoalie}));
   normalized.eventSnapshot.jerseyColors={home:jerseyColor(gameResponse.homeJerseyColor),away:jerseyColor(gameResponse.awayJerseyColor)};

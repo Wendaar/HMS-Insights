@@ -1,3 +1,5 @@
+import {createStudioImageHandler} from './web/studio-image-handler.js';
+import {createStudioHandler} from './web/studio-handler.js';
 import {createGameExtrasHandler} from './web/game-extras-handler.js';
 import { createPlayerCardHandler } from "./web/player-card-handler.js";
 import { playerCard } from "./app/player-card.js";
@@ -51,6 +53,23 @@ export const server = createServer(async (request, response) => {
   if(url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='extras'){
     request.query={gameId:url.searchParams.get('gameId')};
     await createGameExtrasHandler()(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json');response.end(JSON.stringify(body));}});return;
+  }
+  if(url.pathname==='/api/studio-image') {
+    request.query=Object.fromEntries(url.searchParams);
+    await createStudioImageHandler()(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},send(body){response.end(body);},json(body){response.setHeader('content-type','application/json');response.end(JSON.stringify(body));}});return;
+  }
+  if(url.pathname==='/api/studio') {
+    request.query=Object.fromEntries(url.searchParams);
+    await createStudioHandler()(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json');response.end(JSON.stringify(body));}});return;
+  }
+  if(/^\/studio\/fonts\/(fonts.css|files\/[a-z0-9-]+\.woff2)$/.test(url.pathname)) {
+    response.setHeader('content-type',url.pathname.endsWith('.css')?'text/css':'font/woff2');
+    response.end(await readFile(join(publicDirectory,url.pathname)));return;
+  }
+  if(url.pathname==='/studio' || /^\/studio\/(index.html|app.js|graphics.js|subjects.js|studio.css)$/.test(url.pathname)) {
+    const name=url.pathname==='/studio'?'index.html':url.pathname.split('/').pop();
+    response.setHeader('content-type',name.endsWith('.html')?'text/html; charset=utf-8':name.endsWith('.css')?'text/css':'text/javascript');
+    response.end(await readFile(join(publicDirectory,'studio',name)));return;
   }
   const reportMatch = /^\/game-center\/([^/]+)(?:\/public)?$/.exec(url.pathname);
   if (reportMatch || url.pathname === "/api/game-summary") {

@@ -1,20 +1,58 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "regions": ["fra1"],
+  "regions": [
+    "fra1"
+  ],
   "functions": {
     "api/**/*.js": {
       "maxDuration": 30
     }
   },
   "rewrites": [
-    { "source": "/api/player-card", "destination": "/api/game-summary?view=player-card" },
-    { "source": "/game-center/:gameId/public", "destination": "/api/game-report-page?gameId=:gameId" },
-    { "source": "/game-center/:gameId", "destination": "/api/game-report-page?gameId=:gameId" },
-    { "source": "/", "destination": "/api/page" },
-    { "source": "/priklepy", "destination": "/api/page" },
-    { "source": "/archiv", "destination": "/api/archive-page" },
-    { "source": "/admin/import-game", "destination": "/api/import-game-page" },
-    { "source": "/admin/backfill", "destination": "/api/backfill-page" }
+    {
+      "source": "/api/studio-image",
+      "destination": "/api/game-summary?view=studio-image"
+    },
+    {
+      "source": "/studio",
+      "destination": "/studio/index.html"
+    },
+    {
+      "source": "/api/studio",
+      "destination": "/api/game-summary?view=studio"
+    },
+    {
+      "source": "/api/player-card",
+      "destination": "/api/game-summary?view=player-card"
+    },
+    {
+      "source": "/game-center/:gameId/public",
+      "destination": "/api/game-report-page?gameId=:gameId"
+    },
+    {
+      "source": "/game-center/:gameId",
+      "destination": "/api/game-report-page?gameId=:gameId"
+    },
+    {
+      "source": "/",
+      "destination": "/api/page"
+    },
+    {
+      "source": "/priklepy",
+      "destination": "/api/page"
+    },
+    {
+      "source": "/archiv",
+      "destination": "/api/archive-page"
+    },
+    {
+      "source": "/admin/import-game",
+      "destination": "/api/import-game-page"
+    },
+    {
+      "source": "/admin/backfill",
+      "destination": "/api/backfill-page"
+    }
   ]
 }
