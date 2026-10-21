@@ -1,9 +1,10 @@
+import {hmsMediaContext} from '../hms/media-context.js';
 // Trigger-neutral read model. No writes to HMS, imported snapshots or Příklepy.
 import { fetchGames, fetchGameDetail, fetchOrganization, fetchPublicGameMetadata, fetchGameResponses, hmsConfigFromEnv } from '../hms/client.js';
 import { normalizeHmsGame } from '../hms/normalize.js';
 import { buildGameSummary, isGameId } from '../domain/game-summary.js';
 import { rowsFor } from '../infrastructure/analysis-rows.js';
-import { loadGameSnapshot, loadStudioPage, loadStudioGameLabels } from '../infrastructure/postgres-repository.js';
+import { loadGameSnapshot, loadStudioPage, loadStudioGameLabels, loadStudioInsights } from '../infrastructure/postgres-repository.js';
 import { gameRows } from './backfill-finished-games.js';
 import { sportingImage } from '../../public/game-report-media.js';
 
@@ -70,22 +71,32 @@ export function applyPublicMedia(summary,metadata) {
   if(!metadata||!same(metadata.HomeTeam?.teamId,summary.home.id)||!same(metadata.AwayTeam?.teamId,summary.away.id)||metadata.startDate!==summary.playedOn)return summary;
   summary.home.logoUrl ||=teamImage(metadata.HomeTeam);summary.away.logoUrl ||=teamImage(metadata.AwayTeam);
   const group=metadata.Phase?.Group;
-  if(group?.name===summary.group)summary.groupLogoUrl ||=teamImage(group);
+  const branding=hmsMediaContext(metadata);
+  if(group?.name===summary.group)summary.groupLogoUrl ||=branding.groupLogoUrl;
+  if(branding.competitionName===summary.competition)summary.competitionLogoUrl ||=branding.competitionLogoUrl;
+  for(const row of metadata.Lineups??[]){const person=row.Player;const player=[...summary.players??[],...summary.goalies??[]].find(p=>same(p.id,person?.playerId)&&same(p.teamId,row.teamId));
+    if(player&&!player.imageUrl)player.imageUrl=teamImage(person);
+  }
   if(metadata.Phase?.name===summary.phase)summary.phaseLogoUrl ||=teamImage(metadata.Phase);
   return summary;
 }
-export async function browseMedia({org,filter='Today',offset=0,windowPage=0,section='games'}, options={}) {
+export async function browseMedia({org,filter='Today',offset=0,windowPage=0,section='games',query='',type=''}, options={}) {
   const env=options.env??process.env, config=organizationConfig(org,env);
-  const range=timeWindow(filter,options.now,windowPage);
   const limit=20;
-  if(section==='insights' || !config.token) {
-    const page=await (options.loadPage??loadStudioPage)({organizationId:config.id,...range,offset,limit,section,env});
-    if(section==='insights')page.items=page.items.map(item=>({
-      id:item.id,gameId:item.gameId,type:item.type,title:item.title,text:item.text,date:item.date,
-      player:item.player,team:item.team,playerImageUrl:sportingImage(item.playerImageUrl),teamLogoUrl:sportingImage(item.teamLogoUrl)
-    }));
+  if(section==='insights'){
+    const types=['HATTRICK','MULTIPOINT_GAME','BIG_SAVES','EARLY_GOAL','BIG_WIN'];
+    if(type&&!types.includes(type))throw new TypeError('Neplatný typ Insightu.');
+    const today=timeWindow('Today',options.now).from;
+    const page=await (options.loadInsights??loadStudioInsights)({organizationId:config.id,today,query:String(query).slice(0,160),type,offset,limit,env});
+    page.items=page.items.map(item=>({id:item.id,gameId:item.gameId,type:item.type,title:item.title,text:item.text,date:item.date,
+      player:item.player,playerId:item.playerId??null,team:item.team,teamId:item.teamId??null,
+      homeTeam:item.homeTeam,awayTeam:item.awayTeam,homeScore:item.homeScore,awayScore:item.awayScore,competition:item.competition,group:item.group,
+      playerImageUrl:sportingImage(item.playerImageUrl),teamLogoUrl:sportingImage(item.teamLogoUrl),
+      stats:Object.fromEntries(['goals','assists','points','saves','goalsAgainst'].filter(k=>Number.isFinite(item.facts?.[k])).map(k=>[k,item.facts[k]]))}));
     return page;
   }
+  const range=timeWindow(filter,options.now,windowPage);
+  if(!config.token)return (options.loadPage??loadStudioPage)({organizationId:config.id,...range,offset,limit,section,env});
   const hmsConfig={...hmsConfigFromEnv({...env,HMS_API_TOKEN:config.token}),token:config.token,timeoutMs:5000,retries:0};
   const rows=gameRows(await (options.fetchGames??fetchGames)({...range,limit,skip:offset}, {config:hmsConfig}));
   if(rows.length>limit) throw new Error('HMS nerespektuje stránkování.');
@@ -137,8 +148,17 @@ export async function mediaGame(org,gameId,options={}) {
       const stored=await (options.loadSnapshot??loadGameSnapshot)(gameId,{env});
       if(stored) { assertOrg(stored.game.organization_id,config.id); summary.priklepy=buildGameSummary(stored).priklepy; }
     }
-    if(!summary.home.logoUrl||!summary.away.logoUrl)publicMetadata??=await (options.fetchMetadata??fetchPublicGameMetadata)(gameId);
+    if(!summary.home.logoUrl||!summary.away.logoUrl||!summary.competitionLogoUrl||!summary.groupLogoUrl||(summary.players??[]).some(p=>!p.imageUrl))publicMetadata??=await (options.fetchMetadata??fetchPublicGameMetadata)(gameId);
     applyPublicMedia(summary,publicMetadata);
+    if((!summary.competitionLogoUrl||!summary.groupLogoUrl)&&config.token){
+      try {const detail=await (options.fetchBrandingDetail??fetchGameDetail)(gameId,{config:{...hmsConfigFromEnv({...env,HMS_API_TOKEN:config.token}),timeoutMs:4000,retries:0}});
+        assertOrg(detail.organizationId,config.id);if(!same(detail.gameId,gameId))throw new Error('Jiný zápas');
+        const brand=hmsMediaContext(detail);
+        if(brand.competitionName===summary.competition)summary.competitionLogoUrl ||=brand.competitionLogoUrl;
+        if(brand.groupName===summary.group)summary.groupLogoUrl ||=brand.groupLogoUrl;
+        if(brand.phaseName===summary.phase)summary.phaseLogoUrl ||=brand.phaseLogoUrl;
+      }catch{/* Optional branding never changes verified scores. */}
+    }
     summary.organizationLogoUrl ||=await organizationImage(config,env,options);
     const value={...summary,org,readAt:new Date().toISOString(),source:snapshot?'imported-snapshot':'HMS-read-only'};
     cache.set(key,{expires:now+30000,refreshedAt:snapshot?0:now,value});

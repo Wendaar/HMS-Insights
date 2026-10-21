@@ -1,3 +1,4 @@
+import {hmsMediaContext} from './media-context.js';
 import { buildEventSnapshot, selectEventGroup, uniqueEvents } from "./event-snapshot.js";
 import { enrichEventGroups } from "./public-event-metadata.js";
 import { faceoffSnapshot } from './faceoffs.js';
@@ -295,6 +296,7 @@ export function normalizeHmsGame(gameEventsResponse, lineupResponse, gameDetailR
     teamStats,
   };
   normalized.eventSnapshot = buildEventSnapshot(normalized, groupedEvents, players, penaltyMinutes);
+  normalized.eventSnapshot.branding=hmsMediaContext({Phase:phase,Group:group,Season:season,Competition:competition});
   normalized.eventSnapshot.faceoffs = faceoffSnapshot(gameEventsResponse, gameDetailResponse, publicMetadata, normalized, players);
   normalized.eventSnapshot.roster=[...players.values()].map(p=>({id:p.playerId,teamId:p.teamId,isGoalie:p.isGoalie}));
   normalized.eventSnapshot.jerseyColors={home:jerseyColor(gameResponse.homeJerseyColor),away:jerseyColor(gameResponse.awayJerseyColor)};

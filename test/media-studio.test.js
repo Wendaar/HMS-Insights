@@ -6,7 +6,7 @@ import {templates,publicImageUrl} from '../public/studio/graphics.js';
 import {createStudioHandler} from '../src/web/studio-handler.js';
 import {gameEventsResponse,lineupResponse,ids} from '../src/fixtures/real-game-sanitized.js';
 import {normalizeHmsGame} from '../src/hms/normalize.js';
-const mediaGame=(org,id,options)=>readMediaGame(org,id,{fetchMetadata:async()=>null,fetchOrganization:async()=>({}),...options});
+const mediaGame=(org,id,options)=>readMediaGame(org,id,{fetchMetadata:async()=>null,fetchOrganization:async()=>({}),fetchBrandingDetail:async()=>({}),...options});
 const env={HMS_API_TOKEN:'test-only',HMS_PHM_ORGANIZATION_ID:ids.org};
 test('Prague dates cover midnight, month/year boundaries and DST without fixed 24h shifts',()=>{
   assert.deepEqual(timeWindow('Today',new Date('2026-10-24T22:30Z')),{from:'2026-10-25',to:'2026-10-25'});

@@ -9,7 +9,7 @@ export function createStudioHandler(options={}) {
       const integer=(value,max)=>{const n=Number(value??0);if(!Number.isSafeInteger(n)||n<0||n>max)throw new TypeError('Neplatná stránka.');return n;};
       const result=q.gameId
         ? await (options.mediaGame??mediaGame)(q.org,q.gameId,{...options,refresh:q.refresh==='1'})
-        : await (options.browseMedia??browseMedia)({org:q.org,filter:q.filter??'Today',section:q.section==='insights'?'insights':'games',offset:integer(q.offset,100000),windowPage:integer(q.windowPage,120)},options);
+        : await (options.browseMedia??browseMedia)({org:q.org,query:typeof q.query==='string'?q.query.slice(0,160):'',type:typeof q.type==='string'?q.type:'',filter:q.filter??'Today',section:q.section==='insights'?'insights':'games',offset:integer(q.offset,100000),windowPage:integer(q.windowPage,120)},options);
       return res.status(200).json(result);
     } catch(e) {
       return res.status(e instanceof TypeError?400:503).json({error:e instanceof TypeError?e.message:'Data nejsou dostupná. Zkontrolujte připojení vybrané organizace nebo zkuste načtení znovu.'});

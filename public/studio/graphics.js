@@ -1,6 +1,9 @@
+import {resolveInsightSubject,insightLabel,insightStat} from './subjects.js';
 import {sportingImage} from '../game-report-media.js';
 export const formats={'1:1':[1080,1080],'9:16':[1080,1920]};
-export const fonts=['Roboto Condensed','Roboto','Roboto Slab','Noto Sans','Noto Serif'];
+export const fonts=['Barlow Condensed','Oswald','Roboto Condensed','Noto Sans','Noto Serif'];
+export function safeArea(format){return format==='9:16'?{x:96,y:220,w:864,h:1360}:{x:64,y:64,w:952,h:952};}
+export function imageSources(game,insight,settings){const subject=resolveInsightSubject(game,insight);return {background:settings.background,home:game.home.logoUrl,away:game.away.logoUrl,organization:game.organizationLogoUrl,competition:settings.competitionLogo||game.competitionLogoUrl,group:settings.groupLogo||game.groupLogoUrl,phase:game.phaseLogoUrl,partner:settings.partnerLogo,player:subject?.playerId?(settings.playerPhoto||subject.photoUrl):null,subjectTeam:subject?.teamLogoUrl};}
 export function templates(game) {
   if(!game) return [];
   const scored = [game.home?.score,game.away?.score].every(n=>typeof n==='number'&&Number.isFinite(n)&&n>=0);
@@ -25,10 +28,10 @@ export async function loadImage(url,{required=false}={}) {
   if(!url)return null;
   if(!url.startsWith('data:image/')&&!publicImageUrl(url)) {if(required)throw new Error('Použijte veřejnou HTTPS adresu obrázku.');return null;}
   try {
-    // Browser-only CORS fetch. There is deliberately no server image proxy.
+    // Same-origin HMS bridge keeps preview authentication; external hosts get no credentials.
     const source=sportingImage(url);
     const fetchUrl=source?'/api/studio-image?'+new URLSearchParams({url:source}):url;
-    const r=await fetch(fetchUrl,{mode:'cors',credentials:'omit',signal:AbortSignal.timeout(10000)});
+    const r=await fetch(fetchUrl,{mode:'cors',credentials:source?'same-origin':'omit',signal:AbortSignal.timeout(10000)});
     if(!r.ok)throw new Error();
     const blob=await r.blob();
     if(blob.size>8*1024*1024||!['image/png','image/jpeg','image/webp'].includes(blob.type))throw new Error();
@@ -60,73 +63,127 @@ function logo(ctx,img,label,x,y,size,font) {
   if(img){const r=Math.min(size/img.width,size/img.height);ctx.drawImage(img,x-img.width*r/2,y-img.height*r/2,img.width*r,img.height*r);}
   else {ctx.fillStyle='#132c43';ctx.beginPath();ctx.arc(x,y,size/2,0,Math.PI*2);ctx.fill();fit(ctx,String(label??'?').split(/\s+/).map(x=>x[0]).join('').slice(0,3),x,y+18,size*.85,48,font,'#fff');}
 }
+function plate(c,x,y,w,h,fill,stroke=null,r=24){
+  c.save();c.shadowColor='#00000065';c.shadowBlur=30;c.shadowOffsetY=14;
+  c.fillStyle=fill;panel(c,x,y,w,h,r);c.fill();c.restore();
+  if(stroke){c.strokeStyle=stroke;c.lineWidth=2;panel(c,x,y,w,h,r);c.stroke();}
+}
+function effects(c,w,h,accent,crazy){
+  const g=c.createRadialGradient(w*.75,h*.35,0,w*.75,h*.35,w);g.addColorStop(0,accent+'45');g.addColorStop(1,'#00000000');c.fillStyle=g;c.fillRect(0,0,w,h);
+  if(!crazy)return;
+  c.save();c.globalCompositeOperation='screen';
+  for(const [x,y,color] of [[w*.06,h*.03,'#5f8fff'],[w*.93,h*.09,accent],[w*.80,h*.72,'#754aff']]){
+    const glow=c.createRadialGradient(x,y,0,x,y,w*.55);glow.addColorStop(0,color+'b0');glow.addColorStop(.20,color+'38');glow.addColorStop(1,color+'00');c.fillStyle=glow;c.fillRect(0,0,w,h);
+    c.strokeStyle='#ffffffa0';c.lineWidth=2;c.beginPath();c.moveTo(x-35,y);c.lineTo(x+35,y);c.moveTo(x,y-35);c.lineTo(x,y+35);c.stroke();
+  }
+  for(let i=0;i<7;i++){c.strokeStyle=i%2?accent+'75':'#73aaff40';c.lineWidth=i%3+1;c.beginPath();c.moveTo(-w*.15,h*.15+i*65);c.lineTo(w*1.1,h*.6+i*52);c.stroke();}
+  for(let i=0;i<90;i++){const x=((i*193+37)%997)/997*w,y=((i*347+19)%991)/991*h;c.fillStyle=i%3?accent+'85':'#ffffffb0';c.fillRect(x,y,i%4+1,i%4+1);}
+  c.restore();
+}
+function transparentPortrait(image){const c=document.createElement('canvas');c.width=8;c.height=8;const x=c.getContext('2d');x.drawImage(image,0,0,8,8);const d=x.getImageData(0,0,8,8).data;return [3,31,227,255].some(i=>d[i]<240);}
+function statTile(c,value,label,x,y,w,h,font,accent,crazy){
+  plate(c,x,y,w,h,crazy?'#081326e8':'#102439',accent+'90',16);
+  fit(c,String(value),x+w*.5,y+h*.59,w-20,h*.55,'Anton','#fff');
+  fit(c,label,x+w*.5,y+h*.86,w-18,Math.min(25,h*.18),font,accent);
+}
+function badgePlate(c,img,label,x,y,size,font,crazy=false){
+  c.save();c.shadowColor=crazy?'#55aaff80':'#00000075';c.shadowBlur=crazy?40:30;c.shadowOffsetY=12;
+  c.fillStyle='#f7f5ee';panel(c,x-size*.59,y-size*.59,size*1.18,size*1.18,24);c.fill();c.restore();logo(c,img,label,x,y,size,font);
+}
 export async function renderGraphic(canvas,game,template,settings,insight=null) {
-  const [w,h]=formats[settings.format]??formats['1:1'];
-  const font=fonts.includes(settings.font)?settings.font:fonts[0];
-  const faces=await document.fonts.load(`bold 60px "${font}"`,[game.home.name,game.away.name,game.competition,game.group,game.phase,template.heading,insight?.title,insight?.text,insight?.player,insight?.team,settings.partner,'Příliš žluťoučký kůň'].filter(Boolean).join(' '));
-  if(!faces.length)throw new Error('Font se nepodařilo načíst. Obnovte stránku a zkuste export znovu.');
+  const [w,h]=formats[settings.format]??formats['1:1'],area=safeArea(settings.format);
+  const story=h>w,crazy=settings.design==='crazy',font=fonts.includes(settings.font)?settings.font:fonts[0];
+  const subject=resolveInsightSubject(game,insight),stat=insightStat(subject),accent=/^#[a-f0-9]{6}$/i.test(settings.accent)?settings.accent:'#79dfca';
+  const sample=[game.home.name,game.away.name,game.competition,game.group,game.phase,template.heading,insight?.title,insight?.text,subject?.playerName,subject?.teamName,settings.partner,'Příliš žluťoučký kůň'].filter(Boolean).join(' ');
+  const loaded=await Promise.all([document.fonts.load(`bold 48px "${font}"`,sample),document.fonts.load('400 80px "Anton"',sample),document.fonts.load('400 80px "Permanent Marker"','HATTRICK HERO BIG WIN THE WALL FAST START POINT MACHINE FINAL')]);
+  if(loaded.some(faces=>!faces.length))throw new Error('Font se nepodařilo načíst. Obnovte stránku a zkuste export znovu.');
   await document.fonts.ready;
-  const urls=[settings.background,game.home.logoUrl,game.away.logoUrl,game.organizationLogoUrl,game.groupLogoUrl,game.phaseLogoUrl,settings.partnerLogo,insight?.playerImageUrl??insight?.teamLogoUrl];
-  const images=await Promise.all(urls.map((url,i)=>loadImage(url,{required:!!url&&(i===0||i===6)})));
+  const sources=imageSources(game,insight,settings),keys=Object.keys(sources),pictures=await Promise.all(keys.map(k=>loadImage(sources[k],{required:!!sources[k]&&['background','partner','player'].includes(k)&&!!(k!=='player'||settings.playerPhoto)})));
+  const im=Object.fromEntries(keys.map((k,i)=>[k,pictures[i]]));
   try {
     canvas.width=w;canvas.height=h;const c=canvas.getContext('2d');
-    const story=h>w, cream='#f4efdf', ink='#0b1728', accent=settings.accent;
-    const hero={x:40,y:story?170:145,w:w-80,h:story?1030:515};
-    const bandY=hero.y+hero.h-20;
-    c.fillStyle=settings.base;c.fillRect(0,0,w,h);
-    // Poster masthead: the organization's/partner's identity, never editor branding.
-    c.fillStyle=cream;c.fillRect(0,0,w,hero.y+80);
-    const brandLogo=images[6]??images[3];
-    if(brandLogo)logo(c,brandLogo,'',105,hero.y*.45,100,font);
-    fit(c,settings.partner||game.org,brandLogo?180:55,hero.y*.45+13,brandLogo?330:440,38,font,ink,'left');
-    c.fillStyle=ink;panel(c,520,20,w-540,hero.y-45,20);c.fill();
-    fit(c,insight?'PLAYER SPOTLIGHT':template.id==='final'?'FINAL SCORE':'END OF PERIOD',w-65,hero.y*.45+14,460,37,font,cream,'right');
-    c.save();panel(c,hero.x,hero.y,hero.w,hero.h,38);c.clip();
-    if(images[0])cover(c,images[0],hero.x,hero.y,hero.w,hero.h);
-    else {
-      const arena=c.createLinearGradient(40,hero.y,w,hero.y+hero.h);
-      arena.addColorStop(0,game.home.color||settings.base);arena.addColorStop(.5,'#152a42');arena.addColorStop(1,game.away.color||settings.base);
-      c.fillStyle=arena;c.fillRect(hero.x,hero.y,hero.w,hero.h);
-      c.strokeStyle='#ffffff14';c.lineWidth=3;
-      for(let i=0;i<9;i++){c.beginPath();c.moveTo(-250+i*220,hero.y);c.lineTo(200+i*130,hero.y+hero.h);c.stroke();}
-      const glow=c.createRadialGradient(w/2,hero.y+hero.h*.65,20,w/2,hero.y+hero.h*.65,700);
-      glow.addColorStop(0,'#a7d6e529');glow.addColorStop(1,'#00000000');c.fillStyle=glow;c.fillRect(40,hero.y,hero.w,hero.h);
-    }
-    const shade=Number(settings.shade)||0;c.fillStyle=shade<0?`rgba(255,255,255,${-shade/100})`:`rgba(0,0,0,${shade/100})`;c.fillRect(hero.x,hero.y,hero.w,hero.h);
-    const fade=c.createLinearGradient(0,hero.y,0,hero.y+hero.h);fade.addColorStop(0,'#020b1510');fade.addColorStop(1,'#020b15d9');c.fillStyle=fade;c.fillRect(hero.x,hero.y,hero.w,hero.h);
-    fit(c,[game.competition,game.group].filter(Boolean).join(' / ').toUpperCase(),80,hero.y+55,800,25,font,cream,'left');
-    if(images[4])logo(c,images[4],'',960,hero.y+52,65,font);
-    if(insight){
-      if(images[7]){const image=images[7],maxH=hero.h*.82,maxW=hero.w*.8,r=Math.min(maxW/image.width,maxH/image.height);c.drawImage(image,(w-image.width*r)/2,hero.y+hero.h-image.height*r,image.width*r,image.height*r);}
-      else teamBadge(c,images[1],insight.team||insight.player,w/2,hero.y+hero.h*.52,story?310:215,font);
-      fit(c,insight.type==='HATTRICK'?'HATTRICK HERO':insight.title,w/2,hero.y+hero.h-50,w-140,story?74:48,font,cream);
+    c.fillStyle=settings.base||'#091629';c.fillRect(0,0,w,h);
+    if(im.background)cover(c,im.background,0,0,w,h);
+    else {const g=c.createLinearGradient(0,0,w,h);g.addColorStop(0,'#071529');g.addColorStop(.5,settings.base||'#102c43');g.addColorStop(1,crazy?'#111337':'#061321');c.fillStyle=g;c.fillRect(0,0,w,h);}
+    const shade=Number(settings.shade)||0;c.fillStyle=shade<0?`rgba(255,255,255,${-shade/100})`:`rgba(0,0,0,${shade/100})`;c.fillRect(0,0,w,h);
+    effects(c,w,h,accent,crazy);
+    // Everything semantic is contained inside a conservative social safe area.
+    c.save();c.translate(area.x,area.y);c.beginPath();c.rect(0,0,area.w,area.h);c.clip();
+    const W=area.w,H=area.h,pad=26,headerH=story?124:108,brandH=86,heroY=headerH+brandH+30;
+    const heroH=insight?(story?620:360):(story?545:340),bottomY=heroY+heroH+20;
+    // A full partner plate makes even wide wordmark logos readable.
+    plate(c,4,3,W-8,headerH-4,'#f4f1e8',crazy?accent+'a0':null,24);
+    if(settings.partner||im.partner){
+      const width=im.partner?Math.min(W*.43,330):0;
+      if(im.partner){const r=Math.min(width/im.partner.width,(headerH-38)/im.partner.height);c.drawImage(im.partner,pad,headerH/2-im.partner.height*r/2,im.partner.width*r,im.partner.height*r);}
+      if(im.partner){fit(c,settings.partner||'PARTNER',W-pad,headerH*.54,W*.48,story?40:34,font,'#112238','right');fit(c,'PŘINÁŠÍ',W-pad,headerH*.80,W*.48,18,font,'#637184','right');}
+      else {fit(c,settings.partner||'PARTNER',pad,headerH*.65,W*.65,54,font,'#112238','left');fit(c,'PŘINÁŠÍ',W-pad,headerH*.61,W*.3,22,font,'#637184','right');}
     }else{
-      fit(c,template.id==='final'?'FINAL':template.heading,w/2,hero.y+hero.h*.31,w-150,template.id==='final'?(story?210:125):(story?90:60),font,cream);
-      const y=hero.y+hero.h*.64,size=story?300:185;
-      teamBadge(c,images[1],game.home.name,300,y,size,font);teamBadge(c,images[2],game.away.name,780,y,size,font);
-      fit(c,'VS',w/2,y+14,110,story?45:32,font,cream);
+      if(im.organization)logo(c,im.organization,'',pad+44,headerH/2,82,font);
+      fit(c,game.org,im.organization?pad+106:pad,headerH*.58,W*.5,45,font,'#112238','left');
+      fit(c,insight?'GAME MOMENTS':template.id==='final'?'FINAL SCORE':'END OF PERIOD',W-pad,headerH*.58,W*.5,29,font,'#112238','right');
+    }
+    // Competition and group are separate brands, with explicit name fallback.
+    const brandY=headerH+20;
+    for(const [i,key,label] of [[0,'competition',game.competition],[1,'group',game.group]]){
+      const bx=i*(W/2);plate(c,bx+4,brandY,W/2-12,brandH,'#071322dc','#ffffff20',14);
+      if(im[key]){c.fillStyle='#f7f7f0';panel(c,bx+14,brandY+8,70,70,10);c.fill();logo(c,im[key],'',bx+49,brandY+43,60,font);}
+      fit(c,label||'HMS',bx+(im[key]?100:20),brandY+51,W/2-(im[key]?122:38),24,font,'#e9f0fc','left');
+    }
+    // Main card: strong foreground shadow and an illuminated accent edge.
+    plate(c,4,heroY,W-8,heroH,im.background?(crazy?'#05112690':'#10243ba0'):(crazy?'#051126e5':'#10243be8'),crazy?accent+'a0':'#ffffff28',28);
+    c.save();panel(c,4,heroY,W-8,heroH,28);c.clip();effects(c,W,heroY+heroH,accent,crazy);
+    if(insight){
+      const headline=insightLabel(insight.type),words=headline.split(' '),titleFont=crazy?'Permanent Marker':'Anton';
+      const photoW=W*(crazy?.56:.53),photoH=heroH*(crazy?.84:.80),px=W-photoW-20,py=heroY+heroH-photoH;
+      if(im.player){
+        const cutout=transparentPortrait(im.player);
+        c.save();c.shadowColor=crazy?accent+'b0':'#00000095';c.shadowBlur=crazy?45:28;c.shadowOffsetY=12;
+        if(cutout){const r=Math.min(photoW/im.player.width,photoH/im.player.height);c.drawImage(im.player,px+(photoW-im.player.width*r)/2,py+photoH-im.player.height*r,im.player.width*r,im.player.height*r);}
+        else {c.fillStyle='#f3f0e7';panel(c,px,py,photoW,photoH,22);c.fill();c.restore();c.save();panel(c,px,py,photoW,photoH,22);c.clip();cover(c,im.player,px,py,photoW,photoH);}c.restore();
+      }else if(im.subjectTeam)badgePlate(c,im.subjectTeam,subject?.teamName,px+photoW/2,heroY+heroH*.52,Math.min(photoW*.74,260),font,crazy);
+      else {fit(c,'FOTOGRAFIE',px+photoW/2,heroY+heroH*.50,photoW-20,27,font,'#a8bcd2');fit(c,'NENÍ K DISPOZICI',px+photoW/2,heroY+heroH*.59,photoW-20,21,font,'#8197af');}
+      const tx=30,headlineW=W*.50-35;
+      c.save();if(crazy){c.translate(tx,heroY+70);c.rotate(-.075);}else c.translate(tx,heroY+65);
+      fit(c,words[0],0,story?50:25,headlineW,story?86:60,titleFont,'#fff','left');
+      fit(c,words.slice(1).join(' '),0,story?155:105,headlineW,story?92:66,titleFont,accent,'left');c.restore();
+      if(stat)statTile(c,stat.value,stat.label,30,heroY+heroH-(story?230:145),Math.min(210,W*.32),story?200:125,font,accent,crazy);
+      if(crazy){c.fillStyle=accent+'ce';c.beginPath();c.moveTo(0,heroY+heroH-12);c.lineTo(W*.52,heroY+heroH-60);c.lineTo(W*.60,heroY+heroH);c.lineTo(0,heroY+heroH);c.fill();}
+    }else{
+      fit(c,template.id==='final'?'FINAL':template.heading,W/2,heroY+(story?140:88),W-70,template.id==='final'?(story?132:92):(story?60:46),template.id==='final'?(crazy?'Permanent Marker':'Anton'):font,'#f4f4eb');
+      const ly=heroY+heroH*.65,size=story?208:165;
+      badgePlate(c,im.home,game.home.name,W*.27,ly,size,font,crazy);badgePlate(c,im.away,game.away.name,W*.73,ly,size,font,crazy);
+      fit(c,'VS',W/2,ly+11,90,32,font,accent);
     }
     c.restore();
-    // Dense score/name block sized independently for story and square.
-    c.fillStyle=accent;c.beginPath();c.moveTo(0,bandY+30);c.lineTo(w,bandY-40);c.lineTo(w,h);c.lineTo(0,h);c.fill();
-    c.fillStyle=ink;c.beginPath();c.moveTo(0,bandY+65);c.lineTo(w,bandY-5);c.lineTo(w,h-60);c.lineTo(0,h-60);c.fill();
+    const footerY=H-64;
     if(insight){
-      fit(c,insight.player||insight.team,65,bandY+(story?170:120),w-130,story?86:66,font,cream,'left');
-      lines(c,insight.text,65,bandY+(story?255:180),w-130,story?34:28,font,'#c9d3e0',story?5:3);
+      const name=subject?.playerName||subject?.teamName||insight.player||insight.team||'GAME MOMENT';
+      const logoSize=story?100:78,logoX=W-logoSize*.65-8;
+      if(im.subjectTeam)badgePlate(c,im.subjectTeam,subject?.teamName,logoX,bottomY+58,logoSize,font,crazy);
+      fit(c,name.toUpperCase(),12,bottomY+55,W-(im.subjectTeam?160:30),story?68:52,font,'#fff','left');
+      fit(c,subject?.teamName||'Tým nelze ověřit',12,bottomY+99,W-170,30,font,accent,'left');
+      // Keep match context and achievement text readable even without a photo.
+      const context=`${game.home.name}  ${game.home.score??'–'}:${game.away.score??'–'}  ${game.away.name}`;
+      fit(c,context,12,bottomY+145,W-24,story?29:24,font,'#d9e5f5','left');
+      lines(c,insight.text,12,bottomY+195,W-24,story?27:23,font,'#9eafc5',story?3:2);
     }else{
-      const y=bandY+(story?290:195);
-      fit(c,String(template.home),300,y,380,story?310:205,font,cream);
-      fit(c,':',w/2,y-15,100,story?170:120,font,accent);
-      fit(c,String(template.away),780,y,380,story?310:205,font,cream);
-      fit(c,game.home.name,300,y+(story?100:70),420,story?43:32,font,cream);
-      fit(c,game.away.name,780,y+(story?100:70),420,story?43:32,font,cream);
+      plate(c,4,bottomY,W-8,story?270:230,'#061223f2',accent+'75',24);
+      const sy=bottomY+(story?167:139);
+      fit(c,String(template.home),W*.27,sy,W*.40,story?175:150,'Anton','#fff');fit(c,':',W/2,sy-6,70,88,font,accent);
+      fit(c,String(template.away),W*.73,sy,W*.40,story?175:150,'Anton','#fff');
+      fit(c,game.home.name,W*.27,sy+55,W*.44,30,font,'#e8f0fb');fit(c,game.away.name,W*.73,sy+55,W*.44,30,font,'#e8f0fb');
       const periods=game.timeline?.coverage==='matches-result'?game.timeline.periodScores:[];
-      if(periods?.length&&template.id==='final')fit(c,periods.map(p=>`${p.home}:${p.away}`).join('   /   '),w/2,y+(story?200:115),w-140,story?34:25,font,'#a9b8cc');
+      if(periods?.length&&template.id==='final')fit(c,periods.map(p=>`${p.home}:${p.away}`).join(' / '),W/2,bottomY+(story?320:270),W-30,26,font,'#9eb2cd');
     }
-    fit(c,[game.playedOn,game.phase].filter(Boolean).join('  /  '),65,h-100,850,story?29:22,font,'#b4c0d0','left');
-    if(images[5])logo(c,images[5],'',960,h-110,65,font);
-    stripes(c,ink,0,h-30,w);fit(c,'HMS',w-40,h-18,100,21,font,ink,'right');
-    const labels=['Pozadí','Logo domácích','Logo hostů','Logo organizace','Logo skupiny','Logo fáze','Logo partnera','Fotografie hráče / logo týmu'];
-    return urls.flatMap((u,i)=>u&&!images[i]?[`${labels[i]} se nepodařilo načíst: použit fallback.`]:[]);
-  }finally{images.forEach(i=>i?.close());}
+    c.fillStyle=accent;c.fillRect(12,footerY-20,W-24,3);
+    fit(c,[game.playedOn,game.phase].filter(Boolean).join(' / '),12,footerY+22,W-210,23,font,'#9eafc5','left');
+    for(const [i,key] of ['organization','phase'].filter(k=>im[k]).entries())logo(c,im[key],'',W-42-i*78,footerY+8,60,font);
+    c.restore();
+    const names={home:'Logo domácích',away:'Logo hostů',organization:'Logo organizace',competition:'Logo soutěže',group:'Logo skupiny',phase:'Logo fáze',player:'Fotografie hráče',subjectTeam:'Logo týmu hráče'};
+    const warnings=keys.flatMap(k=>sources[k]&&!im[k]?[`${names[k]||k} se nepodařilo načíst.`]:[]);
+    if(insight&&subject?.playerId&&!im.player)warnings.push('Fotografie hráče není dostupná. Můžete nahrát vlastní pro tento konkrétní výkon.');
+    if(insight&&!subject?.identityAvailable)warnings.push('Vazbu hráče/týmu nelze plně ověřit; žádný náhradní domácí tým se nepoužívá.');
+    return warnings;
+  }finally{pictures.forEach(p=>p?.close());}
 }

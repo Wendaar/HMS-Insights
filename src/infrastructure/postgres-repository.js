@@ -347,3 +347,33 @@ export async function loadStudioGameLabels(gameIds,organizationId,options={}) {
     left join team_game_stats a on a.game_id=g.game_id and a.side='AWAY'
     where g.organization_id=$1::uuid and g.game_id=any($2::uuid[])`,[organizationId,gameIds.slice(0,20)]);
 }
+
+// Reuses the existing feed, but resolves the subject's team through this game's
+// player/goalie row, never through an unrelated current-season registration.
+export async function loadStudioInsights(options={}) {
+  const sql=options.sql??createSql(databaseUrlFromEnv(options.env));
+  const values=[options.organizationId,options.today],clauses=['g.organization_id=$1::uuid','g.played_on <= $2::date'];
+  const query=String(options.query??'').trim().slice(0,160);
+  if(query){
+    const accented='áčďéěíňóřšťúůýžľĺŕôä',plain='acdeeinorstuuyzllroa';
+    const term=[...query.normalize('NFC').toLowerCase()].map(c=>accented.includes(c)?plain[accented.indexOf(c)]:c).join('').replace(/[\\%_]/g,'\\$&');
+    values.push('%'+term+'%');
+    clauses.push(`translate(lower(concat_ws(' ',f.title,f.body,f.player_name,ts.team_name,g.home_team_name,g.away_team_name,g.competition_name,g.group_name)),
+      'áčďéěíňóřšťúůýžľĺŕôä','acdeeinorstuuyzllroa') ilike $${values.length} escape '\\'`);
+  }
+  if(options.type){values.push(options.type);clauses.push(`f.type=$${values.length}`);}
+  values.push(options.limit+1,options.offset);
+  const rows=await sql.query(`select f.*,coalesce(ps.team_id,gs.team_id,f.team_id) as subject_team_id,
+    ts.team_name as subject_team_name, ts.team_logo_url as subject_team_logo_url,
+    ts.team_logo_template_url as subject_team_logo_template_url,
+    coalesce(to_jsonb(ps)->>'player_image_template_url',to_jsonb(gs)->>'player_image_template_url') as profile_template_url
+    from public_priklepy_feed f join games g on g.game_id=f.game_id
+    left join player_game_stats ps on ps.game_id=f.game_id and ps.player_id=f.player_id
+    left join goalie_game_stats gs on gs.game_id=f.game_id and gs.player_id=f.player_id
+    left join team_game_stats ts on ts.game_id=f.game_id and ts.team_id=coalesce(ps.team_id,gs.team_id,f.team_id)
+    where ${clauses.join(' and ')} order by g.played_on desc,f.importance desc,f.priklep_id
+    limit $${values.length-1} offset $${values.length}`,values);
+  return {items:rows.slice(0,options.limit).map(row=>({...publicFeedItem(row),playerId:row.player_id,teamId:row.subject_team_id,
+    team:row.subject_team_name??'',teamLogoUrl:row.subject_team_logo_template_url??row.subject_team_logo_url??null,
+    playerImageUrl:row.profile_template_url??row.player_image_url??null})),hasMore:rows.length>options.limit,offset:options.offset,source:'imported-snapshot'};
+}
