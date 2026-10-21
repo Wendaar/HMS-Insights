@@ -11,6 +11,10 @@
   },
   "rewrites": [
     {
+      "source": "/api/studio-image",
+      "destination": "/api/game-summary?view=studio-image"
+    },
+    {
       "source": "/studio",
       "destination": "/studio/index.html"
     },

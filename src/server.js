@@ -1,3 +1,4 @@
+import {createStudioImageHandler} from './web/studio-image-handler.js';
 import {createStudioHandler} from './web/studio-handler.js';
 import {createGameExtrasHandler} from './web/game-extras-handler.js';
 import { createPlayerCardHandler } from "./web/player-card-handler.js";
@@ -52,6 +53,10 @@ export const server = createServer(async (request, response) => {
   if(url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='extras'){
     request.query={gameId:url.searchParams.get('gameId')};
     await createGameExtrasHandler()(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json');response.end(JSON.stringify(body));}});return;
+  }
+  if(url.pathname==='/api/studio-image') {
+    request.query=Object.fromEntries(url.searchParams);
+    await createStudioImageHandler()(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},send(body){response.end(body);},json(body){response.setHeader('content-type','application/json');response.end(JSON.stringify(body));}});return;
   }
   if(url.pathname==='/api/studio') {
     request.query=Object.fromEntries(url.searchParams);

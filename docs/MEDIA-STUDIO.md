@@ -17,7 +17,9 @@ it never runs final-result achievement rules or persists that result.
 
 - Games uses the existing `/games` adapter with `from`, `to`, `limit=20`, `skip`.
   Both returned organization IDs and calendar dates are checked before exposing
-  a page. Oversized, foreign or out-of-range source responses fail closed.
+  a page. Thin list rows get real names from one bounded organization-scoped
+  metadata query; unimported games use up to three concurrent detail reads within
+  a 12-second deadline. Missing labels are explicit, never Domácí/Hosté. Oversized, foreign or out-of-range source responses fail closed.
 - If no HMS token is available, Games reads only bounded imported DB snapshots.
 - Insights reads the existing public feed projection joined to organization-scoped
   games, with a safe field projection. It never regenerates player/team achievements
@@ -83,20 +85,37 @@ fonts and images finish loading before the single canvas used for preview/export
 is accepted. An unavailable required font/background/partner logo disables export
 with an actionable error. Optional sporting images use a labeled fallback.
 
-There is deliberately **no server image proxy**, so arbitrary image URLs cannot
-trigger server-side requests/SSRF. The browser accepts public HTTPS URLs without
-credentials, ports, IP literals or local hosts; CORS is required. PNG/JPEG/WebP
-only, max 8 MB / 40 million decoded pixels; uploads downsample to max 1920 px.
-SVG uploads are excluded. Use upload if a remote host blocks CORS. Async renders
-and uploads reject stale results after organization/input changes. A completed PNG
-is downloaded directly; Web Share with files is offered only where supported.
+HMS raster assets use a narrow same-origin bridge at `/api/studio-image`, reusing
+the existing GameSummary serverless function. The actual public HMS S3 images
+were verified to return HTTP 200 **without CORS headers**, which prevents direct
+canvas export. The bridge accepts only the two existing HMS Amazon S3 hostnames,
+HTTPS/default port, no credentials/query/fragment, and refuses all redirects. It
+never forwards HMS credentials. An 8-second deadline, streamed 8 MB limit, raster
+magic-byte checks and 16 concurrent reads per instance bound requests. PNG/JPEG/
+WebP only; arbitrary background/partner hosts cannot use this bridge.
+
+Other remote images still require browser CORS and public HTTPS validation.
+Raster uploads are bounded to 8 MB / 40 million decoded pixels and downsampled
+to max 1920 px. SVG uploads are excluded. Async renders and uploads reject stale
+results after organization/input changes. A completed PNG is downloaded directly;
+Web Share with files is offered only where supported.
+
+The revised poster layout uses a masthead, large team badges, dense result panel
+and a separate image/portrait area; uploaded photos are used only when supplied.
+Shared normalization preserves rich team media when event references omit it.
+Older snapshots can obtain missing team media from the existing public endpoint
+only when both team IDs and the match date agree; scores/stats are never changed
+by this optional media lookup. Organization logos use identity-checked server-side
+organization metadata when provided.
 
 ## Verification and known limits
 
-- `pnpm test`: 126 passing tests (118 original + 8 Studio tests). Coverage includes
+- `pnpm test`: 132 passing tests (118 original + 14 Studio tests). Coverage includes
   Prague midnight/DST/year boundaries, every filter, bounded pages, organization
   mismatch, safe projection, SQL scope, read-only live normalization, period score
-  availability, image URL validation and safe HTTP errors.
+  availability, image URL validation and safe HTTP errors. Additional tests cover
+  thin list enrichment, missing/foreign labels, fixture-scoped public media,
+  preserving rich team logos, and image-bridge SSRF/redirect/MIME/size protections.
 - `pnpm run build:static`: passed. The command builds the existing demonstration
   feed, not a Vercel deployment; regenerated unrelated demo files are excluded.
 - `node scripts/studio-browser-check.mjs`: passed in headless Chromium, with mocked
@@ -138,3 +157,12 @@ Do not merge/deploy it as a secured multi-tenant admin application.
 Review branch: `codex/media-studio-sprint-1`, targeting `main`. Repository write
 access was restored after the GitHub App installation was completed. Changes
 are published for pull-request review only; production is not merged or replaced.
+
+## Visual feedback verification
+
+After user testing, real public HMS logos were fetched and used for local square
+and story poster review with the captured 5:10 public summary. The actual
+production S3 home-team image also passed the real server image bridge (HTTP 200,
+84,116 bytes). This verifies public asset delivery, not credentialed HMS listing.
+Studio's live list still needs a credentialed preview check; test coverage now
+explicitly models the thin rows that previously produced placeholder team names.

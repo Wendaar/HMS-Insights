@@ -23,7 +23,7 @@ try {
     await route.fulfill({json:{items:insights?[{id:'test-insight',gameId,title:'Hattrick Hero',text:'Adam Patočka zaznamenal hattrick.',player:'Adam Patočka',type:'HATTRICK',date:'2026-10-21'}]:[{gameId,playedOn:'2026-10-21',status:'FINISHED',home:fixture.home,away:fixture.away}],from:'2026-10-21',to:'2026-10-21',source:'browser-test-fixture',hasMore:q.get('offset')==='0'}});
   });
   await page.goto(root+'/studio');await page.locator('.match').click();await page.locator('#download').waitFor({state:'visible'});await page.waitForFunction(()=>!document.getElementById('download').disabled);
-  const pixel=await page.evaluate(()=>Array.from(document.getElementById('canvas').getContext('2d').getImageData(280,Math.floor(1080*.46),1,1).data));
+  const pixel=await page.evaluate(()=>Array.from(document.getElementById('canvas').getContext('2d').getImageData(300,Math.floor(145+515*.64),1,1).data));
   assert.deepEqual(pixel,[255,0,0,255]);
   for(const format of ['1:1','9:16']) {
     await page.selectOption('#format',format);

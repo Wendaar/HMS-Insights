@@ -1,11 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {timeWindow,organizationConfig,browseMedia,mediaGame} from '../src/app/media-engine.js';
+import {timeWindow,organizationConfig,browseMedia,mediaGame as readMediaGame,applyPublicMedia} from '../src/app/media-engine.js';
 import {loadStudioPage} from '../src/infrastructure/postgres-repository.js';
 import {templates,publicImageUrl} from '../public/studio/graphics.js';
 import {createStudioHandler} from '../src/web/studio-handler.js';
 import {gameEventsResponse,lineupResponse,ids} from '../src/fixtures/real-game-sanitized.js';
 import {normalizeHmsGame} from '../src/hms/normalize.js';
+const mediaGame=(org,id,options)=>readMediaGame(org,id,{fetchMetadata:async()=>null,fetchOrganization:async()=>({}),...options});
 const env={HMS_API_TOKEN:'test-only',HMS_PHM_ORGANIZATION_ID:ids.org};
 test('Prague dates cover midnight, month/year boundaries and DST without fixed 24h shifts',()=>{
   assert.deepEqual(timeWindow('Today',new Date('2026-10-24T22:30Z')),{from:'2026-10-25',to:'2026-10-25'});
@@ -74,4 +75,33 @@ test('refresh coalesces reads, retains stored achievements and never mutates sto
   await mediaGame('PHM',gameId,opts);assert.equal(reads,1);
   assert.equal(a.source,'HMS-read-only');
   await assert.rejects(mediaGame('YHG',gameId,{...opts,env:{...opts.env,HMS_YHG_ORGANIZATION_ID:'11111111-1111-1111-1111-111111111111'},refresh:false}),/organizaci/);
+});
+test('thin HMS list enriches real team names from one org-scoped imported page',async()=>{
+  let reads=0;
+  const result=await browseMedia({org:'PHM'},{env:{...env,DATABASE_URL:'test-only'},now:new Date('2026-10-21T12:00Z'),
+    fetchGames:async()=>[{gameId:ids.game,organizationId:ids.org,startDate:'2026-10-21'}],
+    loadLabels:async(gameIds,org)=>{reads++;assert.deepEqual(gameIds,[ids.game]);assert.equal(org,ids.org);return [{game_id:ids.game,home_team_name:'MyQ Heroes',away_team_name:'PLATIDLO.COM'}];},
+    fetchDetail:async()=>{throw new Error('Must not fetch detail when names already exist');}});
+  assert.equal(reads,1);assert.equal(result.items[0].home.name,'MyQ Heroes');assert.equal(result.items[0].away.name,'PLATIDLO.COM');assert.equal(result.items[0].labelsAvailable,true);
+});
+test('unimported list names come from scoped detail, failures never invent Domácí/Hosté',async()=>{
+  const id='33333333-3333-3333-3333-333333333333';
+  const options={env,now:new Date('2026-10-21T12:00Z'),fetchGames:async()=>[{gameId:id,organizationId:ids.org,startDate:'2026-10-21'}],fetchDetail:async()=>({gameId:id,organizationId:ids.org,HomeTeam:{name:'A'},AwayTeam:{name:'B'}})};
+  const result=await browseMedia({org:'PHM'},options);assert.equal(result.items[0].home.name,'A');
+  const missing=await browseMedia({org:'PHM'},{...options,fetchGames:async()=>[{gameId:'44444444-4444-4444-4444-444444444444',organizationId:ids.org,startDate:'2026-10-21'}],fetchDetail:async()=>({gameId:id,organizationId:'foreign',HomeTeam:{name:'Foreign A'},AwayTeam:{name:'Foreign B'}})});
+  assert.equal(missing.items[0].labelsAvailable,false);assert.equal(missing.items[0].home.name,undefined);
+});
+test('public media enrichment requires both team IDs and date, changes only missing media',()=>{
+  const image='https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/team_[size]';
+  const summary={playedOn:'2026-10-21',group:'SUPER',home:{id:ids.home,name:'Home',score:9,logoUrl:null},away:{id:ids.away,name:'Away',score:3,logoUrl:null}};
+  const metadata={startDate:'2026-10-21',HomeTeam:{teamId:ids.home,logoUrl:image},AwayTeam:{teamId:ids.away,logoUrl:image},HomeTeamGoals:999};
+  applyPublicMedia(summary,{...metadata,startDate:'2026-10-20'});assert.equal(summary.home.logoUrl,null);
+  applyPublicMedia(summary,metadata);assert.equal(summary.home.score,9);assert.equal(summary.home.name,'Home');assert.match(summary.home.logoUrl,/cropped_md$/);
+});
+test('thin event team references retain richer detail logos during shared normalization',()=>{
+  const image='https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/team_[size]';
+  const detail={...gameEventsResponse,HomeTeam:{teamId:ids.home,name:'Home',logoUrl:image},AwayTeam:{teamId:ids.away,name:'Away',logoUrl:image}};
+  const events={...gameEventsResponse,GameEventGoals:gameEventsResponse.GameEventGoals.map(g=>({...g,ScoredByTeam:{teamId:g.scoredByTeamId,name:g.ScoredByTeam?.name}})),GameEventSaves:gameEventsResponse.GameEventSaves.map(g=>({...g,SavedByTeam:{teamId:g.savedByTeamId,name:g.SavedByTeam?.name}}))};
+  const result=normalizeHmsGame(events,lineupResponse,detail);
+  assert.ok(result.teamStats.every(team=>team.logoTemplateUrl===image));
 });

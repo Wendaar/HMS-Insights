@@ -334,3 +334,16 @@ export async function loadStudioPage(options = {}) {
   return { items:rows.slice(0,options.limit).map(insights ? publicFeedItem : r=>({gameId:r.game_id,playedOn:dateOnly(r.played_on),status:r.status,home:{name:r.home_team_name},away:{name:r.away_team_name}})),
     hasMore:rows.length>options.limit,offset:options.offset,source:'imported-snapshot',from:options.from,to:options.to };
 }
+
+// One bounded metadata query for the selected HMS page; no per-game snapshots.
+export async function loadStudioGameLabels(gameIds,organizationId,options={}) {
+  if(!gameIds.length)return [];
+  const sql=options.sql??createSql(databaseUrlFromEnv(options.env));
+  return sql.query(`select g.game_id, g.home_team_name, g.away_team_name,
+    h.team_logo_url as home_logo_url, h.team_logo_template_url as home_logo_template_url,
+    a.team_logo_url as away_logo_url, a.team_logo_template_url as away_logo_template_url
+    from games g
+    left join team_game_stats h on h.game_id=g.game_id and h.side='HOME'
+    left join team_game_stats a on a.game_id=g.game_id and a.side='AWAY'
+    where g.organization_id=$1::uuid and g.game_id=any($2::uuid[])`,[organizationId,gameIds.slice(0,20)]);
+}

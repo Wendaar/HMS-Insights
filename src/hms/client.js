@@ -26,16 +26,17 @@ function retryDelay(response) {
   return Math.min(Math.max(seconds, 1), 60) * 1000;
 }
 
-async function getJson(url, token, fetchImpl, attempt = 0) {
+async function getJson(url, token, fetchImpl, attempt = 0, config = {}) {
   const response = await fetchImpl(url, {
+    signal: config.signal && config.timeoutMs ? AbortSignal.any([config.signal, AbortSignal.timeout(config.timeoutMs)]) : config.signal ?? (config.timeoutMs ? AbortSignal.timeout(config.timeoutMs) : undefined),
     headers: {
       authorization: `Bearer ${token}`,
       accept: "application/json",
     },
   });
-  if (response.status === 429 && attempt < 3) {
+  if (response.status === 429 && attempt < (config.retries ?? 3)) {
     await new Promise((resolve) => setTimeout(resolve, retryDelay(response)));
-    return getJson(url, token, fetchImpl, attempt + 1);
+    return getJson(url, token, fetchImpl, attempt + 1, config);
   }
   if (!response.ok) {
     throw new Error(`HMS API vrátilo ${response.status} pro ${new URL(url).pathname}.`);
@@ -52,11 +53,15 @@ export function hmsConfigFromEnv(env = process.env) {
 
 async function request(path, params, options = {}) {
   const config = options.config ?? hmsConfigFromEnv(options.env);
-  return getJson(apiUrl(config.baseUrl, path, params), config.token, options.fetchImpl ?? fetch);
+  return getJson(apiUrl(config.baseUrl, path, params), config.token, options.fetchImpl ?? fetch, 0, config);
 }
 
 export function fetchOrganization(options = {}) {
   return request("organization", {}, options);
+}
+
+export function fetchGameDetail(gameId, options = {}) {
+  return request("game", {gameId}, options);
 }
 
 export function fetchGames(params = {}, options = {}) {

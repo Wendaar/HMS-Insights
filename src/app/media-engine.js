@@ -1,15 +1,24 @@
 // Trigger-neutral read model. No writes to HMS, imported snapshots or Příklepy.
-import { fetchGames, fetchGameResponses, hmsConfigFromEnv } from '../hms/client.js';
+import { fetchGames, fetchGameDetail, fetchOrganization, fetchPublicGameMetadata, fetchGameResponses, hmsConfigFromEnv } from '../hms/client.js';
 import { normalizeHmsGame } from '../hms/normalize.js';
 import { buildGameSummary, isGameId } from '../domain/game-summary.js';
 import { rowsFor } from '../infrastructure/analysis-rows.js';
-import { loadGameSnapshot, loadStudioPage } from '../infrastructure/postgres-repository.js';
+import { loadGameSnapshot, loadStudioPage, loadStudioGameLabels } from '../infrastructure/postgres-repository.js';
 import { gameRows } from './backfill-finished-games.js';
 import { sportingImage } from '../../public/game-report-media.js';
 
 export const organizations = ['PHM','EUCHL','YHG','BNHLH'];
 const cache = new Map();
 const pending = new Map();
+const organizationImages=new Map();
+async function organizationImage(config,env,options){
+  if(!config.token)return null;
+  const cached=organizationImages.get(config.id);if(cached?.expires>Date.now())return cached.url;
+  try{const info=await (options.fetchOrganization??fetchOrganization)({config:{...hmsConfigFromEnv({...env,HMS_API_TOKEN:config.token}),timeoutMs:3000,retries:0}});
+    const url=same(info.organizationId,config.id)?teamImage(info):null;
+    organizationImages.set(config.id,{url,expires:Date.now()+60000});return url;
+  }catch{return null;}
+}
 export function organizationConfig(org, env = process.env) {
   if (!organizations.includes(org)) throw new TypeError('Neplatná organizace.');
   // PHM identity comes from the existing repository's real-game fixtures.
@@ -27,11 +36,43 @@ export function timeWindow(filter = 'Today', now = new Date(), page = 0) {
 }
 function same(a,b) { return typeof a==='string' && typeof b==='string' && a.toLowerCase()===b.toLowerCase(); }
 function assertOrg(id, expected) { if (!same(id,expected)) throw new Error('Zdroj neodpovídá vybrané organizaci.'); }
-function listing(g) {
-  const image = e => sportingImage(e?.logoUrls?.md ?? e?.logoUrl);
-  return {gameId:g.gameId, playedOn:g.startDate, status:g.status,
-    home:{name:g.HomeTeam?.name ?? 'Domácí',logoUrl:image(g.HomeTeam)},
-    away:{name:g.AwayTeam?.name ?? 'Hosté',logoUrl:image(g.AwayTeam)}};
+function teamImage(team) {return sportingImage(team?.logoUrls?.md??team?.logoUrl);}
+const labelCache=new Map();
+async function pageLabels(rows,config,options,hmsConfig) {
+  hmsConfig={...hmsConfig,signal:AbortSignal.timeout(12000)};
+  let stored=[];
+  if((options.env??process.env).DATABASE_URL)try {stored=await (options.loadLabels??loadStudioGameLabels)(rows.map(g=>g.gameId),config.id,{env:options.env});}catch {/* Detail fallback remains read-only. */}
+  const byId=new Map(stored.map(g=>[g.game_id.toLowerCase(),g]));
+  const result=new Array(rows.length);let cursor=0;
+  // At most three detail reads at once and never more than this 20-game page.
+  await Promise.all(Array.from({length:Math.min(3,rows.length)},async()=>{
+    while(cursor<rows.length){const index=cursor++,g=rows[index],record=byId.get(g.gameId.toLowerCase());
+      let home={name:g.HomeTeam?.name,logoUrl:teamImage(g.HomeTeam)},away={name:g.AwayTeam?.name,logoUrl:teamImage(g.AwayTeam)};
+      if(record){home.name ||=record.home_team_name;away.name ||=record.away_team_name;
+        home.logoUrl ||=sportingImage(record.home_logo_template_url)??sportingImage(record.home_logo_url);
+        away.logoUrl ||=sportingImage(record.away_logo_template_url)??sportingImage(record.away_logo_url);}
+      const key=`${config.id}:${g.gameId.toLowerCase()}`,cached=labelCache.get(key);
+      if(cached?.expires>Date.now()){home.name ||=cached.home.name;away.name ||=cached.away.name;home.logoUrl ||=cached.home.logoUrl;away.logoUrl ||=cached.away.logoUrl;}
+      if((!home.name||!away.name)&&!hmsConfig.signal.aborted)try {
+        const detail=await (options.fetchDetail??fetchGameDetail)(g.gameId,{config:hmsConfig});
+        assertOrg(detail.organizationId,config.id);if(!same(detail.gameId,g.gameId))throw new Error('Jiný zápas');
+        home={name:detail.HomeTeam?.name??home.name,logoUrl:teamImage(detail.HomeTeam)??home.logoUrl};
+        away={name:detail.AwayTeam?.name??away.name,logoUrl:teamImage(detail.AwayTeam)??away.logoUrl};
+      }catch {/* A missing label is explicit, never a fictional home/away team. */}
+      if(home.name&&away.name){labelCache.set(key,{home,away,expires:Date.now()+60000});if(labelCache.size>200)labelCache.delete(labelCache.keys().next().value);}
+      result[index]={gameId:g.gameId,playedOn:g.startDate,status:g.status,startTime:g.startTime??null,home,away,labelsAvailable:!!(home.name&&away.name)};
+    }
+  }));return result;
+}
+export function applyPublicMedia(summary,metadata) {
+  // Optional media must be for this exact sporting fixture. Never overwrite
+  // result, names, statistics or Příklepy with a public endpoint response.
+  if(!metadata||!same(metadata.HomeTeam?.teamId,summary.home.id)||!same(metadata.AwayTeam?.teamId,summary.away.id)||metadata.startDate!==summary.playedOn)return summary;
+  summary.home.logoUrl ||=teamImage(metadata.HomeTeam);summary.away.logoUrl ||=teamImage(metadata.AwayTeam);
+  const group=metadata.Phase?.Group;
+  if(group?.name===summary.group)summary.groupLogoUrl ||=teamImage(group);
+  if(metadata.Phase?.name===summary.phase)summary.phaseLogoUrl ||=teamImage(metadata.Phase);
+  return summary;
 }
 export async function browseMedia({org,filter='Today',offset=0,windowPage=0,section='games'}, options={}) {
   const env=options.env??process.env, config=organizationConfig(org,env);
@@ -45,14 +86,14 @@ export async function browseMedia({org,filter='Today',offset=0,windowPage=0,sect
     }));
     return page;
   }
-  const hmsConfig={...hmsConfigFromEnv({...env,HMS_API_TOKEN:config.token}),token:config.token};
+  const hmsConfig={...hmsConfigFromEnv({...env,HMS_API_TOKEN:config.token}),token:config.token,timeoutMs:5000,retries:0};
   const rows=gameRows(await (options.fetchGames??fetchGames)({...range,limit,skip:offset}, {config:hmsConfig}));
   if(rows.length>limit) throw new Error('HMS nerespektuje stránkování.');
   for(const g of rows) {
     assertOrg(g.organizationId,config.id);
     if(!isGameId(g.gameId) || !/^\d{4}-\d{2}-\d{2}$/.test(g.startDate??'') || g.startDate<range.from || g.startDate>range.to) throw new Error('HMS nerespektuje časový rozsah.');
   }
-  return {items:rows.map(listing),hasMore:rows.length===limit,offset,source:'HMS',...range};
+  return {items:await pageLabels(rows,config,options,hmsConfig),hasMore:rows.length===limit,offset,source:'HMS',...range};
 }
 export async function mediaGame(org,gameId,options={}) {
   if(!isGameId(gameId)) throw new TypeError('Neplatné gameId.');
@@ -68,10 +109,12 @@ export async function mediaGame(org,gameId,options={}) {
       if(snapshot) assertOrg(snapshot.game.organization_id,config.id);
     }
     let summary;
+    let publicMetadata;
     if(snapshot) summary=buildGameSummary(snapshot);
     else {
-      const hmsConfig=hmsConfigFromEnv({...env,HMS_API_TOKEN:config.token});
+      const hmsConfig={...hmsConfigFromEnv({...env,HMS_API_TOKEN:config.token}),timeoutMs:6000,retries:0};
       const [detail,events,lineup,metadata]=await (options.fetchResponses??fetchGameResponses)(gameId,{config:hmsConfig});
+      publicMetadata=metadata;
       assertOrg(detail?.organizationId,config.id);
       if(!same(detail?.gameId,gameId)) throw new Error('Zdroj vrátil jiný zápas.');
       const game=normalizeHmsGame(events,lineup,detail,metadata,{allowUnfinished:true});
@@ -94,6 +137,9 @@ export async function mediaGame(org,gameId,options={}) {
       const stored=await (options.loadSnapshot??loadGameSnapshot)(gameId,{env});
       if(stored) { assertOrg(stored.game.organization_id,config.id); summary.priklepy=buildGameSummary(stored).priklepy; }
     }
+    if(!summary.home.logoUrl||!summary.away.logoUrl)publicMetadata??=await (options.fetchMetadata??fetchPublicGameMetadata)(gameId);
+    applyPublicMedia(summary,publicMetadata);
+    summary.organizationLogoUrl ||=await organizationImage(config,env,options);
     const value={...summary,org,readAt:new Date().toISOString(),source:snapshot?'imported-snapshot':'HMS-read-only'};
     cache.set(key,{expires:now+30000,refreshedAt:snapshot?0:now,value});
     if(cache.size>200) cache.delete(cache.keys().next().value);

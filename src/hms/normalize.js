@@ -154,7 +154,10 @@ export function normalizeHmsGame(gameEventsResponse, lineupResponse, gameDetailR
   }
   for (const event of allEvents) {
     const team = teamFromEvent(event);
-    if (team) teamMap.set(team.teamId, team);
+    if (team) {
+      const known=teamMap.get(team.teamId);
+      teamMap.set(team.teamId,Object.fromEntries(Object.keys(team).map(key=>[key,team[key]??known?.[key]??null])));
+    }
   }
 
   const playerStats = new Map([...players.values()]

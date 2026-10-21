@@ -20,7 +20,9 @@ async function api(params){const r=await fetch('/api/studio?'+new URLSearchParam
 async function browse(){const id=++requestId;$('list').textContent='Načítám…';$('next').disabled=true;$('previous').disabled=true;$('windows').hidden=!['Past','Future'].includes(filter);
   try{const data=await api({section,filter,offset,windowPage});if(id!==requestId)return;
     $('list').replaceChildren();$('range').textContent=`${data.from} – ${data.to} · Europe/Prague · ${data.source}`;
-    for(const item of data.items){const b=document.createElement('button');b.className='match';const date=document.createElement('small');date.textContent=`${item.playedOn??item.date} · ${item.status??item.type}`;const title=document.createElement('strong');title.textContent=section==='insights'?item.title:`${item.home.name} × ${item.away.name}`;b.append(date,title);b.onclick=()=>select(item.gameId,section==='insights'?item:null);$('list').append(b);}
+    for(const item of data.items){const b=document.createElement('button');b.className='match';const date=document.createElement('small');date.textContent=`${item.playedOn??item.date} · ${item.status??item.type}`;const title=document.createElement('strong');title.textContent=section==='insights'?item.title:item.labelsAvailable===false?`Názvy týmů nejsou dostupné · ${item.gameId.slice(0,8)}`:`${item.home.name} × ${item.away.name}`;
+      if(section==='games'){const logos=document.createElement('span');logos.className='match-logos';for(const side of [item.home,item.away])if(side.logoUrl){const img=document.createElement('img');img.alt='';img.loading='lazy';img.decoding='async';img.src='/api/studio-image?'+new URLSearchParams({url:side.logoUrl});img.onerror=()=>img.remove();logos.append(img);}b.append(logos);}
+      b.append(date,title);b.onclick=()=>select(item.gameId,section==='insights'?item:null);$('list').append(b);}
     $('next').disabled=!data.hasMore;$('previous').disabled=offset===0;$('windowPrev').disabled=windowPage===0;
   }catch(e){if(id===requestId){$('list').textContent=e.message;$('range').textContent='Data nejsou připojena nebo zdroj neodpovídá organizaci.';}}
 }
