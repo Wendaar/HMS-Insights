@@ -254,3 +254,20 @@ to the wreath, so a rectangular photo no longer covers its branches.
 Browser verification includes canvas pixels for all three major panel regions,
 0% versus 100% opacity, light text contrast, preference reload, both PNG ratios,
 four styles and mobile controls. Responses remain synthetic browser fixtures.
+
+## Diagnosing missing scheduled games
+
+Games now identifies its source in the browser. An `imported-snapshot` page
+explicitly says that only stored imports are available and scheduled fixtures
+may be missing. An empty imported range is not presented as evidence that HMS
+has no scheduled games. The HMS branch sends no status filter; scheduled/live
+fixtures in its response are retained. Only result-template availability depends
+on completion/verified period data. The finished-game webhook is unchanged.
+
+Tests: 144 Node tests, including LIVE/SCHEDULED page rows and token-absent storage
+fallback; browser verifies the source notices and empty-import explanation.
+The actual protected preview source has not been confirmed. If it reports imports
+only, check the existing server-side HMS token's Preview environment/branch scope
+in Vercel and redeploy after any configuration change; never expose its value in
+frontend, logs or chat. If it reports HMS, inspect the upstream `/games` contract
+and returned status coverage rather than changing finished-event ingestion.

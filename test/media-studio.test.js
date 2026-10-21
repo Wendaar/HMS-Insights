@@ -118,3 +118,14 @@ test('single-day Games handles exclusive and inclusive HMS end boundaries withou
   const page=await browseMedia({org:'PHM'}, {env,now:new Date('2026-10-21T12:00Z'),fetchGames:async q=>Array.from({length:20},()=>({...base,startDate:q.to}))});
   assert.equal(page.items.length,0);assert.equal(page.hasMore,true);
 });
+
+test('Games lists scheduled and live fixtures without waiting for game.finished',async()=>{
+  let requested;
+  const page=await browseMedia({org:'PHM',filter:'Today'}, {env,now:new Date('2026-10-21T12:00Z'),fetchGames:async q=>{requested=q;return ['SCHEDULED','LIVE'].map((status,i)=>({gameId:i?'66666666-6666-6666-6666-666666666666':'77777777-7777-7777-7777-777777777777',organizationId:ids.org,startDate:'2026-10-21',status,HomeTeam:{name:'A'},AwayTeam:{name:'B'}}));}});
+  assert.equal(requested.status,undefined);assert.equal(page.source,'HMS');assert.deepEqual(page.items.map(g=>g.status),['SCHEDULED','LIVE']);
+});
+test('missing live token uses only imported storage, not a finished-game condition on the live browser',async()=>{
+ let stored=false;
+ const page=await browseMedia({org:'PHM',filter:'+7 days'}, {env:{DATABASE_URL:'test-only'},now:new Date('2026-10-21T12:00Z'),fetchGames:async()=>{throw new Error('no credentials');},loadPage:async q=>{stored=true;assert.equal(q.from,'2026-10-22');assert.equal(q.to,'2026-10-28');return {items:[],source:'imported-snapshot',hasMore:false};}});
+ assert.equal(stored,true);assert.equal(page.source,'imported-snapshot');
+});

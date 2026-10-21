@@ -27,9 +27,12 @@ function editorSettings() {
 function save(){try{localStorage.setItem(`hms-studio:v1:${$('org').value}`,JSON.stringify(settings));}catch{status('Nastavení je použité. Úložiště zařízení je plné, nelze je uložit.');}}
 function resetSelection(){assetVersions.background++;assetVersions.partnerLogo++;assetVersions.playerPhoto++;assetVersions.competitionLogo++;assetVersions.groupLogo++;$('subjectEditor').hidden=true;$('brandEditor').hidden=true;$('safeGuide').hidden=true;++renderId;game=null;insight=null;blob=null;$('empty').hidden=false;$('selected').textContent=section==='insights'?'Vyberte výkon':'Vyberte zápas';$('template').replaceChildren();$('template').disabled=true;$('refresh').disabled=true;$('download').disabled=true;$('share').disabled=true;$('canvas').getContext('2d').clearRect(0,0,$('canvas').width,$('canvas').height);$('warnings').textContent='';}
 async function api(params){const r=await fetch('/api/studio?'+new URLSearchParams({org:$('org').value,...params}));const data=await r.json();if(!r.ok)throw new Error(data.error||'Načtení se nezdařilo.');return data;}
-async function browse(){const id=++requestId;$('list').textContent='Načítám…';$('next').disabled=true;$('previous').disabled=true;$('windows').hidden=section==='insights'||!['Past','Future'].includes(filter);$('filters').hidden=section==='insights';$('insightTools').hidden=section!=='insights';
+async function browse(){const id=++requestId;$('list').textContent='Načítám…';$('dataSource').hidden=true;$('next').disabled=true;$('previous').disabled=true;$('windows').hidden=section==='insights'||!['Past','Future'].includes(filter);$('filters').hidden=section==='insights';$('insightTools').hidden=section!=='insights';
   try{const data=await api({section,filter,offset,windowPage,...(section==='insights'?{query:$('search').value,type:$('insightType').value}:{})});if(id!==requestId)return;
     $('list').replaceChildren();$('list').dataset.section=section;$('range').textContent=section==='insights'?'Knihovna odehraných zápasů · nejnovější první':`${data.from} – ${data.to} · Europe/Prague`;
+    const importedOnly=section==='games'&&data.source==='imported-snapshot';
+    $('dataSource').hidden=section!=='games';
+    $('dataSource').textContent=importedOnly?'Pouze importované zápasy. Živý seznam HMS není v tomto nasazení připojen; dnešní a plánované zápasy mohou chybět.':data.source==='HMS'?'Živý seznam HMS · Studio neomezuje stav zápasu.':'Zdroj seznamu není potvrzen.';
     for(const item of data.items){
       const b=document.createElement('button');b.className='match';
       const date=document.createElement('small');date.textContent=`${item.playedOn??item.date} · ${item.status??item.type}`;
@@ -46,7 +49,7 @@ async function browse(){const id=++requestId;$('list').textContent='Načítám�
       }
       b.onclick=()=>select(item.gameId,section==='insights'?item:null);$('list').append(b);
     }
-    if(!data.items.length){const empty=document.createElement('p');empty.className='muted';empty.textContent=section==='insights'?'Žádné výkony neodpovídají hledání.':`V období ${data.from} – ${data.to} nejsou dostupné žádné zápasy.`;$('list').append(empty);}
+    if(!data.items.length){const empty=document.createElement('p');empty.className='muted';empty.textContent=section==='insights'?'Žádné výkony neodpovídají hledání.':importedOnly?`V uložených importech nejsou pro období ${data.from} – ${data.to} žádné zápasy. To neznamená, že v HMS nejsou naplánované.`:`HMS pro období ${data.from} – ${data.to} nevrátilo žádné zápasy.`;$('list').append(empty);}
     $('next').disabled=!data.hasMore;$('previous').disabled=offset===0;$('windowPrev').disabled=windowPage===0;
   }catch(e){if(id===requestId){$('list').textContent=e.message;$('range').textContent='Data nejsou připojena nebo zdroj neodpovídá organizaci.';}}
 }
