@@ -44,7 +44,7 @@ try {
   await page.waitForFunction(()=>document.getElementById('warnings').textContent.includes('CORS'));assert.equal(await page.locator('#download').isDisabled(),true);
   await page.click('#clearBackground');await page.waitForFunction(()=>!document.getElementById('download').disabled);
   await page.click('#insights');await page.locator('.match').click();await page.waitForFunction(()=>!document.getElementById('download').disabled);assert.equal(await page.locator('#template').inputValue(),'insight');
-  await page.selectOption('#org','EUCHL');assert.equal(await page.locator('#partner').inputValue(),'');assert.equal(await page.locator('#download').isDisabled(),true);await page.locator('#list').getByText('Test: organizace nepřipojena.').waitFor();
+  await page.selectOption('#org','EUCHL');assert.equal(await page.locator('#partner').inputValue(),'');assert.equal(await page.locator('#panelColor').inputValue(),'#10243b');assert.equal(await page.locator('#panelOpacity').inputValue(),'90');assert.equal(await page.locator('#download').isDisabled(),true);await page.locator('#list').getByText('Test: organizace nepřipojena.').waitFor();
   await page.selectOption('#org','PHM');assert.equal(await page.locator('#partner').inputValue(),'ODIN');
   assert.deepEqual(errors,[]);
   // Original real local report and feed routes remain functional.

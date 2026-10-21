@@ -239,3 +239,18 @@ in both PNG ratios for results and Insights (16 PNGs), archive names, period/off
 390px controls using synthetic API responses. Live HMS Today and credentialed
 preview database behavior require verification in the connected preview; local
 checks do not establish the upstream service's actual date-boundary semantics.
+
+## Panel controls and wreath spacing
+
+The editor's `Barva bloků` and `Krytí bloků` (0–100%) apply together to
+competition/group panels, the main card, result plate and Insight stat tile.
+Settings persist only in the existing org-local browser preferences. Light,
+mostly opaque panels use dark primary text; transparent/dark panels use light
+text. Sponsor/logo plates retain their readable neutral backing.
+
+Artistic team crests now leave room for the entire wreath above/below and at
+both sides of the logo. Player portraits in Artistic use a circular frame sized
+to the wreath, so a rectangular photo no longer covers its branches.
+Browser verification includes canvas pixels for all three major panel regions,
+0% versus 100% opacity, light text contrast, preference reload, both PNG ratios,
+four styles and mobile controls. Responses remain synthetic browser fixtures.

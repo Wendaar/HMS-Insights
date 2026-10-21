@@ -1,7 +1,7 @@
 import {resolveInsightSubject,brandingScope} from './subjects.js';
 import {fonts,formats,designs,gameOutputs,exportFilename,renderGraphic,publicImageUrl,safeArea} from './graphics.js';
 const $=id=>document.getElementById(id);
-const defaults={design:'clean',format:'1:1',font:fonts[0],base:'#0b1c32',accent:'#78e5b8',shade:'30',partner:'',partnerLogo:'',background:''};
+const defaults={design:'clean',format:'1:1',font:fonts[0],base:'#0b1c32',accent:'#78e5b8',panelColor:'#10243b',panelOpacity:'90',shade:'30',partner:'',partnerLogo:'',background:''};
 let settings={...defaults}, section='games',filter='Today',offset=0,windowPage=0,game=null,insight=null,requestId=0,renderId=0,blob=null,renderQueue=Promise.resolve();
 const assetVersions={background:0,partnerLogo:0,playerPhoto:0,competitionLogo:0,groupLogo:0};
 const playerPhotos=new Map();let brandOverrides=new Map(),searchTimer;
@@ -19,7 +19,8 @@ function editorSettings() {
     for(const k of Object.keys(defaults))if(typeof s[k]==='string')settings[k]=s[k];
     if(!formats[settings.format])settings.format=defaults.format;if(!fonts.includes(settings.font))settings.font=defaults.font;
     if(!designs.includes(settings.design))settings.design='clean';
-    for(const k of ['base','accent'])if(!/^#[a-f0-9]{6}$/i.test(settings[k]))settings[k]=defaults[k];
+    for(const k of ['base','accent','panelColor'])if(!/^#[a-f0-9]{6}$/i.test(settings[k]))settings[k]=defaults[k];
+    settings.panelOpacity=String(Math.max(0,Math.min(100,Number.isFinite(Number(settings.panelOpacity))?Number(settings.panelOpacity):90)));
   }catch{settings={...defaults};}
   for(const k of Object.keys(defaults))$(k).value=settings[k].startsWith('data:')?'':settings[k];
 }
@@ -93,7 +94,7 @@ for(const key of Object.keys(defaults))$(key).onchange=()=>{const v=$(key).value
   if(settings[key]===v){if(game&&!blob)draw();return;}
   if(key in assetVersions)assetVersions[key]++;
   settings[key]=v;save();draw();};
-for(const key of ['partner','shade','base','accent','background','partnerLogo'])$(key).oninput=$(key).onchange;
+for(const key of ['partner','shade','base','accent','panelColor','panelOpacity','background','partnerLogo'])$(key).oninput=$(key).onchange;
 async function upload(event,key){const file=event.target.files[0];if(!file)return;
   const org=$('org').value,photoKey=key==='playerPhoto'?subjectKey():null,brandingKey=['competitionLogo','groupLogo'].includes(key)?brandKey(key):null,assetVersion=++assetVersions[key];
   ++renderId;blob=null;$('download').disabled=true;$('share').disabled=true;
