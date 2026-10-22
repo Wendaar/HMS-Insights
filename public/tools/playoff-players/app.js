@@ -1,11 +1,13 @@
 const $=id=>document.getElementById(id),params=new URLSearchParams(location.search);
 const managing=location.pathname.startsWith('/control/'),segments=location.pathname.split('/').filter(Boolean);
-const org=managing?(params.get('org')??'phm'):(segments[2]??'phm');
+const org=(managing?(params.get('org')??'phm'):(segments[2]??'phm')).toLowerCase();
 let slug=managing?(params.get('instance')??'phm-cup-2026'):(segments[3]??'phm-cup-2026');
 let secret='',instance=null,storageReady=false,dirty=false,busy=false,data=null,loadId=0;
 let visibleLimit=60;
 const node=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;};
 const fold=value=>String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+const plural=new Intl.PluralRules('cs');
+const unit=(value,one,few,other)=>({one,few,other}[plural.select(value)]??other);
 const publicPath=()=>`/tools/playoff-players/${encodeURIComponent(org)}/${encodeURIComponent(slug)}`;
 const mappingLabels={id:'ID hráče',name:'Celé jméno',firstName:'Jméno',lastName:'Příjmení',team:'Název týmu',teamId:'ID týmu',starts:'Počet startů',goals:'Góly',assists:'Asistence',level:'Úroveň hráče',photo:'Fotografie hráče',teamLogo:'Logo týmu',competition:'Soutěž',season:'Sezona',group:'Skupina',phase:'Fáze'};
 document.body.classList.toggle('manage',managing);document.body.classList.toggle('embed',!managing&&params.get('embed')==='1');
@@ -96,8 +98,8 @@ function renderPlayers(reset=true){
     const info=node('div');info.append(node('h3',p.name));const teamLabel=node('p',undefined,'team');
     if(p.teamLogo&&data.config.showPhotos){const img=node('img');img.src=p.teamLogo;img.className='team-logo';img.alt='';img.loading='lazy';img.referrerPolicy='no-referrer';img.onerror=()=>img.remove();teamLabel.append(img);}
     teamLabel.append(document.createTextNode(p.team));info.append(teamLabel);header.append(info);
-    const meta=[p.group,p.level,...(data.config.showPoints?[p.points===null?'Body neověřeny':`${p.points} bodů`]:[])].filter(Boolean).join(' · ');
-    const bottom=node('div',undefined,'player-bottom'),starts=node('div',undefined,'starts');starts.append(node('strong',p.starts??'—'),node('span','startů'));
+    const meta=[p.group,p.level,...(data.config.showPoints?[p.points===null?'Body neověřeny':`${p.points} ${unit(p.points,'bod','body','bodů')}`]:[])].filter(Boolean).join(' · ');
+    const bottom=node('div',undefined,'player-bottom'),starts=node('div',undefined,'starts');starts.append(node('strong',p.starts??'—'),node('span',p.starts===null?'startů':unit(p.starts,'start','starty','startů')));
     bottom.append(starts,node('span',{eligible:'Splňuje limit',below:'Pod limitem',unknown:'Nelze ověřit'}[p.eligibility],`badge ${p.eligibility}`));article.append(header,node('p',meta,'player-meta'),bottom);$('players').append(article);
   }
 }

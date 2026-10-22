@@ -83,3 +83,7 @@ a sdílený testovací store (bez produkčních přístupů), samostatný veřej
 změna limitu 9→12, uložení bez změny publikace, publikace, duplicita, chyby zdroje,
 filtry, embed a mobil 390/320 px. Volitelně `PLAYWRIGHT_MODULE`, `CHROMIUM_PATH`,
 `PLAYOFF_TEST_OUTPUT`. Živé ukládání do produkční databáze tento test neprovádí.
+
+Vercel Preview bylo ověřeno také se skutečným veřejným CSV zdrojem: načtení
+hráčů, limit 9 startů a hledání bez diakritiky fungují. Původní Sheet zůstal
+beze změny; do živé databáze se při tomto ověření nezapisovalo.

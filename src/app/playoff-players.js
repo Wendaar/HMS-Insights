@@ -78,5 +78,5 @@ export function normalizePlayers(table,config){
     seen.set(key,p);players.push(p);if(starts===null)unknown++;
   }
   players.sort((a,b)=>(b.starts??-1)-(a.starts??-1)||a.name.localeCompare(b.name,'cs'));
-  return {players,headers:table.headers.filter(h=>Object.values(mapping).includes(h)),warnings:[...(unknown?[`${unknown} hráčů nemá ověřený počet startů.`]:[]),...(skipped?[`${skipped} řádků bez jména nebo týmu bylo vynecháno.`]:[])],totalSourceRows:table.rows.length};
+  return {players,headers:table.headers.filter(h=>Object.values(mapping).includes(h)),warnings:[...(unknown?[`Hráči bez ověřeného počtu startů: ${unknown}.`]:[]),...(skipped?[`Vynechané řádky bez jména nebo týmu: ${skipped}.`]:[])],totalSourceRows:table.rows.length};
 }
