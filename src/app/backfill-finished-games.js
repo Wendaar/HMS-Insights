@@ -11,6 +11,7 @@ function gameRows(payload) {
 
 function assertOrganization(page,options){
   if(options.organizationId&&page.some(game=>typeof game.organizationId!=='string'||game.organizationId.toLowerCase()!==options.organizationId.toLowerCase()))throw new Error('Zdroj neodpovídá organizaci importu.');
+  if(options.organizationId&&options.to&&page.some(game=>typeof game.startDate!=='string'||game.startDate<options.from||game.startDate>options.to))throw new Error('Zdroj neodpovídá období importu.');
 }
 
 function pause(milliseconds) {
@@ -56,6 +57,7 @@ export async function backfillFinishedGamesPage(options = {}) {
     limit,
     skip,
   }, options));
+  if(page.length>limit)throw new Error('Zdroj nerespektuje stránkování importu.');
   const result = await processPage(page, options);
   return {
     discovered: page.length,

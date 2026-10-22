@@ -1,3 +1,5 @@
+import {createOrganizationImportHandler} from './web/organization-import-handler.js';
+import {createOrganizationImportPage} from './web/organization-import-page.js';
 import {createPublicFeedHandler} from './web/public-feed-handler.js';
 import {PHM_ORGANIZATION_ID} from './app/organizations.js';
 import {createStudioImageHandler} from './web/studio-image-handler.js';
@@ -25,6 +27,7 @@ const port = Number(process.env.PORT ?? 3000);
 const zbraslavAnalysis = analyzeHmsResponses(zbraslavEvents, zbraslavLineup);
 
 const assets = {
+  "/organization-import.js": ["text/javascript; charset=utf-8", "organization-import.js"],
   "/game-report-extras.js": ["text/javascript; charset=utf-8", "game-report-extras.js"],
   "/game-report-premium.css": ["text/css; charset=utf-8", "game-report-premium.css"],
   "/game-report-media.js": ["text/javascript; charset=utf-8", "game-report-media.js"],
@@ -39,6 +42,15 @@ const assets = {
 
 export const server = createServer(async (request, response) => {
   const url = new URL(request.url, `http://${request.headers.host ?? "localhost"}`);
+  if(['/admin/import-game','/admin/backfill','/api/admin/import-game','/api/admin/backfill'].includes(url.pathname)){
+    request.query=Object.fromEntries(url.searchParams);
+    const adapter={setHeader:(k,v)=>response.setHeader(k,v),status(code){response.statusCode=code;return this;},send(body){response.end(body);},json(body){response.setHeader('content-type','application/json');response.end(JSON.stringify(body));}};
+    if(url.pathname.startsWith('/api/')){
+      let body='';for await(const chunk of request){body+=chunk;if(body.length>8192){response.statusCode=413;response.end('Request too large');return;}}request.body=body;
+      await createOrganizationImportHandler({batch:url.pathname.endsWith('/backfill')})(request,adapter);
+    }else createOrganizationImportPage({batch:url.pathname.endsWith('/backfill')})(request,adapter);
+    return;
+  }
   if(url.pathname === "/api/player-card") {
     request.query={gameId:url.searchParams.get('gameId'),playerId:url.searchParams.get('playerId')};
     const loadCard=process.env.DATABASE_URL?undefined:async(gameId,playerId)=>{

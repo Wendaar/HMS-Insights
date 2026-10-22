@@ -145,8 +145,36 @@ node scripts/organization-setup.mjs --org yellow --import --from 2026-10-01 --to
 
 Klíče se nástroji nepředávají v argumentech a nástroj je nevypisuje. Import do HMS
 nezapisuje, naše uložené snapshoty stejného zápasu se při opakování aktualizují.
-Původní veřejné admin stránky pro import/backfill zůstávají původním PHM nástrojem;
-nové organizace používají scoped webhook nebo uvedený serverový nástroj.
+Import lze spustit také z prohlížeče:
+
+- `/admin/backfill?org=EUCHL` — historie EUCHL v období nejvýše 31 dnů včetně
+  krajních dnů. Výchozí je posledních 31 kalendářních dnů Europe/Prague včetně dnes.
+- `/admin/import-game?org=EUCHL&gameId=<UUID>` — jeden konkrétní dokončený zápas.
+- Bez `org` zůstávají tyto admin stránky a POST API kompatibilně PHM.
+- Stejné odkazy fungují s kódem nebo slugem další organizace z registru.
+
+Do heslového pole se ručně zadává **Signing secret dané organizace** z HMS; nikoli
+API token. Serverové proměnné se do HTML ani JS nevkládají. Ručně zadaný secret je
+pouze v paměti aktivního importu, přenáší se v Authorization headeru do stejného
+originu, neukládá se do URL/storage a po dokončení nebo chybě se pole vymaže.
+Klient během běhu uzamkne vstupy a chrání před nechtěným zavřením stránky. Odkaz
+na Příklepy po úspěchu má časový parametr pro obejití starého CDN HTML cache.
+
+POST `/api/admin/backfill?org=EUCHL` vyžaduje org secret a JSON
+`{"from":"2026-09-22","to":"2026-10-22","skip":0}`. Načítá nejvýše jeden
+FINISHED zápas za volání. Klient pokračuje podle nextSkip, mezi stránkami počká
+2,5 s a dočasnou síťovou/serverovou chybu zkusí nejvýše třikrát. Chybné ověření ani
+neplatné vstupy neopakuje. Import zůstává idempotentní díky stávajícím transakčním
+snapshotům; cizí org, zdroj mimo datumové okno nebo překročený limit stránky se
+odmítají před zpracováním. Org secret je nutný ještě před čtením HMS či změnou DB.
+Původní PHM API požadavek s `from` + `seasonId` bez `to` zůstává podporovaný pro
+staré klienty; nový formulář používá vždy omezené období.
+
+Testy tohoto doplnění: 165 Node testů, static build a
+`scripts/organization-import-browser.mjs` (syntetické dva zápasy, scoped auth,
+stránkování, retry 503, neplatné období, vyčištění secretu, mobil 390 px). Reálný
+import EUCHL musí spustit správce přes svůj formulář; žádné skutečné importy se
+během těchto testů neprovádějí.
 
 ## Jazyky
 
