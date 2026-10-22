@@ -20,6 +20,28 @@ vyžadovat Vercel login podle Deployment Protection. Pro veřejný feedback pou�
 produkční adresu až po sloučení/nasazení této změny. Přístup do Studia nepředává
 přístup k HMS ani serverovým klíčům.
 
+## Oddělené veřejné Příklepy a archiv
+
+Původní `/priklepy`, `/archiv` a `/` zůstávají PHM. EUCHL má vlastní
+`/priklepy/euchl` a `/archiv/euchl`; stejný vzor platí pro další registrované slugs.
+Název organizace je v titulku a záhlaví, odkazy na výběr/archiv zůstávají v jejím
+prostoru. CSS/JS/ikony používají správné absolutní cesty i na vnořené stránce.
+
+Organizační omezení platí na první HTML, nabídky filtrů, celkový počet, hledání,
+filtry i další stránky historie. `/api/selection` a `/api/feed` používají org UUID
+z registru, bez parametru vždy PHM. Klient bere org kód ze serverem vložených
+metadat stránky a drží ho při všech dalších požadavcích, i po výměně výsledků.
+Odpověď s odlišným org kódem se nezobrazí. Neznámé organizace končí chybou, nikdy
+PHM fallbackem. U původních stránek je path PHM nadřazen konfliktním org parametrům;
+Vercel rewrite navíc nastavuje jejich pevné `feedOrg=PHM`.
+
+Tyto adresy nejsou přístupová brána; obsah je stále veřejný sportovní prototyp.
+Izolace stránky brání směšování organizací, nepředstírá přístupová oprávnění.
+
+**Pořadí nasazení:** Nejdřív nasadit tento PR s úplným oddělením veřejných čteček,
+až potom spouštět EUCHL webhook/import historie do sdílené databáze. Původní
+produkční kód před tímto PR nebyl připraven na veřejný feed více organizací.
+
 ## Co nastavit v HMS pro každou organizaci
 
 1. Ve správném organizačním profilu zapnout API a vytvořit jeho vlastní API token.
@@ -144,12 +166,14 @@ Pantha má dál bezpečný fallback celého textu pro nepodporované znaky.
 
 ## Ověření tohoto přírůstku
 
-- `pnpm test`: 154 testů, včetně registry, cizích tokenů/UUID, odmítnutých webhooků,
+- `pnpm test`: 158 testů, včetně registry, cizích tokenů/UUID, odmítnutých webhooků,
   cache izolace, PHM výběru/archivu a CS/EN textů/časových filtrů Europe/Prague.
 - `pnpm run build:static` a `git diff --check`.
 - Prohlížeč: `scripts/studio-browser-check.mjs` (16 PNG),
   `scripts/studio-insights-browser.mjs` (20 PNG) a
   `scripts/studio-organizations-browser.mjs` (20 PNG) v headless Chromium.
+  `scripts/public-feed-organizations-browser.mjs` navíc ověřuje oddělené veřejné
+  HTML/API, hledání, filtry, stránkování, počty, navigaci, chybnou odpověď a mobil.
   Ověřují obě velikosti, fonty, pět stylů, EN texty v canvasu, reload a změnu org,
   přepnutí jazyků, stránkování, neznámé org, lokální izolaci a šířku 390 px.
 - Veřejný baseline původní produkce ověřen 2026-10-22 před tímto PR: Studio,

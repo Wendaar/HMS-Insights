@@ -17,6 +17,7 @@ let loading = false;
 let requestVersion = 0;
 const isArchive = feedMeta.mode === "archive";
 const embeddedTeamId = feedMeta.teamId;
+const feedOrganization = feedMeta.organization ?? "PHM";
 
 function updateControls(resultTotal = feedMeta.total) {
   const active = selects.filter((select) => select.value).length;
@@ -72,7 +73,7 @@ function appendPage(page, replace) {
 }
 
 function feedParams(offset) {
-  const params = new URLSearchParams({ limit: "40", offset: String(offset) });
+  const params = new URLSearchParams({ org: feedOrganization, limit: "40", offset: String(offset) });
   if (embeddedTeamId) params.set("teamId", embeddedTeamId);
   if (search?.value.trim()) params.set("q", search.value.trim());
   selects.forEach((select) => {
@@ -93,6 +94,7 @@ async function loadPage(replace = false) {
     const page = await response.json();
     if (!response.ok) throw new Error(page.error || "Příklepy se nepodařilo načíst.");
     if (version !== requestVersion) return;
+    if (page.organization !== feedOrganization) throw new Error("Zdroj neodpovídá organizaci této stránky.");
     appendPage(page, replace);
   } catch (error) {
     sentinel.hidden = false;

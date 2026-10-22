@@ -59,7 +59,11 @@ The public GET catalog exposes only code, slug, name and a configured flag; it
 never exposes UUIDs, credentials or webhook settings. New scoped webhook routes
 reuse the existing Vercel function and finished-only importer. Existing public
 PHM feed, archive and filter options explicitly retain PHM scope when other
-organizations start importing into the shared database.
+organizations start importing into the shared database. Selection/search API is also
+scoped. Dedicated public pages `/priklepy/:slug` and `/archiv/:slug` preserve that
+organization across search, filter options, counts, paging and navigation; legacy
+`/priklepy` and `/archiv` remain PHM. Deploy the complete isolation before importing
+other organizations into the shared database.
 
 See [HMS/Vercel onboarding and verification](STUDIO-ORGANIZATIONS.md) for the exact
 steps, historical imports, language behavior and remaining limitations.
