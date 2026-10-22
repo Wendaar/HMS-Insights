@@ -27,6 +27,8 @@ try{
   const context=await browser.newContext({viewport:{width:1440,height:1050}}),page=await context.newPage(),errors=[];
   page.on('pageerror',e=>errors.push(e.message));
   await page.goto(root+'/tools/playoff-players/phm/phm-cup-2026');await page.locator('.player').last().waitFor();
+  assert.equal(await page.locator('.topbar, footer, #manager, #duplicate-dialog').count(),0);
+  assert.equal(await page.locator('a[href*="/control"]').count(),0);
   assert.equal(await page.locator('.player').count(),4);assert.match(await page.locator('[class="badge unknown"]').textContent(),/Nelze ověřit/);
   await page.fill('#player-search','novak');assert.equal(await page.locator('.player').count(),1);await page.fill('#player-search','');
   await page.selectOption('#eligibility-filter','eligible');assert.equal(await page.locator('.player').count(),2);await page.selectOption('#eligibility-filter','all');
@@ -42,7 +44,9 @@ try{
   publicResponse=await page.request.get(root+'/api/tools?org=phm&instance=phm-cup-2026');assert.equal((await publicResponse.json()).config.minStarts,12);
   // A new browser context reads central publication, without the management key.
   const viewer=await browser.newPage({viewport:{width:390,height:844}});await viewer.goto(root+'/tools/playoff-players/phm/phm-cup-2026?embed=1');await viewer.locator('.player').last().waitFor();
-  assert.equal(await viewer.locator('.topbar').isVisible(),false);assert.equal(await viewer.locator('.badge.eligible').count(),1);
+  assert.equal(await viewer.locator('.topbar, footer, #manager, a[href*="/control"]').count(),0);assert.equal(await viewer.locator('.badge.eligible').count(),1);
+  assert.equal(await viewer.evaluate(()=>getComputedStyle(document.documentElement).backgroundColor),'rgba(0, 0, 0, 0)');
+  assert.equal(await viewer.evaluate(()=>getComputedStyle(document.querySelector('main')).padding),'0px');
   assert.equal(await viewer.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await viewer.screenshot({path:output+'/public-mobile.png'});
   await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:output+'/manager-desktop.png'});
   await page.click('#duplicate');await page.fill('#new-title','Hráči pro playoff 2027');await page.fill('#new-slug','phm-cup-2027');await page.locator('#duplicate-form button').first().click();await page.locator('#admin-message').filter({hasText:'Nová pracovní verze'}).waitFor();

@@ -4,7 +4,10 @@ První převod původního vloženého HTML bloku do samostatné aplikace.
 
 - Správa: `/control/apps/playoff-players?org=phm&instance=phm-cup-2026`
 - Veřejná verze: `/tools/playoff-players/phm/phm-cup-2026`
-- Vložení: stejná adresa s `?embed=1` (bez navigace a patičky).
+- Veřejná stránka nemá pás HMS, odkazy do správy ani patičku. Správcovské prvky
+  se z jejího zobrazeného dokumentu odstraní; přístup ke změnám chrání API.
+- Vložení: stejná adresa s `?embed=1` navíc používá průhledné pozadí a nemá vnější
+  odsazení ani omezení šířky. Výstup tak přebírá prostor vložení na vašem webu.
 - Control Center: karta **Hráči do playoff** v Competition. Obecné porovnání hráčů
   zůstává samostatná položka; tato aplikace kontroluje pouze počet startů.
 
@@ -15,6 +18,11 @@ startů, barvu, body/fotografie, tabulku a záložku. Popisky soutěže a sezony
 oddělené od **skutečných filtrů zdroje**. Hodnoty filtrů musí přesně odpovídat
 sloupcům Competition, Season a Phase (porovnání ignoruje velikost a diakritiku).
 Prázdný filtr zahrne všechny řádky. Mapování sloupců lze změnit v pokročilém nastavení.
+
+UI označuje dosavadní technický přístupový klíč jako **Heslo správce**. Není to
+ID organizace, osobní přihlášení do HMS ani heslo, které si návštěvník zadá nově.
+Jde o existující serverem nastavený administrátorský secret. Veřejný přehled
+ani vložení do webu jej nepotřebují; nastavení parametrů je pouze ve správě.
 
 1. **Ověřit data a náhled** čte aktuální zdroj podle rozepsaného formuláře.
 2. **Uložit pracovní verzi** uloží konfiguraci centrálně, veřejný výstup nemění.

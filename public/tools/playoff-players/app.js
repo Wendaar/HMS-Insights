@@ -11,10 +11,11 @@ const unit=(value,one,few,other)=>({one,few,other}[plural.select(value)]??other)
 const publicPath=()=>`/tools/playoff-players/${encodeURIComponent(org)}/${encodeURIComponent(slug)}`;
 const mappingLabels={id:'ID hráče',name:'Celé jméno',firstName:'Jméno',lastName:'Příjmení',team:'Název týmu',teamId:'ID týmu',starts:'Počet startů',goals:'Góly',assists:'Asistence',level:'Úroveň hráče',photo:'Fotografie hráče',teamLogo:'Logo týmu',competition:'Soutěž',season:'Sezona',group:'Skupina',phase:'Fáze'};
 document.body.classList.toggle('manage',managing);document.body.classList.toggle('embed',!managing&&params.get('embed')==='1');
-$('manager').hidden=!managing;$('viewer').hidden=managing;$('manage-link').hidden=managing;$('public-link').hidden=!managing;
+document.documentElement.classList.toggle('embed',!managing&&params.get('embed')==='1');
+$('manager').hidden=!managing;$('viewer').hidden=managing;$('public-link').hidden=!managing;
 $('org-label').textContent=org.toUpperCase();
 function links(){
-  const path=publicPath();$('public-link').href=path;$('manage-link').href='/control/apps/playoff-players?'+new URLSearchParams({org,instance:slug});
+  const path=publicPath();$('public-link').href=path;
   const url=new URL(path,location.origin);$('share-url').href=url.href;$('share-url').textContent=url.href;
   url.searchParams.set('embed','1');$('embed-code').value=`<iframe src="${url.href}" title="Hráči do playoff" width="100%" height="1100" style="border:0" loading="lazy"></iframe>`;
 }
@@ -128,4 +129,9 @@ $('player-search').oninput=renderPlayers;$('team-filter').onchange=renderPlayers
 $('more-players').onclick=()=>{visibleLimit+=60;renderPlayers(false);};
 $('refresh').onclick=()=>managing?$('preview').click():loadPublic();
 window.addEventListener('beforeunload',event=>{if(dirty){event.preventDefault();event.returnValue='';}});
-links();if(!managing){loadPublic();setInterval(()=>{if(!document.hidden&&!$('refresh').disabled)loadPublic();},900000);}
+links();if(!managing){
+  // Public output contains only the sporting tool; management is a separate route.
+  document.querySelector('.topbar').remove();document.querySelector('footer').remove();
+  $('manager').remove();$('duplicate-dialog').remove();document.querySelector('.view-heading .eyebrow').remove();
+  loadPublic();setInterval(()=>{if(!document.hidden&&!$('refresh').disabled)loadPublic();},900000);
+}

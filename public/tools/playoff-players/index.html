@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="cs"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>Hráči do playoff · HMS</title><link rel="icon" href="/favicon.svg"><link rel="stylesheet" href="/tools/playoff-players/app.css"><script type="module" src="/tools/playoff-players/app.js"></script></head>
 <body>
-<header class="topbar"><a href="/control" class="brand"><b>H</b> HMS <span>Aplikace</span></a><nav><a id="public-link" href="/tools/playoff-players/phm/phm-cup-2026">Veřejný výstup ↗</a><a id="manage-link" href="/control/apps/playoff-players?org=phm">Správa aplikace</a></nav></header>
+<header class="topbar"><a href="/control" class="brand"><b>H</b> HMS <span>Aplikace</span></a><nav><a id="public-link" href="/tools/playoff-players/phm/phm-cup-2026">Veřejný výstup ↗</a></nav></header>
 <main>
 <section id="manager" hidden>
   <div class="heading"><div><p class="eyebrow">APLIKACE / COMPETITION</p><h1>Hráči do playoff</h1><p class="muted">Nastavte pravidla, ověřte data a publikujte přehled pro svůj web.</p></div><a href="/control">← Control Center</a></div>
-  <section id="access" class="panel"><h2>Správa organizace <span id="org-label"></span></h2><p>Použijte přístupový klíč správce této organizace. Klíč se v prohlížeči neukládá.</p><form id="unlock-form"><label for="secret">Přístupový klíč</label><div class="inline"><input id="secret" type="password" autocomplete="off" required><button>Odemknout správu</button></div></form></section>
+  <section id="access" class="panel"><h2>Správa organizace <span id="org-label"></span></h2><p>Dočasný přístup pro správce nástrojů. Heslo je nastavené na serveru; nejde o vaše heslo do HMS ani ID organizace. Slouží pouze ke změnám nastavení a publikaci, veřejný přehled ho nepotřebuje.</p><form id="unlock-form"><label for="secret">Heslo správce</label><div class="inline"><input id="secret" type="password" autocomplete="off" required aria-describedby="secret-help"><button>Odemknout správu</button></div><p id="secret-help" class="hint">Zadané heslo se v prohlížeči neukládá. Pokud ho nemáte, musí ho nejprve nastavit správce nasazení.</p></form></section>
   <div id="editor" hidden>
     <div class="instance-bar"><div><label for="instance">Výstup / sezona</label><select id="instance"></select></div><button id="duplicate" type="button" class="secondary">Vytvořit z této sezony</button><button id="lock" type="button" class="text-button">Zamknout správu</button></div>
     <p id="storage-state" class="notice"></p>
