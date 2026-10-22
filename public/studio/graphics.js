@@ -10,7 +10,7 @@ export function templates(game) {
   const scored = [game.home?.score,game.away?.score].every(n=>typeof n==='number'&&Number.isFinite(n)&&n>=0);
   const result=[];
   if(game.status==='FINISHED'&&scored) result.push({id:'final',label:'Final Score',heading:'KONEČNÝ VÝSLEDEK',home:game.home.score,away:game.away.score});
-  if(game.timeline?.coverage==='matches-result') {
+  if(['FINISHED','RUNNING'].includes(game.status)&&game.timeline?.coverage==='matches-result') {
     const periods=game.timeline.periodScores??[];
     for(const p of periods) {
       if(game.status!=='FINISHED' && !(p.period<game.currentPeriod))continue;

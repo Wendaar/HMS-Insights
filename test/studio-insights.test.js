@@ -24,7 +24,7 @@ test('safe area leaves story UI margins and square content padding',()=>{
 test('Insights is searchable across past games, org-scoped, limited and parameterized',async()=>{
  let call;
  const result=await loadStudioInsights({organizationId:homeId,today:'2026-10-21',query:"Matěj %_' OR 1=1 --",type:'HATTRICK',offset:20,limit:20,sql:{query:async(text,values)=>{call={text,values};return [];}}});
- assert.equal(result.hasMore,false);assert.match(call.text,/g.organization_id=\$1::uuid/);assert.match(call.text,/g.played_on <= \$2::date/);assert.doesNotMatch(call.text,/OR 1=1/);
+ assert.equal(result.hasMore,false);assert.match(call.text,/g.organization_id=\$1::uuid/);assert.match(call.text,/g.status='FINISHED'/);assert.match(call.text,/g.played_on <= \$2::date/);assert.doesNotMatch(call.text,/OR 1=1/);
  assert.match(call.text,/coalesce\(ps.team_id,gs.team_id,f.team_id\)/);assert.deepEqual(call.values.slice(-2),[21,20]);assert.ok(call.values[2].includes('matej'));assert.ok(call.values[2].includes('\\%'));assert.equal(call.values[3],'HATTRICK');
 });
 test('Insights bypasses calendar filters, passes search/type and exposes safe context/subject IDs',async()=>{
@@ -56,6 +56,6 @@ test('archive filenames contain date, output, subject, fixture, ratio and design
 test('Games output library reuses stored achievements and official stars without generating awards',()=>{
  const g={...game,status:'FINISHED',priklepy:[insight],stars:[{id:playerId,teamId:awayId,name:'Matěj Kuracina'}]};
  const outputs=gameOutputs(g);assert.equal(outputs.length,2);assert.equal(outputs[0].insight.playerId,playerId);assert.equal(outputs[1].insight.type,'OFFICIAL_STAR');
- assert.deepEqual(gameOutputs({...g,status:'LIVE'}),[]);
+ for(const status of ['RUNNING','NOT PLAYED'])assert.deepEqual(gameOutputs({...g,status}),[]);
  assert.deepEqual(gameOutputs({...g,priklepy:[],stars:[]}),[]);
 });

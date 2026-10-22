@@ -10,6 +10,7 @@ function saveBrands(){try{localStorage.setItem(`hms-studio:brands:v1:${$('org').
 function activeInsight(){return $('template').value==='insight'?insight:gameOutputs(game).find(t=>t.id===$('template').value)?.insight??null;}
 function subjectKey(){const s=resolveInsightSubject(game??{},activeInsight());return s?.playerId?`${$('org').value}:${game.gameId}:${s.playerId}`:null;}
 function guide(){const r=safeArea(settings.format),h=settings.format==='9:16'?1920:1080,g=$('safeGuide');g.style.left=`${r.x/1080*100}%`;g.style.top=`${r.y/h*100}%`;g.style.width=`${r.w/1080*100}%`;g.style.height=`${r.h/h*100}%`;g.hidden=!game||!$('safeZones').checked;}
+const gameStatuses={FINISHED:'Ukončeno',RUNNING:'Probíhá · průběžná data','NOT PLAYED':'Naplánováno'};
 const filters=['Today','Yesterday','Tomorrow','-7 days','+7 days','Past','Future'];
 fonts.forEach(f=>{const o=document.createElement('option');o.textContent=f;$('font').append(o);});
 function status(s){$('status').textContent=s;}
@@ -35,7 +36,7 @@ async function browse(){const id=++requestId;$('list').textContent='Načítám�
     $('dataSource').textContent=importedOnly?'Pouze importované zápasy. Živý seznam HMS není v tomto nasazení připojen; dnešní a plánované zápasy mohou chybět.':data.source==='HMS'?'Živý seznam HMS · Studio neomezuje stav zápasu.':'Zdroj seznamu není potvrzen.';
     for(const item of data.items){
       const b=document.createElement('button');b.className='match';
-      const date=document.createElement('small');date.textContent=`${item.playedOn??item.date} · ${item.status??item.type}`;
+      const date=document.createElement('small');date.textContent=`${item.playedOn??item.date} · ${section==='games'?(gameStatuses[item.status]??item.status??'Neznámý stav'):item.type}`;
       const title=document.createElement('strong');
       title.textContent=section==='insights'?`${item.title} · ${item.player||item.team||'Týmový výkon'}`:item.labelsAvailable===false?`Názvy týmů nejsou dostupné · ${item.gameId.slice(0,8)}`:`${item.home.name} × ${item.away.name}`;
       const logos=document.createElement('span');logos.className='match-logos';
@@ -63,7 +64,7 @@ async function select(id,selectedInsight=null,refresh=false){const version=++req
     $('selected').textContent=insight?`${insight.title} · ${subject?.playerName||subject?.teamName||insight.player||insight.team}`:`${game.home.name} × ${game.away.name}`;$('empty').hidden=true;
     const choices=gameOutputs(game);$('template').replaceChildren();
     for(const t of choices){const o=document.createElement('option');o.value=t.id;o.textContent=t.label;$('template').append(o);}
-    if(insight){const o=document.createElement('option');o.value='insight';o.textContent=insight.title;$('template').append(o);$('template').value='insight';}
+    if(insight&&game.status==='FINISHED'){const o=document.createElement('option');o.value='insight';o.textContent=insight.title;$('template').append(o);$('template').value='insight';}
     $('template').disabled=!$('template').options.length;$('refresh').disabled=false;
     $('availability').textContent=choices.length?'Skóre po třetině je průběžné, pouze z ověřených událostí.':'Šablony výsledku čekají na dokončení zápasu nebo ověřená skóre třetin.';
     status(`${game.source==='imported-snapshot'?'Uložená data HMS':game.source==='HMS-read-only'?'Obnoveno z HMS':'Testovací data'} · načteno ${new Date(game.readAt).toLocaleTimeString('cs-CZ')}`);
@@ -73,7 +74,7 @@ async function select(id,selectedInsight=null,refresh=false){const version=++req
 function draw(){const id=++renderId,selectedGame=game,selectedInsight=insight,s={...settings,playerPhoto:playerPhotos.get(subjectKey())??'',competitionLogo:brandOverrides.get(brandKey('competitionLogo'))??'',groupLogo:brandOverrides.get(brandKey('groupLogo'))??''},choice=$('template').value;blob=null;$('download').disabled=true;$('share').disabled=true;
   renderQueue=renderQueue.catch(()=>{}).then(async()=>{if(id!==renderId||!selectedGame)return;
     $('availability').textContent=(choice==='insight'||choice.startsWith('moment-')||choice.startsWith('star-'))?'Uložený výkon nebo oficiální hvězda HMS. Fotografie a tým patří k hráči v tomto zápase.':'Skóre po třetině je průběžné, pouze z ověřených událostí.';
-    const t=gameOutputs(selectedGame).find(t=>t.id===choice);if(!t&&choice!=='insight'){status('Pro tento stav zápasu není výstup dostupný.');return;}
+    const t=gameOutputs(selectedGame).find(t=>t.id===choice);if((choice==='insight'&&selectedGame.status!=='FINISHED')||(!t&&choice!=='insight')){status(selectedGame.status==='NOT PLAYED'?'Zápas je naplánovaný. Zpětné grafiky budou dostupné po ukončení.':selectedGame.status==='RUNNING'?'Zápas probíhá. Konec třetiny vyžaduje ověřenou ukončenou třetinu; zpětné grafiky čekají na ukončení zápasu.':'Pro tento stav zápasu není výstup dostupný.');return;}
     const outputInsight=choice==='insight'?selectedInsight:t?.insight;
     const offscreen=document.createElement('canvas');
     try{const warnings=await renderGraphic(offscreen,selectedGame,t??{},s,outputInsight);const png=await new Promise((resolve,reject)=>offscreen.toBlob(b=>b?resolve(b):reject(new Error('PNG se nepodařilo vytvořit.')),'image/png'));
