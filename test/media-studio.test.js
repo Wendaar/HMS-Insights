@@ -19,7 +19,7 @@ test('Prague dates cover midnight, month/year boundaries and DST without fixed 2
   assert.throws(()=>timeWindow('all'));
 });
 test('orgs fail closed, games use bounded dates/offset and reject foreign/out-of-range data',async()=>{
-  assert.throws(()=>organizationConfig('EUCHL',env));assert.throws(()=>organizationConfig('phm',env));
+  assert.throws(()=>organizationConfig('EUCHL',env));assert.equal(organizationConfig('phm',env).code,'PHM');assert.throws(()=>organizationConfig('unknown',env));
   let query;
   const opts={env,now:new Date('2026-10-21T12:00Z'),fetchGames:async q=>{query=q;return [{gameId:ids.game,organizationId:ids.org,startDate:'2026-10-21',HomeTeam:{name:'A'},AwayTeam:{name:'B'},secret:'no'}];}};
   const result=await browseMedia({org:'PHM',offset:20},opts);

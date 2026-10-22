@@ -47,12 +47,26 @@ PHM defaults to organization `BB669217-41EB-4162-8040-A73F49A43570`, already pre
 in the repository's real-game fixtures. Its existing `HMS_API_TOKEN` is reused.
 A server-only `HMS_PHM_ORGANIZATION_ID` can override that identity.
 
-For EUCHL, YHG and BNHLH, configure `HMS_<ORG>_ORGANIZATION_ID` and, when needed,
-`HMS_<ORG>_API_TOKEN` through the hosting environment. A dedicated token overrides
-the shared token. A missing mapping or a token returning a different organization
-produces an unavailable state; it never silently substitutes PHM data. These
-connections cannot be configured through a public Studio API. The four selectors
-are implemented, but availability of real data depends on these connections.
+For every non-PHM organization, a dedicated `HMS_<CODE>_API_TOKEN` and
+`HMS_<CODE>_ORGANIZATION_ID` are required for the live connection. PHM's legacy
+token/secret are never reused for another organization. Missing credentials can
+only expose already imported snapshots for that configured UUID.
+
+The server-owned `HMS_STUDIO_ORGANIZATIONS` registry can add or rename public
+organization labels/slugs. `/studio/:slug?lang=cs|en` selects an organization and
+language; `/studio` remains the PHM entry point. Unknown slugs fail closed.
+The public GET catalog exposes only code, slug, name and a configured flag; it
+never exposes UUIDs, credentials or webhook settings. New scoped webhook routes
+reuse the existing Vercel function and finished-only importer. Existing public
+PHM feed, archive and filter options explicitly retain PHM scope when other
+organizations start importing into the shared database. Selection/search API is also
+scoped. Dedicated public pages `/priklepy/:slug` and `/archiv/:slug` preserve that
+organization across search, filter options, counts, paging and navigation; legacy
+`/priklepy` and `/archiv` remain PHM. Deploy the complete isolation before importing
+other organizations into the shared database.
+
+See [HMS/Vercel onboarding and verification](STUDIO-ORGANIZATIONS.md) for the exact
+steps, historical imports, language behavior and remaining limitations.
 
 Local editor preferences and uploaded raster assets are saved only under
 `hms-studio:v1:<ORG>` in that browser. Storage limits are reported; an oversized

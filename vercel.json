@@ -19,6 +19,14 @@
       "destination": "/studio/index.html"
     },
     {
+      "source": "/studio/:org([a-zA-Z0-9-]+)",
+      "destination": "/studio/index.html"
+    },
+    {
+      "source": "/api/webhooks/hms/org/:org([a-zA-Z0-9-]+)",
+      "destination": "/api/webhooks/hms/game-finished?org=:org"
+    },
+    {
       "source": "/api/studio",
       "destination": "/api/game-summary?view=studio"
     },
@@ -36,15 +44,23 @@
     },
     {
       "source": "/",
-      "destination": "/api/page"
+      "destination": "/api/page?feedOrg=PHM"
+    },
+    {
+      "source": "/priklepy/:org([a-zA-Z0-9-]+)",
+      "destination": "/api/page?feedOrg=:org"
+    },
+    {
+      "source": "/archiv/:org([a-zA-Z0-9-]+)",
+      "destination": "/api/archive-page?feedOrg=:org"
     },
     {
       "source": "/priklepy",
-      "destination": "/api/page"
+      "destination": "/api/page?feedOrg=PHM"
     },
     {
       "source": "/archiv",
-      "destination": "/api/archive-page"
+      "destination": "/api/archive-page?feedOrg=PHM"
     },
     {
       "source": "/admin/import-game",

@@ -1,3 +1,4 @@
+import {t,language,insightDescription} from './i18n.js';
 import {resolveInsightSubject,insightLabel,insightStat} from './subjects.js';
 import {fonts,brandFonts,fontForText,fontSpec} from './typography.js';
 export {fonts} from './typography.js';
@@ -6,23 +7,23 @@ export const formats={'1:1':[1080,1080],'9:16':[1080,1920]};
 export const designs=['clean','crazy','artistic','technical','pantha'];
 export function safeArea(format){return format==='9:16'?{x:96,y:220,w:864,h:1360}:{x:64,y:64,w:952,h:952};}
 export function imageSources(game,insight,settings){const subject=resolveInsightSubject(game,insight);return {background:settings.background,home:game.home.logoUrl,away:game.away.logoUrl,organization:game.organizationLogoUrl,competition:settings.competitionLogo||game.competitionLogoUrl,group:settings.groupLogo||game.groupLogoUrl,phase:game.phaseLogoUrl,partner:settings.partnerLogo,player:subject?.playerId?(settings.playerPhoto||subject.photoUrl):null,subjectTeam:subject?.teamLogoUrl};}
-export function templates(game) {
+export function templates(game,lang=language) {
   if(!game) return [];
   const scored = [game.home?.score,game.away?.score].every(n=>typeof n==='number'&&Number.isFinite(n)&&n>=0);
   const result=[];
-  if(game.status==='FINISHED'&&scored) result.push({id:'final',label:'Final Score',heading:'KONEČNÝ VÝSLEDEK',home:game.home.score,away:game.away.score});
+  if(game.status==='FINISHED'&&scored) result.push({id:'final',label:'Final Score',heading:t('KONEČNÝ VÝSLEDEK',{},lang),home:game.home.score,away:game.away.score});
   if(['FINISHED','RUNNING'].includes(game.status)&&game.timeline?.coverage==='matches-result') {
     const periods=game.timeline.periodScores??[];
     for(const p of periods) {
       if(game.status!=='FINISHED' && !(p.period<game.currentPeriod))continue;
-      result.push({id:`period-${p.period}`,label:`End of Period · ${p.period}`,heading:p.period<=3?`PO ${p.period}. TŘETINĚ`:`PO ${p.period}. ČÁSTI`,home:periods.filter(x=>x.period<=p.period).reduce((n,x)=>n+x.home,0),away:periods.filter(x=>x.period<=p.period).reduce((n,x)=>n+x.away,0)});
+      result.push({id:`period-${p.period}`,label:`End of Period · ${p.period}`,heading:p.period<=3?t('PO {period}. TŘETINĚ',{period:p.period},lang):t('PO {period}. ČÁSTI',{period:p.period},lang),home:periods.filter(x=>x.period<=p.period).reduce((n,x)=>n+x.home,0),away:periods.filter(x=>x.period<=p.period).reduce((n,x)=>n+x.away,0)});
     }
   }
   return result;
 }
 // Reuse stored achievements and official HMS stars, never infer awards from points.
-export function gameOutputs(game){
-  const result=templates(game);
+export function gameOutputs(game,lang=language){
+  const result=templates(game,lang);
   if(game?.status!=='FINISHED')return result;
   for(const p of game.priklepy??[]){
     if(!['HATTRICK','MULTIPOINT_GAME','BIG_SAVES','EARLY_GOAL','BIG_WIN'].includes(p.type))continue;
@@ -34,7 +35,7 @@ export function gameOutputs(game){
   }
   for(const star of game.stars??[]){
     if(![...game.players??[],...game.goalies??[]].some(p=>p.id?.toLowerCase()===star.id?.toLowerCase()&&p.teamId?.toLowerCase()===star.teamId?.toLowerCase()))continue;
-    result.push({id:`star-${star.id}`,label:`Star of the Match · ${star.name}`,insight:{gameId:game.gameId,type:'OFFICIAL_STAR',title:'Star of the Match',playerId:star.id,player:star.name,teamId:star.teamId,text:'Oficiální hvězda zápasu dle HMS.'}});
+    result.push({id:`star-${star.id}`,label:`Star of the Match · ${star.name}`,insight:{gameId:game.gameId,type:'OFFICIAL_STAR',title:'Star of the Match',playerId:star.id,player:star.name,teamId:star.teamId,text:t('Oficiální hvězda zápasu dle HMS.',{},lang)}});
   }
   return result;
 }
@@ -50,9 +51,9 @@ export function publicImageUrl(value) {
     return u.href;
   }catch{return null;}
 }
-export async function loadImage(url,{required=false}={}) {
+export async function loadImage(url,{required=false,lang=language}={}) {
   if(!url)return null;
-  if(!url.startsWith('data:image/')&&!publicImageUrl(url)) {if(required)throw new Error('Použijte veřejnou HTTPS adresu obrázku.');return null;}
+  if(!url.startsWith('data:image/')&&!publicImageUrl(url)) {if(required)throw new Error(t('Použijte veřejnou HTTPS adresu obrázku.',{},lang));return null;}
   try {
     // Same-origin HMS bridge keeps preview authentication; external hosts get no credentials.
     const source=sportingImage(url);
@@ -64,7 +65,7 @@ export async function loadImage(url,{required=false}={}) {
     const image=await createImageBitmap(blob);
     if(image.width*image.height>40000000){image.close();throw new Error();}
     return image;
-  }catch {if(required)throw new Error('Obrázek nelze načíst (CORS, formát nebo velikost). Nahrajte PNG/JPG/WebP do 8 MB.');return null;}
+  }catch {if(required)throw new Error(t('Obrázek nelze načíst (CORS, formát nebo velikost). Nahrajte PNG/JPG/WebP do 8 MB.',{},lang));return null;}
 }
 function fit(ctx,text,x,y,width,size,font,color,align='center') {
   text=String(text??'').normalize('NFC').slice(0,300);font=fontForText(font,text);ctx.textAlign=align;ctx.fillStyle=color;
@@ -150,12 +151,15 @@ export async function renderGraphic(canvas,game,template,settings,insight=null) 
   const [w,h]=formats[settings.format]??formats['1:1'],area=safeArea(settings.format);
   const story=h>w,pantha=settings.design==='pantha',crazy=['crazy','pantha'].includes(settings.design),artistic=settings.design==='artistic',technical=settings.design==='technical',font=fonts.includes(settings.font)?settings.font:fonts[0];
   const palette=panelPalette(settings);
-  const subject=resolveInsightSubject(game,insight),stat=insightStat(subject),accent=/^#[a-f0-9]{6}$/i.test(settings.accent)?settings.accent:'#79dfca';
+  const lang=settings.lang??language;
+  const tr=(source,values={})=>t(source,values,lang);
+  if(template.id?.startsWith('period-')){const period=Number(template.id.slice(7));template={...template,heading:tr(period<=3?'PO {period}. TŘETINĚ':'PO {period}. ČÁSTI',{period})};}
+  const subject=resolveInsightSubject(game,insight),stat=insightStat(subject,lang),accent=/^#[a-f0-9]{6}$/i.test(settings.accent)?settings.accent:'#79dfca';
   const sample=[game.home.name,game.away.name,game.competition,game.group,game.phase,template.heading,insight?.title,insight?.text,subject?.playerName,subject?.teamName,settings.partner,'Příliš žluťoučký kůň'].filter(Boolean).join(' ');
   const loaded=await Promise.all([...(artistic?[document.fonts.load('bold 80px "Noto Serif"',sample)]:[]),document.fonts.load(fontSpec(font,48),sample),...((brandFonts.includes(font)||pantha)?[document.fonts.load(fontSpec('Hitch Grotesk',48),sample),document.fonts.load(fontSpec('Noto Sans',48),sample)]:[]),...(pantha?[document.fonts.load(fontSpec('Pantha',80),'HATTRICK HERO FINAL 0123456789')]:[]),document.fonts.load('400 80px "Anton"',sample),document.fonts.load('400 80px "Permanent Marker"','HATTRICK HERO BIG WIN THE WALL FAST START POINT MACHINE FINAL')]);
-  if(loaded.some(faces=>!faces.length))throw new Error('Font se nepodařilo načíst. Obnovte stránku a zkuste export znovu.');
+  if(loaded.some(faces=>!faces.length))throw new Error(tr('Font se nepodařilo načíst. Obnovte stránku a zkuste export znovu.'));
   await document.fonts.ready;
-  const sources=imageSources(game,insight,settings),keys=Object.keys(sources),pictures=await Promise.all(keys.map(k=>loadImage(sources[k],{required:!!sources[k]&&['background','partner','player'].includes(k)&&!!(k!=='player'||settings.playerPhoto)})));
+  const sources=imageSources(game,insight,settings),keys=Object.keys(sources),pictures=await Promise.all(keys.map(k=>loadImage(sources[k],{lang,required:!!sources[k]&&['background','partner','player'].includes(k)&&!!(k!=='player'||settings.playerPhoto)})));
   const im=Object.fromEntries(keys.map((k,i)=>[k,pictures[i]]));
   try {
     canvas.width=w;canvas.height=h;const c=canvas.getContext('2d');
@@ -175,8 +179,8 @@ export async function renderGraphic(canvas,game,template,settings,insight=null) 
     if(settings.partner||im.partner){
       const width=im.partner?Math.min(W*.43,330):0;
       if(im.partner){const r=Math.min(width/im.partner.width,(headerH-38)/im.partner.height);c.drawImage(im.partner,pad,headerH/2-im.partner.height*r/2,im.partner.width*r,im.partner.height*r);}
-      if(im.partner){fit(c,settings.partner||'PARTNER',W-pad,headerH*.54,W*.48,story?40:34,font,'#112238','right');fit(c,'PŘINÁŠÍ',W-pad,headerH*.80,W*.48,18,font,'#637184','right');}
-      else {fit(c,settings.partner||'PARTNER',pad,headerH*.65,W*.65,54,font,'#112238','left');fit(c,'PŘINÁŠÍ',W-pad,headerH*.61,W*.3,22,font,'#637184','right');}
+      if(im.partner){fit(c,settings.partner||'PARTNER',W-pad,headerH*.54,W*.48,story?40:34,font,'#112238','right');fit(c,tr('PŘINÁŠÍ'),W-pad,headerH*.80,W*.48,18,font,'#637184','right');}
+      else {fit(c,settings.partner||'PARTNER',pad,headerH*.65,W*.65,54,font,'#112238','left');fit(c,tr('PŘINÁŠÍ'),W-pad,headerH*.61,W*.3,22,font,'#637184','right');}
     }else{
       if(im.organization)logo(c,im.organization,'',pad+44,headerH/2,82,font);
       fit(c,game.org,im.organization?pad+106:pad,headerH*.58,W*.5,45,font,'#112238','left');
@@ -208,7 +212,7 @@ export async function renderGraphic(canvas,game,template,settings,insight=null) 
         if(cutout){const r=Math.min(photoW/im.player.width,photoH/im.player.height);c.drawImage(im.player,px+(photoW-im.player.width*r)/2,py+photoH-im.player.height*r,im.player.width*r,im.player.height*r);}
         else {c.fillStyle='#f3f0e7';panel(c,px,py,photoW,photoH,22);c.fill();c.restore();c.save();panel(c,px,py,photoW,photoH,22);c.clip();cover(c,im.player,px,py,photoW,photoH);}c.restore();
       }else if(im.subjectTeam)badgePlate(c,im.subjectTeam,subject?.teamName,px+photoW/2,heroY+heroH*.52,Math.min(photoW*.74,260),font,crazy);
-      else {fit(c,'FOTOGRAFIE',px+photoW/2,heroY+heroH*.50,photoW-20,27,font,'#a8bcd2');fit(c,'NENÍ K DISPOZICI',px+photoW/2,heroY+heroH*.59,photoW-20,21,font,'#8197af');}
+      else {fit(c,tr('FOTOGRAFIE'),px+photoW/2,heroY+heroH*.50,photoW-20,27,font,'#a8bcd2');fit(c,tr('NENÍ K DISPOZICI'),px+photoW/2,heroY+heroH*.59,photoW-20,21,font,'#8197af');}
       const tx=30,headlineW=W*.50-35;
       c.save();if(pantha){c.shadowColor=accent+'85';c.shadowBlur=14;}if(crazy){c.translate(tx,heroY+70);c.rotate(-.075);}else c.translate(tx,heroY+65);
       fit(c,words[0],0,pantha?(story?65:40):(story?50:25),headlineW,pantha?(story?170:110):(story?86:60),titleFont,palette.text,'left');
@@ -229,11 +233,11 @@ export async function renderGraphic(canvas,game,template,settings,insight=null) 
       const logoSize=story?100:78,logoX=W-logoSize*.65-8;
       if(im.subjectTeam)badgePlate(c,im.subjectTeam,subject?.teamName,logoX,bottomY+58,logoSize,font,crazy);
       fit(c,name.toUpperCase(),12,bottomY+55,W-(im.subjectTeam?160:30),story?68:52,font,'#fff','left');
-      fit(c,subject?.teamName||'Tým nelze ověřit',12,bottomY+99,W-170,30,font,accent,'left');
+      fit(c,subject?.teamName||tr('Tým nelze ověřit'),12,bottomY+99,W-170,30,font,accent,'left');
       // Keep match context and achievement text readable even without a photo.
       const context=`${game.home.name}  ${game.home.score??'–'}:${game.away.score??'–'}  ${game.away.name}`;
       fit(c,context,12,bottomY+145,W-24,story?29:24,font,'#d9e5f5','left');
-      lines(c,insight.text,12,bottomY+195,W-24,story?27:23,font,'#9eafc5',story?3:2);
+      lines(c,insightDescription(insight,subject,lang),12,bottomY+195,W-24,story?27:23,font,'#9eafc5',story?3:2);
     }else{
       plate(c,4,bottomY,W-8,story?270:230,palette.fill,accent+'75',24);
       const sy=bottomY+(story?167:139);
@@ -247,10 +251,10 @@ export async function renderGraphic(canvas,game,template,settings,insight=null) 
     fit(c,[game.playedOn,game.phase].filter(Boolean).join(' / '),12,footerY+22,W-210,23,font,'#9eafc5','left');
     for(const [i,key] of ['organization','phase'].filter(k=>im[k]).entries())logo(c,im[key],'',W-42-i*78,footerY+8,60,font);
     c.restore();
-    const names={home:'Logo domácích',away:'Logo hostů',organization:'Logo organizace',competition:'Logo soutěže',group:'Logo skupiny',phase:'Logo fáze',player:'Fotografie hráče',subjectTeam:'Logo týmu hráče'};
-    const warnings=keys.flatMap(k=>sources[k]&&!im[k]?[`${names[k]||k} se nepodařilo načíst.`]:[]);
-    if(insight&&subject?.playerId&&!im.player)warnings.push('Fotografie hráče není dostupná. Můžete nahrát vlastní pro tento konkrétní výkon.');
-    if(insight&&!subject?.identityAvailable)warnings.push('Vazbu hráče/týmu nelze plně ověřit; žádný náhradní domácí tým se nepoužívá.');
+    const names={home:tr('Logo domácích'),away:tr('Logo hostů'),organization:tr('Logo organizace'),competition:tr('Logo soutěže'),group:tr('Logo skupiny'),phase:tr('Logo fáze'),player:tr('Fotografie hráče'),subjectTeam:tr('Logo týmu hráče')};
+    const warnings=keys.flatMap(k=>sources[k]&&!im[k]?[tr('{asset} se nepodařilo načíst.',{asset:names[k]||k})]:[]);
+    if(insight&&subject?.playerId&&!im.player)warnings.push(tr('Fotografie hráče není dostupná. Můžete nahrát vlastní pro tento konkrétní výkon.'));
+    if(insight&&!subject?.identityAvailable)warnings.push(tr('Vazbu hráče/týmu nelze plně ověřit; žádný náhradní domácí tým se nepoužívá.'));
     return warnings;
   }finally{pictures.forEach(p=>p?.close());}
 }

@@ -2,6 +2,8 @@
 
 Media Studio MVP 1.0, Sprint 1: `/studio`. [Implementation and verification](docs/MEDIA-STUDIO.md).
 
+Studio pro více organizací a CS/EN: [nastavení HMS a Vercelu](docs/STUDIO-ORGANIZATIONS.md).
+
 Game Center MVP: veřejný `/game-center/:gameId`, sdílený JSON GameSummary v1
 a ukládaný průběh zápasu s góly, asistencemi, tresty a vývojem skóre.
 Architektura, spuštění a ověření: [Game Center](docs/GAME-CENTER.md).

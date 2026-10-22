@@ -131,6 +131,10 @@ export function renderPriklepyPage(items, config = {}) {
   const hasMore = Boolean(config.hasMore);
   const mode = config.mode ?? "archive";
   const isSelection = mode === "selection";
+  const organization=config.organization??null;
+  const suffix=organization&&organization.code!=='PHM'?`/${encodeURIComponent(organization.slug)}`:'';
+  const selectionPath=`/priklepy${suffix}`,archivePath=`/archiv${suffix}`;
+  const assetPrefix=organization?'/':'./';
   const selectionTitle = config.teamName ? `To nejlepší pro ${config.teamName}` : "To nejlepší z ledu";
   let cardIndex = 0;
   const sections = dateSections(items).map((section) => `
@@ -148,25 +152,25 @@ export function renderPriklepyPage(items, config = {}) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Přehled automaticky nalezených hokejových momentů z HMS zápasů">
-  <title>Příklepy · HMS Insights</title>
-  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
-  <link rel="stylesheet" href="./styles.css?v=selection-2">
-  <script src="./app.js?v=selection-2" defer></script>
+  <title>${organization?escapeHtml(organization.name)+" · ":""}Příklepy · HMS Insights</title>
+  <link rel="icon" type="image/svg+xml" href="${assetPrefix}favicon.svg">
+  <link rel="stylesheet" href="${assetPrefix}styles.css?v=org-feeds-1">
+  <script src="${assetPrefix}app.js?v=org-feeds-1" defer></script>
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="./"><span>HMS</span> PŘÍKLEPY</a>
+    <a class="brand" href="${organization?selectionPath:'./'}"><span>HMS</span> PŘÍKLEPY</a>
     <nav class="view-nav" aria-label="Pohled Příklepů">
-      <a href="/priklepy" ${isSelection ? 'aria-current="page"' : ""}>Výběr</a>
-      ${isSelection ? "" : '<a href="/archiv" aria-current="page">Archiv</a>'}
+      <a href="${selectionPath}" ${isSelection ? 'aria-current="page"' : ""}>Výběr</a>
+      ${isSelection ? "" : `<a href="${archivePath}" aria-current="page">Archiv</a>`}
     </nav>
-    <span class="feed-state"><i></i> živý přehled</span>
+    <span class="feed-state"><i></i> ${organization?escapeHtml(organization.name)+" · ":""}živý přehled</span>
   </header>
   <main>
     ${isSelection ? `<section class="selection-intro">
-      <div><span>VÝBĚR PŘÍKLEPŮ</span><h1>${escapeHtml(selectionTitle)}</h1><p>Nejsilnější momenty posledních dnů. U jednoho hráče v jednom zápase ukazujeme vždy jen jeho nejvýznamnější příběh.</p></div>
+      <div><span>${organization?escapeHtml(organization.name)+" · ":""}VÝBĚR PŘÍKLEPŮ</span><h1>${escapeHtml(selectionTitle)}</h1><p>Nejsilnější momenty posledních dnů. U jednoho hráče v jednom zápase ukazujeme vždy jen jeho nejvýznamnější příběh.</p></div>
       <p class="selection-count"><strong id="result-count">${total}</strong><span>vybraných momentů</span></p>
-    </section>` : `<section class="archive-intro"><span>ÚPLNÁ HISTORIE</span><h1>Archiv Příklepů</h1><p>Procházejte všechny nalezené momenty napříč zápasy, hráči a týmy.</p></section>`}
+    </section>` : `<section class="archive-intro"><span>${organization?escapeHtml(organization.name)+" · ":""}ÚPLNÁ HISTORIE</span><h1>Archiv Příklepů</h1><p>Procházejte všechny nalezené momenty napříč zápasy, hráči a týmy.</p></section>`}
     <section class="control-bar" aria-label="Vyhledávání a filtrování příklepů">
       <label class="search"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Hledat hráče, tým nebo moment…" autocomplete="off"></label>
       <button class="filter-toggle" id="filter-toggle" type="button" aria-expanded="false" aria-controls="filters"><span>Filtry</span><b id="active-filter-count" hidden>0</b><i aria-hidden="true">⌄</i></button>
@@ -191,7 +195,7 @@ export function renderPriklepyPage(items, config = {}) {
 
   <dialog id="detail-dialog"><button class="dialog-close" type="button" aria-label="Zavřít">×</button><div id="dialog-content"></div></dialog>
   <script type="application/json" id="feed-data">${JSON.stringify(items).replace(/</g, "\\u003c")}</script>
-  <script type="application/json" id="feed-meta">${JSON.stringify({ total, hasMore: !isSelection && hasMore, mode, teamId: config.teamId ?? null }).replace(/</g, "\\u003c")}</script>
+  <script type="application/json" id="feed-meta">${JSON.stringify({ total, hasMore: !isSelection && hasMore, mode, organization: organization?.code ?? "PHM", teamId: config.teamId ?? null }).replace(/</g, "\\u003c")}</script>
 </body>
 </html>`;
 }

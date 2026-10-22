@@ -1,3 +1,5 @@
+import {createPublicFeedHandler} from './web/public-feed-handler.js';
+import {PHM_ORGANIZATION_ID} from './app/organizations.js';
 import {createStudioImageHandler} from './web/studio-image-handler.js';
 import {createStudioHandler} from './web/studio-handler.js';
 import {createGameExtrasHandler} from './web/game-extras-handler.js';
@@ -66,8 +68,8 @@ export const server = createServer(async (request, response) => {
     response.setHeader('content-type',url.pathname.endsWith('.css')?'text/css':'font/woff2');
     response.end(await readFile(join(publicDirectory,url.pathname)));return;
   }
-  if(url.pathname==='/studio' || /^\/studio\/(index.html|app.js|graphics.js|subjects.js|typography.js|studio.css)$/.test(url.pathname)) {
-    const name=url.pathname==='/studio'?'index.html':url.pathname.split('/').pop();
+  if(url.pathname==='/studio' || /^\/studio\/[a-zA-Z0-9-]+\/?$/.test(url.pathname) || /^\/studio\/(index.html|app.js|graphics.js|subjects.js|typography.js|i18n.js|routing.js|studio.css)$/.test(url.pathname)) {
+    const name=!url.pathname.split('/').pop()?.includes('.')?'index.html':url.pathname.split('/').pop();
     response.setHeader('content-type',name.endsWith('.html')?'text/html; charset=utf-8':name.endsWith('.css')?'text/css':'text/javascript');
     response.end(await readFile(join(publicDirectory,'studio',name)));return;
   }
@@ -95,19 +97,21 @@ export const server = createServer(async (request, response) => {
     response.end();
     return;
   }
-  if (url.pathname === "/priklepy") {
-    response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
-    response.end(renderPriklepyPage(feedDemo));
-    return;
+  const feedPage=/^\/(priklepy|archiv)(?:\/([a-zA-Z0-9-]+))?\/?$/.exec(url.pathname);
+  if(feedPage||['/api/feed','/api/selection'].includes(url.pathname)){
+    request.query=Object.fromEntries(url.searchParams);
+    const preview=process.env.DATABASE_URL?{}:{
+      loadSelection:async({organizationId})=>({items:organizationId.toLowerCase()===PHM_ORGANIZATION_ID.toLowerCase()?feedDemo:[],hasMore:false,mode:'selection'}),
+      loadPage:async({organizationId})=>({items:organizationId.toLowerCase()===PHM_ORGANIZATION_ID.toLowerCase()?feedDemo:[],hasMore:false,offset:0}),
+      loadOptions:async()=>({}),
+    };
+    await createPublicFeedHandler({mode:feedPage?(feedPage[1]==='archiv'?'archive':'selection'):(url.pathname==='/api/feed'?'archive':'selection'),html:!!feedPage,...preview})(request,{
+      setHeader:(k,v)=>response.setHeader(k,v),status(code){response.statusCode=code;return this;},send(body){response.end(body);},json(body){response.setHeader('Content-Type','application/json; charset=utf-8');response.end(JSON.stringify(body));},
+    });return;
   }
   if (url.pathname === "/api/priklepy") {
     response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
     response.end(JSON.stringify(sampleAnalysis));
-    return;
-  }
-  if (url.pathname === "/api/feed") {
-    response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
-    response.end(JSON.stringify(feedDemo));
     return;
   }
   if (assets[url.pathname]) {
