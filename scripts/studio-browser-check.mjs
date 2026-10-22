@@ -26,7 +26,7 @@ try {
   const redPixels=await page.evaluate(()=>{const c=document.getElementById('canvas'),d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;let n=0;for(let i=0;i<d.length;i+=4)if(d[i]===255&&d[i+1]===0&&d[i+2]===0)n++;return n;});assert.ok(redPixels>1000);
   for(const format of ['1:1','9:16']) {
     await page.selectOption('#format',format);
-    for(const font of ['Barlow Condensed','Oswald','Roboto Condensed','Noto Sans','Noto Serif']) {
+    for(const font of ['Barlow Condensed','Oswald','Roboto Condensed','Noto Sans','Noto Serif','Frontline','Pantha','Hitch Grotesk']) {
       await page.selectOption('#font',font);await page.waitForFunction(()=>!document.getElementById('download').disabled);
       const event=page.waitForEvent('download');await page.click('#download');const download=await event;const path=`${output}/${format.replace(':','x')}-${font.replaceAll(' ','-')}.png`;await download.saveAs(path);
       const png=await readFile(path);assert.equal(png.subarray(1,4).toString(),'PNG');assert.equal(png.readUInt32BE(16),1080);assert.equal(png.readUInt32BE(20),format==='1:1'?1080:1920);assert.ok(png.length>20000);
@@ -50,5 +50,5 @@ try {
   // Original real local report and feed routes remain functional.
   const report=await page.request.get(root+'/game-center/'+gameId);assert.equal(report.status(),200);
   const feed=await page.request.get(root+'/priklepy');assert.equal(feed.status(),200);
-  console.log('Browser checks passed: 10 PNGs, 2 aspect ratios, 5 fonts, period/insight selection, CORS-enabled logo pixels, upload, CORS failure, 390px layout, per-org settings, report/feed.');
+  console.log('Browser checks passed: 16 PNGs, 2 aspect ratios, 8 fonts, period/insight selection, CORS-enabled logo pixels, upload, CORS failure, 390px layout, per-org settings, report/feed.');
 } finally {await browser.close();await new Promise(resolve=>server.close(resolve));}

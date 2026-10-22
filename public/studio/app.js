@@ -12,7 +12,7 @@ function subjectKey(){const s=resolveInsightSubject(game??{},activeInsight());re
 function guide(){const r=safeArea(settings.format),h=settings.format==='9:16'?1920:1080,g=$('safeGuide');g.style.left=`${r.x/1080*100}%`;g.style.top=`${r.y/h*100}%`;g.style.width=`${r.w/1080*100}%`;g.style.height=`${r.h/h*100}%`;g.hidden=!game||!$('safeZones').checked;}
 const gameStatuses={FINISHED:'Ukončeno',RUNNING:'Probíhá · průběžná data','NOT PLAYED':'Naplánováno'};
 const filters=['Today','Yesterday','Tomorrow','-7 days','+7 days','Past','Future'];
-fonts.forEach(f=>{const o=document.createElement('option');o.textContent=f;$('font').append(o);});
+fonts.forEach(f=>{const o=document.createElement('option');o.value=f;o.textContent=f==='Pantha'?'Pantha · anglické titulky':f;$('font').append(o);});
 function status(s){$('status').textContent=s;}
 function editorSettings() {
   try{const entries=JSON.parse(localStorage.getItem(`hms-studio:brands:v1:${$('org').value}`)||'[]');brandOverrides=new Map(entries.filter(e=>Array.isArray(e)&&e.length===2&&typeof e[0]==='string'&&typeof e[1]==='string'&&/^data:image\/(png|jpeg|webp);base64,/.test(e[1])));}catch{brandOverrides=new Map();}

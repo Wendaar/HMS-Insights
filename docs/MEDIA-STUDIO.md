@@ -292,3 +292,26 @@ Regression tests model the actual upstream finished-only default rather than
 returning synthetic LIVE/SCHEDULED states unconditionally. They cover all seven
 Prague date filters, endpoint inclusion, paging, organization isolation and
 finished-only output/library eligibility.
+
+## Existing PHM brand fonts
+
+Frontline, Pantha and Hitch Grotesk reuse the exact supplied sources from
+`Wendaar/PHM-All-Stars-generator/assets/fonts` (Frontline-Regular.otf,
+Pantha-Regular.otf and hitch-grotesk-VF.ttf). Local WOFF2 conversion preserves
+the full character sets. They are served on the Studio origin and awaited before
+PNG creation. Hitch keeps its variable weight range; the two display faces use
+their real regular weight rather than synthetic bold.
+
+All three appear in the font selector; Pantha is labelled for English headlines.
+A fifth Pantha design uses big Pantha headlines/numbers with a tilted illuminated
+sports treatment. Pantha supports uppercase Latin letters, digits and a small
+punctuation set; it has no lowercase or Czech characters. Typography resolves
+the entire text to Hitch when necessary, or Noto Sans for characters outside both
+brand fonts, rather than stripping accents or mixing fonts within a Czech name.
+Actual glyph coverage is recorded in `public/studio/typography.js`. The UI explains
+this behavior. Frontline and Hitch contain the Czech test alphabet.
+
+Validation: 145 Node tests; static build; five designs in both ratios for result
+and Insight PNGs, all eight font choices in both ratios, real loaded-font checks
+and equal canvas pixels for a Czech name under Pantha's Hitch fallback. Existing
+finished-only output rules and data integration are unchanged.
