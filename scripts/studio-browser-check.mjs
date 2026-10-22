@@ -16,7 +16,7 @@ try {
   fixture.home.logoUrl='https://example.com/home-logo.png';
   await page.route('https://example.com/home-logo.png',route=>route.fulfill({contentType:'image/png',headers:{'access-control-allow-origin':'*'},body:Buffer.from(logoData.split(',')[1],'base64')}));
   await page.route('**/api/studio?*',async route=>{
-    const q=new URL(route.request().url()).searchParams;
+    const q=new URL(route.request().url()).searchParams;if(q.has('catalog'))return route.fulfill({json:{organizations:[{code:'PHM',slug:'phm',name:'PHM',configured:true},{code:'EUCHL',slug:'euchl',name:'EUCHL',configured:false}]}});
     if(q.get('org')!=='PHM')return route.fulfill({status:503,json:{error:'Test: organizace nepřipojena.'}});
     if(q.has('gameId'))return route.fulfill({json:fixture});
     const insights=q.get('section')==='insights';

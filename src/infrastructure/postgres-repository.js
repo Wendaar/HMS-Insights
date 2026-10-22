@@ -121,11 +121,11 @@ export async function loadPlayerSeasonRecords(gameId,role,options={}) {
   const keeper=role==='goalie';
   // Fixed identifiers selected by a server-side role, never user SQL. Scope is
   // the game's season/group; current local date excludes future scheduled games.
-  return sql.query(`with scope as (select season_id,group_id from games where game_id=$1::uuid)
+  return sql.query(`with scope as (select organization_id,season_id,group_id from games where game_id=$1::uuid)
     select p.player_id::text as "PlayerId", max(p.player_name) as "FirstName", '' as "LastName",
       count(distinct p.game_id)::int as "GP",
       ${keeper?'sum(p.saves)::int as "Svs",sum(p.goals_against)::int as "GA"':'sum(p.goals)::int as "G",sum(p.assists)::int as "A",sum(p.pim)::numeric as "PIM"'}
-    from ${keeper?'goalie_game_stats':'player_game_stats'} p join games g on g.game_id=p.game_id join scope s on g.season_id=s.season_id and g.group_id=s.group_id
+    from ${keeper?'goalie_game_stats':'player_game_stats'} p join games g on g.game_id=p.game_id join scope s on g.organization_id=s.organization_id and g.season_id=s.season_id and g.group_id=s.group_id
     where g.status='FINISHED' and g.played_on <= (now() at time zone 'Europe/Prague')::date group by p.player_id`,[gameId]);
 }
 
@@ -168,14 +168,15 @@ export async function loadPublicFeed(options = {}) {
   const limit = Math.min(Math.max(Number(options.limit ?? 200), 1), 500);
   const sql = options.sql ?? createSql(options.databaseUrl ?? databaseUrlFromEnv(options.env));
   const result = await sql.query(
-    "select * from public_priklepy_feed order by played_on desc, importance desc, priklep_id limit $1",
-    [limit],
+    `select * from public_priklepy_feed${options.organizationId?" where game_id in (select game_id from games where organization_id=$2::uuid)":""} order by played_on desc, importance desc, priklep_id limit $1`,
+    options.organizationId?[limit,options.organizationId]:[limit],
   );
   return result.map(publicFeedItem);
 }
 
 function feedWhere(options, values) {
   const clauses = [];
+  if(options.organizationId){values.push(options.organizationId);clauses.push(`game_id in (select game_id from games where organization_id=$${values.length}::uuid)`);}
   const exact = [
     ["season", "season_name"],
     ["group", "group_name"],
@@ -239,7 +240,7 @@ export async function loadPublicFeedOptions(options = {}) {
   const sql = options.sql ?? createSql(options.databaseUrl ?? databaseUrlFromEnv(options.env));
   const rows = await sql.query(`select distinct
     season_name, group_name, phase_name, venue_name, sponsor_name, home_team_name, away_team_name
-    from public_priklepy_feed`);
+    from public_priklepy_feed${options.organizationId?" where game_id in (select game_id from games where organization_id=$1::uuid)":""}`,options.organizationId?[options.organizationId]:[]);
   const unique = (values, fallback = null) => [...new Set(values.map((value) => value ?? fallback).filter(Boolean))]
     .sort((a, b) => a.localeCompare(b, "cs"));
   return {
@@ -262,6 +263,8 @@ export async function loadPublicSelection(options = {}) {
   const perGame = Number.isFinite(requestedPerGame) ? Math.min(Math.max(Math.trunc(requestedPerGame), 1), 5) : 3;
   const values = [];
   const filters = [];
+  let orgParameter;
+  if(options.organizationId){values.push(options.organizationId);orgParameter=values.length;filters.push(`game_id in (select game_id from games where organization_id=$${orgParameter}::uuid)`);}
   if (options.teamId) {
     values.push(String(options.teamId));
     filters.push(`team_id = $${values.length}::uuid`);
@@ -298,7 +301,7 @@ export async function loadPublicSelection(options = {}) {
     from public_priklepy_feed
     where played_on >= (
       select max(played_on) - ($${daysParameter}::integer - 1) * interval '1 day'
-      from public_priklepy_feed
+      from public_priklepy_feed${orgParameter?` where game_id in (select game_id from games where organization_id=$${orgParameter}::uuid)`:""}
     )
     ${filters.length ? `and ${filters.join(" and ")}` : ""}
   ), ranked as (

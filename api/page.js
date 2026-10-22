@@ -1,3 +1,4 @@
+import {organizationConfig} from "../src/app/organizations.js";
 import { loadPublicFeedOptions, loadPublicSelection } from "../src/infrastructure/postgres-repository.js";
 import { renderPriklepyPage } from "../src/web/render.js";
 
@@ -9,8 +10,8 @@ export default async function handler(request, response) {
       ? requestedTeamId
       : null;
     const [feed, filterOptions] = await Promise.all([
-      loadPublicSelection({ env: process.env, teamId, limit: 30 }),
-      loadPublicFeedOptions({ env: process.env }),
+      loadPublicSelection({ env: process.env, organizationId:organizationConfig("PHM").id, teamId, limit: 30 }),
+      loadPublicFeedOptions({ env: process.env, organizationId:organizationConfig("PHM").id }),
     ]);
     response.setHeader("content-type", "text/html; charset=utf-8");
     response.setHeader("cache-control", "s-maxage=60, stale-while-revalidate=300");

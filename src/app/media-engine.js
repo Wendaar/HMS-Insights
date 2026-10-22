@@ -9,7 +9,8 @@ import { loadGameSnapshot, loadStudioPage, loadStudioGameLabels, loadStudioInsig
 import { gameRows } from './backfill-finished-games.js';
 import { sportingImage } from '../../public/game-report-media.js';
 
-export const organizations = ['PHM','EUCHL','YHG','BNHLH'];
+import {organizationConfig} from './organizations.js';
+export {organizationConfig} from './organizations.js';
 const cache = new Map();
 const pending = new Map();
 const organizationImages=new Map();
@@ -20,13 +21,6 @@ async function organizationImage(config,env,options){
     const url=same(info.organizationId,config.id)?teamImage(info):null;
     organizationImages.set(config.id,{url,expires:Date.now()+60000});return url;
   }catch{return null;}
-}
-export function organizationConfig(org, env = process.env) {
-  if (!organizations.includes(org)) throw new TypeError('Neplatná organizace.');
-  // PHM identity comes from the existing repository's real-game fixtures.
-  const id = env[`HMS_${org}_ORGANIZATION_ID`] || (org === 'PHM' ? 'BB669217-41EB-4162-8040-A73F49A43570' : null);
-  if (!isGameId(id)) throw new Error('Organizace zatím nemá nastavené datové připojení.');
-  return { id, token: env[`HMS_${org}_API_TOKEN`] || env.HMS_API_TOKEN };
 }
 export function timeWindow(filter = 'Today', now = new Date(), page = 0) {
   const today = new Intl.DateTimeFormat('en-CA', {timeZone:'Europe/Prague',year:'numeric',month:'2-digit',day:'2-digit'}).format(now);
@@ -113,7 +107,7 @@ export async function browseMedia({org,filter='Today',offset=0,windowPage=0,sect
 export async function mediaGame(org,gameId,options={}) {
   if(!isGameId(gameId)) throw new TypeError('Neplatné gameId.');
   const env=options.env??process.env, config=organizationConfig(org,env);
-  const key=`${org}:${gameId.toLowerCase()}`, now=Date.now();
+  const key=`${config.code}:${config.id.toLowerCase()}:${gameId.toLowerCase()}`, now=Date.now();
   if(cache.get(key)?.expires>now && (!options.refresh || cache.get(key).refreshedAt>now-10000)) return cache.get(key).value;
   if(pending.has(key)) return pending.get(key);
   if(pending.size>=8)throw new Error('Datový zdroj je vytížený.');
@@ -167,7 +161,7 @@ export async function mediaGame(org,gameId,options={}) {
       }catch{/* Optional branding never changes verified scores. */}
     }
     summary.organizationLogoUrl ||=await organizationImage(config,env,options);
-    const value={...summary,org,readAt:new Date().toISOString(),source:snapshot?'imported-snapshot':'HMS-read-only'};
+    const value={...summary,org:config.code,readAt:new Date().toISOString(),source:snapshot?'imported-snapshot':'HMS-read-only'};
     cache.set(key,{expires:now+30000,refreshedAt:snapshot?0:now,value});
     if(cache.size>200) cache.delete(cache.keys().next().value);
     return value;

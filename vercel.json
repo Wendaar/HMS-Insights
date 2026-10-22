@@ -19,6 +19,14 @@
       "destination": "/studio/index.html"
     },
     {
+      "source": "/studio/:org([a-zA-Z0-9-]+)",
+      "destination": "/studio/index.html"
+    },
+    {
+      "source": "/api/webhooks/hms/org/:org([a-zA-Z0-9-]+)",
+      "destination": "/api/webhooks/hms/game-finished?org=:org"
+    },
+    {
       "source": "/api/studio",
       "destination": "/api/game-summary?view=studio"
     },

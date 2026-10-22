@@ -1,3 +1,4 @@
+import {t,language} from './i18n.js';
 const same=(a,b)=>typeof a==='string'&&typeof b==='string'&&a.toLowerCase()===b.toLowerCase();
 const uuid=v=>typeof v==='string'&&/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(v);
 export function resolveInsightSubject(game,insight){
@@ -14,9 +15,9 @@ export function resolveInsightSubject(game,insight){
     stats,identityAvailable:!!(team&&(!playerId||player)),type:insight.type};
 }
 export const insightLabel=type=>({OFFICIAL_STAR:'MATCH STAR',HATTRICK:'HATTRICK HERO',MULTIPOINT_GAME:'POINT MACHINE',BIG_SAVES:'THE WALL',EARLY_GOAL:'FAST START',BIG_WIN:'BIG WIN'}[type]??'GAME MOMENT');
-export function insightStat(subject){
+export function insightStat(subject,lang=language){
   const s=subject?.stats??{};
-  const pair=subject?.type==='HATTRICK'?['goals','GÓLY']:subject?.type==='BIG_SAVES'?['saves','ZÁKROKŮ']:subject?.type==='MULTIPOINT_GAME'?['points','BODY']:null;
+  const pair=subject?.type==='HATTRICK'?['goals',t('GÓLY',{},lang)]:subject?.type==='BIG_SAVES'?['saves',t('ZÁKROKŮ',{},lang)]:subject?.type==='MULTIPOINT_GAME'?['points',t('BODY',{},lang)]:null;
   return pair&&Number.isFinite(s[pair[0]])?{value:s[pair[0]],label:pair[1]}:null;
 }
 

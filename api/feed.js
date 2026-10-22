@@ -1,3 +1,4 @@
+import {organizationConfig} from "../src/app/organizations.js";
 import { loadPublicFeedPage } from "../src/infrastructure/postgres-repository.js";
 import { renderFeedCards } from "../src/web/render.js";
 
@@ -6,7 +7,7 @@ export default async function handler(request, response) {
   try {
     const query = request.query ?? {};
     const page = await loadPublicFeedPage({
-      env: process.env,
+      env: process.env, organizationId:organizationConfig("PHM").id,
       limit: query.limit,
       offset: query.offset,
       query: query.q,

@@ -9,6 +9,10 @@ function gameRows(payload) {
   throw new Error("HMS /games nevrátil očekávaný seznam zápasů.");
 }
 
+function assertOrganization(page,options){
+  if(options.organizationId&&page.some(game=>typeof game.organizationId!=='string'||game.organizationId.toLowerCase()!==options.organizationId.toLowerCase()))throw new Error('Zdroj neodpovídá organizaci importu.');
+}
+
 function pause(milliseconds) {
   return milliseconds > 0
     ? new Promise((resolve) => setTimeout(resolve, milliseconds))
@@ -18,6 +22,7 @@ function pause(milliseconds) {
 async function processPage(page, options = {}) {
   const processGame = options.processGame ?? processFinishedGame;
   const intervalMs = Math.max(Number(options.intervalMs ?? 1800), 0);
+  assertOrganization(page,options);
   let processed = 0;
   const failures = [];
 
@@ -26,7 +31,7 @@ async function processPage(page, options = {}) {
     try {
       await processGame(gameId, {
         ...options,
-        expectedOrganizationId: game.organizationId ?? options.organizationId,
+        expectedOrganizationId: options.organizationId ?? game.organizationId,
       });
       processed += 1;
     } catch (error) {
@@ -84,6 +89,7 @@ export async function backfillFinishedGames(options = {}) {
       limit,
       skip,
     }, options));
+    assertOrganization(page,options);
     discovered += page.length;
 
     for (const game of page) {
@@ -91,7 +97,7 @@ export async function backfillFinishedGames(options = {}) {
       try {
         await processGame(gameId, {
           ...options,
-          expectedOrganizationId: game.organizationId ?? options.organizationId,
+          expectedOrganizationId: options.organizationId ?? game.organizationId,
         });
         processed += 1;
         await options.onProgress?.({ gameId, processed, discovered, failed: failures.length });
