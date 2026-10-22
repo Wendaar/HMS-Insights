@@ -15,7 +15,7 @@ finished-game importer and Příklepy rules retain their FINISHED-only guard.
 Studio may normalize unfinished sporting data with an explicit read-only option;
 it never runs final-result achievement rules or persists that result.
 
-- Games uses the existing `/games` adapter with `from`, `to`, `limit=20`, `skip`.
+- Games uses the existing `/games` adapter with `status=ALL`, inclusive `from`/`to`, `limit=20`, `skip`. HMS API v1 otherwise defaults to FINISHED.
   Both returned organization IDs and calendar dates are checked before exposing
   a page. Thin list rows get real names from one bounded organization-scoped
   metadata query; unimported games use up to three concurrent detail reads within
@@ -227,11 +227,10 @@ retained in snapshot branding and supplemented by identity-checked reads.
   Official single-player Star of the Match cards reuse Game Report's
   `displayExtras` identity/lineup validation. No award is computed from points.
   Missing official stars or unavailable period history suppress those choices.
-- Games requests through the calendar day after the chosen end date to tolerate
-  exclusive HMS `to` semantics, then removes endpoint lookahead rows locally.
-  Source offsets still advance by 20 rows, so filtering never changes pagination
-  offsets or organization scope. Future filters remain useful for later previews;
-  result graphics still require completed games or verified completed periods.
+- Games requests exact inclusive calendar endpoints as documented by HMS v1,
+  with `status=ALL`. Source offsets advance by 20 rows, preserving pagination
+  and organization scope. Result graphics still require completed games or
+  verified completed periods.
 - Empty date ranges now display an explicit message rather than a blank list.
 
 Verification: 142 Node tests and static build; browser checks cover four styles
@@ -260,14 +259,36 @@ four styles and mobile controls. Responses remain synthetic browser fixtures.
 Games now identifies its source in the browser. An `imported-snapshot` page
 explicitly says that only stored imports are available and scheduled fixtures
 may be missing. An empty imported range is not presented as evidence that HMS
-has no scheduled games. The HMS branch sends no status filter; scheduled/live
+has no scheduled games. The HMS branch explicitly requests `status=ALL`; NOT PLAYED/RUNNING/FINISHED
 fixtures in its response are retained. Only result-template availability depends
 on completion/verified period data. The finished-game webhook is unchanged.
 
-Tests: 144 Node tests, including LIVE/SCHEDULED page rows and token-absent storage
+Tests: 144 Node tests, including NOT PLAYED/RUNNING/FINISHED page rows and token-absent storage
 fallback; browser verifies the source notices and empty-import explanation.
 The actual protected preview source has not been confirmed. If it reports imports
 only, check the existing server-side HMS token's Preview environment/branch scope
 in Vercel and redeploy after any configuration change; never expose its value in
 frontend, logs or chat. If it reports HMS, inspect the upstream `/games` contract
 and returned status coverage rather than changing finished-event ingestion.
+
+## All game states, finished retrospective outputs
+
+The supplied HMS API v1 guide (2026-10-15, page 9) documents the default
+`status=FINISHED`, supported values `FINISHED`, `RUNNING`, `NOT PLAYED`, `ALL`,
+and inclusive date boundaries. Games now explicitly sends `ALL` and the exact
+selected Prague date range, replacing the speculative extra-day workaround.
+Paging stays at 20 source rows with organization/range validation.
+
+Studio Insights SQL explicitly requires `g.status='FINISHED'`. Final Score,
+stored achievement and official-star exports remain finished-only; even a stale
+Insights library selection cannot export after the selected game is reopened.
+Scheduled games cannot produce period graphics. Existing completed-period
+choices for RUNNING still require a verified timeline and supplied currentPeriod;
+this does not implement or validate period-boundary detection, live achievements
+or OBS polling. Those depend on the live API contract described in the review.
+The finished-game importer and public Game Report/feed behavior are unchanged.
+
+Regression tests model the actual upstream finished-only default rather than
+returning synthetic LIVE/SCHEDULED states unconditionally. They cover all seven
+Prague date filters, endpoint inclusion, paging, organization isolation and
+finished-only output/library eligibility.

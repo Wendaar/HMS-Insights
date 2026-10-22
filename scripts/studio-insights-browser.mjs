@@ -15,13 +15,13 @@ try {
  const ctx=await browser.newContext({viewport:{width:1440,height:1100},acceptDownloads:true});await ctx.addCookies([{name:'preview-test',value:'allowed',url:root,httpOnly:true,sameSite:'Lax'}]);
  const page=await ctx.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
  const colors=await page.evaluate(()=>Object.fromEntries(['red','blue','lime','yellow'].map(color=>{const c=document.createElement('canvas');c.width=80;c.height=80;const x=c.getContext('2d');x.fillStyle=color;x.fillRect(0,0,80,80);return [color,c.toDataURL('image/png')];})));
- const requests=[];let protectedImageReads=0,gamesSource='HMS',gamesEmpty=false;
+ const requests=[];let protectedImageReads=0,gamesSource='HMS',gamesEmpty=false,gameState='FINISHED';
  await page.route('**/api/studio-image?*',async route=>{
    if(!((await route.request().allHeaders()).cookie||'').includes('preview-test=allowed'))return route.fulfill({contentType:'text/html',body:'sign in'});
    protectedImageReads++;const url=new URL(route.request().url()).searchParams.get('url');const color=url.includes('Player')?'lime':url.includes('HOME')?'red':url.includes('AWAY')?'blue':'yellow';
    await route.fulfill({contentType:'image/png',body:Buffer.from(colors[color].split(',')[1],'base64')});
  });
- await page.route('**/api/studio?*',async route=>{const q=new URL(route.request().url()).searchParams;requests.push(Object.fromEntries(q));await route.fulfill({json:q.has('gameId')?fixture:{items:q.get('section')==='insights'?[insight,second].filter(i=>!q.get('query')||i.player.includes(q.get('query'))):(gamesEmpty?[]:[{...fixture,playedOn:fixture.playedOn}]),hasMore:false,offset:0,source:gamesSource}});});
+ await page.route('**/api/studio?*',async route=>{const q=new URL(route.request().url()).searchParams;requests.push(Object.fromEntries(q));await route.fulfill({json:q.has('gameId')?{...fixture,status:gameState}:{items:q.get('section')==='insights'?[insight,second].filter(i=>!q.get('query')||i.player.includes(q.get('query'))):(gamesEmpty?[]:[{...fixture,playedOn:fixture.playedOn}]),hasMore:false,offset:0,source:gamesSource}});});
  await page.goto(root+'/studio');await page.click('#insights');assert.equal(await page.locator('#filters').isVisible(),false);assert.equal(await page.locator('#search').isVisible(),true);
  await page.fill('#search','Kuracina');await page.waitForResponse(r=>r.url().includes('query=Kuracina'));assert.ok(requests.some(q=>q.section==='insights'&&q.query==='Kuracina'));assert.match(await page.locator('.match').innerText(),/Berkut/);assert.match(await page.locator('.match').innerText(),/1:4/);
  await page.click('.match');await page.waitForFunction(()=>!document.getElementById('download').disabled);assert.match(await page.locator('#subjectInfo').innerText(),/Matěj Kuracina · Berkut/);
@@ -49,7 +49,11 @@ try {
  await page.selectOption('#template','period-2');await page.waitForFunction(()=>!document.getElementById('download').disabled);
  await page.selectOption('#template',`moment-${insight.id}`);await page.waitForFunction(()=>!document.getElementById('download').disabled);assert.equal(await page.locator('#subjectEditor').isVisible(),true);assert.match(await page.locator('#subjectInfo').innerText(),/Kuracina/);
  await page.selectOption('#template',`star-${playerId}`);await page.waitForFunction(()=>!document.getElementById('download').disabled);
- for(const filter of ['Today','Tomorrow','+7 days','Future','Yesterday','-7 days','Past']){await page.getByRole('button',{name:filter,exact:true}).click();await page.waitForResponse(r=>r.url().includes('section=games')&&new URL(r.url()).searchParams.get('filter')===filter);assert.ok(requests.some(q=>q.section==='games'&&q.filter===filter));}
+ for(const filter of ['Today','Tomorrow','+7 days','Future','Yesterday','-7 days','Past']){await Promise.all([page.waitForResponse(r=>r.url().includes('section=games')&&new URL(r.url()).searchParams.get('filter')===filter),page.getByRole('button',{name:filter,exact:true}).click()]);assert.ok(requests.some(q=>q.section==='games'&&q.filter===filter));}
+ // A stale library entry cannot export a retrospective graphic if the game was reopened.
+ gameState='RUNNING';await page.click('#insights');await page.locator('.match').first().click();await page.waitForFunction(()=>document.getElementById('status').textContent.includes('Zápas probíhá'));
+ assert.equal(await page.locator('#download').isEnabled(),false);assert.equal(await page.locator('#template option[value="insight"]').count(),0);assert.equal(await page.locator('#template option[value="final"]').count(),0);
+ gameState='NOT PLAYED';await page.click('#games');await page.locator('.match').first().click();await page.waitForFunction(()=>document.getElementById('status').textContent.includes('Zápas je naplánovaný'));assert.equal(await page.locator('#download').isEnabled(),false);
  assert.match(await page.locator('#dataSource').innerText(),/Živý seznam HMS/);
  gamesSource='imported-snapshot';gamesEmpty=true;
  const fallback=page.waitForResponse(r=>r.url().includes('section=games')&&new URL(r.url()).searchParams.get('filter')==='Today');await page.getByRole('button',{name:'Today',exact:true}).click();await fallback;

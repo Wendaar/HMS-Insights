@@ -99,18 +99,16 @@ export async function browseMedia({org,filter='Today',offset=0,windowPage=0,sect
   const range=timeWindow(filter,options.now,windowPage);
   if(!config.token)return (options.loadPage??loadStudioPage)({organizationId:config.id,...range,offset,limit,section,env});
   const hmsConfig={...hmsConfigFromEnv({...env,HMS_API_TOKEN:config.token}),token:config.token,timeoutMs:5000,retries:0};
-  // HMS deployments can interpret `to` as an exclusive date. Request the next
-  // calendar boundary, then keep only the selected Prague dates. Offset always
-  // counts source rows, including any inclusive-endpoint lookahead rows.
-  const end=new Date(`${range.to}T12:00:00Z`);end.setUTCDate(end.getUTCDate()+1);
-  const sourceTo=end.toISOString().slice(0,10);
-  const rows=gameRows(await (options.fetchGames??fetchGames)({...range,to:sourceTo,limit,skip:offset}, {config:hmsConfig}));
+  // HMS API v1 defaults to FINISHED. Studio browsing explicitly includes all
+  // states; retrospective output eligibility is checked separately.
+  // The documented calendar date endpoints are both inclusive.
+  const rows=gameRows(await (options.fetchGames??fetchGames)({...range,status:'ALL',limit,skip:offset}, {config:hmsConfig}));
   if(rows.length>limit) throw new Error('HMS nerespektuje stránkování.');
   for(const g of rows) {
     assertOrg(g.organizationId,config.id);
-    if(!isGameId(g.gameId) || !/^\d{4}-\d{2}-\d{2}$/.test(g.startDate??'') || g.startDate<range.from || g.startDate>sourceTo) throw new Error('HMS nerespektuje časový rozsah.');
+    if(!isGameId(g.gameId) || !/^\d{4}-\d{2}-\d{2}$/.test(g.startDate??'') || g.startDate<range.from || g.startDate>range.to) throw new Error('HMS nerespektuje časový rozsah.');
   }
-  return {items:await pageLabels(rows.filter(g=>g.startDate<=range.to),config,options,hmsConfig),hasMore:rows.length===limit,offset,source:'HMS',...range};
+  return {items:await pageLabels(rows,config,options,hmsConfig),hasMore:rows.length===limit,offset,source:'HMS',...range};
 }
 export async function mediaGame(org,gameId,options={}) {
   if(!isGameId(gameId)) throw new TypeError('Neplatné gameId.');

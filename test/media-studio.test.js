@@ -23,7 +23,7 @@ test('orgs fail closed, games use bounded dates/offset and reject foreign/out-of
   let query;
   const opts={env,now:new Date('2026-10-21T12:00Z'),fetchGames:async q=>{query=q;return [{gameId:ids.game,organizationId:ids.org,startDate:'2026-10-21',HomeTeam:{name:'A'},AwayTeam:{name:'B'},secret:'no'}];}};
   const result=await browseMedia({org:'PHM',offset:20},opts);
-  assert.deepEqual(query,{from:'2026-10-21',to:'2026-10-22',limit:20,skip:20});assert.equal(result.items[0].secret,undefined);
+  assert.deepEqual(query,{from:'2026-10-21',to:'2026-10-21',status:'ALL',limit:20,skip:20});assert.equal(result.items[0].secret,undefined);
   await assert.rejects(browseMedia({org:'PHM'},{...opts,fetchGames:async()=>[{gameId:ids.game,organizationId:'foreign',startDate:'2026-10-21'}]}));
   await assert.rejects(browseMedia({org:'PHM'},{...opts,fetchGames:async()=>[{gameId:ids.game,organizationId:ids.org,startDate:'2026-10-20'}]}));
   await assert.rejects(browseMedia({org:'PHM'},{...opts,fetchGames:async()=>[{gameId:ids.game,organizationId:ids.org}]}));
@@ -35,18 +35,19 @@ test('both SQL browsers scope organization and dates in parameters, fetch one lo
   }
 });
 test('live engine reuses normalizer without relaxing finished-only importer or generating achievements',async()=>{
-  const detail={...gameEventsResponse,status:'LIVE',currentPeriod:2};
+  const detail={...gameEventsResponse,status:'RUNNING',currentPeriod:2};
   assert.throws(()=>normalizeHmsGame(detail,lineupResponse),/dokončený/);
   const gameId=ids.game;
   const result=await mediaGame('PHM',gameId,{env,refresh:true,fetchResponses:async()=>[detail,detail,lineupResponse,null]});
-  assert.equal(result.status,'LIVE');assert.deepEqual(result.priklepy,[]);assert.equal(result.org,'PHM');assert.equal(result.currentPeriod,2);assert.equal(result.organizationId,undefined);
+  assert.equal(result.status,'RUNNING');assert.deepEqual(result.priklepy,[]);assert.equal(result.org,'PHM');assert.equal(result.currentPeriod,2);assert.equal(result.organizationId,undefined);
   await assert.rejects(mediaGame('EUCHL',gameId,{env:{...env,HMS_EUCHL_ORGANIZATION_ID:'11111111-1111-1111-1111-111111111111'},refresh:true,fetchResponses:async()=>[detail,detail,lineupResponse,null]}));
 });
 test('templates suppress unknown/incorrect periods, use cumulative scores, require finished final',()=>{
   const game={status:'FINISHED',home:{score:9},away:{score:3},timeline:{coverage:'matches-result',periodScores:[{period:1,home:2,away:1},{period:2,home:3,away:0},{period:3,home:4,away:2}]}};
   assert.deepEqual(templates(game).map(t=>[t.id,t.home,t.away]),[['final',9,3],['period-1',2,1],['period-2',5,1],['period-3',9,3]]);
-  assert.deepEqual(templates({...game,status:'LIVE'}),[]);
-  assert.deepEqual(templates({...game,status:'LIVE',currentPeriod:2}).map(t=>t.id),['period-1']);
+  assert.deepEqual(templates({...game,status:'NOT PLAYED',currentPeriod:2}),[]);
+  assert.deepEqual(templates({...game,status:'RUNNING'}),[]);
+  assert.deepEqual(templates({...game,status:'RUNNING',currentPeriod:2}).map(t=>t.id),['period-1']);
   assert.equal(templates({...game,timeline:{coverage:'score-mismatch'}}).length,1);
   assert.equal(templates({...game,home:{score:null}}).some(t=>t.id==='final'),false);
 });
@@ -106,24 +107,29 @@ test('thin event team references retain richer detail logos during shared normal
   assert.ok(result.teamStats.every(team=>team.logoTemplateUrl===image));
 });
 
-test('single-day Games handles exclusive and inclusive HMS end boundaries without exposing tomorrow',async()=>{
+test('all calendar filters use inclusive HMS dates and retain source pagination',async()=>{
   const base={gameId:ids.game,organizationId:ids.org,HomeTeam:{name:'Home'},AwayTeam:{name:'Away'}};
   for(const filter of ['Today','Tomorrow','Yesterday','-7 days','+7 days','Past','Future']){
     const range=timeWindow(filter,new Date('2026-10-21T12:00Z'));
     const opts={env,now:new Date('2026-10-21T12:00Z'),fetchGames:async q=>{
-      assert.ok(q.to>range.to);return [{...base,startDate:range.from},{...base,startDate:q.to}];
+      assert.deepEqual(q,{...range,status:'ALL',limit:20,skip:20});
+      return Array.from({length:20},(_,i)=>({...base,startDate:i%2?range.to:range.from}));
     }};
-    const page=await browseMedia({org:'PHM',filter},opts);assert.equal(page.items.length,1);assert.equal(page.items[0].playedOn,range.from);assert.equal(page.to,range.to);
+    const page=await browseMedia({org:'PHM',filter,offset:20},opts);assert.equal(page.items.length,20);assert.equal(page.hasMore,true);assert.equal(page.offset,20);assert.equal(page.to,range.to);
+    const tomorrow=new Date(range.to+'T12:00:00Z');tomorrow.setUTCDate(tomorrow.getUTCDate()+1);
+    await assert.rejects(browseMedia({org:'PHM',filter},{...opts,fetchGames:async()=>[{...base,startDate:tomorrow.toISOString().slice(0,10)}]}),/časový rozsah/);
   }
-  const page=await browseMedia({org:'PHM'}, {env,now:new Date('2026-10-21T12:00Z'),fetchGames:async q=>Array.from({length:20},()=>({...base,startDate:q.to}))});
-  assert.equal(page.items.length,0);assert.equal(page.hasMore,true);
 });
 
-test('Games lists scheduled and live fixtures without waiting for game.finished',async()=>{
-  let requested;
-  const page=await browseMedia({org:'PHM',filter:'Today'}, {env,now:new Date('2026-10-21T12:00Z'),fetchGames:async q=>{requested=q;return ['SCHEDULED','LIVE'].map((status,i)=>({gameId:i?'66666666-6666-6666-6666-666666666666':'77777777-7777-7777-7777-777777777777',organizationId:ids.org,startDate:'2026-10-21',status,HomeTeam:{name:'A'},AwayTeam:{name:'B'}}));}});
-  assert.equal(requested.status,undefined);assert.equal(page.source,'HMS');assert.deepEqual(page.items.map(g=>g.status),['SCHEDULED','LIVE']);
+test('Games explicitly overrides HMS finished-only default to list NOT PLAYED, RUNNING and FINISHED',async()=>{
+  const fixtures=['NOT PLAYED','RUNNING','FINISHED'].map((status,i)=>({gameId:`${i+6}${'6'.repeat(7)}-6666-6666-6666-666666666666`,organizationId:ids.org,startDate:'2026-10-21',status,HomeTeam:{name:'A'},AwayTeam:{name:'B'}}));
+  const page=await browseMedia({org:'PHM',filter:'Today'}, {env,now:new Date('2026-10-21T12:00Z'),fetchGames:async q=>{
+    // Model the documented API default, so omitting ALL actually loses fixtures.
+    return fixtures.filter(g=>q.status==='ALL'||g.status===(q.status??'FINISHED'));
+  }});
+  assert.equal(page.source,'HMS');assert.deepEqual(page.items.map(g=>g.status),['NOT PLAYED','RUNNING','FINISHED']);
 });
+
 test('missing live token uses only imported storage, not a finished-game condition on the live browser',async()=>{
  let stored=false;
  const page=await browseMedia({org:'PHM',filter:'+7 days'}, {env:{DATABASE_URL:'test-only'},now:new Date('2026-10-21T12:00Z'),fetchGames:async()=>{throw new Error('no credentials');},loadPage:async q=>{stored=true;assert.equal(q.from,'2026-10-22');assert.equal(q.to,'2026-10-28');return {items:[],source:'imported-snapshot',hasMore:false};}});

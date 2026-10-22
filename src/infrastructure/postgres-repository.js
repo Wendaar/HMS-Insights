@@ -352,7 +352,7 @@ export async function loadStudioGameLabels(gameIds,organizationId,options={}) {
 // player/goalie row, never through an unrelated current-season registration.
 export async function loadStudioInsights(options={}) {
   const sql=options.sql??createSql(databaseUrlFromEnv(options.env));
-  const values=[options.organizationId,options.today],clauses=['g.organization_id=$1::uuid','g.played_on <= $2::date'];
+  const values=[options.organizationId,options.today],clauses=['g.organization_id=$1::uuid',"g.status='FINISHED'",'g.played_on <= $2::date'];
   const query=String(options.query??'').trim().slice(0,160);
   if(query){
     const accented='áčďéěíňóřšťúůýžľĺŕôä',plain='acdeeinorstuuyzllroa';
