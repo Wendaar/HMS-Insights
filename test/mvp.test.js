@@ -442,33 +442,16 @@ test("ruční import používá secret pouze v autorizační hlavičce", () => {
   assert.equal(hasBearerSecret({ headers: {} }, "abc123"), false);
 });
 
-test("skript ručního importu je po vyrenderování platný JavaScript", () => {
-  let rendered = "";
-  const response = {
-    setHeader() {},
-    status() { return this; },
-    send(value) { rendered = value; return value; },
-  };
-  importGamePageHandler({ method: "GET" }, response);
-  const script = rendered.match(/<script>([\s\S]+)<\/script>/)?.[1];
-  assert.ok(script);
-  assert.doesNotThrow(() => new Function(script));
+test("ruční import předává klientovi jen veřejnou organizační konfiguraci", () => {
+  let rendered='';const response={setHeader(){},status(){return this;},send(value){rendered=value;}};
+  importGamePageHandler({method:'GET'},response);
+  const config=JSON.parse(rendered.match(/<script type="application\/json" id="import-config">([\s\S]+?)<\/script>/)[1]);
+  assert.equal(config.org,'PHM');assert.equal(config.batch,false);assert.equal(config.endpoint,'/api/admin/import-game?org=PHM');assert.match(rendered,/src="\/organization-import.js"/);assert.doesNotMatch(JSON.stringify(config),/secret|token/i);
 });
 
-test("stránka historického importu obsahuje platný dávkový skript", () => {
-  let rendered = "";
-  const response = {
-    setHeader() {},
-    status() { return this; },
-    send(value) { rendered = value; return value; },
-  };
-  backfillPageHandler({ method: "GET" }, response);
-  const script = rendered.match(/<script>([\s\S]+)<\/script>/)?.[1];
-  assert.ok(script);
-  assert.match(rendered, /2026-09-01/);
-  assert.match(rendered, new RegExp(ids.season, "i"));
-  assert.match(rendered, /CHYBNÉ ZÁPASY/);
-  assert.match(rendered, /limit|po jednom/);
-  assert.match(rendered, /attempt<=3/);
-  assert.doesNotThrow(() => new Function(script));
+test("historický import předává omezené datumové pole a samostatný klientský skript", () => {
+  let rendered='';const response={setHeader(){},status(){return this;},send(value){rendered=value;}};
+  backfillPageHandler({method:'GET'},response);
+  const config=JSON.parse(rendered.match(/<script type="application\/json" id="import-config">([\s\S]+?)<\/script>/)[1]);
+  assert.equal(config.org,'PHM');assert.equal(config.batch,true);assert.match(rendered,/id="from"/);assert.match(rendered,/id="to"/);assert.match(rendered,/31 kalendářních/);assert.match(rendered,/po jednom/);assert.match(rendered,/src="\/organization-import.js"/);
 });
