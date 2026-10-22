@@ -51,7 +51,7 @@ test('archive filenames contain date, output, subject, fixture, ratio and design
  assert.equal(exportFilename(g,{label:'Final Score'},{format:'1:1',design:'clean'}),'PHM 2026-10-20 Final Score Domynos Berkut 1x1 Clean.png');
  assert.match(exportFilename(g,null,{format:'9:16',design:'artistic'},insight),/PHM 2026-10-20 HATTRICK HERO Matěj Kuracina Domynos Berkut 9x16 Artistic.png/);
  assert.doesNotMatch(exportFilename({...g,home:{name:'A/B: C?'}},null,{format:'1:1'}),/[<>:"/\\|?*]/);
- assert.deepEqual(designs,['clean','crazy','artistic','technical']);
+ assert.deepEqual(designs,['clean','crazy','artistic','technical','pantha']);
 });
 test('Games output library reuses stored achievements and official stars without generating awards',()=>{
  const g={...game,status:'FINISHED',priklepy:[insight],stars:[{id:playerId,teamId:awayId,name:'Matěj Kuracina'}]};

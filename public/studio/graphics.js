@@ -1,8 +1,9 @@
 import {resolveInsightSubject,insightLabel,insightStat} from './subjects.js';
+import {fonts,brandFonts,fontForText,fontSpec} from './typography.js';
+export {fonts} from './typography.js';
 import {sportingImage} from '../game-report-media.js';
 export const formats={'1:1':[1080,1080],'9:16':[1080,1920]};
-export const designs=['clean','crazy','artistic','technical'];
-export const fonts=['Barlow Condensed','Oswald','Roboto Condensed','Noto Sans','Noto Serif'];
+export const designs=['clean','crazy','artistic','technical','pantha'];
 export function safeArea(format){return format==='9:16'?{x:96,y:220,w:864,h:1360}:{x:64,y:64,w:952,h:952};}
 export function imageSources(game,insight,settings){const subject=resolveInsightSubject(game,insight);return {background:settings.background,home:game.home.logoUrl,away:game.away.logoUrl,organization:game.organizationLogoUrl,competition:settings.competitionLogo||game.competitionLogoUrl,group:settings.groupLogo||game.groupLogoUrl,phase:game.phaseLogoUrl,partner:settings.partnerLogo,player:subject?.playerId?(settings.playerPhoto||subject.photoUrl):null,subjectTeam:subject?.teamLogoUrl};}
 export function templates(game) {
@@ -41,7 +42,7 @@ export function exportFilename(game,template,settings,insight=null){
   const label=insight?insightLabel(insight.type):template?.label||'Game';
   const subject=insight?resolveInsightSubject(game,insight)?.playerName:null;
   const clean=v=>String(v??'').normalize('NFC').replace(/[<>:"/\\|?*\u0000-\u001f]/g,' ').replace(/\s+/g,' ').trim();
-  return [game.org,game.playedOn,label,subject,game.home.name,game.away.name,settings.format?.replace(':','x'),({clean:'Clean',crazy:'Crazy',artistic:'Artistic',technical:'Technical'}[settings.design]??settings.design)].filter(Boolean).map(clean).join(' ').slice(0,220).trim()+'.png';
+  return [game.org,game.playedOn,label,subject,game.home.name,game.away.name,settings.format?.replace(':','x'),({clean:'Clean',crazy:'Crazy',artistic:'Artistic',technical:'Technical',pantha:'Pantha'}[settings.design]??settings.design)].filter(Boolean).map(clean).join(' ').slice(0,220).trim()+'.png';
 }
 export function publicImageUrl(value) {
   try {const u=new URL(value);const h=u.hostname.toLowerCase();
@@ -66,9 +67,9 @@ export async function loadImage(url,{required=false}={}) {
   }catch {if(required)throw new Error('Obrázek nelze načíst (CORS, formát nebo velikost). Nahrajte PNG/JPG/WebP do 8 MB.');return null;}
 }
 function fit(ctx,text,x,y,width,size,font,color,align='center') {
-  text=String(text??'').slice(0,300);ctx.textAlign=align;ctx.fillStyle=color;
-  let s=size;do{ctx.font=`bold ${s}px "${font}"`;if(ctx.measureText(text).width<=width)break;s-=2;}while(s>20);
-  while(ctx.measureText(text).width>width&&text.length>1)text=text.slice(0,-2)+'…';
+  text=String(text??'').normalize('NFC').slice(0,300);font=fontForText(font,text);ctx.textAlign=align;ctx.fillStyle=color;
+  let s=size;do{ctx.font=fontSpec(font,s,text);if(ctx.measureText(text).width<=width)break;s-=2;}while(s>20);
+  if(ctx.measureText(text).width>width){const suffix=font==='Pantha'?'...':'…';while(text.length&&ctx.measureText(text+suffix).width>width)text=[...text].slice(0,-1).join('');text+=suffix;}
   ctx.fillText(text,x,y);
 }
 function cover(ctx,img,x,y,w,h){const r=Math.max(w/img.width,h/img.height);ctx.drawImage(img,x+(w-img.width*r)/2,y+(h-img.height*r)/2,img.width*r,img.height*r);}
@@ -80,7 +81,7 @@ function teamBadge(ctx,img,name,x,y,size,font){
   logo(ctx,img,name,x,y,size,font);
 }
 function lines(ctx,text,x,y,width,size,font,color,maxLines=3){
-  ctx.font=`bold ${size}px "${font}"`;const words=String(text??'').split(/\s+/);let line='',rows=[];
+  font=fontForText(font,text);ctx.font=fontSpec(font,size,text);const words=String(text??'').split(/\s+/);let line='',rows=[];
   for(const word of words){if(line&&ctx.measureText(line+' '+word).width>width){rows.push(line);line=word;}else line+=(line?' ':'')+word;}
   if(line)rows.push(line);rows.slice(0,maxLines).forEach((row,i)=>fit(ctx,row,x,y+i*size*1.22,width,size,font,color,'left'));
 }
@@ -136,9 +137,9 @@ export function panelPalette(settings={}){
   const onLight=opacity>.45&&light[0]*.2126+light[1]*.7152+light[2]*.0722>.45;
   return {fill,text:onLight?'#102030':'#ffffff',muted:onLight?'#263d50':'#d9e5f5'};
 }
-function statTile(c,value,label,x,y,w,h,font,accent,crazy,palette){
+function statTile(c,value,label,x,y,w,h,font,accent,crazy,palette,numberFont='Anton'){
   plate(c,x,y,w,h,palette.fill,accent+'90',16);
-  fit(c,String(value),x+w*.5,y+h*.59,w-20,h*.55,'Anton',palette.text);
+  fit(c,String(value),x+w*.5,y+h*.59,w-20,h*.55,numberFont,palette.text);
   fit(c,label,x+w*.5,y+h*.86,w-18,Math.min(25,h*.18),font,palette.text==='#102030'?palette.muted:accent);
 }
 function badgePlate(c,img,label,x,y,size,font,crazy=false){
@@ -147,11 +148,11 @@ function badgePlate(c,img,label,x,y,size,font,crazy=false){
 }
 export async function renderGraphic(canvas,game,template,settings,insight=null) {
   const [w,h]=formats[settings.format]??formats['1:1'],area=safeArea(settings.format);
-  const story=h>w,crazy=settings.design==='crazy',artistic=settings.design==='artistic',technical=settings.design==='technical',font=fonts.includes(settings.font)?settings.font:fonts[0];
+  const story=h>w,pantha=settings.design==='pantha',crazy=['crazy','pantha'].includes(settings.design),artistic=settings.design==='artistic',technical=settings.design==='technical',font=fonts.includes(settings.font)?settings.font:fonts[0];
   const palette=panelPalette(settings);
   const subject=resolveInsightSubject(game,insight),stat=insightStat(subject),accent=/^#[a-f0-9]{6}$/i.test(settings.accent)?settings.accent:'#79dfca';
   const sample=[game.home.name,game.away.name,game.competition,game.group,game.phase,template.heading,insight?.title,insight?.text,subject?.playerName,subject?.teamName,settings.partner,'Příliš žluťoučký kůň'].filter(Boolean).join(' ');
-  const loaded=await Promise.all([...(artistic?[document.fonts.load('bold 80px "Noto Serif"',sample)]:[]),document.fonts.load(`bold 48px "${font}"`,sample),document.fonts.load('400 80px "Anton"',sample),document.fonts.load('400 80px "Permanent Marker"','HATTRICK HERO BIG WIN THE WALL FAST START POINT MACHINE FINAL')]);
+  const loaded=await Promise.all([...(artistic?[document.fonts.load('bold 80px "Noto Serif"',sample)]:[]),document.fonts.load(fontSpec(font,48),sample),...((brandFonts.includes(font)||pantha)?[document.fonts.load(fontSpec('Hitch Grotesk',48),sample),document.fonts.load(fontSpec('Noto Sans',48),sample)]:[]),...(pantha?[document.fonts.load(fontSpec('Pantha',80),'HATTRICK HERO FINAL 0123456789')]:[]),document.fonts.load('400 80px "Anton"',sample),document.fonts.load('400 80px "Permanent Marker"','HATTRICK HERO BIG WIN THE WALL FAST START POINT MACHINE FINAL')]);
   if(loaded.some(faces=>!faces.length))throw new Error('Font se nepodařilo načíst. Obnovte stránku a zkuste export znovu.');
   await document.fonts.ready;
   const sources=imageSources(game,insight,settings),keys=Object.keys(sources),pictures=await Promise.all(keys.map(k=>loadImage(sources[k],{required:!!sources[k]&&['background','partner','player'].includes(k)&&!!(k!=='player'||settings.playerPhoto)})));
@@ -164,6 +165,7 @@ export async function renderGraphic(canvas,game,template,settings,insight=null) 
     const shade=Number(settings.shade)||0;c.fillStyle=shade<0?`rgba(255,255,255,${-shade/100})`:`rgba(0,0,0,${shade/100})`;c.fillRect(0,0,w,h);
     effects(c,w,h,accent,crazy);
     designAtmosphere(c,w,h,artistic,technical,accent);
+    if(pantha){c.save();c.translate(w*.5,h*.5);c.rotate(-.16);c.fillStyle=accent+'30';c.fillRect(-w,h*.10,w*2,story?135:90);c.fillStyle='#ffffff14';c.fillRect(-w,h*.10-20,w*2,8);c.restore();}
     // Everything semantic is contained inside a conservative social safe area.
     c.save();c.translate(area.x,area.y);c.beginPath();c.rect(0,0,area.w,area.h);c.clip();
     const W=area.w,H=area.h,pad=26,headerH=story?124:108,brandH=86,heroY=headerH+brandH+30;
@@ -192,7 +194,7 @@ export async function renderGraphic(canvas,game,template,settings,insight=null) 
     c.save();panel(c,4,heroY,W-8,heroH,28);c.clip();effects(c,W,heroY+heroH,accent,crazy);
     if(technical){c.fillStyle=accent;fit(c,'/// MATCH DATA',28,heroY+28,W*.45,17,font,accent,'left');}
     if(insight){
-      const headline=insightLabel(insight.type),words=headline.split(' '),titleFont=crazy?'Permanent Marker':artistic?'Noto Serif':'Anton';
+      const headline=insightLabel(insight.type),words=headline.split(' '),titleFont=pantha?'Pantha':crazy?'Permanent Marker':artistic?'Noto Serif':'Anton';
       const photoW=W*(crazy?.56:.53),photoH=heroH*(crazy?.84:.80),px=W-photoW-20,py=heroY+heroH-photoH;
       const portraitR=Math.min(photoW*.42,heroH*.32),portraitX=px+photoW/2,portraitY=heroY+heroH*.55;
       if(artistic){laurels(c,portraitX,portraitY,portraitR+14);}
@@ -208,13 +210,13 @@ export async function renderGraphic(canvas,game,template,settings,insight=null) 
       }else if(im.subjectTeam)badgePlate(c,im.subjectTeam,subject?.teamName,px+photoW/2,heroY+heroH*.52,Math.min(photoW*.74,260),font,crazy);
       else {fit(c,'FOTOGRAFIE',px+photoW/2,heroY+heroH*.50,photoW-20,27,font,'#a8bcd2');fit(c,'NENÍ K DISPOZICI',px+photoW/2,heroY+heroH*.59,photoW-20,21,font,'#8197af');}
       const tx=30,headlineW=W*.50-35;
-      c.save();if(crazy){c.translate(tx,heroY+70);c.rotate(-.075);}else c.translate(tx,heroY+65);
-      fit(c,words[0],0,story?50:25,headlineW,story?86:60,titleFont,palette.text,'left');
-      fit(c,words.slice(1).join(' '),0,story?155:105,headlineW,story?92:66,titleFont,artistic?(palette.text==='#102030'?'#73520c':'#ebcf91'):(palette.text==='#102030'?palette.muted:accent),'left');c.restore();
-      if(stat)statTile(c,stat.value,stat.label,30,heroY+heroH-(story?230:145),Math.min(210,W*.32),story?200:125,font,accent,crazy,palette);
+      c.save();if(pantha){c.shadowColor=accent+'85';c.shadowBlur=14;}if(crazy){c.translate(tx,heroY+70);c.rotate(-.075);}else c.translate(tx,heroY+65);
+      fit(c,words[0],0,pantha?(story?65:40):(story?50:25),headlineW,pantha?(story?170:110):(story?86:60),titleFont,palette.text,'left');
+      fit(c,words.slice(1).join(' '),0,pantha?(story?180:128):(story?155:105),headlineW,pantha?(story?180:118):(story?92:66),titleFont,artistic?(palette.text==='#102030'?'#73520c':'#ebcf91'):(palette.text==='#102030'?palette.muted:accent),'left');c.restore();
+      if(stat)statTile(c,stat.value,stat.label,30,heroY+heroH-(story?230:145),Math.min(210,W*.32),story?200:125,font,accent,crazy,palette,pantha?'Pantha':'Anton');
       if(crazy){c.fillStyle=accent+'ce';c.beginPath();c.moveTo(0,heroY+heroH-12);c.lineTo(W*.52,heroY+heroH-60);c.lineTo(W*.60,heroY+heroH);c.lineTo(0,heroY+heroH);c.fill();}
     }else{
-      fit(c,template.id==='final'?'FINAL':template.heading,W/2,heroY+(story?140:88),W-70,template.id==='final'?(story?132:92):(story?60:46),template.id==='final'?(crazy?'Permanent Marker':artistic?'Noto Serif':'Anton'):font,palette.text);
+      fit(c,template.id==='final'?'FINAL':template.heading,W/2,heroY+(story?140:88),W-70,template.id==='final'?(story?132:92):(story?60:46),template.id==='final'?(pantha?'Pantha':crazy?'Permanent Marker':artistic?'Noto Serif':'Anton'):font,palette.text);
       const ly=heroY+heroH*(artistic?.62:.65),size=artistic?(story?190:145):(story?208:165);
       if(artistic){laurels(c,W*.27,ly,size*.74);laurels(c,W*.73,ly,size*.74);}
       badgePlate(c,im.home,game.home.name,W*.27,ly,size,font,crazy);badgePlate(c,im.away,game.away.name,W*.73,ly,size,font,crazy);
@@ -235,8 +237,8 @@ export async function renderGraphic(canvas,game,template,settings,insight=null) 
     }else{
       plate(c,4,bottomY,W-8,story?270:230,palette.fill,accent+'75',24);
       const sy=bottomY+(story?167:139);
-      fit(c,String(template.home),W*.27,sy,W*.40,story?175:150,'Anton',palette.text);fit(c,':',W/2,sy-6,70,88,font,palette.text==='#102030'?palette.muted:accent);
-      fit(c,String(template.away),W*.73,sy,W*.40,story?175:150,'Anton',palette.text);
+      fit(c,String(template.home),W*.27,sy,W*.40,story?175:150,pantha?'Pantha':'Anton',palette.text);fit(c,':',W/2,sy-6,70,88,font,palette.text==='#102030'?palette.muted:accent);
+      fit(c,String(template.away),W*.73,sy,W*.40,story?175:150,pantha?'Pantha':'Anton',palette.text);
       fit(c,game.home.name,W*.27,sy+55,W*.44,30,font,palette.muted);fit(c,game.away.name,W*.73,sy+55,W*.44,30,font,palette.muted);
       const periods=game.timeline?.coverage==='matches-result'?game.timeline.periodScores:[];
       if(periods?.length&&template.id==='final')fit(c,periods.map(p=>`${p.home}:${p.away}`).join(' / '),W/2,bottomY+(story?320:270),W-30,26,font,'#9eb2cd');
