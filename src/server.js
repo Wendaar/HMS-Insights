@@ -42,6 +42,19 @@ const assets = {
 
 export const server = createServer(async (request, response) => {
   const url = new URL(request.url, `http://${request.headers.host ?? "localhost"}`);
+  if (['/control', '/control/', '/control/index.html', '/control/app.js', '/control/registry.js', '/control/control.css'].includes(url.pathname)) {
+    response.setHeader('x-robots-tag', 'noindex, nofollow');
+    response.setHeader('x-content-type-options', 'nosniff');
+    response.setHeader('referrer-policy', 'no-referrer');
+    response.setHeader('content-security-policy', "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
+    if (!['GET', 'HEAD'].includes(request.method)) {
+      response.writeHead(405, {allow:'GET, HEAD'});response.end('Method not allowed');return;
+    }
+    const name = ['/control', '/control/'].includes(url.pathname) ? 'index.html' : url.pathname.split('/').pop();
+    response.setHeader('content-type', name.endsWith('.html') ? 'text/html; charset=utf-8' : name.endsWith('.css') ? 'text/css; charset=utf-8' : 'text/javascript; charset=utf-8');
+    response.setHeader('cache-control', 'no-cache');
+    response.end(request.method === 'HEAD' ? undefined : await readFile(join(publicDirectory, 'control', name)));return;
+  }
   if(['/admin/import-game','/admin/backfill','/api/admin/import-game','/api/admin/backfill'].includes(url.pathname)){
     request.query=Object.fromEntries(url.searchParams);
     const adapter={setHeader:(k,v)=>response.setHeader(k,v),status(code){response.statusCode=code;return this;},send(body){response.end(body);},json(body){response.setHeader('content-type','application/json');response.end(JSON.stringify(body));}};
