@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="cs"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>Hráči do playoff · HMS</title><link rel="icon" href="/favicon.svg"><link rel="stylesheet" href="/tools/playoff-players/app.css"><script type="module" src="/tools/playoff-players/app.js"></script></head>
+<body>
+<header class="topbar"><a href="/control" class="brand"><b>H</b> HMS <span>Aplikace</span></a><nav><a id="public-link" href="/tools/playoff-players/phm/phm-cup-2026">Veřejný výstup ↗</a><a id="manage-link" href="/control/apps/playoff-players?org=phm">Správa aplikace</a></nav></header>
+<main>
+<section id="manager" hidden>
+  <div class="heading"><div><p class="eyebrow">APLIKACE / COMPETITION</p><h1>Hráči do playoff</h1><p class="muted">Nastavte pravidla, ověřte data a publikujte přehled pro svůj web.</p></div><a href="/control">← Control Center</a></div>
+  <section id="access" class="panel"><h2>Správa organizace <span id="org-label"></span></h2><p>Použijte přístupový klíč správce této organizace. Klíč se v prohlížeči neukládá.</p><form id="unlock-form"><label for="secret">Přístupový klíč</label><div class="inline"><input id="secret" type="password" autocomplete="off" required><button>Odemknout správu</button></div></form></section>
+  <div id="editor" hidden>
+    <div class="instance-bar"><div><label for="instance">Výstup / sezona</label><select id="instance"></select></div><button id="duplicate" type="button" class="secondary">Vytvořit z této sezony</button><button id="lock" type="button" class="text-button">Zamknout správu</button></div>
+    <p id="storage-state" class="notice"></p>
+    <div class="workspace">
+      <form id="settings" class="panel">
+        <h2>Nastavení výstupu</h2><p class="muted">Změny se nejprve ukládají jako pracovní verze.</p>
+        <label for="title">Název přehledu</label><input id="title" maxlength="120" required>
+        <div class="two"><div><label for="competition">Soutěž · popisek</label><input id="competition" maxlength="120"></div><div><label for="season">Sezona · popisek</label><input id="season" maxlength="120"></div></div>
+        <div class="two"><div><label for="min-starts">Minimální počet startů</label><input id="min-starts" type="number" min="1" max="200" required></div><div><label for="accent">Barva aplikace</label><input id="accent" type="color"></div></div>
+        <div class="checks"><label><input id="show-points" type="checkbox"> Zobrazovat body</label><label><input id="show-photos" type="checkbox"> Zobrazovat fotografie a loga</label></div>
+        <hr><h2>Datové připojení</h2><p class="muted">Google Sheet · napojení na HMS API připravíme v dalším kroku.</p>
+        <label for="spreadsheet">Odkaz nebo ID Google tabulky</label><input id="spreadsheet" required autocomplete="off"><p class="hint">Tabulka musí být veřejně čitelná, stejně jako v původním vloženém nástroji.</p>
+        <label for="sheet">Název záložky</label><input id="sheet" maxlength="80" required>
+        <details open><summary>Vybrat data pro tuto sezonu</summary><p class="hint">Přesné hodnoty ve zdroji. Prázdné pole zahrne všechny řádky. Popisky výše samy data nefiltrují.</p><label for="filter-competition">Soutěž ve zdroji</label><input id="filter-competition"><label for="filter-season">Sezona ve zdroji</label><input id="filter-season"><label for="filter-phase">Fáze ve zdroji</label><input id="filter-phase"></details>
+        <details><summary>Mapování sloupců</summary><p class="hint">Prázdné pole použije běžné názvy z HMS exportu. Vlastní název musí přesně odpovídat hlavičce.</p><div id="mapping" class="two"></div><datalist id="source-headers"></datalist></details>
+        <div class="actions"><button id="save" type="submit">Uložit pracovní verzi</button><button id="preview" type="button" class="secondary">Ověřit data a náhled</button></div>
+        <p id="save-state" class="hint"></p>
+      </form>
+      <section class="panel publication"><p class="eyebrow">PUBLIKACE</p><h2>Nejdříve kontrola, potom web</h2><p id="publication-state"></p><p>Veřejná adresa vždy zobrazuje poslední publikované nastavení. Data čte průběžně ze zdroje.</p><button id="publish" type="button">Publikovat uloženou verzi</button><p class="hint">Publikace ověří připojení i data. Neuložené změny je potřeba nejprve uložit.</p><hr><h3>Stálý odkaz</h3><a id="share-url" target="_blank" rel="noopener"></a><h3>Vložení na web</h3><p class="hint">Tento iframe vložte jednou. Další změny provedete tady v aplikaci.</p><label for="embed-code">Kód pro vložení</label><textarea id="embed-code" readonly rows="5"></textarea><button id="copy-embed" type="button" class="secondary">Zkopírovat vložení</button><p class="hint">Pokud je náhled nasazení chráněný přihlášením, použijte na web až produkční adresu.</p></section>
+    </div>
+  </div>
+  <p id="admin-message" class="notice" role="status"></p>
+</section>
+<section id="viewer" aria-labelledby="view-title">
+  <div id="preview-label" class="notice" hidden>Pracovní náhled · změny ještě nejsou zveřejněné</div>
+  <div class="view-heading"><p class="eyebrow">HMS / PLAYOFF</p><h1 id="view-title">Hráči do playoff</h1><p id="view-subtitle" class="muted"></p></div>
+  <div class="rule"><strong id="rule-label"></strong><span>Kontrola počtu startů. Další podmínky způsobilosti tento přehled neposuzuje.</span></div>
+  <div class="data-status"><span id="data-label">Načítám připojený zdroj…</span><button id="refresh" class="text-button" type="button">Obnovit data</button></div>
+  <div id="data-error" class="notice error" role="alert" hidden></div><p id="warnings" class="notice" hidden></p>
+  <div id="results" hidden>
+    <div id="summary" class="metrics"></div>
+    <div class="filters"><div><label for="team-filter">Tým</label><select id="team-filter"><option value="all">Všechny týmy</option></select></div><div><label for="player-search">Hledat hráče nebo tým</label><input id="player-search" type="search" placeholder="Jméno hráče nebo týmu…"></div><div><label for="eligibility-filter">Počet startů</label><select id="eligibility-filter"><option value="all">Všichni hráči</option><option value="eligible">Splňují limit</option><option value="below">Pod limitem</option><option value="unknown">Nelze ověřit</option></select></div></div>
+    <p id="result-count" class="hint" aria-live="polite"></p><div id="players" class="players"></div><div class="actions"><button id="more-players" type="button" class="secondary" hidden>Zobrazit dalších 60 hráčů</button></div><p id="no-players" class="panel" hidden>Pro tento výběr nejsou žádní hráči.</p>
+  </div>
+</section>
+<noscript>Pro načtení dat a ovládání aplikace zapněte JavaScript.</noscript>
+</main>
+<dialog id="duplicate-dialog"><form id="duplicate-form"><h2>Nový výstup z této sezony</h2><p>Zkopíruje nastavení do nové pracovní verze. Před publikací změňte zdroj a filtry na správnou sezonu.</p><label for="new-title">Název nového přehledu</label><input id="new-title" maxlength="120" required><label for="new-slug">Adresa výstupu</label><input id="new-slug" pattern="[a-z0-9]+(-[a-z0-9]+)*" maxlength="64" placeholder="phm-cup-2027" required><div class="actions"><button>Vytvořit pracovní verzi</button><button id="cancel-duplicate" type="button" class="secondary">Zrušit</button></div><p id="duplicate-error" role="alert"></p></form></dialog>
+<footer>HMS aplikace · Hráči do playoff</footer>
+</body></html>

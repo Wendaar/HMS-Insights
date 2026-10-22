@@ -33,6 +33,7 @@ const applications = [
   {id:'game-center',category:'stats',name:'Game Center · Game Report',description:'Report zápasu, sestavy, statistiky a časová osa.',status:'available',dataSource:'Importovaný GameSummary / snapshot HMS',note:'Níže vložte Game ID. Report vyžaduje importovaný zápas; nenahrává nová data.',gamePath:'/game-center/',links:{github:code('src/web/game-report-handler.js')}},
   missing('team-comparison','stats','Porovnání týmů','Srovnání statistik a výkonů týmů.'),
   missing('player-comparison','stats','Porovnání hráčů','Srovnání hráčů včetně výběru pro playoff.'),
+  {id:'playoff-players',category:'competition',name:'Hráči do playoff',description:'Kontrola počtu startů s nastavením sezony, limitu a zdroje dat.',status:'available',dataSource:'Google Sheet · Players_Stats',note:'Samostatná aplikace s pracovní verzí, náhledem a publikací. Splnění počtu startů není úplné posouzení způsobilosti.',links:{open:'/control/apps/playoff-players?org=phm',public:'/tools/playoff-players/phm/phm-cup-2026',manage:'/control/apps/playoff-players?org=phm',source:'https://docs.google.com/spreadsheets/d/1MlsEBrd72RjeKS8vrnapjtu0KfIUaLciIYrEG_uc-rM/edit#gid=1700599931',github:code('src/app/playoff-players.js')}},
   missing('hall-of-fame','competition','Hall of Fame','Vítězové, osobnosti a historie soutěže.'),
   missing('playoff-bracket','competition','Playoff pavouk','Přehled sérií a cesty k finále.'),
   missing('betting','competition','Sázkovka','Fanouškovské tipování výsledků.'),

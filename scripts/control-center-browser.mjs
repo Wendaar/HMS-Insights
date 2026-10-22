@@ -15,7 +15,7 @@ try {
   page.on('console',msg=>{if(msg.type()==='error'&&new URL(page.url()).pathname.startsWith('/control'))errors.push(msg.text());});
   await page.goto(root+'/control');
   await page.locator('.card').last().waitFor();
-  assert.equal(await page.locator('.card').count(),23);
+  assert.equal(await page.locator('.card').count(),24);
   await page.screenshot({path:output+'/desktop.png',fullPage:true});
   await page.screenshot({path:output+'/desktop-overview.png'});
   await page.fill('#search','porovnani tymu');assert.equal(await page.locator('.card').count(),1);
@@ -23,7 +23,7 @@ try {
   await page.fill('#search','');await page.getByRole('button',{name:'Data & Admin',exact:false}).click();
   await page.selectOption('#status','available');assert.equal(await page.locator('.card').count(),2);
   await page.fill('#search','nenajdes');assert.equal(await page.locator('#empty').isVisible(),true);
-  await page.click('#reset');assert.equal(await page.locator('.card').count(),23);
+  await page.click('#reset');assert.equal(await page.locator('.card').count(),24);
   await page.fill('#game-id','not-an-id');await page.locator('#game-form button').click();
   assert.equal(await page.locator('#game-id').getAttribute('aria-invalid'),'true');
   assert.match(await page.locator('#game-error').textContent(),/platné Game ID/);
