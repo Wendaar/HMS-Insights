@@ -1,4 +1,8 @@
 const DEFAULT_BASE_URL = "https://public-api.prod.hms.wootera.net/api/v1";
+export class HmsRequestError extends Error {
+  constructor(status,path,retryAfter){super(`HMS API vrátilo ${status} pro ${path}.`);this.name='HmsRequestError';this.status=status;
+    this.retryAfter=Number.isFinite(Number(retryAfter))?Math.min(300,Math.max(1,Math.ceil(Number(retryAfter)))):30;}
+}
 
 function requiredEnv(env, name) {
   const value = env[name]?.trim();
@@ -39,7 +43,7 @@ async function getJson(url, token, fetchImpl, attempt = 0, config = {}) {
     return getJson(url, token, fetchImpl, attempt + 1, config);
   }
   if (!response.ok) {
-    throw new Error(`HMS API vrátilo ${response.status} pro ${new URL(url).pathname}.`);
+    throw new HmsRequestError(response.status,new URL(url).pathname,response.headers.get('retry-after')??30);
   }
   return response.json();
 }

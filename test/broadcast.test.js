@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createBroadcastHandler,pregameModel,enrichPregame} from '../src/web/broadcast-handler.js';
+import {HmsRequestError,fetchGameDetail} from '../src/hms/client.js';
 const id='6C02DF50-CE27-11F1-A5F0-6320901B5AD5',orgId='11111111-1111-1111-1111-111111111111';
 const detail=()=>({gameId:id,organizationId:orgId,status:'NOT PLAYED',startDate:'2026-10-23',startTime:'21:15:00',
   HomeTeam:{teamId:'365A02A0-C4FB-11F1-8AD4-9967CDC84598',name:'Prague Guardians'},AwayTeam:{teamId:'2992D0D0-CE27-11F1-A5F0-6320901B5AD5',name:'Bratislava Capitals'},
@@ -48,4 +49,19 @@ test('live reads keep the scoped token, separate their cache and survive an unav
   const opening=response();await handler(req(),opening);assert.equal(reads,0);assert.equal(opening.body.match,undefined);
   const live=response();await handler(req({live:'1'}),live);assert.equal(reads,1);assert.equal(live.code,200);assert.deepEqual(live.body.match.roster,[]);assert.equal(live.body.match.lineupAvailable,false);
   assert.doesNotMatch(JSON.stringify(live.body),/offline|private error|euchl-only/);
+});
+test('HMS failures distinguish access, quota, upstream and transport without exposing credentials',async()=>{
+  for(const [status,code] of [[401,'hms_auth'],[403,'hms_auth'],[429,'hms_rate_limit'],[500,'hms_upstream']]){
+    const handler=createBroadcastHandler({env,fetchDetail:async()=>{throw new HmsRequestError(status,'/api/v1/game',42);}}),r=response();
+    await handler(req(),r);assert.equal(r.code,503);assert.equal(r.body.code,code);assert.equal(r.body.upstreamStatus,status);assert.doesNotMatch(JSON.stringify(r.body),/euchl-only|phm-only|api\/v1/);
+  }
+  const handler=createBroadcastHandler({env,fetchDetail:async()=>{throw new TypeError('fetch failed');}}),r=response();await handler(req(),r);assert.equal(r.code,503);
+});
+test('an HMS rate limit prevents further upstream reads during its bounded cooldown',async()=>{
+  let reads=0;const handler=createBroadcastHandler({env,fetchDetail:async()=>{reads++;throw new HmsRequestError(429,'/api/v1/game',30);},browse:async()=>{reads++;throw new Error('must not fetch');}});
+  for(const query of [{},{},{gameId:undefined}]){const r=response();await handler(req(query),r);assert.equal(r.body.code,'hms_rate_limit');assert.equal(r.headers['retry-after'],'30');}
+  assert.equal(reads,1);
+});
+test('HMS transport retains only status and bounded retry metadata on failed responses',async()=>{
+  await assert.rejects(()=>fetchGameDetail(id,{config:{token:'secret-token',baseUrl:'https://example.test',retries:0},fetchImpl:async()=>({ok:false,status:429,headers:new Headers({'retry-after':'9999'})})}),e=>e instanceof HmsRequestError&&e.status===429&&e.retryAfter===300&&!e.message.includes('secret-token'));
 });
