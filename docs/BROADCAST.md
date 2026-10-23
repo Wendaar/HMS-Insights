@@ -40,7 +40,7 @@ stránku a kalendářními filtry Europe/Prague. Ovládání ukazuje prvních 20
 přesné otevření dalších zápasů odkazem/ID. Nedělá neomezený download celé historie.
 
 CORS povoluje `https://wendaar.github.io` pro zdrojový GitHub Pages frontend;
-server nikdy nepřijímá token z prohlížeče. Přímé veřejné HMS API vrací CORS pro
+server nikdy nepřijímá HMS integrační token z prohlížeče. Přímé veřejné HMS API vrací CORS pro
 vlastní HMS origin, proto se nepoužívá jako přímý zdroj v Browser Source.
 Server slučuje souběžné požadavky a drží 30s cache nejvýše 100 zápasů.
 
@@ -73,7 +73,13 @@ Volba **Vrstva** nabízí předzápasovou grafiku, stav po třetinách, soupisku
 - `page=1…`: stránka soupisky (20 hráčů jednoho týmu, 12 při zobrazení obou) nebo gólů (8 na stránce).
 - `insight=<playerId>`: konkrétní výkon; bez výběru první dostupný. Hattrick znamená alespoň 3 góly, vícebodový výkon alespoň 2 body z gólů a asistencí. Zrušený výkon se při aktualizaci odstraní.
 
-Obsluha vybere zápas, jazyk, vrstvu a její parametry a použije **Kopírovat OBS URL**. Volba v ovládání mění náhled a adresu, nikoliv již otevřený vzdálený zdroj OBS. Doporučené jsou samostatné Browser Sources/scény pro jednotlivé výstupy. Tlačítko **Obnovit z HMS** aktualizuje nabídku dostupných insightů v ovládání.
+Pro společný vzdáleně ovládaný výstup použije obsluha **Vytvořit OBS kanál** a **Kopírovat stálou OBS adresu**. Tato adresa (`mode=channel&channel=<id>`) se do OBS vloží jednou, rozlišení 1920×1080. Přepnutí zápasu, jazyka, vrstvy a parametrů v ovládání se pak automaticky přenáší do tohoto kanálu. **Skrýt v OBS / Zobrazit v OBS** nezávisle řídí viditelnost. Když je kanál skrytý, další změny jej samy nezapnou. Přenos změn trvá obvykle přibližně 2 sekundy plus načtení zápasových dat.
+
+Samostatná tlačítka **Kopírovat OBS URL** a **Otevřít čistý náhled** zachovávají přímé adresy dané vrstvy pro předem připravené scény. Tlačítko **Obnovit z HMS** aktualizuje nabídku dostupných insightů v ovládání.
+
+Kanály jsou v oddělené tabulce `broadcast_channels` v existující PostgreSQL databázi (`DATABASE_URL`), vytvořené při prvním použití. Restart nebo další nasazení kanál nezruší. Veřejné ID obsahuje 192 náhodných bitů; zápis vyžaduje samostatný 256bitový ovládací klíč. V databázi je pouze jeho SHA-256 otisk. Klíč se vrací jednou při založení a ukládá pod `hms-obs-control-v1` do místního úložiště ovládacího prohlížeče. Není v OBS URL ani veřejné odpovědi. Pro přenos do jiného prohlížeče použijte Zálohovat soukromý odkaz k ovládání. Klíč je pouze ve fragmentu odkazu za #, neposílá se v HTTP URL na server a po importu se z adresního řádku odstraní. Odkaz uschovejte soukromě; umožňuje měnit vysílaný výstup.
+
+Veřejný výstup sleduje serverový stav po 2 sekundách, nezměněný stav nerestartuje grafiku. Při výpadku spojení delším než 10 sekund se výstup skryje a po obnovení spojení znovu načte. Zápis používá kontrolu verze: starší záložka nepřepíše novější stav bez výslovného opětovného odeslání přes **Odeslat aktuální náhled do OBS**. Po obyčejném obnovení ovládací stránky se její náhled neposílá automaticky; již běžící výstup pokračuje. Kanály zapisují jen stav prezentace, nemění sportovní data v HMS ani existující tabulky výsledků.
 
 `/api/broadcast?org=EUCHL&gameId=<uuid>&live=1` přidává k dosavadnímu modelu pole `match`. Server čte `gameEvents` a `gameLineup` stejným organizačně omezeným tokenem jako detail zápasu; výsledky nezapisuje do HMS ani databáze. Nové vrstvy se obnovují po 15 sekundách, server je ukládá do mezipaměti na 10 sekund. Po minutě výpadku se stará zápasová vrstva skryje; předzápasová vrstva zachovává původní režim.
 

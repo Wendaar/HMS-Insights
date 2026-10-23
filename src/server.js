@@ -45,13 +45,16 @@ const assets = {
 export const server = createServer(async (request, response) => {
   const url = new URL(request.url, `http://${request.headers.host ?? "localhost"}`);
   if(url.pathname==='/api/broadcast'||url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='broadcast'){
+    if(['POST','PATCH'].includes(request.method)){
+      let body='';for await(const chunk of request){body+=chunk;if(body.length>4096){response.statusCode=413;response.end();return;}}request.body=body;
+    }
     request.query=Object.fromEntries(url.searchParams);
     await broadcastHandler(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json; charset=utf-8');response.end(JSON.stringify(body));}});return;
   }
   if(url.pathname==='/broadcast'||url.pathname==='/broadcast/'){
     response.writeHead(302,{location:'/broadcast/index.html'+url.search});response.end();return;
   }
-  if(/^\/broadcast\/(index.html|app.js|hms-source.js|i18n.js|match-layers.js|styles.css|fonts\/barlow-latin(?:-ext)?\.woff2)$/.test(url.pathname)){
+  if(/^\/broadcast\/(index.html|app.js|hms-source.js|i18n.js|channel.js|match-layers.js|styles.css|fonts\/barlow-latin(?:-ext)?\.woff2)$/.test(url.pathname)){
     response.setHeader('content-type',url.pathname.endsWith('.html')?'text/html; charset=utf-8':url.pathname.endsWith('.css')?'text/css; charset=utf-8':url.pathname.endsWith('.woff2')?'font/woff2':'text/javascript; charset=utf-8');
     response.setHeader('x-content-type-options','nosniff');response.setHeader('referrer-policy','no-referrer');response.setHeader('cache-control','no-cache');
     response.end(await readFile(join(publicDirectory,url.pathname)));return;
