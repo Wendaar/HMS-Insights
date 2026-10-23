@@ -33,6 +33,12 @@ try{
   const control=await controlContext.newPage();await control.goto(root+`/broadcast/index.html?org=EUCHL&game=${id}`);
   await control.locator('#create-channel').click();await control.locator('#channel-url').waitFor();const url=await control.locator('#channel-url').inputValue();
   assert.equal(new URL(url).searchParams.get('game'),null);assert.equal(new URL(url).searchParams.get('mode'),'channel');
+  const initialRevision=(await store.get(new URL(url).searchParams.get('channel'))).revision;
+  for(const filter of ['Past','Tomorrow','Today']){
+    await Promise.all([control.waitForResponse(r=>r.url().includes('filter='+filter)),control.locator(`[data-filter="${filter}"]`).click()]);await control.waitForTimeout(50);
+  }
+  assert.equal((await store.get(new URL(url).searchParams.get('channel'))).revision,initialRevision);
+  assert.equal(new URL(control.url()).searchParams.get('game'),id);
   const obs=await obsContext.newPage();await obs.clock.install();await obs.goto(url);await obs.waitForFunction(()=>document.querySelector('#app>iframe')?.contentDocument?.querySelector('.overlay-stage'));
   assert.equal(await obs.evaluate(()=>localStorage.getItem('hms-obs-control-v1')),null);
   assert.equal(await obs.evaluate(()=>getComputedStyle(document.body).backgroundColor),'rgba(0, 0, 0, 0)');
