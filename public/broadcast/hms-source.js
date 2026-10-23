@@ -21,9 +21,10 @@ export function apiGame(data,org,id){
     Date:date?date.split('-').reverse().join('. '):'',DateISO:date,Time:/^\d{2}:\d{2}$/.test(data.time??'')?data.time:'',Venue:data.venue??'',
     Competition:data.competition??'',Group:data.group??'',Referee:data.referee??'',Timekeeper:data.timekeeper??'',
     homeLogo:image(data.home.logoUrl),awayLogo:image(data.away.logoUrl),brandLogos:[image(data.competitionLogoUrl),image(data.organizationLogoUrl)].filter(Boolean),
+    status:data.status,match:data.match??null,
     warnings:[!data.referee?'Rozhodčí zatím není v HMS vyplněný.':'',!data.timekeeper?'Časoměřič zatím není v HMS vyplněný.':'',!data.venue?'Místo zatím není v HMS vyplněné.':''].filter(Boolean)};
 }
-export function viewUrl(base,{mode='overlay',org='PHM',gameId,source='hms',clean=false}){
+export function viewUrl(base,{mode='overlay',org='PHM',gameId,source='hms',clean=false,lang='cs',layer='opening',side='home',period='current',page=1,insight=''}){
   const parent=new URL(base);if(/\/broadcast\/?$/.test(parent.pathname))parent.pathname='/broadcast/index.html';
-  const url=new URL('index.html',parent);url.search=new URLSearchParams({mode,org,game:gameId,source,...(clean?{clean:'1'}:{})}).toString();return url.href;
+  const url=new URL('index.html',parent);url.search=new URLSearchParams({mode,org,game:gameId,source,lang,layer,side,period,page:String(page),...(insight?{insight}:{}),...(clean?{clean:'1'}:{})}).toString();return url.href;
 }

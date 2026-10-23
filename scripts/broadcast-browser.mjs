@@ -50,6 +50,35 @@ try{
   await page.fill('#game-input',`https://prod.hms.wootera.net/org/euchl/games/${id}`);await page.locator('#game-form button').click();await page.waitForURL('**game='+id+'**');await page.locator('#current-obs-url').waitFor();
   await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   await page.waitForFunction(()=>Math.abs(document.querySelector('.preview-frame iframe').getBoundingClientRect().width-document.querySelector('.preview-frame').clientWidth)<1);
+  // Live layers use a deterministic recorded-game fixture, never fabricated production data.
+  fixture.status='FINISHED';
+  fixture.match={score:{home:3,away:1},coverage:'matches-score',ordered:true,lineupAvailable:true,
+    periods:[{period:1,home:2,away:0},{period:2,home:1,away:1},{period:3,home:0,away:0}],
+    roster:Array.from({length:47},(_,i)=>({id:'player-'+i,name:`Player ${i+1}`,side:i<25?'home':'away',number:i+1,goalie:i===0})),
+    goals:Array.from({length:4},(_,i)=>({id:'goal-'+i,side:i<3?'home':'away',period:i<2?1:2,clock:`${i+1}:00`,scorer:{id:'player-0',name:'Test Scorer'},assists:[{name:'Test Assist'}],scoreAfter:{home:Math.min(i+1,3),away:i===3?1:0}})),
+    insights:[{id:'player-0',name:'Test Scorer',side:'home',goals:3,assists:1,points:4,type:'hat-trick'}]};
+  await page.setViewportSize({width:1067,height:929});
+  await page.selectOption('#language','en');await page.waitForURL('**lang=en**');await page.locator('#layer').waitFor();
+  assert.equal(await page.locator('html').getAttribute('lang'),'en');assert.match(await page.locator('#game-form button').textContent(),/Load game/);
+  await page.selectOption('#layer','lineup');await page.selectOption('#layer-side','away');await page.selectOption('#layer-page','2');
+  let layerUrl=await page.locator('#current-obs-url').inputValue();assert.equal(new URL(layerUrl).searchParams.get('lang'),'en');assert.equal(new URL(layerUrl).searchParams.get('side'),'away');
+  await page.waitForFunction(()=>document.querySelector('#preview')?.contentDocument?.querySelector('[data-layer="lineup"]'));
+  await page.screenshot({path:output+'/layers-control.png'});
+  await page.setViewportSize({width:1920,height:1080});await page.goto(layerUrl);await page.locator('[data-layer="lineup"]').waitFor();
+  assert.equal(await page.locator('.roster-list li').count(),2);assert.match(await page.locator('h1').textContent(),/Lineup/);assert.match(await page.locator('.page-label').textContent(),/Page 2/);
+  const view=new URL(layerUrl);view.searchParams.set('page','1');view.searchParams.set('side','both');await page.goto(view.href);await page.locator('.roster-list').first().waitFor();
+  assert.equal(await page.locator('.roster-list li').count(),24);await page.screenshot({path:output+'/lineups.png',omitBackground:true});
+  for(const layer of ['periods','scoresheet','insights']){
+    view.searchParams.set('layer',layer);view.searchParams.set('period','1');await page.goto(view.href);await page.locator(`[data-layer="${layer}"]`).waitFor();
+    assert.equal(await page.locator('button,a,input').count(),0);assert.equal(await page.evaluate(()=>getComputedStyle(document.body).backgroundColor),'rgba(0, 0, 0, 0)');
+    if(layer==='periods'){assert.match(await page.locator('.period-score').textContent(),/2 : 0/);assert.match(await page.locator('.score-caption').textContent(),/After period 1/);}
+    if(layer==='scoresheet'){assert.equal(await page.locator('.goal-list li').count(),4);assert.match(await page.locator('.goal-list').textContent(),/Test Assist/);}
+    if(layer==='insights'){assert.match(await page.locator('.insight-title').textContent(),/Hat trick/);const box=await page.locator('.compact-layer').boundingBox();assert.ok(box.width<1000&&box.height<600);}
+    assert.equal(await page.locator('.match-layer').evaluate(el=>el.scrollHeight<=el.clientHeight),true);
+    await page.screenshot({path:output+'/'+layer+'.png',omitBackground:true});
+  }
+  // An achievement removed/corrected in HMS must disappear on the next refresh.
+  fixture.match.insights=[];await page.clock.fastForward(15000);await page.getByText('No hat trick or multi-point performance yet',{exact:true}).waitFor();
   assert.equal(sheets,0);assert.ok(reads>0);assert.deepEqual(errors,[]);
-  console.log('Broadcast browser checks passed: exact fixture, transparent 1080p, EUCHL branding, picker, thumbnail, no Sheet, failure stays off air.');
+  console.log('Broadcast browser checks passed: pregame regression, CZ/EN controls, stable OBS URLs, lineup pagination, periods, scoresheet, compact insight and correction refresh, transparent 1080p, no Sheet.');
 }finally{await browser?.close();await new Promise(resolve=>server.close(resolve));}

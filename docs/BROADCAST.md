@@ -62,3 +62,19 @@ Volitelně PLAYWRIGHT_MODULE, CHROMIUM_PATH, BROADCAST_TEST_OUTPUT.
 
 Tato verze tvoří základ předzápasové grafiky pro OBS. Živé skóre, časomíra,
 přepínání ingame událostí a OBS WebSocket řízení nejsou součástí tohoto přírůstku.
+# Zápasové vrstvy a jazyky
+
+V ovládání je přepínač CZ/EN. Jazyk se přenáší do samostatné OBS adresy jako `lang=cs` nebo `lang=en`. Názvy týmů a osob se nepřekládají.
+
+Volba **Vrstva** nabízí předzápasovou grafiku, stav po třetinách, soupisku, přehled gólů a kompaktní insights. Každá volba vytváří vlastní URL: `mode=overlay&layer=opening|periods|lineup|scoresheet|insights`. Rozlišení všech zdrojů zůstává 1920×1080 s průhledným okolím. Původní adresy bez `layer` a `lang` zobrazují českou předzápasovou vrstvu.
+
+- `side=home|away|both`: tým pro soupisku nebo góly.
+- `period=current|1|2|3`: aktuální/oficiální výsledek nebo součet zapsaných gólů do zvolené třetiny. Volba třetiny je na obsluze; aplikace neurčuje, zda třetina již skončila.
+- `page=1…`: stránka soupisky (20 hráčů jednoho týmu, 12 při zobrazení obou) nebo gólů (8 na stránce).
+- `insight=<playerId>`: konkrétní výkon; bez výběru první dostupný. Hattrick znamená alespoň 3 góly, vícebodový výkon alespoň 2 body z gólů a asistencí. Zrušený výkon se při aktualizaci odstraní.
+
+Obsluha vybere zápas, jazyk, vrstvu a její parametry a použije **Kopírovat OBS URL**. Volba v ovládání mění náhled a adresu, nikoliv již otevřený vzdálený zdroj OBS. Doporučené jsou samostatné Browser Sources/scény pro jednotlivé výstupy. Tlačítko **Obnovit z HMS** aktualizuje nabídku dostupných insightů v ovládání.
+
+`/api/broadcast?org=EUCHL&gameId=<uuid>&live=1` přidává k dosavadnímu modelu pole `match`. Server čte `gameEvents` a `gameLineup` stejným organizačně omezeným tokenem jako detail zápasu; výsledky nezapisuje do HMS ani databáze. Nové vrstvy se obnovují po 15 sekundách, server je ukládá do mezipaměti na 10 sekund. Po minutě výpadku se stará zápasová vrstva skryje; předzápasová vrstva zachovává původní režim.
+
+Odvozené výsledky po třetinách a insights vznikají pouze při souladu počtu gólů s oficiálním skóre a příslušností všech gólů k daným týmům. Třetina se neodhaduje z času. Chybějící soupiska, neúplné události a upravený výsledek se oznamují ve vrstvě; neznámé hodnoty se nemění na vymyšlené statistiky. Čas události je převzat z HMS, nejde o živou časomíru. Přehled gólů nenahrazuje úplný oficiální zápis s tresty a podpisy.
