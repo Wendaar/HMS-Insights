@@ -1,7 +1,7 @@
 import {apiGame,parseGameInput,viewUrl,organizations} from './hms-source.js';
 import {language,translate,localize} from './i18n.js';
 import {layers,layerNames,renderMatchLayer} from './match-layers.js';
-import {createChannelControl,runChannelView} from './channel.js';
+import {createChannelControl,runChannelView,fitBroadcastCanvas} from './channel.js';
 const SHEET_ID = "12lxrxxyCUwbbFqv93NMNqyhpOUoXbyml00mnNSKGjQ0";
 const ASSET_BASE = "https://raw.githubusercontent.com/Wendaar/Youtube-Overlays/main/";
 const FRAME = `${ASSET_BASE}PHM_Overlayer_Frame_opnening_smaller.png`;
@@ -46,6 +46,7 @@ function updateChannelPanel(){
 }
 document.body.dataset.org=org;
 if(mode==='overlay'||mode==='thumbnail')document.body.className='render-mode';
+if(mode==='overlay'&&state.layer!=='opening')fitBroadcastCanvas(app);
 function apiUrl(query){const url=new URL(API_BASE,location.origin);url.search=new URLSearchParams({org,...query});return url.href;}
 async function apiRequest(query){
   const response=await fetch(apiUrl(query),{credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(16000)});

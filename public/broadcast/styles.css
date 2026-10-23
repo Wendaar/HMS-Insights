@@ -178,7 +178,7 @@ body[data-org=EUCHL] .team-name{font-size:clamp(28px,3.4vw,66px);line-height:.98
 .preview-frame iframe{width:1920px;height:1080px;transform:scale(var(--preview-scale,1));transform-origin:top left}
 .language-control{display:flex;align-items:center;gap:10px;color:var(--muted);margin-left:auto}
 .channel-panel{padding:18px;background:var(--panel-2);border:1px solid var(--cyan);border-radius:12px;margin-bottom:22px}.channel-panel h2{font-size:20px;margin:0 0 10px}.channel-panel p,.channel-panel small{font-size:13px;color:var(--muted)}.channel-panel input{width:100%;min-width:0;background:var(--bg);border:1px solid var(--line);color:var(--ink);padding:10px;margin-bottom:12px;border-radius:8px}.channel-panel .actions{flex-wrap:wrap}.channel-panel #channel-status{color:var(--cyan);min-height:18px}
-.channel-view #app>iframe{position:fixed;inset:0;width:100%;height:100%;border:0;background:transparent}
+.channel-view #app>iframe{border:0;background:transparent}
 .language-control select,.layer-controls select{background:var(--panel);color:var(--ink);border:1px solid var(--line);padding:10px;border-radius:8px;max-width:100%}
 .layer-controls{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:20px;align-items:end}
 .layer-controls label{display:grid;gap:6px;font-size:13px;color:var(--muted);max-width:100%}
@@ -202,3 +202,18 @@ body[data-org=EUCHL] .team-name{font-size:clamp(28px,3.4vw,66px);line-height:.98
 .insight-title{color:var(--cyan);font-size:35px;text-transform:uppercase;letter-spacing:2px}.insight-card h2{font-size:53px;line-height:1;margin:10px 0}.insight-card>p{font-size:24px;color:var(--muted);margin:6px 0}
 .insight-stats{display:flex;gap:50px;margin-top:16px}.insight-stats span{display:flex;align-items:baseline;gap:10px;font-size:22px}.insight-stats b{font-size:48px}
 @media(max-width:600px){.control-header{flex-wrap:wrap}.language-control{margin-left:0}.layer-controls>label{width:100%}}
+/* A centered lineup with separate space for rows, pagination and footer. */
+.match-layer[data-layer=lineup]{inset:6% 16%;padding:30px 44px 24px;display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:14px}
+.match-layer[data-layer=lineup] header{margin:0;min-width:0}
+.match-layer[data-layer=lineup] header>span{display:block;font-size:20px;line-height:24px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.match-layer[data-layer=lineup] h1{font-size:48px;margin:6px 0}
+.match-layer[data-layer=lineup] header p{font-size:24px;line-height:1.1;margin:4px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.match-layer[data-layer=lineup] .lineup-columns{min-height:0;gap:44px}
+.match-layer[data-layer=lineup] .lineup-columns>section{display:grid;grid-template-rows:auto minmax(0,1fr) auto;min-height:0}
+.match-layer[data-layer=lineup] .match-team{font-size:30px;gap:16px;min-height:56px}
+.match-layer[data-layer=lineup] .match-team strong{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.match-layer[data-layer=lineup] .match-team img{width:56px;height:56px;flex:none}
+.match-layer[data-layer=lineup] .roster-list{display:grid;grid-auto-rows:minmax(0,1fr);min-height:0;margin:10px 0}
+.match-layer[data-layer=lineup] .roster-list li{min-height:0;font-size:26px;line-height:1.05}
+.match-layer[data-layer=lineup] .page-label{line-height:25px;margin:8px 0}
+.match-layer[data-layer=lineup] footer{position:static;font-size:18px;line-height:22px}
