@@ -1,6 +1,17 @@
 import {viewUrl} from './hms-source.js';
 const valid=id=>typeof id==='string'&&/^[a-f0-9]{48}$/.test(id);
 const storageKey='hms-obs-control-v1';
+// Keep layout at the OBS design resolution; fit the whole frame, never crop it.
+export function fitBroadcastCanvas(element){
+  const resize=()=>{
+    const scale=Math.min(innerWidth/1920,innerHeight/1080);
+    Object.assign(element.style,{position:'fixed',width:'1920px',height:'1080px',
+      left:`${(innerWidth-1920*scale)/2}px`,top:`${(innerHeight-1080*scale)/2}px`,
+      transform:`scale(${scale})`,transformOrigin:'top left'});
+  };
+  resize();addEventListener('resize',resize);
+  return ()=>removeEventListener('resize',resize);
+}
 export function channelUrl(base,id){const url=new URL('index.html',base);url.search=new URLSearchParams({mode:'channel',channel:id});url.hash='';return url.href;}
 export function createChannelControl({api,base,getState,onChange}){
   let binding=null,revision=0,visible=true,queued=null,sending=false,problem='',ready=false;
@@ -39,6 +50,7 @@ export function createChannelControl({api,base,getState,onChange}){
 export async function runChannelView({id,api,root,base}){
   document.body.className='render-mode channel-view';root.replaceChildren();
   let signature='',lastSuccess=0;
+  let stopFitting;
   async function poll(){
     try{
       if(!valid(id))throw new Error('Invalid channel');
@@ -50,12 +62,12 @@ export async function runChannelView({id,api,root,base}){
       lastSuccess=Date.now();document.body.dataset.connection='ok';
       const next=JSON.stringify(s);
       if(next!==signature){
-        signature=next;root.replaceChildren();
-        if(s.visible){const frame=document.createElement('iframe');frame.title='HMS OBS';frame.src=viewUrl(base,{...s,source:'hms',mode:'overlay'});root.append(frame);}
+        signature=next;stopFitting?.();stopFitting=null;root.replaceChildren();
+        if(s.visible){const frame=document.createElement('iframe');frame.title='HMS OBS';frame.src=viewUrl(base,{...s,source:'hms',mode:'overlay'});stopFitting=fitBroadcastCanvas(frame);root.append(frame);}
       }
     }catch{
       document.body.dataset.connection='stale';
-      if(!lastSuccess||Date.now()-lastSuccess>=10000){root.replaceChildren();signature='';}
+      if(!lastSuccess||Date.now()-lastSuccess>=10000){stopFitting?.();stopFitting=null;root.replaceChildren();signature='';}
     }finally{setTimeout(poll,2000);}
   }
   await poll();
