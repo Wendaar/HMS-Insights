@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createBroadcastHandler,pregameModel} from '../src/web/broadcast-handler.js';
+import {createBroadcastHandler,pregameModel,enrichPregame} from '../src/web/broadcast-handler.js';
 const id='6C02DF50-CE27-11F1-A5F0-6320901B5AD5',orgId='11111111-1111-1111-1111-111111111111';
 const detail=()=>({gameId:id,organizationId:orgId,status:'NOT PLAYED',startDate:'2026-10-23',startTime:'21:15:00',
   HomeTeam:{teamId:'365A02A0-C4FB-11F1-8AD4-9967CDC84598',name:'Prague Guardians'},AwayTeam:{teamId:'2992D0D0-CE27-11F1-A5F0-6320901B5AD5',name:'Bratislava Capitals'},
@@ -18,11 +18,18 @@ test('pregame allowlists sporting data and preserves Prague calendar time and ab
   assert.throws(()=>pregameModel(detail(),{code:'EUCHL',id:orgId},'wrong'));
 });
 test('broadcast scopes its token, coalesces/caches reads, allows Pages CORS and never writes',async()=>{
-  let reads=0;const handler=createBroadcastHandler({env,fetchDetail:async(gameId,{config})=>{reads++;assert.equal(gameId,id);assert.equal(config.token,'euchl-only');assert.equal(config.retries,0);return detail();},fetchOrg:async()=>null});
+  let reads=0;const handler=createBroadcastHandler({env,fetchDetail:async(gameId,{config})=>{reads++;assert.equal(gameId,id);assert.equal(config.token,'euchl-only');assert.equal(config.retries,0);return detail();},fetchMetadata:async()=>null,fetchOrg:async()=>null});
   const a=response(),b=response();await Promise.all([handler(req(),a),handler(req(),b)]);assert.equal(reads,1);assert.equal(a.code,200);assert.equal(b.code,200);
   assert.equal(a.headers['access-control-allow-origin'],'https://wendaar.github.io');assert.equal(a.headers['cache-control'],'no-store');
   const c=response();await handler({...req(),headers:{origin:'https://evil.test'}},c);assert.equal(c.headers['access-control-allow-origin'],undefined);assert.equal(reads,1);
   const post=response();await handler({...req(),method:'POST'},post);assert.equal(post.code,405);
+});
+test('thin authenticated fixtures take public names only after both team IDs and date match',()=>{
+  const original=detail(),thin={...original,homeTeamId:original.HomeTeam.teamId,awayTeamId:original.AwayTeam.teamId,HomeTeam:undefined,AwayTeam:undefined,Venue:undefined,Phase:undefined};
+  const enriched=enrichPregame(thin,original);assert.equal(pregameModel(enriched,{code:'EUCHL',id:orgId},id).home.name,'Prague Guardians');
+  assert.equal(pregameModel(enriched,{code:'EUCHL',id:orgId},id).venue,'ICERINK (Yellow) - Prague CZ');
+  assert.equal(enrichPregame(thin,{...original,startDate:'2026-10-24'}),thin);
+  assert.equal(enrichPregame(thin,{...original,AwayTeam:{teamId:'wrong'}}),thin);
 });
 test('unknown/missing orgs, foreign games and unavailable data never fall back to PHM',async()=>{
   let reads=0;const handler=createBroadcastHandler({env,fetchDetail:async()=>{reads++;return {...detail(),organizationId:'wrong'};}});

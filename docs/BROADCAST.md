@@ -30,7 +30,8 @@ PHM token. Chybějící připojení nebo cizí gameId se neřeší náhradním z
 
 GET s gameId čte `/game`, ověří oba identifikátory a vrací jen týmy, loga,
 lokální datum/čas, soutěž/skupinu/fázi, místo a veřejné zobrazovací názvy pořadatelů.
-Nečte celé události ani soupisky a nic nezapisuje do HMS ani DB. Organizační logo
+Chybějící popisky doplní z veřejných metadat až po shodě obou týmových UUID a data
+s ověřeným zápasem. Nepočítá události ani nevrací soupisky a nic nezapisuje do HMS ani DB. Organizační logo
 je volitelné z `/organization`. Výstup má verzi 1, původ `HMS API` a čas čtení.
 Chybějící údaje zůstávají prázdné. Žádné skóre ani živá časomíra se neodvozují.
 

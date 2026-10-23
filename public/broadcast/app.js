@@ -20,7 +20,7 @@ document.body.dataset.org=org;
 if(mode==='overlay'||mode==='thumbnail')document.body.className='render-mode';
 function apiUrl(query){const url=new URL(API_BASE,location.origin);url.search=new URLSearchParams({org,...query});return url.href;}
 async function apiRequest(query){
-  const response=await fetch(apiUrl(query),{credentials:'omit',cache:'no-store',signal:AbortSignal.timeout(16000)});
+  const response=await fetch(apiUrl(query),{credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(16000)});
   const data=await response.json();if(!response.ok)throw new Error(data.error||'HMS data nejsou dostupná.');
   if(data.org!==org)throw new Error('HMS vrátilo jinou organizaci.');return data;
 }
@@ -283,7 +283,7 @@ async function start() {
   try {
     if(!organizations.includes(org)||!['hms','sheet'].includes(source)||source==='sheet'&&org!=='PHM')throw new Error('Neplatná organizace nebo zdroj dat.');
     if(source==='hms'){
-      if(state.selectedId){parseGameInput(state.selectedId,org);await loadGame(state.selectedId);if(mode==='control')try{await loadDay();}catch{state.listWarning=true;}}
+      if(state.selectedId){parseGameInput(state.selectedId,org);await loadGame(state.selectedId);}
       else if(mode==='overlay'||mode==='thumbnail')throw new Error('V OBS URL chybí Game ID.');
       else{await loadDay();if(state.games[0])await loadGame(state.games[0].ID);}
     }else{
@@ -296,6 +296,9 @@ async function start() {
     if (mode === "overlay") renderOverlay(game);
     else if (mode === "thumbnail") renderThumbnail(game);
     else renderControl();
+    if(mode==='control'&&source==='hms'&&params.has('game'))loadDay().then(()=>renderControl()).catch(()=>{
+      state.listWarning=true;const notice=document.querySelector('#connection-status');if(notice)notice.textContent='Vybraný zápas je načtený. Seznam dalších zápasů se nyní nepodařilo načíst.';
+    });
     if (mode === "overlay" || mode === "thumbnail")pollTimer=setTimeout(refreshRenderMode,60000);
   } catch (error) {
     console.error(error);
