@@ -16,6 +16,7 @@ const org=(params.get('org')??'PHM').toUpperCase();
 const API_BASE=location.pathname.startsWith('/broadcast/')?'/api/broadcast':'https://hms-insights-five.vercel.app/api/broadcast';
 const state = { games: [], teams: [], selectedId: params.get("game"), date: null, preview: "overlay", filter:params.get('filter')??'Today', readAt:null };
 let refreshing=false,lastSuccess=0,lastVisual='',pollTimer;
+let previewObserver;
 document.body.dataset.org=org;
 if(mode==='overlay'||mode==='thumbnail')document.body.className='render-mode';
 function apiUrl(query){const url=new URL(API_BASE,location.origin);url.search=new URLSearchParams({org,...query});return url.href;}
@@ -240,6 +241,12 @@ function renderControl() {
 }
 
 function wireControl() {
+  previewObserver?.disconnect();
+  const previewBox=document.querySelector('.preview-frame');
+  if(previewBox){
+    const resize=()=>previewBox.style.setProperty('--preview-scale',String(previewBox.clientWidth/1920));
+    resize();previewObserver=new ResizeObserver(resize);previewObserver.observe(previewBox);
+  }
   document.querySelector('#game-form')?.addEventListener('submit',event=>{
     event.preventDefault();const status=document.querySelector('#connection-status');
     try{const input=parseGameInput(document.querySelector('#game-input').value,document.querySelector('#org').value);const url=new URL(location.href);url.search=new URLSearchParams({org:input.org,game:input.gameId,source:'hms'});location.assign(url);}
