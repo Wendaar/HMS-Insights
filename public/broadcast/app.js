@@ -31,7 +31,7 @@ async function loadGame(id){
 async function loadDay(){
   const data=await apiRequest({filter:state.filter});
   const games=data.items.map(item=>({ID:item.gameId,Date:item.playedOn?.split('-').reverse().join('. ')??'',DateISO:item.playedOn,Time:item.startTime?.slice(0,5)??'',
-    'Home Team':item.home.name??item.gameId,'Away Team':item.away.name??'',Group:org,Venue:'',warnings:[],_thin:true}));
+    'Home Team':item.home.name??'Domácí tým · podrobnosti po výběru','Away Team':item.away.name??'Hosté · podrobnosti po výběru',Group:org,Venue:'Podrobnosti po výběru zápasu',warnings:[],_thin:true}));
   const detailed=state.games.filter(g=>!g._thin);
   state.games=[...detailed,...games.filter(g=>!detailed.some(d=>d.ID.toLowerCase()===g.ID.toLowerCase()))];
   state.hasMore=data.hasMore;
