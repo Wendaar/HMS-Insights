@@ -14,7 +14,7 @@ export function fitBroadcastCanvas(element){
 }
 export function channelUrl(base,id){const url=new URL('index.html',base);url.search=new URLSearchParams({mode:'channel',channel:id});url.hash='';return url.href;}
 export function createChannelControl({api,base,getState,onChange}){
-  let binding=null,revision=0,visible=true,queued=null,sending=false,problem='',ready=false;
+  let binding=null,revision=0,visible=true,queued=null,sending=false,problem='',ready=false,lastState=null;
   try{const saved=JSON.parse(localStorage.getItem(storageKey));if(valid(saved?.id)&&/^[a-f0-9]{64}$/.test(saved.key))binding=saved;}catch{}
   const imported=/^#control=([a-f0-9]{48})\.([a-f0-9]{64})$/.exec(location.hash);
   if(imported){binding={id:imported[1],key:imported[2]};localStorage.setItem(storageKey,JSON.stringify(binding));const url=new URL(location.href);url.hash='';history.replaceState(null,'',url);}
@@ -27,7 +27,7 @@ export function createChannelControl({api,base,getState,onChange}){
   const store=()=>localStorage.setItem(storageKey,JSON.stringify(binding));
   async function flush(){
     if(sending||!ready||!queued)return;sending=true;onChange();
-    try{while(queued){const state=queued;queued=null;const row=await request('PATCH',{state,revision});revision=row.revision;if(!queued)visible=row.state.visible;problem='';}}
+    try{while(queued){const state=queued;queued=null;const row=await request('PATCH',{state,revision});revision=row.revision;lastState=row.state;if(!queued)visible=row.state.visible;problem='';}}
     catch(e){queued=null;problem=e.message;ready=false;}
     finally{sending=false;onChange();}
   }
@@ -36,15 +36,15 @@ export function createChannelControl({api,base,getState,onChange}){
     controlLink(){if(!binding)return '';const url=new URL(location.href);url.hash='control='+binding.id+'.'+binding.key;return url.href;},
     async init(){
       if(!binding)return;
-      try{const row=await request('GET');revision=row.revision;visible=row.state.visible;ready=true;problem='';}
+      try{const row=await request('GET');revision=row.revision;lastState=row.state;visible=row.state.visible;ready=true;problem='';}
       catch(e){problem=e.message;ready=false;}onChange();
     },
     async create(){
-      try{const row=await request('POST',{state:{...getState(),visible:true}});binding={id:row.id,key:row.controlKey};store();revision=row.revision;visible=true;ready=true;problem='';}
+      try{const row=await request('POST',{state:{...getState(),visible:true}});binding={id:row.id,key:row.controlKey};store();revision=row.revision;lastState=row.state;visible=true;ready=true;problem='';}
       catch(e){problem=e.message;}onChange();
     },
     publish(){if(binding&&ready){queued={...getState(),visible:queued?.visible??visible};flush();}},
-    toggle(){if(binding&&ready){visible=!visible;queued={...getState(),visible};flush();}},
+    toggle(){if(binding&&ready&&lastState){visible=!visible;queued={...(queued??lastState),visible};flush();}},
   };
 }
 export async function runChannelView({id,api,root,base}){

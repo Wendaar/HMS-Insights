@@ -21,6 +21,7 @@ const source=params.get('source')??'hms';
 const org=(params.get('org')??'PHM').toUpperCase();
 const API_BASE=location.pathname.startsWith('/broadcast/')?'/api/broadcast':'https://hms-insights-five.vercel.app/api/broadcast';
 const state = { games: [], teams: [], selectedId: params.get("game"), date: null, preview: "overlay", filter:params.get('filter')??'Today', readAt:null };
+state.browseIds=null;state.controlError='';
 Object.assign(state,{layer:layers.includes(params.get('layer'))?params.get('layer'):'opening',side:['home','away','both'].includes(params.get('side'))?params.get('side'):'home',period:['1','2','3'].includes(params.get('period'))?params.get('period'):'current',page:Math.min(50,Math.max(1,Number.parseInt(params.get('page'),10)||1)),insight:params.get('insight')??''});
 let refreshing=false,lastSuccess=0,lastVisual='',pollTimer;
 let previewObserver;
@@ -38,11 +39,11 @@ function channelMarkup(){
 function updateChannelPanel(){
   const slot=document.getElementById('channel-slot');if(!slot)return;slot.innerHTML=channelMarkup();
   const help=document.getElementById('layer-help');if(help&&channel.info().bound)help.textContent=t('Přepínání níže automaticky mění obsah stálého OBS kanálu.');
-  document.querySelector('#create-channel')?.addEventListener('click',async event=>{event.target.disabled=true;await channel.create();});
+  const create=document.querySelector('#create-channel');if(create){create.disabled=!selectedGame();create.addEventListener('click',async event=>{event.target.disabled=true;await channel.create();});}
   document.querySelector('#copy-channel')?.addEventListener('click',async()=>{const field=document.querySelector('#channel-url');try{await navigator.clipboard.writeText(field.value);}catch{field.focus();field.select();}});
   document.querySelector('#toggle-channel')?.addEventListener('click',()=>channel.toggle());
   document.querySelector('#copy-control-link')?.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(channel.controlLink());document.querySelector('#channel-status').textContent=t('Soukromý odkaz zkopírován. Uschovejte si jej; umožňuje měnit výstup.');}catch{document.querySelector('#channel-status').textContent=t('Kopírování není dostupné v tomto prohlížeči.');}});
-  document.querySelector('#sync-channel')?.addEventListener('click',async()=>{await channel.init();channel.publish();});
+  const sync=document.querySelector('#sync-channel');if(sync){sync.disabled=!selectedGame();sync.addEventListener('click',async()=>{await channel.init();channel.publish();});}
 }
 document.body.dataset.org=org;
 if(mode==='overlay'||mode==='thumbnail')document.body.className='render-mode';
@@ -55,14 +56,18 @@ async function apiRequest(query){
 }
 async function loadGame(id){
   const data=await apiRequest({gameId:id,...(mode==='control'||state.layer!=='opening'?{live:'1'}:{})}),game=apiGame(data,org,id);
-  state.games=[game,...state.games.filter(g=>String(g.ID).toLowerCase()!==id.toLowerCase())];state.selectedId=game.ID;state.readAt=data.readAt;return game;
+  state.games=[game,...state.games.filter(g=>String(g.ID).toLowerCase()!==id.toLowerCase())];state.selectedId=game.ID;state.readAt=data.readAt;
+  if(mode==='control'){const url=new URL(location.href);url.searchParams.set('game',game.ID);history.replaceState(null,'',url);}return game;
 }
 async function loadDay(){
   const data=await apiRequest({filter:state.filter});
   const games=data.items.map(item=>({ID:item.gameId,Date:item.playedOn?.split('-').reverse().join('. ')??'',DateISO:item.playedOn,Time:item.startTime?.slice(0,5)??'',
-    'Home Team':item.home.name??'Domácí tým · podrobnosti po výběru','Away Team':item.away.name??'Hosté · podrobnosti po výběru',Group:org,Venue:'Podrobnosti po výběru zápasu',warnings:[],_thin:true}));
-  const detailed=state.games.filter(g=>!g._thin);
-  state.games=[...detailed,...games.filter(g=>!detailed.some(d=>d.ID.toLowerCase()===g.ID.toLowerCase()))];
+    'Home Team':item.home.name??'Domácí tým · podrobnosti po výběru','Away Team':item.away.name??'Hosté · podrobnosti po výběru',Group:org,Venue:'Podrobnosti po výběru zápasu',warnings:[],_thin:true,_labelsAvailable:!!(item.home.name&&item.away.name)}));
+  const detailed=new Map(state.games.filter(g=>!g._thin).map(g=>[g.ID.toLowerCase(),g]));
+  const selected=selectedGame();
+  state.games=games.map(g=>detailed.get(g.ID.toLowerCase())??g);
+  if(selected&&!state.games.some(g=>g.ID.toLowerCase()===selected.ID.toLowerCase()))state.games.unshift(selected);
+  state.browseIds=games.map(g=>g.ID.toLowerCase());
   state.hasMore=data.hasMore;
 }
 function renderUrl(view,game,clean=false){return viewUrl(location.href,{mode:view,org,gameId:game.ID,source,clean,lang,...state});}
@@ -148,7 +153,7 @@ function gameModel(game) {
 
 function selectedGame() {
   const raw = state.games.find((game) => String(game.ID).toLowerCase() === String(state.selectedId).toLowerCase());
-  return raw ? gameModel(raw) : null;
+  return raw&&!raw._thin ? gameModel(raw) : null;
 }
 
 function logoMarkup(src, className, alt) {
@@ -248,13 +253,13 @@ window.downloadThumbnail=downloadThumbnail;
 
 function renderControl() {
   document.body.className = "";
-  const dates = [...new Set(state.games.map((game) => game.Date || "Bez data"))];
-  state.date ||= dates[0];
-  const dayGames = state.games.filter((game) => (game.Date || "Bez data") === state.date);
+  const listed=state.browseIds===null?state.games:state.games.filter(g=>state.browseIds.includes(g.ID.toLowerCase()));
+  const dates = [...new Set(listed.map((game) => game.Date || "Bez data"))];
+  if(!dates.includes(state.date))state.date=dates[0];
+  const dayGames = listed.filter((game) => (game.Date || "Bez data") === state.date);
   const game = selectedGame();
-  if(!game){app.innerHTML=`<div class="control-shell"><header class="control-header"><h1>Opening Studio · ${escapeHtml(org)}</h1>${languageControl()}</header>${connectionMarkup()}<main class="workspace"><p>Pro vybrané období nejsou žádné dostupné zápasy. Můžete načíst konkrétní zápas jeho HMS odkazem.</p></main></div>`;wireControl();return;}
-  const previewUrl = renderUrl(state.preview,game,state.preview==='thumbnail');
-  const obsUrl = renderUrl('overlay',game);
+  const previewUrl = game?renderUrl(state.preview,game,state.preview==='thumbnail'):'';
+  const obsUrl = game?renderUrl('overlay',game):'';
   app.innerHTML = `
     <div class="control-shell">
       <header class="control-header">
@@ -264,12 +269,13 @@ function renderControl() {
       ${connectionMarkup()}
       <div class="control-grid">
         <aside class="match-panel">
-          <div class="panel-title"><h2>Vyber zápas</h2><span class="count">${state.games.length} zápasů</span></div>
+          <div class="panel-title"><h2>Vyber zápas</h2><span class="count">${listed.length} zápasů</span></div>
           <div class="date-tabs">${dates.map((date) => `<button class="date-tab ${date === state.date ? "active" : ""}" data-date="${escapeHtml(date)}">${escapeHtml(date)}</button>`).join("")}</div>
-          <div class="match-list">${dayGames.map((item) => { const model = gameModel(item); return `<button class="match-card ${String(item.ID) === String(game.ID) ? "active" : ""}" data-game="${escapeHtml(item.ID)}"><div class="match-card-top"><span>${escapeHtml(item.Time || "--:--")}</span><span>${escapeHtml(item.Group || "PHM Cup")}${model.warnings.length ? '<i class="warn-dot" title="Chybějící nebo nejednoznačná data"></i>' : ""}</span></div><div class="match-card-teams">${escapeHtml(item["Home Team"] || "Bude doplněno")} — ${escapeHtml(item["Away Team"] || "Bude doplněno")}</div><div class="match-card-venue">${escapeHtml(item.Venue || "Místo bude doplněno")}</div></button>`; }).join("")}</div>
+          <div class="match-list">${dayGames.map((item) => { const model = gameModel(item); return `<button class="match-card ${String(item.ID) === String(game?.ID) ? "active" : ""}" data-game="${escapeHtml(item.ID)}"><div class="match-card-top"><span>${escapeHtml(item.Time || "--:--")}</span><span>${escapeHtml(item.Group || "PHM Cup")}${model.warnings.length ? '<i class="warn-dot" title="Chybějící nebo nejednoznačná data"></i>' : ""}</span></div><div class="match-card-teams">${escapeHtml(item["Home Team"] || "Bude doplněno")} — ${escapeHtml(item["Away Team"] || "Bude doplněno")}</div><div class="match-card-venue">${escapeHtml(item.Venue || "Místo bude doplněno")}</div></button>`; }).join("")}</div>
         </aside>
         <main class="workspace">
           <div id="channel-slot"></div>
+          ${!game?`<p class="data-alert">${t('Vyberte zápas ze seznamu nebo vložte jeho HMS odkaz. Přepnutí období nemění výstup v OBS.')}</p>`:`
           ${source==='hms'?layerControls(game):''}
           <div class="workspace-toolbar">
             <div class="view-switch"><button class="view-button ${state.preview === "overlay" ? "active" : ""}" data-view="overlay">OBS overlay</button><button class="view-button ${state.preview === "thumbnail" ? "active" : ""}" data-view="thumbnail">YouTube miniatura</button></div>
@@ -280,7 +286,7 @@ function renderControl() {
             <div class="preview-meta"><span>${escapeHtml(game.Name || `${game["Home Team"] || "?"} vs ${game["Away Team"] || "?"}`)}</span><span>${state.preview === "overlay" ? "1920 × 1080 · transparentní" : "1280 × 720"}</span></div>
             <div class="preview-frame ${state.preview === "overlay" ? "overlay-preview" : ""}"><iframe id="preview" title="Náhled grafiky" src="${previewUrl}"></iframe></div>
             ${game.warnings.length ? `<div class="data-alert"><strong>Upozornění k datům:</strong> ${game.warnings.map(escapeHtml).join(" ")}</div>` : ""}
-          </section>
+          </section>`}
         </main>
       </div>
     </div>`;
@@ -290,7 +296,8 @@ function renderControl() {
 function wireControl() {
   updateChannelPanel();
   localize(app,lang);
-  document.querySelector('#language')?.addEventListener('change',event=>{lang=language(event.target.value);document.documentElement.lang=lang;const url=new URL(location.href);url.searchParams.set('lang',lang);history.replaceState(null,'',url);renderControl();channel?.publish();});
+  if(state.controlError)document.querySelector('#connection-status').textContent=t(state.controlError);
+  document.querySelector('#language')?.addEventListener('change',event=>{lang=language(event.target.value);document.documentElement.lang=lang;const url=new URL(location.href);url.searchParams.set('lang',lang);history.replaceState(null,'',url);renderControl();if(selectedGame())channel?.publish();});
   const settings={layer:'layer','layer-side':'side','layer-period':'period','layer-page':'page','layer-insight':'insight'};
   for(const [id,key] of Object.entries(settings))document.getElementById(id)?.addEventListener('change',event=>{
     state[key]=key==='page'?Number(event.target.value):event.target.value;
@@ -309,15 +316,23 @@ function wireControl() {
     catch(error){status.textContent=t(error.message);}
   });
   document.querySelector('#org')?.addEventListener('change',event=>{const url=new URL(location.href);url.search=new URLSearchParams({org:event.target.value,source:'hms',lang});location.assign(url);});
-  document.querySelectorAll('[data-filter]').forEach(button=>button.onclick=()=>{const url=new URL(location.href);url.search=new URLSearchParams({org,filter:button.dataset.filter,source:'hms',lang});location.assign(url);});
+  document.querySelectorAll('[data-filter]').forEach(button=>button.onclick=async()=>{
+    if(state.browsing)return;state.browsing=true;state.filter=button.dataset.filter;state.controlError='';
+    const url=new URL(location.href);url.searchParams.set('filter',state.filter);history.replaceState(null,'',url);
+    document.querySelector('#connection-status').textContent=t('Načítám zápasy…');
+    try{await loadDay();}catch{state.controlError='Seznam zápasů se nepodařilo načíst. Zkuste Obnovit z HMS nebo vložte odkaz na zápas.';}
+    finally{state.browsing=false;renderControl();}
+  });
   document.querySelector('#refresh-data')?.addEventListener('click',async()=>{
     const status=document.querySelector('#connection-status');status.textContent=t('Obnovuji data z HMS…');
-    try{if(state.selectedId)await loadGame(state.selectedId);else await loadDay();renderControl();}catch(error){status.textContent=t(error.message);}
+    state.controlError='';
+    if(state.selectedId)try{await loadGame(state.selectedId);}catch(error){state.controlError=error.message;}
+    try{await loadDay();}catch{state.controlError='Seznam zápasů se nepodařilo načíst. Zkuste Obnovit z HMS nebo vložte odkaz na zápas.';}renderControl();
   });
   document.querySelectorAll("[data-date]").forEach((button) => button.addEventListener("click", () => { state.date = button.dataset.date; renderControl(); }));
   document.querySelectorAll("[data-game]").forEach((button) => button.addEventListener("click", async () => {
     const previous=state.selectedId;button.disabled=true;
-    try{if(source==='hms')await loadGame(button.dataset.game);else state.selectedId=button.dataset.game;state.page=1;state.insight='';const controlUrl=new URL(location.href);controlUrl.searchParams.set('game',state.selectedId);controlUrl.searchParams.set('page','1');controlUrl.searchParams.delete('insight');history.replaceState(null,'',controlUrl);renderControl();channel?.publish();}
+    try{if(source==='hms')await loadGame(button.dataset.game);else state.selectedId=button.dataset.game;state.controlError='';state.page=1;state.insight='';const controlUrl=new URL(location.href);controlUrl.searchParams.set('game',state.selectedId);controlUrl.searchParams.set('page','1');controlUrl.searchParams.delete('insight');history.replaceState(null,'',controlUrl);renderControl();channel?.publish();}
     catch(error){state.selectedId=previous;document.querySelector('#connection-status').textContent=t(error.message);button.disabled=false;}
   }));
   document.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => { state.preview = button.dataset.view; renderControl(); }));
@@ -348,7 +363,7 @@ async function start() {
     if(source==='hms'){
       if(state.selectedId){parseGameInput(state.selectedId,org);await loadGame(state.selectedId);}
       else if(mode==='overlay'||mode==='thumbnail')throw new Error('V OBS URL chybí Game ID.');
-      else{await loadDay();if(state.games[0])await loadGame(state.games[0].ID);}
+      else{await loadDay();const first=state.games.find(g=>g._labelsAvailable);if(first)await loadGame(first.ID);}
     }else{
       [state.games,state.teams]=await Promise.all([loadSheet('Games'),loadSheet('Teams')]);
       if(!state.games.length)throw new Error('List Games je prázdný.');state.selectedId ||=state.games[0].ID;
@@ -366,7 +381,10 @@ async function start() {
     if (mode === "overlay" || mode === "thumbnail")pollTimer=setTimeout(refreshRenderMode,state.layer==='opening'?60000:15000);
   } catch (error) {
     console.error(error);
-    renderStatus(error.message || "Data se nepodařilo načíst.", true);
+    if(mode==='control'){
+      state.controlError=error.message||'Data se nepodařilo načíst.';renderControl();if(channel)await channel.init();
+      if(source==='hms'&&state.browseIds===null)loadDay().then(()=>renderControl()).catch(()=>{});
+    }else renderStatus(error.message || "Data se nepodařilo načíst.", true);
     if(mode==='overlay')pollTimer=setTimeout(refreshRenderMode,15000);
   }
 }

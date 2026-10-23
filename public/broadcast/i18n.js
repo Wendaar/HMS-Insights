@@ -46,6 +46,8 @@ const en={
   'Soukromý odkaz zkopírován. Uschovejte si jej; umožňuje měnit výstup.':'Private link copied. Keep it safe; it allows changing the output.',
   'Kopírování není dostupné v tomto prohlížeči.':'Clipboard access is not available in this browser.',
   'Přepínání níže automaticky mění obsah stálého OBS kanálu.':'Selections below automatically change the permanent OBS channel output.',
+  'Vyberte zápas ze seznamu nebo vložte jeho HMS odkaz. Přepnutí období nemění výstup v OBS.':'Select a game from the list or enter its HMS link. Browsing dates does not change OBS output.',
+  'Seznam zápasů se nepodařilo načíst. Zkuste Obnovit z HMS nebo vložte odkaz na zápas.':'Could not load the game list. Retry Refresh from HMS or enter a game link.',
 };
 export function translate(value,lang){
   if(lang!=='en')return value;
