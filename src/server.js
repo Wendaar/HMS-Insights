@@ -1,4 +1,5 @@
 import {createOrganizationImportHandler} from './web/organization-import-handler.js';
+import {createBroadcastHandler} from './web/broadcast-handler.js';
 import {createOrganizationImportPage} from './web/organization-import-page.js';
 import {createPublicFeedHandler} from './web/public-feed-handler.js';
 import {PHM_ORGANIZATION_ID} from './app/organizations.js';
@@ -25,6 +26,7 @@ const directory = dirname(fileURLToPath(import.meta.url));
 const publicDirectory = join(directory, "..", "public");
 const port = Number(process.env.PORT ?? 3000);
 const zbraslavAnalysis = analyzeHmsResponses(zbraslavEvents, zbraslavLineup);
+const broadcastHandler=createBroadcastHandler();
 
 const assets = {
   "/organization-import.js": ["text/javascript; charset=utf-8", "organization-import.js"],
@@ -42,6 +44,18 @@ const assets = {
 
 export const server = createServer(async (request, response) => {
   const url = new URL(request.url, `http://${request.headers.host ?? "localhost"}`);
+  if(url.pathname==='/api/broadcast'||url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='broadcast'){
+    request.query=Object.fromEntries(url.searchParams);
+    await broadcastHandler(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json; charset=utf-8');response.end(JSON.stringify(body));}});return;
+  }
+  if(url.pathname==='/broadcast'||url.pathname==='/broadcast/'){
+    response.writeHead(302,{location:'/broadcast/index.html'+url.search});response.end();return;
+  }
+  if(/^\/broadcast\/(index.html|app.js|hms-source.js|styles.css|fonts\/barlow-latin(?:-ext)?\.woff2)$/.test(url.pathname)){
+    response.setHeader('content-type',url.pathname.endsWith('.html')?'text/html; charset=utf-8':url.pathname.endsWith('.css')?'text/css; charset=utf-8':url.pathname.endsWith('.woff2')?'font/woff2':'text/javascript; charset=utf-8');
+    response.setHeader('x-content-type-options','nosniff');response.setHeader('referrer-policy','no-referrer');response.setHeader('cache-control','no-cache');
+    response.end(await readFile(join(publicDirectory,url.pathname)));return;
+  }
   if(['/admin/import-game','/admin/backfill','/api/admin/import-game','/api/admin/backfill'].includes(url.pathname)){
     request.query=Object.fromEntries(url.searchParams);
     const adapter={setHeader:(k,v)=>response.setHeader(k,v),status(code){response.statusCode=code;return this;},send(body){response.end(body);},json(body){response.setHeader('content-type','application/json');response.end(JSON.stringify(body));}};

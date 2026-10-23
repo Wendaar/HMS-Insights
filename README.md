@@ -1,5 +1,7 @@
 # HMS Insights / Příklepy — MVP 0.1
 
+[Opening Studio / OBS](docs/BROADCAST.md): předzápasová vrstva PHM/EUCHL z HMS API, vstup `/broadcast/index.html`.
+
 Media Studio MVP 1.0, Sprint 1: `/studio`. [Implementation and verification](docs/MEDIA-STUDIO.md).
 
 Studio pro více organizací a CS/EN: [nastavení HMS a Vercelu](docs/STUDIO-ORGANIZATIONS.md).
