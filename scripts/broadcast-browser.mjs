@@ -59,6 +59,8 @@ try{
     insights:[{id:'player-0',name:'Test Scorer',side:'home',goals:3,assists:1,points:4,type:'hat-trick'}]};
   await page.setViewportSize({width:1067,height:929});
   await page.selectOption('#language','en');await page.waitForURL('**lang=en**');await page.locator('#layer').waitFor();
+  await Promise.all([page.waitForResponse(r=>r.url().includes('/api/broadcast?')&&r.url().includes('gameId=')),page.locator('#refresh-data').click()]);
+  await page.waitForTimeout(50);
   assert.equal(await page.locator('html').getAttribute('lang'),'en');assert.match(await page.locator('#game-form button').textContent(),/Load game/);
   await page.selectOption('#layer','lineup');await page.selectOption('#layer-side','away');await page.selectOption('#layer-page','2');
   let layerUrl=await page.locator('#current-obs-url').inputValue();assert.equal(new URL(layerUrl).searchParams.get('lang'),'en');assert.equal(new URL(layerUrl).searchParams.get('side'),'away');

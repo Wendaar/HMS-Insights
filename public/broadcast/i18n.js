@@ -2,7 +2,7 @@ export const language=value=>value==='en'?'en':'cs';
 const en={
   'Organizace':'Organization','Jazyk':'Language','Odkaz na zápas v HMS nebo Game ID':'HMS game link or Game ID','Načíst zápas':'Load game',
   'Dnes':'Today','Zítra':'Tomorrow','Příštích 7 dnů':'Next 7 days','Minulé zápasy':'Past games','Obnovit z HMS':'Refresh from HMS',
-  'Vyber zápas':'Select a game','OBS overlay':'Opening overlay','YouTube miniatura':'YouTube thumbnail','Kopírovat OBS URL':'Copy OBS URL',
+  'Vyber zápas':'Select a game','OBS overlay':'OBS overlay','YouTube miniatura':'YouTube thumbnail','Kopírovat OBS URL':'Copy OBS URL',
   'Otevřít čistý náhled':'Open clean view','Stáhnout PNG':'Download PNG','Unikátní OBS URL vybraného zápasu':'OBS URL for the selected game and layer',
   'Upozornění k datům:':'Data notice:','Domácí':'Home','Hosté':'Away','Čas':'Time','Datum':'Date','Místo':'Venue','Rozhodčí':'Referee','Časoměřič':'Timekeeper',
   'Bude doplněno':'To be confirmed','Místo bude doplněno':'Venue to be confirmed','Datum bude doplněno':'Date to be confirmed','Bez data':'No date',
@@ -34,6 +34,18 @@ const en={
   'Výsledek je upravený nebo události nejsou úplné.':'The score was adjusted or events are incomplete.',
   'Výběr vrstvy mění náhled a kopírovanou adresu. V OBS použijte adresu dané vrstvy.':'Layer selection changes the preview and copied URL. Use that layer’s URL in OBS.',
   'Zápasová soupiska z HMS':'Game lineup from HMS','Na této stránce nejsou další hráči.':'No more players on this page.',
+  'Jeden zdroj do OBS':'One source for OBS','Tuto adresu vložte do OBS jednou. Změny níže se přenesou automaticky.':'Add this URL to OBS once. Changes below are sent automatically.',
+  'Kopírovat stálou OBS adresu':'Copy permanent OBS URL','Skrýt v OBS':'Hide in OBS','Zobrazit v OBS':'Show in OBS',
+  'Odeslat aktuální náhled do OBS':'Send current preview to OBS','Vytvořit OBS kanál':'Create OBS channel',
+  'Vytvořte jeden kanál a přepínejte jeho obsah z tohoto ovládání.':'Create one channel and switch its content from these controls.',
+  'Odesílám do OBS…':'Sending to OBS…','V OBS je grafika zapnutá.':'Graphics are visible in OBS.','V OBS je grafika skrytá.':'Graphics are hidden in OBS.',
+  'Ovládání se pamatuje v tomto prohlížeči. Veřejná OBS adresa neumožňuje kanál měnit.':'Control access is saved in this browser. The public OBS URL cannot change the channel.',
+  'Kanál nebyl nalezen.':'Channel not found.','OBS kanál nyní není dostupný. Zkuste to znovu.':'The OBS channel is currently unavailable. Please retry.',
+  'Kanál nebyl změněn. Obnovte ovládání; kanál mohl změnit jiný ovladač.':'The channel was not changed. Reconnect; another controller may have changed it.',
+  'Zálohovat soukromý odkaz k ovládání':'Back up private controller link',
+  'Soukromý odkaz zkopírován. Uschovejte si jej; umožňuje měnit výstup.':'Private link copied. Keep it safe; it allows changing the output.',
+  'Kopírování není dostupné v tomto prohlížeči.':'Clipboard access is not available in this browser.',
+  'Přepínání níže automaticky mění obsah stálého OBS kanálu.':'Selections below automatically change the permanent OBS channel output.',
 };
 export function translate(value,lang){
   if(lang!=='en')return value;

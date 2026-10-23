@@ -5,6 +5,7 @@ import {browseMedia} from '../app/media-engine.js';
 import {isGameId} from '../domain/game-summary.js';
 import {sportingImage} from '../../public/game-report-media.js';
 import {hmsMediaContext} from '../hms/media-context.js';
+import {createChannelHandler} from './broadcast-channel.js';
 const same=(a,b)=>typeof a==='string'&&typeof b==='string'&&a.toLowerCase()===b.toLowerCase();
 const label=value=>typeof value==='string'?value.trim().slice(0,240):null;
 const image=value=>sportingImage(value?.logoUrls?.md??value?.logoUrl);
@@ -41,8 +42,10 @@ export function pregameModel(detail,org,gameId,organization){
     referee:official(detail.referee),timekeeper:official(detail.timekeeper),source:'HMS API',readAt:new Date().toISOString()};
 }
 export function createBroadcastHandler(options={}){
+  const channels=options.channelHandler??createChannelHandler(options);
   const cache=new Map(),pending=new Map();
   return async(req,res)=>{
+    if(req.query?.channel!==undefined||req.query?.channels==='1')return channels(req,res);
     res.setHeader('cache-control','no-store');res.setHeader('x-content-type-options','nosniff');res.setHeader('referrer-policy','no-referrer');
     if(req.headers.origin==='https://wendaar.github.io'){res.setHeader('access-control-allow-origin','https://wendaar.github.io');res.setHeader('vary','Origin');}
     if(req.method!=='GET'){res.setHeader('allow','GET');return res.status(405).json({error:'Pouze čtení.'});}
