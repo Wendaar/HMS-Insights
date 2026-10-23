@@ -176,3 +176,27 @@ body.render-mode #app {
 @font-face{font-family:'Barlow Condensed';font-style:normal;font-weight:700;font-display:swap;src:url('fonts/barlow-latin.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
 body[data-org=EUCHL] .team-name{font-size:clamp(28px,3.4vw,66px);line-height:.98;overflow-wrap:normal}body[data-org=EUCHL] .text-brand{font-size:2.5vw;text-shadow:0 0 12px #00d7e633}
 .preview-frame iframe{width:1920px;height:1080px;transform:scale(var(--preview-scale,1));transform-origin:top left}
+.language-control{display:flex;align-items:center;gap:10px;color:var(--muted);margin-left:auto}
+.language-control select,.layer-controls select{background:var(--panel);color:var(--ink);border:1px solid var(--line);padding:10px;border-radius:8px;max-width:100%}
+.layer-controls{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:20px;align-items:end}
+.layer-controls label{display:grid;gap:6px;font-size:13px;color:var(--muted);max-width:100%}
+.layer-controls p{width:100%;margin:0;color:var(--muted);font-size:12px}
+.match-layer{position:absolute;inset:7% 8%;padding:40px 48px;background:rgba(5,21,29,.96);border-left:5px solid var(--cyan);border-top:1px solid var(--line);color:var(--ink);font-family:'Barlow Condensed',sans-serif;overflow:hidden}
+.match-layer header{margin-bottom:24px}.match-layer header>span{color:var(--cyan);font-size:22px;letter-spacing:2px;text-transform:uppercase}
+.match-layer h1{font-size:58px;line-height:1;margin:10px 0}.match-layer header p{font-size:26px;margin:8px 0;color:var(--muted)}
+.match-layer footer{position:absolute;bottom:18px;left:48px;font-size:19px;color:var(--muted)}
+.layer-empty{font-size:40px;color:var(--muted);padding:80px 0}
+.lineup-columns{display:flex;gap:60px}.lineup-columns>section{flex:1;min-width:0}
+.match-team{display:flex;align-items:center;gap:20px;font-size:35px}.match-team img{width:84px;height:84px;object-fit:contain}
+.roster-list,.goal-list{list-style:none;margin:16px 0;padding:0}
+.roster-list li{display:flex;align-items:center;gap:18px;font-size:29px;line-height:32px;border-bottom:1px solid var(--line)}
+.roster-list b{width:50px;color:var(--cyan)}.roster-list span{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.roster-list small{font-size:19px;color:var(--muted)}
+.page-label{font-size:21px;color:var(--muted);margin:10px 0}
+.period-score{display:flex;align-items:center;justify-content:space-between;gap:50px;margin:55px 0}.period-score>.match-team{width:30%;flex-direction:column;text-align:center;font-size:45px}.period-score .match-team img{width:150px;height:150px}
+.period-score>strong{font-size:145px;white-space:nowrap}.score-caption{font-size:30px;color:var(--cyan);margin:10px 0}
+.period-breakdown{display:flex;justify-content:center;gap:50px;font-size:35px}.period-breakdown span{color:var(--muted)}.period-breakdown b{color:var(--ink);margin-left:14px}
+.goal-list li{display:flex;align-items:center;gap:28px;border-bottom:1px solid var(--line);min-height:66px;font-size:31px}.goal-list li>b{min-width:90px;color:var(--cyan)}.goal-list div{flex:1;min-width:0}.goal-list small{display:block;color:var(--muted);font-size:20px}.goal-list em{font-size:40px;font-style:normal}
+.compact-layer{inset:auto auto 7% 6%;width:860px;min-height:360px;padding:26px 35px 55px}.compact-layer header{margin:0}.compact-layer header h1{display:none}.compact-layer header>span{font-size:18px}.compact-layer header p{font-size:20px;margin:5px 0}.compact-layer footer{font-size:16px;left:35px;bottom:14px}.compact-layer .layer-empty{font-size:30px;padding:35px 0}
+.insight-title{color:var(--cyan);font-size:35px;text-transform:uppercase;letter-spacing:2px}.insight-card h2{font-size:53px;line-height:1;margin:10px 0}.insight-card>p{font-size:24px;color:var(--muted);margin:6px 0}
+.insight-stats{display:flex;gap:50px;margin-top:16px}.insight-stats span{display:flex;align-items:baseline;gap:10px;font-size:22px}.insight-stats b{font-size:48px}
+@media(max-width:600px){.control-header{flex-wrap:wrap}.language-control{margin-left:0}.layer-controls>label{width:100%}}

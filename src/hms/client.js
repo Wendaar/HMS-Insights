@@ -63,6 +63,8 @@ export function fetchOrganization(options = {}) {
 export function fetchGameDetail(gameId, options = {}) {
   return request("game", {gameId}, options);
 }
+export function fetchGameEvents(gameId, options = {}) {return request('gameEvents',{gameId},options);}
+export function fetchGameLineup(gameId, options = {}) {return request('gameLineup',{gameId},options);}
 
 export function fetchGames(params = {}, options = {}) {
   return request("games", params, options);

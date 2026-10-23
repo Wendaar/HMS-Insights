@@ -42,3 +42,10 @@ test('broadcast game picker passes explicit filter and bounded page to the exist
   const r=response();await handler(req({gameId:undefined,filter:'Tomorrow',offset:'20'}),r);assert.equal(r.code,200);assert.equal(r.body.org,'EUCHL');
   const bad=response();await handler(req({gameId:undefined,offset:'-1'}),bad);assert.equal(bad.code,400);
 });
+test('live reads keep the scoped token, separate their cache and survive an unavailable lineup',async()=>{
+  let reads=0;const handler=createBroadcastHandler({env,fetchDetail:async()=>detail(),fetchMetadata:async()=>null,fetchOrg:async()=>null,
+    fetchEvents:async(gameId,{config})=>{reads++;assert.equal(config.token,'euchl-only');return {gameId,events:[]};},fetchLineup:async()=>{throw new Error('offline private error');}});
+  const opening=response();await handler(req(),opening);assert.equal(reads,0);assert.equal(opening.body.match,undefined);
+  const live=response();await handler(req({live:'1'}),live);assert.equal(reads,1);assert.equal(live.code,200);assert.deepEqual(live.body.match.roster,[]);assert.equal(live.body.match.lineupAvailable,false);
+  assert.doesNotMatch(JSON.stringify(live.body),/offline|private error|euchl-only/);
+});

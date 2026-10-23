@@ -1,5 +1,6 @@
 import {organizationConfig} from '../app/organizations.js';
-import {fetchGameDetail,fetchOrganization,fetchPublicGameMetadata,hmsConfigFromEnv} from '../hms/client.js';
+import {fetchGameDetail,fetchGameEvents,fetchGameLineup,fetchOrganization,fetchPublicGameMetadata,hmsConfigFromEnv} from '../hms/client.js';
+import {broadcastMatch} from '../domain/broadcast-match.js';
 import {browseMedia} from '../app/media-engine.js';
 import {isGameId} from '../domain/game-summary.js';
 import {sportingImage} from '../../public/game-report-media.js';
@@ -56,7 +57,8 @@ export function createBroadcastHandler(options={}){
         return res.status(200).json({...page,org:org.code});
       }
       if(!isGameId(q.gameId))throw new TypeError('Neplatné gameId.');
-      const key=org.code+':'+org.id.toLowerCase()+':'+q.gameId.toLowerCase(),now=Date.now();
+      if(q.live!==undefined&&q.live!=='1')throw new TypeError('Invalid live mode');
+      const key=org.code+':'+org.id.toLowerCase()+':'+q.gameId.toLowerCase()+':'+(q.live??'0'),now=Date.now();
       stage='game_data';
       if(cache.get(key)?.expires>now)return res.status(200).json(cache.get(key).data);
       if(!pending.has(key)){
@@ -66,10 +68,19 @@ export function createBroadcastHandler(options={}){
           const detail=await (options.fetchDetail??fetchGameDetail)(q.gameId,{config});
           // Validate before optional organization branding and never use PHM data as fallback.
           if(!same(detail?.gameId,q.gameId)||!same(detail?.organizationId,org.id))throw new Error('Game/organization mismatch');
-          let metadata;try{metadata=await (options.fetchMetadata??fetchPublicGameMetadata)(q.gameId);}catch{/* Optional public labels. */}
-          let organization;try{organization=await (options.fetchOrg??fetchOrganization)({config:{...config,timeoutMs:2500}});}catch{/* Logo is optional. */}
+          const optional=await Promise.allSettled([
+            (options.fetchMetadata??fetchPublicGameMetadata)(q.gameId),
+            (options.fetchOrg??fetchOrganization)({config:{...config,timeoutMs:2500}}),
+            q.live==='1'?(options.fetchEvents??fetchGameEvents)(q.gameId,{config}):null,
+            q.live==='1'?(options.fetchLineup??fetchGameLineup)(q.gameId,{config}):null,
+          ]);
+          const [metadata,organization,events,lineup]=optional.map(r=>r.status==='fulfilled'?r.value:null);
           const data=pregameModel(enrichPregame(detail,metadata),org,q.gameId,organization);
-          cache.set(key,{data,expires:Date.now()+30000});if(cache.size>100)cache.delete(cache.keys().next().value);return data;
+          if(q.live==='1'){
+            try{data.match=broadcastMatch(detail,events,lineup);}
+            catch{data.match=null;}
+          }
+          cache.set(key,{data,expires:Date.now()+(q.live==='1'?10000:30000)});if(cache.size>100)cache.delete(cache.keys().next().value);return data;
         })();pending.set(key,task);task.finally(()=>pending.delete(key)).catch(()=>{});
       }
       return res.status(200).json(await pending.get(key));
