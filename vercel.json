@@ -9,7 +9,22 @@
       "maxDuration": 30
     }
   },
+  "redirects": [
+    { "source": "/broadcast", "destination": "/broadcast/index.html", "permanent": false }
+  ],
+  "headers": [
+    {
+      "source": "/broadcast/:path*",
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy", "value": "no-referrer" },
+        { "key": "Cache-Control", "value": "no-cache" }
+      ]
+    }
+  ],
   "rewrites": [
+    { "source": "/api/broadcast", "destination": "/api/game-summary?view=broadcast" },
     {
       "source": "/api/studio-image",
       "destination": "/api/game-summary?view=studio-image"
