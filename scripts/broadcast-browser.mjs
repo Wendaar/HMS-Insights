@@ -10,6 +10,8 @@ try{
   browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_PATH?{executablePath:process.env.CHROMIUM_PATH}:{})});
   const context=await browser.newContext({viewport:{width:1920,height:1080}}),page=await context.newPage(),errors=[];let failed=false,sheets=0,reads=0;
   page.on('pageerror',error=>errors.push(error.message));page.on('request',req=>{if(req.url().includes('docs.google.com/spreadsheets'))sheets++;});let nextRead;
+  // PNG export is separate; OBS and its preview must work without the export CDN.
+  await context.route('https://cdn.jsdelivr.net/**',route=>route.abort());
   await context.route('**/api/broadcast?*',route=>{
     reads++;const q=new URL(route.request().url()).searchParams;nextRead?.();nextRead=null;
     if(failed)return route.fulfill({status:503,json:{error:'Test: HMS nedostupné.'}});
@@ -19,6 +21,11 @@ try{
   await page.goto(root+`/broadcast/index.html?org=EUCHL&game=${id}`);await page.locator('#current-obs-url').waitFor();
   const obs=await page.locator('#current-obs-url').inputValue();assert.equal(new URL(obs).searchParams.get('game'),id);assert.equal(new URL(obs).searchParams.get('org'),'EUCHL');
   assert.equal(sheets,0);assert.match(await page.locator('#connection-status').textContent(),/HMS API/);
+  const preview=page.locator('.preview-frame iframe');
+  await preview.waitFor();
+  await page.waitForFunction(()=>document.querySelector('.preview-frame iframe')?.contentWindow?.innerWidth===1920);
+  assert.deepEqual(await preview.evaluate(el=>({width:el.contentWindow.innerWidth,height:el.contentWindow.innerHeight})),{width:1920,height:1080});
+  assert.ok(Math.abs((await preview.boundingBox()).width-await page.locator('.preview-frame').evaluate(el=>el.clientWidth))<1);
   await page.screenshot({path:output+'/control.png'});
   await page.clock.install();await page.goto(obs);await page.locator('.overlay-stage').waitFor();await page.evaluate(()=>document.fonts.ready);
   assert.match(await page.locator('.team-block.home .team-name').textContent(),/Prague Guardians/);assert.match(await page.locator('.team-block.away .team-name').textContent(),/Bratislava Capitals/);
@@ -42,6 +49,7 @@ try{
   await page.goto(root+'/broadcast/index.html?org=EUCHL');await page.locator('#game-form').waitFor();
   await page.fill('#game-input',`https://prod.hms.wootera.net/org/euchl/games/${id}`);await page.locator('#game-form button').click();await page.waitForURL('**game='+id+'**');await page.locator('#current-obs-url').waitFor();
   await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+  await page.waitForFunction(()=>Math.abs(document.querySelector('.preview-frame iframe').getBoundingClientRect().width-document.querySelector('.preview-frame').clientWidth)<1);
   assert.equal(sheets,0);assert.ok(reads>0);assert.deepEqual(errors,[]);
   console.log('Broadcast browser checks passed: exact fixture, transparent 1080p, EUCHL branding, picker, thumbnail, no Sheet, failure stays off air.');
 }finally{await browser?.close();await new Promise(resolve=>server.close(resolve));}
