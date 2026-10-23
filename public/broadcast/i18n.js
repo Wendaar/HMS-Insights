@@ -48,6 +48,10 @@ const en={
   'Přepínání níže automaticky mění obsah stálého OBS kanálu.':'Selections below automatically change the permanent OBS channel output.',
   'Vyberte zápas ze seznamu nebo vložte jeho HMS odkaz. Přepnutí období nemění výstup v OBS.':'Select a game from the list or enter its HMS link. Browsing dates does not change OBS output.',
   'Seznam zápasů se nepodařilo načíst. Zkuste Obnovit z HMS nebo vložte odkaz na zápas.':'Could not load the game list. Retry Refresh from HMS or enter a game link.',
+  'HMS odmítlo přístup organizace. Je potřeba ověřit její API klíč a oprávnění.':'HMS refused access for this organization. Its API key and permissions need to be checked.',
+  'HMS dočasně omezuje počet požadavků. Vyčkejte prosím a zkuste načtení znovu.':'HMS is temporarily limiting requests. Please wait before retrying.',
+  'HMS nyní nevrací zápasová data. Zkuste prosím načtení znovu.':'HMS is currently not returning game data. Please retry.',
+  'HMS neodpovědělo včas. Zkuste prosím načtení znovu.':'HMS did not respond in time. Please retry.',
 };
 export function translate(value,lang){
   if(lang!=='en')return value;
