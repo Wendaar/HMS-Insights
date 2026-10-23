@@ -15,6 +15,7 @@ export const statuses = {
 export const linkLabels = {open:'Open', public:'Public', manage:'Manage', source:'Source', github:'GitHub'};
 export const organizations = [
   {id:'phm', name:'PHM', ready:true, description:'Ověřené cesty v HMS Insights a známé externí aplikace.'},
+  {id:'euchl', name:'EUCHL', ready:true, description:'HMS Studio a předzápasová grafika pro OBS napojená na HMS API.'},
   {id:'yhg', name:'YHG', ready:false, description:'Připraveno k doplnění vlastních aplikací a datových zdrojů.'},
   {id:'fllh', name:'FLLH', ready:false, description:'Připraveno k doplnění vlastních aplikací a datových zdrojů.'},
 ];
@@ -23,6 +24,7 @@ export const organizations = [
 const missing = (id, category, name, description) => ({id,category,name,description,
   status:'missing', dataSource:'Nenastaveno', note:'Aplikace je v inventáři; její adresu a zdroj je potřeba ověřit.', links:{}});
 const applications = [
+  {id:'broadcast',category:'media',name:'Opening Studio · OBS',description:'Předzápasová vrstva pro OBS a YouTube miniatura z HMS API.',status:'available',dataSource:'HMS API · zápas, týmy, loga a pořadatelé',note:'Čistý OBS výstup 1920 × 1080. Vyberte zápas v ovládání a zkopírujte jeho URL.',links:{open:'/broadcast/index.html?org=PHM',manage:'/broadcast/index.html?org=PHM',source:'/api/broadcast?org=PHM',github:'https://github.com/Wendaar/Youtube-Overlays'}},
   {id:'studio',category:'media',name:'Media Studio',description:'Grafika zápasů a Insights, náhledy a export PNG.',status:'available',dataSource:'HMS API / uložené snapshoty zápasů',note:'Dostupnost živých dat závisí na připojení organizace.',links:{open:'/studio/phm?lang=cs',manage:'/studio/phm?lang=cs',github:code('public/studio/app.js')}},
   {id:'all-stars',category:'media',name:'All Stars Generator',description:'Měsíční výběr hráčů, nominace a grafika All Stars.',status:'partial',dataSource:'Google Sheet → XLSX / přibalený snímek k 2. 10. 2026',note:'Samostatná aplikace. Průběžné HMS API zatím není připojeno; adresa Sheetu není ověřena.',links:{open:'https://wendaar.github.io/PHM-All-Stars-generator/',public:'https://wendaar.github.io/PHM-All-Stars-generator/',github:'https://github.com/Wendaar/PHM-All-Stars-generator'}},
   {id:'player-cards',category:'media',name:'Player Cards · kartičky hráčů',description:'Datová kartička hráče z importovaného zápasu.',status:'partial',dataSource:'Importované statistiky zápasů / HMS',note:'Ověřený je datový endpoint /api/player-card (gameId + playerId). Samostatný generátor zatím nemá ověřenou adresu.',links:{github:code('src/web/player-card-handler.js')}},
@@ -55,6 +57,14 @@ export function appsForOrganization(id) {
   const org = organizationById(id);
   if (!org) return [];
   if (org.id === 'phm') return applications;
+  if (org.id === 'euchl') return applications.map(app=>{
+    if(app.id==='broadcast')return {...app,links:{...app.links,open:'/broadcast/index.html?org=EUCHL',manage:'/broadcast/index.html?org=EUCHL',source:'/api/broadcast?org=EUCHL'}};
+    if(app.id==='studio')return {...app,links:{...app.links,open:'/studio/euchl?lang=cs',manage:'/studio/euchl?lang=cs'}};
+    if(app.id==='insights-public')return {...app,note:'Výběr EUCHL z importovaných zápasů.',links:{...app.links,open:'/priklepy/euchl',public:'/priklepy/euchl',source:'/api/selection?org=EUCHL'}};
+    if(app.id==='insights-archive')return {...app,links:{...app.links,open:'/archiv/euchl',public:'/archiv/euchl',source:'/api/feed?org=EUCHL'}};
+    if(app.category==='development')return app;
+    return {...app,status:'prepared',dataSource:'Nenastaveno',gamePath:undefined,links:{},note:'Pro EUCHL zatím není tento nástroj nastavený.'};
+  });
   return applications.map(app => ({id:app.id,category:app.category,name:app.id==='phm-tv'?`${org.name} TV`:app.name,
     description:app.description,status:'prepared',dataSource:'Nenastaveno',links:{},
     note:`Pro ${org.name} zatím nejsou ověřené odkazy ani datové připojení.`}));

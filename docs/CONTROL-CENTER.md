@@ -16,7 +16,7 @@ Source = datový zdroj, GitHub = zdrojový kód nebo dokumentace.
 Chybějící odkaz je neaktivní a přístupně označený jako Nenastaveno.
 Stavy vyjadřují úplnost registru, nikoli monitoring dostupnosti.
 
-PHM má 24 záznamů. Ověřené lokální cesty vycházejí z `vercel.json`, serveru a
+PHM má 25 záznamů. Ověřené lokální cesty vycházejí z `vercel.json`, serveru a
 existujících souborů. Insights Definition odkazuje na pravidla v kódu, protože
 samostatný editor neexistuje. Player Cards mají ověřený datový endpoint,
 samostatný generátor není potvrzený. All Stars je samostatné repo
@@ -27,6 +27,10 @@ Ostatní nástroje z inventáře zůstávají jasně nenastavené.
 První převedený vložený nástroj je **Hráči do playoff**, samostatná karta v
 Competition. Má správu, centrální konfiguraci, náhled a veřejný výstup pro iframe.
 Podrobnosti a provozní podmínky: [Hráči do playoff](PLAYOFF-PLAYERS.md).
+
+EUCHL má vlastní Studio, Insights a **Opening Studio · OBS**. Ostatní nástroje
+jsou u EUCHL připravené bez přebírání PHM adres. OBS předzápasová vrstva používá
+živé HMS API a vlastní stabilní adresu pro každý zápas. Viz [Broadcast](BROADCAST.md).
 
 YHG a FLLH mají zatím vlastní prázdné záznamy bez PHM odkazů a bez formuláře
 pro otevření PHM reportů. Při zapojení přidejte samostatnou konfiguraci v

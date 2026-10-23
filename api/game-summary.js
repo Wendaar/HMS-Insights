@@ -1,4 +1,6 @@
 import {createStudioImageHandler} from '../src/web/studio-image-handler.js';
+import {createBroadcastHandler} from '../src/web/broadcast-handler.js';
+const broadcast=createBroadcastHandler();
 import {createToolsHandler} from '../src/web/tools-handler.js';
 const tools=createToolsHandler();
 const studioImage=createStudioImageHandler();
@@ -12,4 +14,4 @@ const summary=createGameReportHandler({json:true});
 const playerCard=createPlayerCardHandler();
 // Reuse a function for the player-card rewrite: keep the Hobby deployment at
 // twelve functions while preserving the existing GameSummary JSON contract.
-export default (request,response)=>request.query?.view==='tools'?tools(request,response):request.query?.view==='studio-image'?studioImage(request,response):request.query?.view==='studio'?studio(request,response):request.query?.view==='extras'?extras(request,response):request.query?.view==='player-card'?playerCard(request,response):summary(request,response);
+export default (request,response)=>request.query?.view==='broadcast'?broadcast(request,response):request.query?.view==='tools'?tools(request,response):request.query?.view==='studio-image'?studioImage(request,response):request.query?.view==='studio'?studio(request,response):request.query?.view==='extras'?extras(request,response):request.query?.view==='player-card'?playerCard(request,response):summary(request,response);
