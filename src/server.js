@@ -32,6 +32,7 @@ const assets = {
   "/organization-import.js": ["text/javascript; charset=utf-8", "organization-import.js"],
   "/game-report-extras.js": ["text/javascript; charset=utf-8", "game-report-extras.js"],
   "/game-report-premium.css": ["text/css; charset=utf-8", "game-report-premium.css"],
+  "/game-report-i18n.js": ["text/javascript; charset=utf-8", "game-report-i18n.js"],
   "/game-report-media.js": ["text/javascript; charset=utf-8", "game-report-media.js"],
   "/styles.css": ["text/css; charset=utf-8", "styles.css"],
   "/app.js": ["text/javascript; charset=utf-8", "app.js"],
@@ -104,7 +105,7 @@ export const server = createServer(async (request, response) => {
   }
   const reportMatch = /^\/game-center\/([^/]+)(?:\/public)?$/.exec(url.pathname);
   if (reportMatch || url.pathname === "/api/game-summary") {
-    request.query = { gameId: reportMatch?.[1] ?? url.searchParams.get("gameId") };
+    request.query = { gameId: reportMatch?.[1] ?? url.searchParams.get("gameId"), lang: url.searchParams.get('lang') };
     const adapter = {
       setHeader: (key, value) => response.setHeader(key, value),
       status(code) { response.statusCode = code; return this; },
