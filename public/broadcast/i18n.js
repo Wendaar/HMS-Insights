@@ -1,5 +1,6 @@
 export const language=value=>value==='en'?'en':'cs';
 const en={
+  'Sponzoři z HMS · přehled zdrojových dat':'HMS sponsors · source data overview',
   'QR výzva':'QR call to action','Partneři':'Partners','Přesilovka / oslabení':'Power play / penalty kill','Lídři týmu':'Team leaders','Příští zápasy':'Next matches','Poslední výsledky':'Recent results',
   'Pro tento výběr není nastavená žádná položka.':'No item is configured for this selection.','Načtěte QR kód fotoaparátem':'Scan the QR code with your camera','Partner přenosu':'Broadcast partner',
   'Načítám kontext týmu…':'Loading team context…','Uložené zápasy před tímto utkáním':'Imported games before this fixture','zápasů':'games','Výběr je omezený na 500 zápasů':'Selection is limited to 500 games',

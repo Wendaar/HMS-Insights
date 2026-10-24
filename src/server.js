@@ -70,7 +70,7 @@ export const server = createServer(async (request, response) => {
   if(url.pathname==='/broadcast'||url.pathname==='/broadcast/'){
     response.writeHead(302,{location:'/broadcast/index.html'+url.search});response.end();return;
   }
-  if(/^\/broadcast\/(index.html|demo.html|demo.js|library.js|app.js|hms-source.js|i18n.js|channel.js|match-layers.js|extra-layers.js|styles.css|fonts\/barlow-latin(?:-ext)?\.woff2)$/.test(url.pathname)){
+  if(/^\/broadcast\/(index.html|demo.html|demo.js|sponsors.html|sponsors.js|library.js|app.js|hms-source.js|i18n.js|channel.js|match-layers.js|extra-layers.js|styles.css|fonts\/barlow-latin(?:-ext)?\.woff2)$/.test(url.pathname)){
     response.setHeader('content-type',url.pathname.endsWith('.html')?'text/html; charset=utf-8':url.pathname.endsWith('.css')?'text/css; charset=utf-8':url.pathname.endsWith('.woff2')?'font/woff2':'text/javascript; charset=utf-8');
     response.setHeader('x-content-type-options','nosniff');response.setHeader('referrer-policy','no-referrer');response.setHeader('cache-control','no-cache');
     response.end(await readFile(join(publicDirectory,url.pathname)));return;

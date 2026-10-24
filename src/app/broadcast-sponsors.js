@@ -10,7 +10,8 @@ function link(value){try{const u=new URL(value);return ['https:','http:'].includ
 export function sponsorCatalog(sponsorResponse,teamResponse,org){
   const sponsors=rows(sponsorResponse),teams=teamResponse===null?null:rows(teamResponse);
   for(const row of [...sponsors,...(teams??[])])if(row.organizationId&&!same(row.organizationId,org.id))throw new Error('Catalog organization mismatch');
-  const items=sponsors.map(s=>{const id=uuid(s.sponsorId);if(!id||!text(s.name))throw new Error('Missing sponsor identity');return {id,name:text(s.name),nick:text(s.nick),short:text(s.short),claim:text(s.claim,500),web:link(s.web),logoUrl:image(s)};});
+  const items=sponsors.map(s=>{const id=uuid(s.sponsorId);if(!id||!text(s.name))throw new Error('Missing sponsor identity');return {id,name:text(s.name),nick:text(s.nick),short:text(s.short),claim:text(s.claim,500),web:link(s.web),logoUrl:image(s),
+    scopeRefs:Object.fromEntries(['teamIds','competitionIds','seasonIds','groupIds','phaseIds','venueIds'].filter(k=>Array.isArray(s[k])).map(k=>[k,[...new Set(s[k].map(uuid).filter(Boolean))]]))};});
   const teamItems=(teams??[]).map(t=>{const id=uuid(t.teamId);if(!id||!text(t.name))throw new Error('Missing team identity');return {id,name:text(t.name),logoUrl:image(t)};});
   const sponsorIds=new Set(items.map(s=>s.id)),teamIds=new Set(teamItems.map(t=>t.id)),bindings=new Map();
   const bind=(sponsorId,teamId)=>{const s=uuid(sponsorId),t=uuid(teamId);if(sponsorIds.has(s)&&teamIds.has(t))bindings.set(s+':'+t,{sponsorId:s,teamId:t,source:'HMS'});};

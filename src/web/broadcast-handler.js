@@ -99,12 +99,13 @@ export function createBroadcastHandler(options={}){
     }catch(error){
       const invalid=error instanceof TypeError&&['Neplatná organizace.','Neplatná stránka.','Neplatné gameId.','Invalid live mode','Neplatný filtr.'].includes(error.message);
       let code=invalid?'invalid_request':stage,message=invalid?'Neplatná organizace, filtr nebo Game ID.':'Předzápasová data nejsou dostupná. Ověřte zápas a připojení vybrané organizace.';
+      if(stage==='sponsor_catalog')message='Sponzoři nyní nejsou dostupní. Ověřte připojení vybrané organizace k HMS.';
       if(error instanceof HmsRequestError){
         if([401,403].includes(error.status)){code='hms_auth';message='HMS odmítlo přístup organizace. Je potřeba ověřit její API klíč a oprávnění.';}
         else if(error.status===429){
           code='hms_rate_limit';message='HMS dočasně omezuje počet požadavků. Vyčkejte prosím a zkuste načtení znovu.';res.setHeader('retry-after',String(error.retryAfter));
           try{const org=organizationConfig((req.query??{}).org??'PHM',env);if(!cooldowns.get(org.code)||cooldowns.get(org.code).until<=Date.now())cooldowns.set(org.code,{until:Date.now()+error.retryAfter*1000,error});}catch{}
-        }else{code='hms_upstream';message='HMS nyní nevrací zápasová data. Zkuste prosím načtení znovu.';}
+        }else{code='hms_upstream';message=stage==='sponsor_catalog'?'HMS nyní nevrací seznam sponzorů. Zkuste prosím načtení znovu.':'HMS nyní nevrací zápasová data. Zkuste prosím načtení znovu.';}
       }else if(['TimeoutError','AbortError'].includes(error?.name)){code='hms_timeout';message='HMS neodpovědělo včas. Zkuste prosím načtení znovu.';}
       return res.status(invalid?400:503).json({code,error:message,...(error instanceof HmsRequestError?{upstreamStatus:error.status}:{})});
     }

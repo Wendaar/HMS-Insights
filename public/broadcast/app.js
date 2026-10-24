@@ -306,7 +306,7 @@ function renderControl() {
         </aside>
         <main class="workspace">
           <div id="channel-slot"></div>
-          <details class="library-panel"><summary>${t('Knihovna QR výzev a partnerů')}</summary><div id="library-slot"></div></details>
+          <details class="library-panel"><summary>${t('Knihovna QR výzev a partnerů')}</summary><a href="sponsors.html?org=${encodeURIComponent(org)}" target="_blank" rel="noopener">${t('Sponzoři z HMS · přehled zdrojových dat')}</a><div id="library-slot"></div></details>
           ${!game?`<p class="data-alert">${t('Vyberte zápas ze seznamu nebo vložte jeho HMS odkaz. Přepnutí období nemění výstup v OBS.')}</p>`:`
           ${source==='hms'?layerControls(game):''}
           <div class="workspace-toolbar">

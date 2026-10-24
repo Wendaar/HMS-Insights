@@ -14,6 +14,11 @@ test('empty sponsors and absent relationship arrays never invent links or imply 
   assert.equal(sponsorCatalog([],[],org).items.length,0);assert.equal(sponsorCatalog(sponsors,null,org).relationshipStatus,'teams-unavailable');
   assert.throws(()=>sponsorCatalog({...sponsors},[],org));assert.throws(()=>sponsorCatalog([{...sponsors[0],organizationId:id(99)}],[],org));
 });
+test('verified HMS ID arrays retain organization-owned scope references without inventing unsupported relations',()=>{
+  const data=sponsorCatalog([{...sponsors[0],teamIds:[id(4),id(4),'invalid'],competitionIds:[id(6)],seasonIds:[],groupIds:[id(7)],phaseIds:[id(8)],venueIds:[id(9)]}],[{teamId:id(4),name:'Home'}],org);
+  assert.deepEqual(data.items[0].scopeRefs,{teamIds:[id(4)],competitionIds:[id(6)],seasonIds:[],groupIds:[id(7)],phaseIds:[id(8)],venueIds:[id(9)]});assert.equal(data.bindings.length,1);
+  assert.deepEqual(sponsorCatalog(sponsors,[],org).items[0].scopeRefs,{});
+});
 test('catalog verifies token organization, keeps read calls independently scoped, and tolerates only an unavailable teams collection',async()=>{
   const calls=[],opts={env:{},fetchOrganization:async({config})=>{calls.push(config.token);return {organizationId:org.id};},fetchSponsors:async({config})=>{assert.equal(config.timeoutMs,5000);calls.push(config.token);return sponsors;},fetchTeams:async({config})=>{calls.push(config.token);throw new Error('teams offline');}};
   const value=await loadSponsorCatalog(org,opts);assert.deepEqual(calls,['euchl-private','euchl-private','euchl-private']);assert.equal(value.items.length,2);assert.equal(value.teamsAvailable,false);
