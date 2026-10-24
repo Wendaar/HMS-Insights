@@ -14,7 +14,6 @@ function labels(){
   $('earlier').textContent=t('older');$('later').textContent=t('newer');$('previous').textContent=t('previous');$('next').textContent=t('next');
   document.querySelectorAll('[data-lang]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.lang===lang)));
   $('period-tabs').replaceChildren(...filters.map(filter=>{const button=document.createElement('button');button.type='button';button.textContent=t(filter);button.dataset.filter=filter;button.setAttribute('aria-pressed',String(filter===(params.get('filter')??'Today')));return button;}));
-  const home=new URL('/game-center',location.origin);if(params.get('seasonId'))home.searchParams.set('seasonId',params.get('seasonId'));home.searchParams.set('lang',lang);document.querySelector('.brand').href=home.pathname+home.search;
 }
 function optionList(id,items,key){
   const node=$(id),value=params.get(key)??'',previous=node.selectedOptions[0]?.textContent;
