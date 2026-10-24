@@ -1,7 +1,9 @@
+import { localizeReportNode, reportNames, reportLocale } from './game-report-i18n.js';
 import {sportingImage,flickrAlbum,youtubeVideo} from './game-report-media.js';
 const {summary:s}=JSON.parse(document.getElementById('game-report-data').textContent);
+const lang=document.documentElement.lang;
 const el=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e;};
-const num=n=>new Intl.NumberFormat('cs-CZ',{maximumFractionDigits:1}).format(n);
+const num=n=>new Intl.NumberFormat(reportLocale(lang),{maximumFractionDigits:1}).format(n);
 function starCard(p){
   const article=el('article','official-star'),portrait=el('div','star-portrait');
   portrait.append(el('span','star-initials',p.name?.split(/\s+/).slice(0,2).map(v=>v[0]).join('')));
@@ -43,5 +45,6 @@ function applyExtras(data){
       const place=()=>{if(narrow.matches&&slot)slot.append(panel);else sidebar.prepend(panel);};place();narrow.addEventListener('change',place);
     }
   }
+  localizeReportNode(document.querySelector('main'),lang,[...reportNames(s),...(data.stars??[]).map(p=>p.name)]);
 }
 fetch(`/api/game-summary?view=extras&gameId=${encodeURIComponent(s.gameId)}`,{headers:{accept:'application/json'}}).then(r=>r.ok?r.json():null).then(data=>{if(data)applyExtras(data);}).catch(()=>{});

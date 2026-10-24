@@ -1,8 +1,12 @@
+import { localizeReportNode, reportNames, reportLocale } from './game-report-i18n.js';
 import './game-report-extras.js';
 import {sportingImage} from './game-report-media.js';
 import { filterReportEvents,durationLabel } from './game-report-data.js';
 import { rinkSvg,netSvg,unknownGoals,miniGoalMaps } from './game-report-graphics.js';
 const {summary}=JSON.parse(document.getElementById('game-report-data').textContent);
+const lang=document.documentElement.lang,names=reportNames(summary);
+const localize=node=>localizeReportNode(node,lang,names);
+for(const link of document.querySelectorAll('[data-report-lang]')){const url=new URL(location.href);url.searchParams.set('lang',link.dataset.reportLang);link.href=url.pathname+url.search+url.hash;}
 const events=summary.timeline?.events??[],byId=new Map(events.map(e=>[e.id,e]));
 const $=id=>document.getElementById(id),rail=$('event-rail'),dialog=$('event-dialog'),playerDialog=$('player-dialog');
 const filters={team:'all',period:'all',type:'all'};
@@ -22,7 +26,7 @@ function refresh(){
     const subset=map.dataset.mapScorer?goals.filter(e=>e.teamId?.toLowerCase()===map.dataset.mapScorer.toLowerCase()):goals;
     map.querySelector('.map-content').innerHTML=(field==='shotZone'?rinkSvg(summary,subset,{uid:map.dataset.mapId}):netSvg(summary,subset,{uid:map.dataset.mapId}))+unknownGoals(summary,subset,field);
   }
-
+  localize(document.querySelector('main'));
 }
 function playerButton(player){
   if(!/^[a-f0-9-]{36}$/i.test(player.id??'')){const name=document.createElement('span');name.textContent=player.name;return name;}
@@ -45,7 +49,7 @@ function openEvent(id){
     const mini=document.createElement('div');mini.innerHTML=miniGoalMaps(summary,event);content.append(mini);
   }
   const list=document.createElement('dl');
-  if(!event.clock&&event.recordedAt)row(list,'Čas zápisu',new Intl.DateTimeFormat('cs-CZ',{timeZone:'Europe/Prague',dateStyle:'short',timeStyle:'medium'}).format(new Date(event.recordedAt)));
+  if(!event.clock&&event.recordedAt)row(list,'Čas zápisu',new Intl.DateTimeFormat(reportLocale(lang),{timeZone:'Europe/Prague',dateStyle:'short',timeStyle:'medium'}).format(new Date(event.recordedAt)));
   if(event.type==='goal'){
     row(list,'Skóre po gólu',event.scoreAfter?`${event.scoreAfter.home}:${event.scoreAfter.away}`:null);
     const assists=event.assists.filter(p=>known(p.name));
@@ -66,7 +70,7 @@ function openEvent(id){
   }
   content.append(list);
   const hash=`#event=${encodeURIComponent(id)}`;$('event-permalink').hidden=false;$('event-permalink').href=hash;history.replaceState(null,'',hash);
-  if(!dialog.open)dialog.showModal();
+  localize(dialog);if(!dialog.open)dialog.showModal();
 }
 function openGoals(ids){
   const goals=ids.map(id=>byId.get(id)).filter(Boolean);
@@ -75,7 +79,7 @@ function openGoals(ids){
   $('event-detail-kicker').textContent='VYBRANÉ GÓLY';$('event-detail-title').textContent=`${goals.length} góly`;$('event-detail-context').textContent='Vyberte gól pro detail';$('event-permalink').hidden=true;
   const list=document.createElement('div');list.className='goal-picker';
   for(const goal of goals){const b=document.createElement('button');b.type='button';b.dataset.eventId=goal.id;b.textContent=[goal.clock,goal.player.name,goal.scoreAfter?`${goal.scoreAfter.home}:${goal.scoreAfter.away}`:null].filter(known).join(' · ');list.append(b);}
-  $('event-detail-content').replaceChildren(list);if(!dialog.open)dialog.showModal();
+  $('event-detail-content').replaceChildren(list);localize(dialog);if(!dialog.open)dialog.showModal();
 }
 document.addEventListener('error',event=>{if(event.target instanceof HTMLImageElement)event.target.hidden=true;},true);
 document.querySelectorAll('img').forEach(img=>{if(img.complete&&!img.naturalWidth)img.hidden=true;});
@@ -85,7 +89,7 @@ async function openPlayer(id){
   const request=++playerRequest;
   const knownPlayer=[...summary.players,...summary.goalies,...events.flatMap(e=>[e.player,...(e.assists??[]),e.allowedBy].filter(Boolean))].find(p=>p.id?.toLowerCase()===id.toLowerCase());
   $('player-card-title').textContent=knownPlayer?.name??'Hráč';$('player-card-content').textContent='Načítání statistik…';
-  if(!playerDialog.open)playerDialog.showModal();
+  localize(playerDialog);if(!playerDialog.open)playerDialog.showModal();
   try{
     let card=playerCache.get(id);
     if(!card){const response=await fetch(`/api/player-card?gameId=${encodeURIComponent(summary.gameId)}&playerId=${encodeURIComponent(id)}`,{headers:{accept:'application/json'}});if(!response.ok)throw Error('unavailable');card=await response.json();playerCache.set(id,card);}
@@ -107,12 +111,14 @@ async function openPlayer(id){
       }
     }
     const grid=document.createElement('div');grid.className='player-stat-grid';
-    for(const [key,label]of Object.entries(labels)){if(!Number.isFinite(card.stats[key]))continue;const cell=document.createElement('div'),value=document.createElement('strong'),name=document.createElement('small');value.textContent=new Intl.NumberFormat('cs-CZ',{maximumFractionDigits:2}).format(card.stats[key]);name.textContent=label;cell.append(value,name);grid.append(cell);}fragment.append(grid);
-    const source=document.createElement('p');source.className='map-caption';source.textContent=(card.source==='hms'?'Souhrnné statistiky HMS pro tuto skupinu soutěže.':'Součet z dosud načtených zápasů v této skupině soutěže.')+(card.asOf?' K '+new Intl.DateTimeFormat('cs-CZ',{timeZone:'Europe/Prague'}).format(new Date(card.asOf)):'');fragment.append(source);
+    for(const [key,label]of Object.entries(labels)){if(!Number.isFinite(card.stats[key]))continue;const cell=document.createElement('div'),value=document.createElement('strong'),name=document.createElement('small');value.textContent=new Intl.NumberFormat(reportLocale(lang),{maximumFractionDigits:2}).format(card.stats[key]);name.textContent=label;cell.append(value,name);grid.append(cell);}fragment.append(grid);
+    const source=document.createElement('p');source.className='map-caption';source.textContent=(card.source==='hms'?'Souhrnné statistiky HMS pro tuto skupinu soutěže.':'Součet z dosud načtených zápasů v této skupině soutěže.')+(card.asOf?(lang==='en'?' As of ':' K ')+new Intl.DateTimeFormat(reportLocale(lang),{timeZone:'Europe/Prague'}).format(new Date(card.asOf)):'');fragment.append(source);
     $('player-card-content').replaceChildren(fragment);
   }catch{if(request===playerRequest&&playerDialog.open)$('player-card-content').textContent='Statistiky se nyní nepodařilo načíst. Zkuste kartu otevřít znovu.';}
+  finally{localize(playerDialog);}
 }
 document.addEventListener('click',event=>{
+  const languageLink=event.target.closest('[data-report-lang]');if(languageLink){const url=new URL(location.href);url.searchParams.set('lang',languageLink.dataset.reportLang);languageLink.href=url.pathname+url.search+url.hash;return;}
   const strength=event.target.closest('button[data-strength]');if(strength){
     const goals=events.filter(e=>e.type==='goal'&&e.teamId?.toLowerCase()===strength.dataset.strengthTeam.toLowerCase()&&e.situation?.code===strength.dataset.strength);
     openGoals(goals.map(e=>e.id));return;
