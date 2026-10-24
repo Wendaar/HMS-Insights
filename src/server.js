@@ -1,4 +1,5 @@
 import {createOrganizationImportHandler} from './web/organization-import-handler.js';
+import {createSeasonGamesHandler} from './web/season-games-handler.js';
 import {createBroadcastHandler} from './web/broadcast-handler.js';
 import {createOrganizationImportPage} from './web/organization-import-page.js';
 import {createPublicFeedHandler} from './web/public-feed-handler.js';
@@ -46,6 +47,15 @@ const assets = {
 
 export const server = createServer(async (request, response) => {
   const url = new URL(request.url, `http://${request.headers.host ?? "localhost"}`);
+  if(url.pathname==='/api/games'||url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='games'){
+    request.query=Object.fromEntries(url.searchParams);
+    await createSeasonGamesHandler()(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json; charset=utf-8');response.end(JSON.stringify(body));}});return;
+  }
+  if(['/game-center','/game-center/','/games/index.html','/games/app.js','/games/styles.css'].includes(url.pathname)){
+    const path=url.pathname.startsWith('/game-center')?'/games/index.html':url.pathname;
+    response.setHeader('content-type',path.endsWith('.html')?'text/html; charset=utf-8':path.endsWith('.css')?'text/css; charset=utf-8':'text/javascript; charset=utf-8');
+    response.end(await readFile(join(publicDirectory,path)));return;
+  }
   if(url.pathname==='/api/broadcast'||url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='broadcast'){
     if(['POST','PATCH'].includes(request.method)){
       let body='';for await(const chunk of request){body+=chunk;if(body.length>4096){response.statusCode=413;response.end();return;}}request.body=body;

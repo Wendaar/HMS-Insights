@@ -5,6 +5,7 @@ export function reportLanguage(value, summary = {}) {
 }
 export const reportLocale = lang => lang === 'en' ? 'en-GB' : 'cs-CZ';
 const en = {
+  'Přehled zápasů':'Games',
   'Část zákroků týmu není přiřazena konkrétnímu brankáři. Zobrazené zákroky jsou pouze přiřazené; individuální úspěšnost proto neuvádíme.':'Some team saves are not assigned to a goaltender. Only attributed saves are shown here; individual save percentage is therefore omitted.',
   'Hlavní navigace':'Main navigation', 'Příklepy':'Highlights',
   'Lokální testovací náhled z veřejného zápisu HMS. Nejde o nový import do databáze.':'Local preview using the public HMS game sheet. No new database import has been made.',
