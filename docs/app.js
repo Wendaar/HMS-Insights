@@ -137,7 +137,7 @@ function openDetail(id, updateUrl = true) {
   const status = outstandingLabel(item);
   dialogContent.innerHTML = `<article class="share-card" style="--card-team:${safeColor(item.teamColor, "#8fe7ff")};--card-group:${safeColor(item.groupColor, "#a454ff")}">
     ${teamLogo}
-    <header class="share-head"><span class="share-brand"><b>HMS</b> PŘÍKLEPY</span><span class="share-group">${groupLogo}${escapeHtml(item.group)}</span></header>
+    <header class="share-head"><span class="share-brand"><a class="hms-brand" href="https://www.heromanagementsystem.com/" target="_blank" rel="noopener noreferrer" aria-label="HMS · Hero Management System"><span class="hms-logo"><img src="hms-logo.png" width="3508" height="3508" alt="HMS · Hero Management System"></span><span class="hms-product">PŘÍKLEPY</span></a></span><span class="share-group">${groupLogo}${escapeHtml(item.group)}</span></header>
     <div class="share-copy">
       ${status ? `<span class="share-status">${escapeHtml(status)}</span>` : ""}
       <span class="share-achievement">✦ ${escapeHtml(achievementLabel(item.type))}</span>

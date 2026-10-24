@@ -30,6 +30,10 @@ const zbraslavAnalysis = analyzeHmsResponses(zbraslavEvents, zbraslavLineup);
 const broadcastHandler=createBroadcastHandler();
 
 const assets = {
+  '/hms-brand.css':['text/css; charset=utf-8','hms-brand.css'],
+  '/hms-brand.js':['text/javascript; charset=utf-8','hms-brand.js'],
+  '/hms-logo.png':['image/png','hms-logo.png'],
+  '/hms-favicon-32.png':['image/png','hms-favicon-32.png'],
   "/organization-import.js": ["text/javascript; charset=utf-8", "organization-import.js"],
   "/game-report-extras.js": ["text/javascript; charset=utf-8", "game-report-extras.js"],
   "/game-report-premium.css": ["text/css; charset=utf-8", "game-report-premium.css"],
