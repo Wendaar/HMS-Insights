@@ -7,6 +7,7 @@ import {sportingImage} from '../../public/game-report-media.js';
 import {hmsMediaContext} from '../hms/media-context.js';
 import {createChannelHandler} from './broadcast-channel.js';
 import {broadcastContext} from '../app/broadcast-context.js';
+import {loadSponsorCatalog} from '../app/broadcast-sponsors.js';
 const same=(a,b)=>typeof a==='string'&&typeof b==='string'&&a.toLowerCase()===b.toLowerCase();
 const label=value=>typeof value==='string'?value.trim().slice(0,240):null;
 const image=value=>sportingImage(value?.logoUrls?.md??value?.logoUrl);
@@ -56,6 +57,10 @@ export function createBroadcastHandler(options={}){
     try{
       const org=organizationConfig(q.org??'PHM',env);if(!org.token)throw new Error('No scoped API token');
       const cooldown=cooldowns.get(org.code);if(cooldown?.until>Date.now())throw cooldown.error;
+      if(q.catalog==='sponsors'){
+        stage='sponsor_catalog';
+        return res.status(200).json(await (options.loadSponsors??loadSponsorCatalog)(org,{...options,env}));
+      }
       if(!q.gameId){
         stage='schedule';
         const offset=Number(q.offset??0);if(!Number.isSafeInteger(offset)||offset<0||offset>100000)throw new TypeError('Neplatná stránka.');
