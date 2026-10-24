@@ -154,7 +154,7 @@ export function renderPriklepyPage(items, config = {}) {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Přehled automaticky nalezených hokejových momentů z HMS zápasů">
   <title>${organization?escapeHtml(organization.name)+" · ":""}Příklepy · HMS Insights</title>
-  <link rel="icon" type="image/png" sizes="32x32" href="${assetPrefix}hms-favicon-32.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="${assetPrefix}hms-favicon-public-v2.png"><link rel="icon" type="image/svg+xml" sizes="any" href="${assetPrefix}hms-favicon-public-v2.svg">
   <link rel="stylesheet" href="${assetPrefix}styles.css?v=org-feeds-1">
   <script src="${assetPrefix}app.js?v=org-feeds-1" defer></script>
 <link rel="stylesheet" href="${assetPrefix}hms-brand.css"></head>
