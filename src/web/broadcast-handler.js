@@ -6,6 +6,8 @@ import {isGameId} from '../domain/game-summary.js';
 import {sportingImage} from '../../public/game-report-media.js';
 import {hmsMediaContext} from '../hms/media-context.js';
 import {createChannelHandler} from './broadcast-channel.js';
+import {broadcastContext} from '../app/broadcast-context.js';
+import {loadSponsorCatalog} from '../app/broadcast-sponsors.js';
 const same=(a,b)=>typeof a==='string'&&typeof b==='string'&&a.toLowerCase()===b.toLowerCase();
 const label=value=>typeof value==='string'?value.trim().slice(0,240):null;
 const image=value=>sportingImage(value?.logoUrls?.md??value?.logoUrl);
@@ -46,6 +48,7 @@ export function createBroadcastHandler(options={}){
   const cache=new Map(),pending=new Map(),cooldowns=new Map();
   return async(req,res)=>{
     if(req.query?.channel!==undefined||req.query?.channels==='1')return channels(req,res);
+    if(req.query?.capabilities==='1')return res.status(200).json({sandbox:(options.env??process.env).VERCEL_ENV!=='production'||(options.env??process.env).BROADCAST_SANDBOX==='1'});
     res.setHeader('cache-control','no-store');res.setHeader('x-content-type-options','nosniff');res.setHeader('referrer-policy','no-referrer');
     if(req.headers.origin==='https://wendaar.github.io'){res.setHeader('access-control-allow-origin','https://wendaar.github.io');res.setHeader('vary','Origin');}
     if(req.method!=='GET'){res.setHeader('allow','GET');return res.status(405).json({error:'Pouze čtení.'});}
@@ -54,6 +57,10 @@ export function createBroadcastHandler(options={}){
     try{
       const org=organizationConfig(q.org??'PHM',env);if(!org.token)throw new Error('No scoped API token');
       const cooldown=cooldowns.get(org.code);if(cooldown?.until>Date.now())throw cooldown.error;
+      if(q.catalog==='sponsors'){
+        stage='sponsor_catalog';
+        return res.status(200).json(await (options.loadSponsors??loadSponsorCatalog)(org,{...options,env}));
+      }
       if(!q.gameId){
         stage='schedule';
         const offset=Number(q.offset??0);if(!Number.isSafeInteger(offset)||offset<0||offset>100000)throw new TypeError('Neplatná stránka.');
@@ -62,7 +69,7 @@ export function createBroadcastHandler(options={}){
       }
       if(!isGameId(q.gameId))throw new TypeError('Neplatné gameId.');
       if(q.live!==undefined&&q.live!=='1')throw new TypeError('Invalid live mode');
-      const key=org.code+':'+org.id.toLowerCase()+':'+q.gameId.toLowerCase()+':'+(q.live??'0'),now=Date.now();
+      const key=org.code+':'+org.id.toLowerCase()+':'+q.gameId.toLowerCase()+':'+(q.live??'0')+':'+(q.context==='1'?'context':'game'),now=Date.now();
       stage='game_data';
       if(cache.get(key)?.expires>now)return res.status(200).json(cache.get(key).data);
       if(!pending.has(key)){
@@ -80,6 +87,7 @@ export function createBroadcastHandler(options={}){
           ]);
           const [metadata,organization,events,lineup]=optional.map(r=>r.status==='fulfilled'?r.value:null);
           const data=pregameModel(enrichPregame(detail,metadata),org,q.gameId,organization);
+          if(q.context==='1')data.context=await (options.fetchContext??broadcastContext)(enrichPregame(detail,metadata),options);
           if(q.live==='1'){
             try{data.match=broadcastMatch(detail,events,lineup);}
             catch{data.match=null;}
