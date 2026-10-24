@@ -159,3 +159,9 @@ The existing GameSummary function dispatches `view=games`, also rewritten from `
 A single parameterized database query checks report availability for only the 20 visible game IDs and the same season. Imported games link to their new public Game Report; other games link to the original public HMS detail. No schedule read imports or changes game snapshots, Příklepy or HMS. GameSummary now includes the public `seasonId` so reports can link back to their season schedule. The hub remains unchanged.
 
 Validation: 206 tests. New coverage includes Prague/DST boundaries, bounded day requests/concurrency, 20-game pagination, filtering before slicing, cross-season/day rejection, multiple officials and field allowlisting, scheduled versus live/final zeroes, unavailable data/429 behavior, scoped SQL and report-to-schedule navigation. Local browser verification covers the actual EUCHL Today/Past/Future views and a 390px viewport without document overflow.
+
+## HMS identity
+
+Use the supplied `/hms-logo.png` rather than a typographic HMS wordmark. Keep this original asset unchanged; `/hms-brand.css` crops only its display margins in compact layouts. `hmsBrand()` from `public/hms-brand.js` is the shared server/browser markup helper. Static entry pages use the same classes and asset. Keep product labels separate from the image. Brand links point to https://www.heromanagementsystem.com/ in a new tab with `noopener noreferrer`.
+
+Every entry page uses `/hms-favicon-32.png` (the supplied 32×32 PNG). Include `/hms-brand.css` after the page stylesheet. Keep competition, organization and team logos independent from the HMS product identity. Inline source references, player initials and data labels remain text.

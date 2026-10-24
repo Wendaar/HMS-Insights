@@ -9,3 +9,4 @@
 #brandEditor{border:1px solid #344c64;border-radius:9px;padding:12px;font-size:12px}#brandEditor summary{cursor:pointer;color:#dae7f5}#brandEditor label{margin:12px 0}
 
 html[lang=en]{--empty-games:"No games in this window.";--empty-insights:"No achievements match your search."}header{flex-wrap:wrap}header select{max-width:220px}header label+label{margin-left:0}@media(max-width:700px){header .brand{flex:1 0 100%}header label{margin-left:0;flex:1;min-width:0;flex-wrap:wrap}header select{max-width:100%;width:100%}}
+@media(max-width:700px){header .hms-brand{flex:1 0 100%}}

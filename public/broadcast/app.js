@@ -1,3 +1,4 @@
+import {hmsBrand} from '/hms-brand.js';
 import {apiGame,parseGameInput,viewUrl,organizations} from './hms-source.js';
 import {language,translate,localize} from './i18n.js';
 import {layers,layerNames,renderMatchLayer} from './match-layers.js';
@@ -263,7 +264,7 @@ function renderControl() {
   app.innerHTML = `
     <div class="control-shell">
       <header class="control-header">
-        <div class="brand-lockup">${org==='PHM'?`<img class="brand-mark" src="${BRAND_LOGOS[1]}" alt="PHM Cup" />`:`<strong class="brand-wordmark">${escapeHtml(org)}</strong>`}<div><p class="eyebrow">Broadcast graphics</p><h1>Opening Studio</h1></div></div>
+        ${hmsBrand()}<div class="brand-lockup">${org==='PHM'?`<img class="brand-mark" src="${BRAND_LOGOS[1]}" alt="PHM Cup" />`:`<strong class="brand-wordmark">${escapeHtml(org)}</strong>`}<div><p class="eyebrow">Broadcast graphics</p><h1>Opening Studio</h1></div></div>
         ${languageControl()}<div class="live-chip">${source==='hms'?'HMS API · '+escapeHtml(org):'Původní Google Sheet'}</div>
       </header>
       ${connectionMarkup()}
