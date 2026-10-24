@@ -18,3 +18,20 @@ export function goalieStatistics(row) {
   const shotsAgainst = saves === null || goalsAgainst === null ? null : saves + goalsAgainst;
   return { saves, goalsAgainst, shotsAgainst, savePercentage: shotsAgainst === null ? null : percentage(saves, shotsAgainst), statisticsBasis: 'recorded-events' };
 }
+
+// A save belongs to the defending team even when a quick entry has no goalie.
+// Team shots must therefore never be reconstructed from individual goalie rows.
+export function recordedTeamShots(timeline, homeId, awayId) {
+  const ids=[homeId,awayId].map(id=>String(id??'').toLowerCase());
+  const empty=()=>({shotsOnGoal:null,unassignedSaves:null,shotsSource:null});
+  const result=Object.fromEntries(ids.map(id=>[id,empty()]));
+  if(!timeline?.collections?.saves||!timeline.collections.goals||timeline.coverage!=='matches-result')return result;
+  const saves=timeline.events.filter(e=>e.type==='save');
+  if(!ids.every(Boolean)||ids[0]===ids[1]||saves.some(e=>!ids.includes(e.teamId?.toLowerCase())))return result;
+  for(const [index,id] of ids.entries()){
+    const defending=ids[1-index];
+    result[id]={shotsOnGoal:saves.filter(e=>e.teamId?.toLowerCase()===defending).length+timeline.events.filter(e=>e.type==='goal'&&e.teamId?.toLowerCase()===id).length,
+      unassignedSaves:saves.filter(e=>e.teamId?.toLowerCase()===id&&!e.player?.id).length,shotsSource:'recorded-events'};
+  }
+  return result;
+}

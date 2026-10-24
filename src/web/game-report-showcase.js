@@ -11,9 +11,7 @@ export function teamLogo(team,extra=''){
 }
 const number=(n,lang)=>new Intl.NumberFormat(reportLocale(lang),{maximumFractionDigits:1}).format(n);
 function shots(summary,team){
-  const other=team.id===summary.home.id?summary.away:summary.home;
-  const keepers=summary.goalies.filter(p=>p.teamId?.toLowerCase()===other.id.toLowerCase());
-  return keepers.length&&keepers.every(p=>Number.isFinite(p.shotsAgainst))?keepers.reduce((n,p)=>n+p.shotsAgainst,0):null;
+  return Number.isFinite(team.shotsOnGoal)?team.shotsOnGoal:null;
 }
 export function renderHero(s, lang = 'cs'){
   const colors=teamPalette(s),periods=s.timeline?.periodScores??[];
