@@ -1,5 +1,5 @@
 import { buildGameTimeline } from "./game-timeline.js";
-import { buildFaceoffs, goalieStatistics } from './recorded-statistics.js';
+import { buildFaceoffs, goalieStatistics, recordedTeamShots } from './recorded-statistics.js';
 import { sportingImage,flickrAlbum } from '../../public/game-report-media.js';
 import {jerseyColor} from '../../public/game-report-graphics.js';
 
@@ -15,12 +15,14 @@ function date(value) {
 
 export function buildGameSummary({ game, teams = [], players = [], goalies = [], priklepy = [] }) {
   const timeline = buildGameTimeline(game);
+  const teamShots=recordedTeamShots(timeline,game.home_team_id,game.away_team_id);
   const team = (side) => {
     const row = teams.find((item) => item.side === side);
     const prefix = side === "HOME" ? "home" : "away";
     return {
       id: game[`${prefix}_team_id`], name: game[`${prefix}_team_name`],
       score: game[`${prefix}_score`], lineupSize: row?.lineup_size ?? null,
+      ...teamShots[String(game[`${prefix}_team_id`]).toLowerCase()],
       logoUrl: sportingImage(row?.team_logo_template_url) ?? sportingImage(row?.team_logo_url),
       color: /^#[\da-f]{6}$/i.test(row?.primary_color ?? '') ? row.primary_color : null,
       jerseyColor:jerseyColor(game.event_snapshot?.jerseyColors?.[prefix]),
@@ -56,6 +58,7 @@ export function buildGameSummary({ game, teams = [], players = [], goalies = [],
       id: row.player_id, teamId: row.team_id, name: row.player_name,
       imageUrl: sportingImage(row.player_image_template_url) ?? sportingImage(row.player_image_url),
       ...goalieStatistics(row),
+      ...(teamShots[row.team_id?.toLowerCase()]?.unassignedSaves>0?{savePercentage:null,shotsAgainst:null,statisticsBasis:'partial-recorded-events'}:{}),
     })).sort((a, b) => b.saves - a.saves || a.id.localeCompare(b.id)),
     priklepy: priklepy.map((row) => ({
       id: row.priklep_id, type: row.type, title: row.title, text: row.body,
