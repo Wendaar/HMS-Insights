@@ -339,6 +339,13 @@ export async function loadStudioPage(options = {}) {
 }
 
 // One bounded metadata query for the selected HMS page; no per-game snapshots.
+export async function loadAvailableGameReports(gameIds,seasonId,options={}) {
+  if(!gameIds.length)return [];
+  const sql=options.sql??createSql(databaseUrlFromEnv(options.env));
+  const rows=await sql.query('select game_id from games where season_id=$1::uuid and game_id=any($2::uuid[])',[seasonId,gameIds.slice(0,20)]);
+  return rows.map(row=>row.game_id);
+}
+
 export async function loadStudioGameLabels(gameIds,organizationId,options={}) {
   if(!gameIds.length)return [];
   const sql=options.sql??createSql(databaseUrlFromEnv(options.env));
