@@ -17,6 +17,12 @@ function starCard(p){
   content.append(stats);article.append(portrait,content);return article;
 }
 function applyExtras(data){
+  const headerLogo=sportingImage(data.branding?.groupLogoUrl)??sportingImage(data.branding?.competitionLogoUrl);
+  if(headerLogo){
+    let image=document.querySelector('[data-report-brand="header"]');
+    if(!image){const container=document.querySelector('.competition-brand');if(container){image=el('img','group-logo');image.dataset.reportBrand='header';image.alt='Logo skupiny soutěže';container.prepend(image);}}
+    if(image){image.src=headerLogo;image.referrerPolicy='no-referrer';}
+  }
   hydrateReportPortraits(document,s,data.playerImages);
   document.dispatchEvent(new CustomEvent('report-portraits',{detail:data.playerImages??{}}));
   const stars=document.getElementById('game-stars'),cards=document.getElementById('stars-cards'),rail=document.getElementById('stars-rail');

@@ -74,6 +74,8 @@ export function buildGameSummary({ game, teams = [], players = [], goalies = [],
     priklepy: priklepy.map((row) => ({
       id: row.priklep_id, type: row.type, title: row.title, text: row.body,
       importance: row.importance,
+      playerId:players.concat(goalies).find(p=>p.player_id?.toLowerCase()===row.player_id?.toLowerCase())?.player_id??null,
+      teamId:[game.home_team_id,game.away_team_id].find(id=>id?.toLowerCase()===row.team_id?.toLowerCase())??null,
     })).sort((a, b) => b.importance - a.importance || a.id.localeCompare(b.id)),
     provenance: {
       source: "HMS", updatedAt: game.updated_at ?? null,
