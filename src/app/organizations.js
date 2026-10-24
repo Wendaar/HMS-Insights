@@ -32,3 +32,10 @@ export function organizationConfig(org,env=process.env){
 export function publicOrganizations(env=process.env){
   return organizationRegistry(env).map(entry=>{let configured=false;try{configured=!!organizationConfig(entry.code,env).token;}catch{/* Unconfigured entries remain explicit. */}return {...entry,configured};});
 }
+
+// Resolve stored ownership without guessing a league from its display name.
+export function organizationForId(id,env=process.env){
+  if(!isGameId(id))return null;
+  for(const entry of organizationRegistry(env)){try{const config=organizationConfig(entry.code,env);if(config.id.toLowerCase()===id.toLowerCase())return config;}catch{/* Unconfigured organizations are not a fallback. */}}
+  return null;
+}

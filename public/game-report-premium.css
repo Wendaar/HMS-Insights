@@ -26,3 +26,4 @@
 .language-switch a{padding:.35rem .55rem;border-radius:.3rem;font-size:.75rem;font-weight:800}
 .language-switch a[aria-current="true"]{background:#172a3d;color:#fff}
 @media(max-width:480px){.report-nav-actions{gap:.5rem}.language-switch a{padding:.35rem .4rem}}
+.insight-moment .insight-kind{font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#537389;margin:0 0 16px}.insight-moment .insight-player,.insight-moment .insight-subject{font-size:23px;font-weight:850;letter-spacing:-.6px;line-height:1.2;color:#15263b;text-align:left;max-width:100%}.insight-moment .insight-player{display:flex;align-items:center;gap:10px}.insight-moment .insight-player span{overflow-wrap:anywhere}.insight-team{display:flex;align-items:center;gap:9px;margin-top:12px;font-size:12px;font-weight:750;color:#536b80}.insight-team .team-logo{width:28px;height:28px}.insight-moment .insight-description{font-size:13px;color:#536b80;line-height:1.65;margin-top:16px}

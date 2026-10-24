@@ -1,3 +1,4 @@
+import {currentGameBranding} from './game-branding.js';
 import {loadGameSnapshot} from '../infrastructure/postgres-repository.js';
 import {buildGameSummary,isGameId} from '../domain/game-summary.js';
 import {publicStats,playerCard} from './player-card.js';
@@ -44,8 +45,8 @@ export async function getGameExtras(gameId,options={}){
   if(!isGameId(gameId))throw new TypeError('Invalid game');
   const key=gameId.toLowerCase();if(!options.loadSnapshot&&!options.fetchImpl&&cache.get(key)?.until>Date.now())return cache.get(key).value;
   const snapshot=await(options.loadSnapshot??loadGameSnapshot)(gameId,options);if(!snapshot)return null;
-  const [game,media,stats]=await Promise.all([readPublic('game',gameId,options),readPublic('gameMultimedia',gameId,options),publicStats(snapshot.game.group_id,'skater',options)]);
-  const value=displayExtras(snapshot,game,media,stats);
+  const [game,media,stats,branding]=await Promise.all([readPublic('game',gameId,options),readPublic('gameMultimedia',gameId,options),publicStats(snapshot.game.group_id,'skater',options),currentGameBranding(snapshot,options)]);
+  const value={...displayExtras(snapshot,game,media,stats),branding};
   if(game&&media&&stats&&!options.fetchImpl&&!options.loadSnapshot){if(cache.size>=32)cache.delete(cache.keys().next().value);cache.set(key,{value,until:Date.now()+120000});}
   return value;
 }

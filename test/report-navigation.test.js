@@ -1,0 +1,50 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {sampleAnalysis} from '../src/app/sample.js';
+import {rowsFor} from '../src/infrastructure/analysis-rows.js';
+import {buildGameSummary} from '../src/domain/game-summary.js';
+import {getGameSummary} from '../src/app/game-summary.js';
+import {renderGameReport} from '../src/web/game-report.js';
+import {hmsBrand} from '../public/hms-brand.js';
+import {currentGameBranding} from '../src/app/game-branding.js';
+const rows=rowsFor(sampleAnalysis),snapshot={game:rows.games[0],teams:rows.team_game_stats,players:rows.player_game_stats,goalies:rows.goalie_game_stats,priklepy:rows.detected_priklepy};
+const env={HMS_EUCHL_ORGANIZATION_ID:snapshot.game.organization_id,HMS_EUCHL_API_TOKEN:'PRIVATE_TEST_TOKEN',HMS_PHM_ORGANIZATION_ID:'00000000-0000-0000-0000-000000000001'};
+test('company website link ends before product label; product navigation stays in its season',()=>{
+  const brand=hmsBrand('GAME CENTER','/','/game-center?seasonId=abc&lang=en');
+  assert.match(brand,/<\/a><a class="hms-product" href="\/game-center\?seasonId=abc&amp;lang=en">/);
+  assert.match(hmsBrand('GAME CENTER'),/<\/a><span class="hms-product">/);
+  assert.doesNotMatch(hmsBrand('GAME CENTER','/','https://evil.example/'),/evil/);
+});
+test('report Highlights resolve stored organization ownership, never default a different league to PHM',async()=>{
+  const s=await getGameSummary(snapshot.game.game_id,{env,loadSnapshot:async()=>snapshot});
+  assert.equal(s.insightsPath,'/priklepy/euchl');
+  const page=renderGameReport(s,{lang:'en'});
+  assert.match(page,/href="\/priklepy\/euchl">Highlights/);
+  assert.doesNotMatch(page,/href="\/priklepy"/);
+  const unknown=await getGameSummary(snapshot.game.game_id,{env:{HMS_PHM_ORGANIZATION_ID:'00000000-0000-0000-0000-000000000001'},loadSnapshot:async()=>snapshot});
+  assert.equal(unknown.insightsPath,null);
+  assert.doesNotMatch(JSON.stringify(s),/PRIVATE_TEST_TOKEN|organizationId/);
+});
+test('Insights resolve player and team by stored IDs and render a prominent identity',()=>{
+  const s=buildGameSummary(snapshot),p=s.priklepy.find(p=>p.playerId);
+  assert.ok(p);
+  const player=s.players.concat(s.goalies).find(player=>player.id===p.playerId);
+  const page=renderGameReport({...s,priklepy:[p]});
+  assert.ok(page.includes('insight-player'));assert.ok(page.includes(player.name));
+  assert.ok(page.includes('insight-team'));assert.ok(page.includes([s.home,s.away].find(t=>t.id===player.teamId).name));
+  const bad=buildGameSummary({...snapshot,priklepy:[{...snapshot.priklepy[0],player_id:'FOREIGN',team_id:'FOREIGN'}]}).priklepy[0];
+  assert.equal(bad.playerId,null);assert.equal(bad.teamId,null);
+});
+test('current branding refreshes sporting assets only after game, organization and teams match',async()=>{
+  const logo='https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/NEW_TRANSPARENT_cropped_md';
+  const detail={gameId:snapshot.game.game_id,organizationId:snapshot.game.organization_id,homeTeamId:snapshot.game.home_team_id,awayTeamId:snapshot.game.away_team_id,Group:{name:snapshot.game.group_name,logoUrl:logo},Competition:{name:snapshot.game.competition_name,logoUrl:logo},secret:'PRIVATE'};
+  let calls=0;
+  const fetchBrandingDetail=async(id,options)=>{calls++;assert.equal(options.config.retries,0);assert.equal(options.config.timeoutMs,4000);return detail;};
+  assert.deepEqual(await currentGameBranding(snapshot,{env,fetchBrandingDetail}),{groupLogoUrl:logo,competitionLogoUrl:logo});
+  assert.equal(calls,1);
+  for(const mismatch of [{organizationId:'other'},{gameId:'other'},{homeTeamId:'other'}])assert.equal(await currentGameBranding(snapshot,{env,fetchBrandingDetail:async()=>({...detail,...mismatch})}),null);
+  assert.equal(await currentGameBranding(snapshot,{env:{},fetchBrandingDetail:()=>assert.fail('No token')}),null);
+  assert.equal(await currentGameBranding(snapshot,{env,fetchBrandingDetail:async()=>{throw Error('PRIVATE');}}),null);
+  const unsafe=await currentGameBranding(snapshot,{env,fetchBrandingDetail:async()=>({...detail,Group:{name:snapshot.game.group_name,logoUrl:'https://evil.example/logo.png'}})});
+  assert.equal(unsafe.groupLogoUrl,null);
+});
