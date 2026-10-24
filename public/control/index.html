@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <title>HMS Control Center</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/control/control.css">
+  <script type="module" src="/control/app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#catalog">Přeskočit na aplikace</a>
+  <header class="topbar"><a class="brand" href="/control"><span class="brand-mark">H</span> HMS <span>Control Center</span></a><span class="internal">Interní nástroje <span class="version">V1</span></span></header>
+  <main>
+    <section class="intro" aria-labelledby="page-title">
+      <div><p class="eyebrow">VŠECHNO NA JEDNOM MÍSTĚ</p><h1 id="page-title">Řídicí centrum</h1><p class="lead">Aplikace, obsah a data vaší organizace. Vždy víte, kde začít.</p></div>
+      <div class="org-select"><label for="organization">Organizace</label><select id="organization"></select></div>
+    </section>
+    <div id="organization-note" class="organization-note" role="status"></div>
+    <section class="game-launcher" aria-labelledby="game-title">
+      <div><p class="eyebrow">RYCHLÝ PŘÍSTUP</p><h2 id="game-title">Otevřít Game Center</h2><p id="game-help">Vložte Game ID z HMS. Otevře se existující report importovaného zápasu.</p><small id="picker-note">Výběr zápasu ze seznamu je připravený pro další verzi.</small></div>
+      <form id="game-form" novalidate>
+        <label for="game-id">Game ID</label><div class="game-input"><input id="game-id" name="gameId" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off" spellcheck="false" aria-describedby="game-help game-error" maxlength="80"><button type="submit">Otevřít report <span aria-hidden="true">↗</span></button></div>
+        <p id="game-error" class="error" role="alert"></p><a id="game-url" hidden></a>
+      </form>
+    </section>
+    <section id="catalog" aria-labelledby="catalog-title" tabindex="-1">
+      <div class="catalog-header"><div><h2 id="catalog-title">Aplikace a služby</h2><p id="result-count" aria-live="polite"></p></div><div class="filters"><div><label for="search">Hledat aplikaci</label><input type="search" id="search" placeholder="Název, nástroj nebo zdroj dat…"></div><div><label for="status">Stav</label><select id="status"><option value="all">Všechny stavy</option></select></div></div></div>
+      <nav id="categories" aria-label="Kategorie aplikací"></nav>
+      <div id="applications"></div>
+      <div id="empty" class="empty" hidden><h3>Žádné aplikace neodpovídají filtrům</h3><p>Zkuste jiný výraz nebo zobrazte celý přehled.</p><button id="reset" type="button">Zrušit filtry</button></div>
+    </section>
+    <noscript>Pro zobrazení registru aplikací zapněte JavaScript. <a href="/studio/phm?lang=cs">Media Studio PHM</a> · <a href="/priklepy/phm">Insights PHM</a></noscript>
+  </main>
+  <footer><span>HMS Control Center · V1</span><span>Interní rozcestník bez vlastního přihlášení. Odkazy neověřují aktuální dostupnost služeb.</span></footer>
+</body>
+</html>

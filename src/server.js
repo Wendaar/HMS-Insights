@@ -1,4 +1,5 @@
 import {createOrganizationImportHandler} from './web/organization-import-handler.js';
+import {createToolsHandler} from './web/tools-handler.js';
 import {createBroadcastHandler} from './web/broadcast-handler.js';
 import {createOrganizationImportPage} from './web/organization-import-page.js';
 import {createPublicFeedHandler} from './web/public-feed-handler.js';
@@ -26,7 +27,8 @@ const directory = dirname(fileURLToPath(import.meta.url));
 const publicDirectory = join(directory, "..", "public");
 const port = Number(process.env.PORT ?? 3000);
 const zbraslavAnalysis = analyzeHmsResponses(zbraslavEvents, zbraslavLineup);
-const broadcastHandler=createBroadcastHandler();
+const toolsHandler = createToolsHandler();
+const broadcastHandler = createBroadcastHandler();
 
 const assets = {
   "/organization-import.js": ["text/javascript; charset=utf-8", "organization-import.js"],
@@ -60,6 +62,38 @@ export const server = createServer(async (request, response) => {
     response.setHeader('content-type',url.pathname.endsWith('.html')?'text/html; charset=utf-8':url.pathname.endsWith('.css')?'text/css; charset=utf-8':url.pathname.endsWith('.woff2')?'font/woff2':'text/javascript; charset=utf-8');
     response.setHeader('x-content-type-options','nosniff');response.setHeader('referrer-policy','no-referrer');response.setHeader('cache-control','no-cache');
     response.end(await readFile(join(publicDirectory,url.pathname)));return;
+  }
+  if (url.pathname === '/api/tools' || url.pathname === '/api/game-summary' && url.searchParams.get('view') === 'tools') {
+    request.query=Object.fromEntries(url.searchParams);
+    if(request.method==='POST'){
+      let body='';for await(const chunk of request){body+=chunk;if(Buffer.byteLength(body)>20000){response.writeHead(413,{'content-type':'application/json'});response.end(JSON.stringify({error:'Nastavení je příliš velké.'}));return;}}request.body=body;
+    }
+    await toolsHandler(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json; charset=utf-8');response.end(JSON.stringify(body));}});return;
+  }
+  const toolAsset=/^\/tools\/playoff-players\/(app.js|app.css|index.html)$/.exec(url.pathname);
+  const toolPage=url.pathname==='/tools/playoff-players'||/^\/tools\/playoff-players\/[a-z0-9-]+\/[a-z0-9-]+\/?$/.test(url.pathname);
+  const toolManage=url.pathname==='/control/apps/playoff-players';
+  if(toolAsset||toolPage||toolManage){
+    if(!['GET','HEAD'].includes(request.method)){response.writeHead(405,{allow:'GET, HEAD'});response.end();return;}
+    const name=toolAsset?.[1]??'index.html';
+    response.setHeader('content-type',name.endsWith('.html')?'text/html; charset=utf-8':name.endsWith('.css')?'text/css; charset=utf-8':'text/javascript; charset=utf-8');
+    response.setHeader('x-content-type-options','nosniff');response.setHeader('referrer-policy','no-referrer');response.setHeader('cache-control','no-cache');
+    response.setHeader('content-security-policy',`default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' https:; base-uri 'none'; form-action 'self'; frame-ancestors ${toolManage?"'none'":'*'}`);
+    if(toolManage)response.setHeader('x-robots-tag','noindex, nofollow');
+    response.end(request.method==='HEAD'?undefined:await readFile(join(publicDirectory,'tools','playoff-players',name)));return;
+  }
+  if (['/control', '/control/', '/control/index.html', '/control/app.js', '/control/registry.js', '/control/control.css'].includes(url.pathname)) {
+    response.setHeader('x-robots-tag', 'noindex, nofollow');
+    response.setHeader('x-content-type-options', 'nosniff');
+    response.setHeader('referrer-policy', 'no-referrer');
+    response.setHeader('content-security-policy', "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
+    if (!['GET', 'HEAD'].includes(request.method)) {
+      response.writeHead(405, {allow:'GET, HEAD'});response.end('Method not allowed');return;
+    }
+    const name = ['/control', '/control/'].includes(url.pathname) ? 'index.html' : url.pathname.split('/').pop();
+    response.setHeader('content-type', name.endsWith('.html') ? 'text/html; charset=utf-8' : name.endsWith('.css') ? 'text/css; charset=utf-8' : 'text/javascript; charset=utf-8');
+    response.setHeader('cache-control', 'no-cache');
+    response.end(request.method === 'HEAD' ? undefined : await readFile(join(publicDirectory, 'control', name)));return;
   }
   if(['/admin/import-game','/admin/backfill','/api/admin/import-game','/api/admin/backfill'].includes(url.pathname)){
     request.query=Object.fromEntries(url.searchParams);
