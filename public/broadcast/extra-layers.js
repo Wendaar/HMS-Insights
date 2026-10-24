@@ -1,5 +1,6 @@
 import {translate} from './i18n.js';
-export const extraNames={cta:'QR výzva',sponsors:'Partneři',powerplay:'Přesilovka / oslabení',leaders:'Lídři týmu',next:'Příští zápasy',results:'Poslední výsledky'};
+import {teamPartners} from './partner-playlist.js';
+export const extraNames={cta:'QR výzva',sponsors:'Partner v rohu',announcement:'Velké partnerské oznámení',powerplay:'Přesilovka / oslabení',leaders:'Lídři týmu',next:'Příští zápasy',results:'Poslední výsledky'};
 export const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export function eligibleAssets(items,{org,gameId,homeId,awayId,side='home',kind}){
   const eq=(a,b)=>String(a??'').toLowerCase()===String(b??'').toLowerCase();
@@ -12,13 +13,14 @@ export function renderExtraLayer(game,settings){
   const team=s=>`<div class="extra-team">${game[s+'Logo']?`<img src="${esc(game[s+'Logo'])}" alt="">`:''}<strong>${esc(game[s==='home'?'Home Team':'Away Team'])}</strong></div>`;
   const empty=message=>`<p class="extra-empty">${t(message)}</p>`;
   const compact=['cta','sponsors','powerplay'].includes(layer);
-  const shell=(content,footer='')=>`<main class="extra-layer ${compact?'corner-layer '+esc(corner):''}" data-layer="${esc(layer)}"><div class="extra-kicker">${t(extraNames[layer])}</div>${content}${footer?`<footer>${footer}</footer>`:''}</main>`;
-  if(layer==='cta'||layer==='sponsors'){
-    const available=eligibleAssets(items,{org,gameId:game.ID,homeId:game.homeId,awayId:game.awayId,side:rawSide,kind:layer==='cta'?'cta':'sponsor'});
+  const shell=(content,footer='')=>`<main class="extra-layer ${compact?'corner-layer '+esc(corner):''}" data-layer="${esc(layer)}"><div class="extra-kicker">${t(['sponsors','announcement'].includes(layer)?'Partner přenosu':extraNames[layer])}</div>${content}${footer?`<footer>${footer}</footer>`:''}</main>`;
+  if(layer==='cta'||layer==='sponsors'||layer==='announcement'){
+    const hms=layer!=='cta'&&settings.partnerSource==='hms';
+    const available=hms?(settings.sponsorCatalog?.org===org?teamPartners(settings.sponsorCatalog,game,rawSide,items):[]):eligibleAssets(items,{org,gameId:game.ID,homeId:game.homeId,awayId:game.awayId,side:rawSide,kind:layer==='cta'?'cta':'sponsor'});
     const list=assetId?available.filter(a=>a.id===assetId):available,item=list[rotationIndex%list.length];
-    if(!item)return shell(empty('Pro tento výběr není nastavená žádná položka.'));
+    if(!item)return hms?'':shell(empty('Pro tento výběr není nastavená žádná položka.'));
     let host='';try{host=new URL(item.url).hostname;}catch{}
-    return shell(`<article class="asset-card"><img class="${layer==='cta'?'qr-image':'sponsor-image'}" src="${esc(item.image)}" alt="${esc(item.title)}"><div><h2>${esc(item.title)}</h2>${item.claim?`<p>${esc(item.claim)}</p>`:''}${host?`<small>${esc(host)}</small>`:''}</div></article>`,layer==='cta'?t('Načtěte QR kód fotoaparátem'):t('Partner přenosu'));
+    return shell(`<article class="asset-card">${item.image?`<img class="${layer==='cta'?'qr-image':'sponsor-image'}" src="${esc(item.image)}" alt="${esc(item.title)}">`:''}<div><h2>${esc(item.title)}</h2>${item.claim?`<p>${esc(item.claim)}</p>`:''}${host?`<small>${esc(host)}</small>`:''}</div></article>`,layer==='cta'?t('Načtěte QR kód fotoaparátem'):hms?`${t('Partner týmu')} · ${esc(game[side==='away'?'Away Team':'Home Team'])}`:t('Partner přenosu'));
   }
   const context=game.context;
   if(!context)return shell(empty('Načítám kontext týmu…'));

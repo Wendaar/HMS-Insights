@@ -11,9 +11,9 @@ const items=[{id:uid(4),kind:'cta',org:'EUCHL',scope:'organization',enabled:true
 items[0].image=badge('QR DEMO','#27404b');
 const running={home:0,away:0};for(const goal of game.match.goals){running[goal.side]++;goal.scoreAfter={...running};}
 const settings={org:'EUCHL',layer:'scoresheet',side:'home',metric:'goals',corner:'bottom-left',lang:'cs',items,rotationIndex:0};
-const layer=document.querySelector('#demo-layer');for(const name of ['scoresheet','cta','sponsors','powerplay','leaders','next','results']){const option=document.createElement('option');option.value=name;option.textContent=layerNames[name];layer.append(option);}
+const layer=document.querySelector('#demo-layer');for(const name of ['scoresheet','cta','sponsors','announcement','powerplay','leaders','next','results']){const option=document.createElement('option');option.value=name;option.textContent=layerNames[name];layer.append(option);}
 function render(){document.querySelector('#demo-canvas').innerHTML=renderMatchLayer(game,settings);}
 for(const key of ['layer','side','metric','corner','lang'])document.querySelector('#demo-'+key).onchange=e=>{settings[key]=e.target.value;render();};
 document.querySelector('#demo-upload').onchange=async event=>{const file=event.target.files[0];if(!file||file.size>260000||!['image/png','image/jpeg','image/webp'].includes(file.type)){document.querySelector('#demo-note').textContent='Použijte PNG, JPEG nebo WebP do 250 kB.';return;}const reader=new FileReader();reader.onload=()=>{const kind=settings.layer==='sponsors'?'sponsor':'cta';items.filter(i=>i.kind===kind)[0].image=reader.result;render();};reader.readAsDataURL(file);};
 const frame=document.querySelector('.demo-preview');new ResizeObserver(()=>frame.style.setProperty('--demo-scale',String(frame.clientWidth/1920))).observe(frame);
-setInterval(()=>{settings.rotationIndex++;if(['cta','sponsors'].includes(settings.layer))render();},5000);render();
+setInterval(()=>{settings.rotationIndex++;if(['cta','sponsors','announcement'].includes(settings.layer))render();},5000);render();

@@ -35,3 +35,5 @@ QR výzvy na sociální sítě/program/web se povedou jako vlastní typ obsahu s
 Hotové je ověření živého API, serverový čtecí adaptér s oddělením organizací a tabulkový přehled existujících sponzorů a vazeb. `demo.html` je pouze galerie se smyšlenými daty; změny se neukládají ani nepřenášejí do Studia. Dosavadní ruční knihovna OBS kanálu se automaticky nepřevádí na HMS sponzory.
 
 Editovatelná matice pravidel a její propojení s přehráváním partnerů je další implementační krok. Sdílená organizační konfigurace potřebuje oprávnění správce organizace; samotná veřejná OBS adresa ani veřejný katalog nesmí umožnit zápis. Do té doby lze využít existující chráněné ovládání kanálu pro pravidla daného vysílání. Produkce zůstává beze změny a PR #22 zůstává předmětem schválení.
+
+Aktualizace: základní výběr a pořadí týmových partnerů už je propojený se dvěma vysílacími velikostmi. Viz [partnerské vrstvy](broadcast-partner-layers.md). Rozšířená matice pravidel podle jednotlivých vrstev a sdílená organizační správa zůstává dalším krokem.

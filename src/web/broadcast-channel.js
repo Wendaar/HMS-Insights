@@ -7,12 +7,12 @@ export const channelId=v=>typeof v==='string'&&/^[a-f0-9]{48}$/.test(v);
 const digest=v=>createHash('sha256').update(v).digest('hex');
 export function channelState(value,env){
   if(!value||!['PHM','EUCHL'].includes(value.org)||!isGameId(value.gameId)||!organizationConfig(value.org,env).token
-    ||!['cs','en'].includes(value.lang)||!['opening','periods','lineup','scoresheet','insights','cta','sponsors','powerplay','leaders','next','results'].includes(value.layer)
+    ||!['cs','en'].includes(value.lang)||!['opening','periods','lineup','scoresheet','insights','cta','sponsors','announcement','powerplay','leaders','next','results'].includes(value.layer)
     ||!['home','away','both'].includes(value.side)||!['current','1','2','3'].includes(value.period)
     ||!Number.isInteger(value.page)||value.page<1||value.page>50||typeof value.visible!=='boolean'
     ||value.insight!==''&&!isGameId(value.insight))throw new TypeError('Invalid channel state');
   const state=Object.fromEntries(['org','gameId','lang','layer','side','period','page','insight','visible'].map(k=>[k,value[k]]));
-  for(const [key,allowed] of Object.entries({corner:['top-left','top-right','bottom-left','bottom-right'],metric:['goals','assists','points']}))if(value[key]!==undefined){if(!allowed.includes(value[key]))throw new TypeError();state[key]=value[key];}
+  for(const [key,allowed] of Object.entries({corner:['top-left','top-right','bottom-left','bottom-right'],metric:['goals','assists','points'],partnerSource:['hms','library']}))if(value[key]!==undefined){if(!allowed.includes(value[key]))throw new TypeError();state[key]=value[key];}
   if(value.assetId!==undefined){if(value.assetId!==''&&!isGameId(value.assetId))throw new TypeError();state.assetId=value.assetId;}
   if(value.rotateSeconds!==undefined){if(!Number.isInteger(value.rotateSeconds)||value.rotateSeconds<5||value.rotateSeconds>300)throw new TypeError();state.rotateSeconds=value.rotateSeconds;}
   return state;

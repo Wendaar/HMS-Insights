@@ -24,7 +24,7 @@ export function apiGame(data,org,id){
     status:data.status,match:data.match??null,homeId:data.home.id,awayId:data.away.id,context:data.context??null,
     warnings:[!data.referee?'Rozhodčí zatím není v HMS vyplněný.':'',!data.timekeeper?'Časoměřič zatím není v HMS vyplněný.':'',!data.venue?'Místo zatím není v HMS vyplněné.':''].filter(Boolean)};
 }
-export function viewUrl(base,{mode='overlay',org='PHM',gameId,source='hms',clean=false,lang='cs',layer='opening',side='home',period='current',page=1,insight='',corner='bottom-left',metric='goals',assetId='',rotateSeconds=15,library=''}){
+export function viewUrl(base,{mode='overlay',org='PHM',gameId,source='hms',clean=false,lang='cs',layer='opening',side='home',period='current',page=1,insight='',corner='bottom-left',metric='goals',assetId='',rotateSeconds=15,library='',partnerSource='library'}){
   const parent=new URL(base);if(/\/broadcast\/?$/.test(parent.pathname))parent.pathname='/broadcast/index.html';
-  const url=new URL('index.html',parent);url.search=new URLSearchParams({mode,org,game:gameId,source,lang,layer,side,period,page:String(page),corner,metric,assetId,rotateSeconds:String(rotateSeconds),...(library?{library}:{}),...(insight?{insight}:{}),...(clean?{clean:'1'}:{})}).toString();url.hash='';return url.href;
+  const url=new URL('index.html',parent);url.search=new URLSearchParams({mode,org,game:gameId,source,lang,layer,side,period,page:String(page),corner,metric,assetId,partnerSource,rotateSeconds:String(rotateSeconds),...(library?{library}:{}),...(insight?{insight}:{}),...(clean?{clean:'1'}:{})}).toString();url.hash='';return url.href;
 }

@@ -1,5 +1,7 @@
 export const language=value=>value==='en'?'en':'cs';
 const en={
+'Partner v rohu':'Corner sponsor','Velké partnerské oznámení':'Big announcement','Partner týmu':'Team partner','Zdroj partnerů':'Partner source','HMS · sponzoři vybraného týmu':'HMS · selected team sponsors','Vlastní knihovna kanálu':'Custom channel library','Výběr a pořadí partnerů':'Partner selection and order','Uložit výběr a pořadí':'Save selection and order','Pro uložení výběru a pořadí nejprve vytvořte OBS kanál.':'Create an OBS channel to save partner selection and order.','Vybraný tým nemá v HMS přiřazené sponzory.':'No sponsors are assigned to this team in HMS.','Seznam partnerů HMS není dostupný. Zkuste Obnovit z HMS.':'HMS partner list is unavailable. Try Refresh from HMS.','Ukládá se pro tento tým a vysílací kanál. Názvy, loga, claimy a vazby se přebírají z HMS.':'Saved for this team and channel. Names, logos, taglines and team assignments come from HMS.',
+
   'Sponzoři z HMS · přehled zdrojových dat':'HMS sponsors · source data overview',
   'QR výzva':'QR call to action','Partneři':'Partners','Přesilovka / oslabení':'Power play / penalty kill','Lídři týmu':'Team leaders','Příští zápasy':'Next matches','Poslední výsledky':'Recent results',
   'Pro tento výběr není nastavená žádná položka.':'No item is configured for this selection.','Načtěte QR kód fotoaparátem':'Scan the QR code with your camera','Partner přenosu':'Broadcast partner',
