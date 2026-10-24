@@ -1,9 +1,11 @@
 import { localizeReportNode, reportNames, reportLocale } from './game-report-i18n.js';
+import {mergeReportPortraits} from './game-report-portraits.js';
 import './game-report-extras.js';
 import {sportingImage} from './game-report-media.js';
 import { filterReportEvents,durationLabel } from './game-report-data.js';
 import { rinkSvg,netSvg,unknownGoals,miniGoalMaps } from './game-report-graphics.js';
 const {summary}=JSON.parse(document.getElementById('game-report-data').textContent);
+document.addEventListener('report-portraits',event=>mergeReportPortraits(summary,event.detail));
 const lang=document.documentElement.lang,names=reportNames(summary);
 const localize=node=>localizeReportNode(node,lang,names);
 for(const link of document.querySelectorAll('[data-report-lang]')){const url=new URL(location.href);url.searchParams.set('lang',link.dataset.reportLang);link.href=url.pathname+url.search+url.hash;}

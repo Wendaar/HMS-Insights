@@ -14,6 +14,13 @@ export function displayExtras(snapshot,game,multimedia,stats){
   const matched=identity&&same(game?.HomeTeam?.teamId,s.home.id)&&same(game?.AwayTeam?.teamId,s.away.id);
   const lineup=matched&&Array.isArray(game.Lineups)?game.Lineups.filter(p=>!p.isDeleted):[];
   const counts={};
+  const playerImages={};
+  for(const entry of lineup){
+    const id=entry.playerId??entry.Player?.playerId;
+    if(!isGameId(id)||![s.home.id,s.away.id].some(team=>same(team,entry.teamId)))continue;
+    const image=sportingImage(entry.Player?.logoUrl)??sportingImage(entry.Player?.avatarUrl);
+    if(image)playerImages[id.toLowerCase()]=image;
+  }
   for(const team of [s.home,s.away]){
     const entries=new Map(lineup.filter(p=>same(p.teamId,team.id)&&isGameId(p.playerId??p.Player?.playerId)).map(p=>[(p.playerId??p.Player.playerId).toLowerCase(),p]));
     if(entries.size){const goalies=[...entries].filter(([id,p])=>p.ListPosition?.isGoalie===true||s.goalies.some(k=>same(k.id,id))).length;counts[team.id.toLowerCase()]={skaters:entries.size-goalies,goalies};}
@@ -25,11 +32,13 @@ export function displayExtras(snapshot,game,multimedia,stats){
     seen.add(id.toLowerCase());
     const entry=lineup.find(p=>same(p.playerId??p.Player?.playerId,id));
     const player=[...s.players,...s.goalies].find(p=>same(p.id,id));
-    stars.push({...player,id:id.toLowerCase(),teamId:teamId.toLowerCase(),name:player?.name??[star.Player?.firstName,star.Player?.lastName].filter(v=>typeof v==='string').join(' '),imageUrl:player?.imageUrl??sportingImage(star.Player?.logoUrl),hasCard:!!player,role:entry.ListPosition?.isGoalie===true||s.goalies.some(k=>same(k.id,id))?'goalie':'skater'});
+    const image=playerImages[id.toLowerCase()]??player?.imageUrl??sportingImage(star.Player?.logoUrl);
+    if(image)playerImages[id.toLowerCase()]=image;
+    stars.push({...player,id:id.toLowerCase(),teamId:teamId.toLowerCase(),name:player?.name??[star.Player?.firstName,star.Player?.lastName].filter(v=>typeof v==='string').join(' '),imageUrl:image,hasCard:!!player,role:entry.ListPosition?.isGoalie===true||s.goalies.some(k=>same(k.id,id))?'goalie':'skater'});
   }
   const ranks={};
   for(const p of s.players){const card=playerCard(stats,p.id,snapshot.game);if(card?.rank&&card.rank<=10)ranks[p.id.toLowerCase()]=card.rank;}
-  return {stars,rosterCounts:counts,ranks,media:{albumUrl:s.media.albumUrl??(matched?flickrAlbum(game.flickrAlbum):null)??flickrAlbum(multimedia?.albumUrl)??flickrAlbum(multimedia?.flickrAlbum),youtubeUrl:youtubeVideo(multimedia?.youtubeVideoUrl)??(matched?youtubeVideo(game.youtubeVideoUrl):null)},source:'hms',asOf:new Date().toISOString()};
+  return {stars,playerImages,rosterCounts:counts,ranks,media:{albumUrl:s.media.albumUrl??(matched?flickrAlbum(game.flickrAlbum):null)??flickrAlbum(multimedia?.albumUrl)??flickrAlbum(multimedia?.flickrAlbum),youtubeUrl:youtubeVideo(multimedia?.youtubeVideoUrl)??(matched?youtubeVideo(game.youtubeVideoUrl):null)},source:'hms',asOf:new Date().toISOString()};
 }
 export async function getGameExtras(gameId,options={}){
   if(!isGameId(gameId))throw new TypeError('Invalid game');

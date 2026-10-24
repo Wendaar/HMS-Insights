@@ -1,4 +1,5 @@
 import { localizeReportNode, reportNames, reportLocale } from './game-report-i18n.js';
+import {hydrateReportPortraits} from './game-report-portraits.js';
 import {sportingImage,flickrAlbum,youtubeVideo} from './game-report-media.js';
 const {summary:s}=JSON.parse(document.getElementById('game-report-data').textContent);
 const lang=document.documentElement.lang;
@@ -16,6 +17,8 @@ function starCard(p){
   content.append(stats);article.append(portrait,content);return article;
 }
 function applyExtras(data){
+  hydrateReportPortraits(document,s,data.playerImages);
+  document.dispatchEvent(new CustomEvent('report-portraits',{detail:data.playerImages??{}}));
   const stars=document.getElementById('game-stars'),cards=document.getElementById('stars-cards'),rail=document.getElementById('stars-rail');
   if(Array.isArray(data.stars)&&data.stars.length&&stars&&cards){cards.replaceChildren(...data.stars.map(starCard));stars.hidden=false;
     const scroll=direction=>rail.scrollBy({left:direction*Math.max(250,rail.clientWidth*.8),behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});

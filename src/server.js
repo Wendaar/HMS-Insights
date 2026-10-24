@@ -33,6 +33,7 @@ const assets = {
   "/game-report-extras.js": ["text/javascript; charset=utf-8", "game-report-extras.js"],
   "/game-report-premium.css": ["text/css; charset=utf-8", "game-report-premium.css"],
   "/game-report-i18n.js": ["text/javascript; charset=utf-8", "game-report-i18n.js"],
+  "/game-report-portraits.js": ["text/javascript; charset=utf-8", "game-report-portraits.js"],
   "/game-report-media.js": ["text/javascript; charset=utf-8", "game-report-media.js"],
   "/styles.css": ["text/css; charset=utf-8", "styles.css"],
   "/app.js": ["text/javascript; charset=utf-8", "app.js"],
