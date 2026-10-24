@@ -1,8 +1,11 @@
 import {translate} from './i18n.js';
-export const layers=['opening','periods','lineup','scoresheet','insights'];
-export const layerNames={opening:'Před zápasem',periods:'Stav po třetinách',lineup:'Soupiska',scoresheet:'Přehled gólů',insights:'Malé insights'};
+import {extraNames,renderExtraLayer} from './extra-layers.js';
+export const layers=['opening','periods','lineup','scoresheet','insights',...Object.keys(extraNames)];
+export const layerNames={opening:'Před zápasem',periods:'Stav po třetinách',lineup:'Soupiska',scoresheet:'Přehled gólů',insights:'Malé insights',...extraNames};
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-export function renderMatchLayer(game,{layer,side='home',period='current',page=1,insight='',lang='cs'}){
+export function renderMatchLayer(game,settings){
+  const {layer,side='home',period='current',page=1,insight='',lang='cs'}=settings;
+  if(extraNames[layer])return renderExtraLayer(game,settings);
   const t=v=>esc(translate(v,lang)),m=game.match,team=s=>esc(game[s==='home'?'Home Team':'Away Team']);
   const heading=layerNames[layer],title=`<header><span>${esc(game.Competition||'HMS')} · ${esc(game.Date)}</span><h1>${t(heading)}</h1><p>${team('home')} — ${team('away')}</p></header>`;
   const empty=message=>`<div class="layer-empty">${t(message)}</div>`;
@@ -32,7 +35,7 @@ export function renderMatchLayer(game,{layer,side='home',period='current',page=1
   if(layer==='scoresheet'){
     if(m.coverage!=='matches-score')return shell(empty('Neúplné gólové události v HMS'));
     const goals=m.goals.filter(g=>side==='both'||g.side===side),rows=goals.slice((page-1)*8,page*8);
-    return shell(rows.length?`<p class="score-caption">${t('Čas dle HMS')}</p><ol class="goal-list">${rows.map(g=>`<li><b>${esc(g.clock??'—')}<small>${g.period===null?'—':g.period+'.'}</small></b><div><strong>${esc(g.scorer.name||translate('Střelec neuveden',lang))}</strong><small>${team(g.side)}${g.assists.length?' · '+g.assists.map(p=>esc(p.name||'—')).join(', '):''}</small></div><em>${g.scoreAfter?`${g.scoreAfter.home}:${g.scoreAfter.away}`:'—'}</em></li>`).join('')}</ol><p class="page-label">${t('Strana')} ${page} / ${Math.ceil(goals.length/8)}</p>`:empty('Zatím žádný zapsaný gól'));
+    return shell(rows.length?`<p class="score-caption">${t('Čas dle HMS')}</p><ol class="goal-list">${rows.map(g=>`<li data-side="${esc(g.side)}"><b>${esc(g.clock??'—')}<small>${g.period===null?'—':g.period+'.'}</small></b><span class="goal-team-logo">${game[g.side+'Logo']?`<img src="${esc(game[g.side+'Logo'])}" alt="${team(g.side)}">`:`<strong>${team(g.side)}</strong>`}</span>${g.scorer.imageUrl?`<img class="goal-portrait" src="${esc(g.scorer.imageUrl)}" alt="">`:''}<div><strong>${esc(g.scorer.name||translate('Střelec neuveden',lang))}</strong><small class="goal-team-name">${team(g.side)}</small><small>${g.assists.length?t('Asistence')+': '+g.assists.map(p=>esc(p.name||'—')).join(', '):''}</small></div><em>${g.scoreAfter?`${g.scoreAfter.home}:${g.scoreAfter.away}`:'—'}</em></li>`).join('')}</ol><p class="page-label">${t('Strana')} ${page} / ${Math.ceil(goals.length/8)}</p>`:empty('Zatím žádný zapsaný gól'));
   }
   if(layer==='insights'){
     const item=insight?m.insights.find(i=>i.id===insight):m.insights[0];
