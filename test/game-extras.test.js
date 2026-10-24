@@ -19,6 +19,20 @@ test('wrong games, wrong teams and players outside the lineup cannot supply star
   assert.deepEqual(displayExtras(snapshot,{...game,HomeTeam:{teamId:'other'}},null,[]).rosterCounts,{});
   assert.equal(displayExtras(snapshot,{...game,GameStars:[{teamId:'other',Player:game.Lineups[0].Player}]},null,[]).stars.length,0);
 });
+
+test('matched lineup portraits are shared with stars and exclude foreign or unsafe assets',()=>{
+  const p=game.Lineups[0],id=p.Player.playerId.toLowerCase();
+  const image='https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/Player_test_[size]';
+  const lineup={...p,Player:{...p.Player,logoUrl:image,email:'PRIVATE'}};
+  const current={...game,Lineups:[lineup,...game.Lineups.slice(1)],GameStars:[lineup]};
+  const extras=displayExtras(snapshot,current,null,[]);
+  assert.equal(extras.playerImages[id],image.replace('[size]','cropped_md'));
+  assert.equal(extras.stars[0].imageUrl,extras.playerImages[id]);
+  assert.doesNotMatch(JSON.stringify(extras),/PRIVATE|email/);
+  assert.deepEqual(displayExtras(snapshot,{...current,gameId:'other'},null,[]).playerImages,{});
+  const unsafe={...lineup,Player:{...lineup.Player,logoUrl:'https://evil.example/photo.png'}};
+  assert.deepEqual(displayExtras(snapshot,{...current,Lineups:[unsafe],GameStars:[]},null,[]).playerImages,{});
+});
 test('public response without gameId requires matching teams, date and final score',()=>{
   const {gameId,...publicGame}=game;Object.assign(publicGame,{startDate:snapshot.game.played_on,HomeTeamGoals:snapshot.game.home_score,AwayTeamGoals:snapshot.game.away_score,GameStars:game.Lineups});
   assert.equal(displayExtras(snapshot,publicGame,null,[]).stars.length,game.Lineups.length);

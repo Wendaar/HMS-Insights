@@ -19,14 +19,27 @@ test('EUCHL regression: all team saves give Guardians 19 shots and Bratislava 43
   const page=renderGameReport(summary);
   assert.match(page,/19 recorded shots/);assert.match(page,/43 recorded shots/);
   assert.doesNotMatch(page,/10 recorded shots/);
-  assert.match(page,/Some team saves are not assigned to a goaltender/);
+  assert.match(page,/Includes 9 team saves assigned to the only recorded goaltender/);
 });
-test('unassigned saves do not get invented as individual saves or misleading save percentage',()=>{
+test('single recorded goalie includes unassigned team saves with an explicit basis',()=>{
   const summary=buildGameSummary(match()),keeper=summary.goalies.find(p=>p.id===awayKeeper);
-  assert.equal(keeper.saves,8);assert.equal(keeper.goalsAgainst,2);
-  assert.equal(keeper.savePercentage,null);assert.equal(keeper.shotsAgainst,null);
-  assert.equal(keeper.statisticsBasis,'partial-recorded-events');
+  assert.equal(keeper.saves,17);assert.equal(keeper.goalsAgainst,2);
+  assert.equal(keeper.savePercentage,89.47);assert.equal(keeper.shotsAgainst,19);
+  assert.equal(keeper.attributedSaves,8);assert.equal(keeper.inferredSaves,9);
+  assert.equal(keeper.statisticsBasis,'single-goalie-team-saves');
   assert.equal(summary.goalies.find(p=>p.id===homeKeeper).savePercentage,81.4);
+});
+test('a second roster goalie prevents assigning team saves even if only one has recorded events',()=>{
+  const stored=match();stored.game.event_snapshot.roster=[{id:awayKeeper,teamId:away,isGoalie:true},{id:'backup',teamId:away,isGoalie:true}];
+  const summary=buildGameSummary(stored),keeper=summary.goalies.find(p=>p.id===awayKeeper);
+  assert.equal(keeper.saves,8);assert.equal(keeper.savePercentage,null);
+  assert.equal(keeper.statisticsBasis,'partial-recorded-events');
+});
+test('seven additional home saves are included independently for the sole home goalie',()=>{
+  const stored=match();for(let i=0;i<7;i++)stored.game.event_snapshot.events.push({id:`home-quick-${i}`,type:'save',teamId:home,player:{id:null}});
+  const summary=buildGameSummary(stored),keeper=summary.goalies.find(p=>p.id===homeKeeper);
+  assert.equal(keeper.saves,42);assert.equal(keeper.inferredSaves,7);assert.equal(keeper.savePercentage,84);
+  assert.equal(summary.away.shotsOnGoal,50);
 });
 test('missing save collection, unknown save team or mismatched goals suppress team shots',()=>{
   for(const change of [m=>m.game.event_snapshot.collections.saves=false,m=>m.game.event_snapshot.events[0].teamId=null,m=>m.game.home_score=3]){

@@ -16,6 +16,17 @@ function date(value) {
 export function buildGameSummary({ game, teams = [], players = [], goalies = [], priklepy = [] }) {
   const timeline = buildGameTimeline(game);
   const teamShots=recordedTeamShots(timeline,game.home_team_id,game.away_team_id);
+  const goalieStats=row=>{
+    const unassigned=teamShots[row.team_id?.toLowerCase()]?.unassignedSaves??0;
+    if(!unassigned)return goalieStatistics(row);
+    const recorded=goalies.filter(p=>p.team_id?.toLowerCase()===row.team_id?.toLowerCase());
+    const roster=game.event_snapshot?.roster;
+    const rosterGoalies=Array.isArray(roster)?new Set(roster.filter(p=>p.isGoalie&&p.teamId?.toLowerCase()===row.team_id?.toLowerCase()).map(p=>p.id?.toLowerCase())):null;
+    const single=recorded.length===1&&(!rosterGoalies||rosterGoalies.size===0||rosterGoalies.size===1&&rosterGoalies.has(row.player_id?.toLowerCase()));
+    const base=goalieStatistics(row);
+    if(single&&base.saves!==null)return {...goalieStatistics({...row,saves:base.saves+unassigned}),attributedSaves:base.saves,inferredSaves:unassigned,statisticsBasis:'single-goalie-team-saves'};
+    return {...base,savePercentage:null,shotsAgainst:null,statisticsBasis:'partial-recorded-events'};
+  };
   const team = (side) => {
     const row = teams.find((item) => item.side === side);
     const prefix = side === "HOME" ? "home" : "away";
@@ -57,8 +68,7 @@ export function buildGameSummary({ game, teams = [], players = [], goalies = [],
     goalies: goalies.map((row) => ({
       id: row.player_id, teamId: row.team_id, name: row.player_name,
       imageUrl: sportingImage(row.player_image_template_url) ?? sportingImage(row.player_image_url),
-      ...goalieStatistics(row),
-      ...(teamShots[row.team_id?.toLowerCase()]?.unassignedSaves>0?{savePercentage:null,shotsAgainst:null,statisticsBasis:'partial-recorded-events'}:{}),
+      ...goalieStats(row),
     })).sort((a, b) => b.saves - a.saves || a.id.localeCompare(b.id)),
     priklepy: priklepy.map((row) => ({
       id: row.priklep_id, type: row.type, title: row.title, text: row.body,

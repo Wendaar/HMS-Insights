@@ -84,7 +84,8 @@ export function reportText(value, lang = 'cs') {
     .replace(/zaznamenal (\d+) (?:zákroků|saves)\./g, 'made $1 saves.')
     .replace(/v bodování této skupiny soutěže/g, 'in this competition group’s scoring')
     .replace(/v bodování soutěže/g, 'in league scoring')
-    .replace(/Zápis (?=\d)/g, 'Recorded ').replace(/Výsledek (\d+) ku (\d+)/g, 'Score $1 to $2');
+    .replace(/Zápis (?=\d)/g, 'Recorded ').replace(/Výsledek (\d+) ku (\d+)/g, 'Score $1 to $2')
+    .replace(/Zahrnuje (\d+) týmových zákroků doplněných jedinému evidovanému brankáři\./g,'Includes $1 team saves assigned to the only recorded goaltender.');
 }
 export function reportNames(summary) {
   return [summary.home?.name, summary.away?.name, summary.competition, summary.group, summary.season, summary.venue,
