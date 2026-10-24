@@ -15,15 +15,17 @@ export function broadcastMatch(detail,events,lineup){
   for(const row of rows??[]){
     if(row.isDeleted||row.gameId&&!same(row.gameId,gameId)||!side(row.teamId)||!text(row.playerId))continue;
     const playerName=name(row.Player)||text(row.name);if(!playerName)continue;
-    players.set(row.playerId.toLowerCase(),{id:row.playerId,name:playerName,side:side(row.teamId),number:count(row.number),goalie:row.ListPosition?.isGoalie===true,imageUrl:sportingImage(row.Player?.imageUrls?.md??row.Player?.logoUrl??row.Player?.avatarUrl)});
+    players.set(row.playerId.toLowerCase(),{id:row.playerId,name:playerName,side:side(row.teamId),number:count(row.number),goalie:row.ListPosition?.isGoalie===true,imageUrl:sportingImage(row.Player?.imageUrls?.md??row.Player?.logoUrls?.md??row.Player?.logoUrl??row.Player?.avatarUrl)});
   }
-  const person=(id,embedded)=>{const known=players.get(String(id??embedded?.playerId).toLowerCase());return {id:text(id??embedded?.playerId),name:known?.name??name(embedded),imageUrl:known?.imageUrl??sportingImage(embedded?.imageUrls?.md??embedded?.logoUrl)};};
+  const person=(id,embedded,expectedSide)=>{const known=players.get(String(id??embedded?.playerId).toLowerCase());
+    if(known&&known.side!==expectedSide||embedded?.teamId&&side(embedded.teamId)!==expectedSide)return {id:null,name:null,imageUrl:null};
+    return {id:text(id??embedded?.playerId),name:known?.name??name(embedded),imageUrl:known?.imageUrl??sportingImage(embedded?.imageUrls?.md??embedded?.logoUrls?.md??embedded?.logoUrl)};};
   const group=selectEventGroup(events,detail,'GameEventGoals','goal');
   const goals=uniqueEvents(group.events,'goal').filter(e=>!e.isDeleted).map((e,index)=>({
     id:text(e.eventId??e.gameEventGoalId)??`goal-${index}`,side:side(e.scoredByTeamId??e.ScoredByTeam?.teamId),
     period:eventPeriod(e.period),clock:eventClock(e.gameTime)===null?null:String(e.gameTime),seconds:eventClock(e.gameTime),
-    scorer:person(e.scoredByPlayerId,e.ScoredByPlayer),
-    assists:[person(e.assistedBy1PlayerId,e.AssistedBy1Player),person(e.assistedBy2PlayerId,e.AssistedBy2Player)].filter(p=>p.id||p.name),
+    scorer:person(e.scoredByPlayerId,e.ScoredByPlayer,side(e.scoredByTeamId??e.ScoredByTeam?.teamId)),
+    assists:[person(e.assistedBy1PlayerId,e.AssistedBy1Player,side(e.scoredByTeamId??e.ScoredByTeam?.teamId)),person(e.assistedBy2PlayerId,e.AssistedBy2Player,side(e.scoredByTeamId??e.ScoredByTeam?.teamId))].filter(p=>p.id||p.name),
   }));
   const score={home:count(detail.HomeTeamGoals),away:count(detail.AwayTeamGoals)};
   const consistent=group.available&&score.home!==null&&score.away!==null&&goals.every(g=>g.side)

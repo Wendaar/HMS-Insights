@@ -16,7 +16,7 @@ export async function loadBroadcastHistory(detail,options={}){
   const sql=options.sql??neon((options.env??process.env).DATABASE_URL);
   // Read-only, exact season/competition/org and before the selected fixture. No player contact fields.
   const rows=await sql.query(`SELECT to_jsonb(g) as game,
-    coalesce((SELECT jsonb_agg(jsonb_build_object('id',p.player_id,'teamId',p.team_id,'name',p.player_name,'goals',p.goals,'assists',p.assists,'image',p.player_image_url)) FROM player_game_stats p WHERE p.game_id=g.game_id), '[]'::jsonb) as players
+    coalesce((SELECT jsonb_agg(jsonb_build_object('id',p.player_id,'teamId',p.team_id,'name',p.player_name,'goals',p.goals,'assists',p.assists,'image',coalesce(p.player_image_url,p.player_image_template_url))) FROM player_game_stats p WHERE p.game_id=g.game_id), '[]'::jsonb) as players
     FROM games g WHERE g.organization_id=$1::uuid AND g.season_id=$2::uuid AND g.competition_id=$3::uuid AND g.status='FINISHED'
     AND g.game_id<>$4::uuid AND (g.played_on<$5::date OR (g.played_on=$5::date AND g.started_at::time<$6::time))
     AND (g.home_team_id=ANY($7::uuid[]) OR g.away_team_id=ANY($7::uuid[])) ORDER BY g.played_on DESC,g.started_at DESC,g.game_id LIMIT 500`,
