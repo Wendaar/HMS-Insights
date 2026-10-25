@@ -193,14 +193,13 @@ Staré veřejné adresy nadále fungují; nejde o plošné přesměrování host
 Ručně vložené odkazy ve Webnode je třeba aktualizovat samostatně.
 
 Dlouhá doména s `git-codex-...vercel.app` je adresa náhledu. Čitelné cesty řeší
-část za doménou; vlastní doména/subdoména řeší jméno hostitele. Je možné
-použít např. `app.phmcup.cz`, pokud to vlastník zvolí, nebo subdoménu společné
-značky HMS. Příklady nejsou připojené ani zarezervované domény.
+část za doménou; vlastní doména/subdoména řeší jméno hostitele.
+`app.phmcup.cz` je připojená k produkci existujícího projektu HMS Insights.
 
 V existujícím projektu Vercel se zvolená doména přidá v Settings → Domains.
 Potom se u poskytovatele DNS nastaví přesně záznam, který Vercel pro tento
 projekt ukáže. Nevymýšlet univerzální cílový CNAME, neměnit DNS hlavního webu
 ani e-mailů a nepřesouvat kvůli tomu celý projekt na nové hostování. Před
 přepnutím návštěvníků je nutné nasadit ověřenou verzi do zamýšlené cílové
-větve a zkontrolovat správné přiřazení domény. Tato úprava DNS ani domény
-sama nemění a nevytváří nový projekt.
+větve a zkontrolovat správné přiřazení domény. Úprava veřejných odkazů
+DNS ani přiřazení domény nemění a nevytváří nový projekt.
