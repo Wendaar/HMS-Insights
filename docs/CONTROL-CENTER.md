@@ -190,3 +190,21 @@ ani e-mailů a nepřesouvat kvůli tomu celý projekt na nové hostování. Pře
 přepnutím návštěvníků je nutné nasadit ověřenou verzi do zamýšlené cílové
 větve a zkontrolovat správné přiřazení domény. Tato úprava DNS ani domény
 sama nemění a nevytváří nový projekt.
+
+## Access audit (25. 10. 2026)
+
+MAP now shows a second classification independently of Ready/Beta/Planned:
+PUBLIC (intended read-only fan-facing page), STAFF (operator tooling), ADMIN
+(configuration and infrastructure), PLANNED (not implemented). All are currently
+**unverified access intentions**, not security guarantees or uptime tests.
+The labels do not authenticate or restrict requests. In particular, Vercel
+preview domains can require Vercel Authentication even for intended PUBLIC URLs.
+Never embed preview links on public sites. Verify the production deployment and
+its routing using an unauthenticated/incognito browser and ensure production
+Deployment Protection is configured appropriately in Vercel settings. Do not
+weaken protection of write APIs, admin secrets, or staff operations merely to
+make Games View public. Public embeds additionally require frame-ancestor CSP
+and cookies/headers to permit the intended embedding domain. The /games route
+currently has frame-ancestors 'none', therefore public display does not yet
+imply iframe readiness. Do not mark it embed-ready without a targeted CSP change
+and verification.
