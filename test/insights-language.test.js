@@ -17,6 +17,8 @@ test('all supported insight types use existing facts, with safe missing-fact tex
  const facts={goals:4,assists:2,points:6,saves:31,scoreDifference:7,gameTime:'0:22'};
  for(const [type,expected]of [['HATTRICK','scored 4 goals'],['MULTIPOINT_GAME','6 points (4 goals + 2 assists)'],['BIG_SAVES','31 saves'],['EARLY_GOAL','0:22'],['BIG_WIN','won by 7 goals']])assert.ok(insightCopy({type,player:'Jan Novák',facts},'en').text.includes(expected));
  assert.equal(insightCopy({type:'BIG_WIN',team:'HC Goals',facts:{}},'en').text,'HC Goals recorded a big win.');
+ assert.equal(insightCopy({type:'MULTIPOINT_GAME',player:'Tommy',facts:{points:5,goals:1,assists:4},venue:'Neuvedený stadion'},'en').text,'Tommy recorded 5 points (1 goal + 4 assists).');
+ assert.equal(insightCopy({venue:'Neuvedený stadion'},'en').venue,'Venue not specified');
  assert.equal(feedLanguage(null,'EUCHL'),'en');assert.equal(feedLanguage('en','PHM'),'en');assert.equal(feedLanguage('cs','EUCHL'),'cs');
 });
 test('English API pagination returns translated markup and unchanged canonical items',async()=>{

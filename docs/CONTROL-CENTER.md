@@ -154,3 +154,39 @@ Každý nový HMS nástroj nejprve přidat do registru a odpovídající větve 
 jako Planned. Uvést, odkud čte data a kam jeho výstup patří. Teprve po ověření
 skutečné adresy a chování přidat launcher a změnit stav na Beta nebo Ready.
 Nezakládat další samostatný rozcestník. Zachovat trvalý vstup `/control`.
+
+## Veřejné Insights v CZ / EN a čitelné odkazy
+
+Veřejný výběr i archiv podporují `?lang=cs` a `?lang=en` a mají přepínač CZ/EN.
+EUCHL má bez parametru výchozí angličtinu, PHM češtinu. Jazyk se předává při
+filtrování, načítání dalších karet, sdílení a přechodu z reportu. Popisy výkonů
+se skládají ze skutečných `facts`; uložené názvy, statistiky a JSON zůstávají
+beze změny. Angličtina zahrnuje UI, filtry, data, karty i jejich detaily.
+
+Přehledy zápasů mají čitelnou adresu `/games/<organizace>/<sezona>`, např.
+`/games/euchl/2026-2027`. Pokud má organizace ve stejném období více soutěží,
+přidá se název soutěže: `/games/phm/phm-cup/2026-2027`. Nejednoznačné názvy
+se nikdy nepřiřadí náhodnému UUID. Tyto adresy se odvozují z ověřeného katalogu
+načtených sezon; názvy v URL se znovu ověří vůči dané organizaci.
+
+Staré odkazy s `seasonId` zůstávají funkční. Pokud je k nim v databázi ověřená
+jednoznačná čitelná cesta, prohlížeč ji sám nahradí bez změny vybraného období.
+Například filtr posledního týdne má tvar `?period=last-week`. Jazyk výchozí
+pro danou organizaci lze z adresy vynechat. Tlačítko Kopírovat odkaz kopíruje
+aktuální sdílenou adresu. Další filtry se uchovávají; tento krok neodstraňuje
+ID případných jednotlivých týmových/skupinových filtrů ani reportů zápasů.
+
+### Vlastní doména
+
+Dlouhá doména s `git-codex-...vercel.app` je adresa náhledu. Čitelné cesty řeší
+část za doménou; vlastní doména/subdoména řeší jméno hostitele. Je možné
+použít např. `app.phmcup.cz`, pokud to vlastník zvolí, nebo subdoménu společné
+značky HMS. Příklady nejsou připojené ani zarezervované domény.
+
+V existujícím projektu Vercel se zvolená doména přidá v Settings → Domains.
+Potom se u poskytovatele DNS nastaví přesně záznam, který Vercel pro tento
+projekt ukáže. Nevymýšlet univerzální cílový CNAME, neměnit DNS hlavního webu
+ani e-mailů a nepřesouvat kvůli tomu celý projekt na nové hostování. Před
+přepnutím návštěvníků je nutné nasadit ověřenou verzi do zamýšlené cílové
+větve a zkontrolovat správné přiřazení domény. Tato úprava DNS ani domény
+sama nemění a nevytváří nový projekt.

@@ -26,12 +26,13 @@ export function insightCopy(item,lang='cs'){
  const f=item.facts??{},name=item.player||item.team||'Team',number=(key)=>Number.isFinite(f[key])?f[key]:null;
  const titles={HATTRICK:'Hat trick',BIG_SAVES:'Goaltender performance',MULTIPOINT_GAME:'Multi-point game',EARLY_GOAL:'Early goal',BIG_WIN:'Big win'};
  let text=item.text;
+ const counted=(value,word)=>`${value} ${word}${value===1?'':'s'}`;
  if(item.type==='HATTRICK')text=number('goals')===null?`${name} scored a hat trick.`:`${name} scored ${f.goals} goals.`;
  if(item.type==='BIG_SAVES')text=number('saves')===null?`${name} delivered an outstanding goaltender performance.`:`${name} made ${f.saves} saves.`;
- if(item.type==='MULTIPOINT_GAME')text=number('points')===null?`${name} recorded a multi-point game.`:`${name} recorded ${f.points} points${number('goals')!==null&&number('assists')!==null?` (${f.goals} goals + ${f.assists} assists)`:''}.`;
+ if(item.type==='MULTIPOINT_GAME')text=number('points')===null?`${name} recorded a multi-point game.`:`${name} recorded ${counted(f.points,'point')}${number('goals')!==null&&number('assists')!==null?` (${counted(f.goals,'goal')} + ${counted(f.assists,'assist')})`:''}.`;
  if(item.type==='EARLY_GOAL')text=f.gameTime?`${name} scored at ${f.gameTime}.`:`${name} scored an early goal.`;
  if(item.type==='BIG_WIN')text=number('scoreDifference')===null?`${name} recorded a big win.`:`${name} won by ${f.scoreDifference} goals.`;
- return {...item,title:titles[item.type]??item.title,text};
+ return {...item,title:titles[item.type]??item.title,text,...(item.venue==='Neuvedený stadion'?{venue:'Venue not specified'}:{})};
 }
 export function insightStat(item,lang='cs'){
  if(item.type==='HATTRICK')return 'HATTRICK';
