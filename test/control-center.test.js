@@ -23,7 +23,7 @@ test('registry covers the inventory, with explicit unconfigured organization iso
 });
 test('Game Center generates the existing route and matches its UUID validation',()=>{
   const id='F6321894-98CA-11F1-8BDF-EF2495D048F3';
-  assert.equal(gameReportUrl('phm',` ${id} `),`/game-center/${id}`);
+  assert.equal(gameReportUrl('phm',` ${id} `),`https://app.phmcup.cz/game-center/${id}`);
   for(const value of ['',null,'https://example.com',`${id}/public`,`${id}?org=YHG`,'<script>', '1234',id]){
     assert.equal(!!gameReportUrl('phm',value),isGameId(value));
   }

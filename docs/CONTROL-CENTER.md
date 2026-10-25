@@ -178,6 +178,20 @@ ID případných jednotlivých týmových/skupinových filtrů ani reportů záp
 
 ### Vlastní doména
 
+Produkční veřejná doména je nyní `https://app.phmcup.cz`. Společný modul
+`public/public-output.js` skládá veřejné odkazy nezávisle na tom, odkud byla
+otevřena správa: Insights detail/share, Games copy/report, veřejný playoff
+odkaz a iframe, OBS URL a veřejný stálý kanál. Zachovává cestu, organizaci,
+jazyk, filtry a identifikátor momentu. Také veřejné vstupy z mapy a seznamu
+vedou na PHM doménu. Při testování z preview tedy veřejné odkazy otevírají
+produkci; pracovní náhledy a API zůstávají v původním prostředí.
+
+Soukromý OBS control link se nepřepisuje. Katalog sponzorů, nastavení,
+generátory a odkazy na zdrojový kód se tímto nepřesouvají. Interní iframe
+náhledu ve Broadcast Studiu zůstává na stejném originu kvůli PNG exportu.
+Staré veřejné adresy nadále fungují; nejde o plošné přesměrování hostitele.
+Ručně vložené odkazy ve Webnode je třeba aktualizovat samostatně.
+
 Dlouhá doména s `git-codex-...vercel.app` je adresa náhledu. Čitelné cesty řeší
 část za doménou; vlastní doména/subdoména řeší jméno hostitele. Je možné
 použít např. `app.phmcup.cz`, pokud to vlastník zvolí, nebo subdoménu společné

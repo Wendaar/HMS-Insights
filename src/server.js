@@ -32,6 +32,7 @@ const toolsHandler = createToolsHandler();
 const broadcastHandler = createBroadcastHandler();
 
 const assets = {
+  '/public-output.js':['text/javascript; charset=utf-8','public-output.js'],
   '/insights-i18n.js':['text/javascript; charset=utf-8','insights-i18n.js'],
   '/hms-brand.css':['text/css; charset=utf-8','hms-brand.css'],
   '/hms-brand.js':['text/javascript; charset=utf-8','hms-brand.js'],

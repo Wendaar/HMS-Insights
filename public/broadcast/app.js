@@ -3,6 +3,7 @@ import {apiGame,parseGameInput,viewUrl,organizations} from './hms-source.js';
 import {language,translate,localize} from './i18n.js';
 import {layers,layerNames,renderMatchLayer} from './match-layers.js';
 import {createChannelControl,runChannelView,fitBroadcastCanvas} from './channel.js';
+import {publicOutputUrl} from '../public-output.js';
 const SHEET_ID = "12lxrxxyCUwbbFqv93NMNqyhpOUoXbyml00mnNSKGjQ0";
 const ASSET_BASE = "https://raw.githubusercontent.com/Wendaar/Youtube-Overlays/main/";
 const FRAME = `${ASSET_BASE}PHM_Overlayer_Frame_opnening_smaller.png`;
@@ -260,7 +261,7 @@ function renderControl() {
   const dayGames = listed.filter((game) => (game.Date || "Bez data") === state.date);
   const game = selectedGame();
   const previewUrl = game?renderUrl(state.preview,game,state.preview==='thumbnail'):'';
-  const obsUrl = game?renderUrl('overlay',game):'';
+  const obsUrl = game?publicOutputUrl(renderUrl('overlay',game)):'';
   app.innerHTML = `
     <div class="control-shell">
       <header class="control-header">
@@ -337,7 +338,7 @@ function wireControl() {
     catch(error){state.selectedId=previous;document.querySelector('#connection-status').textContent=t(error.message);button.disabled=false;}
   }));
   document.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => { state.preview = button.dataset.view; renderControl(); }));
-  document.querySelector("#open-view")?.addEventListener("click", () => { const game = selectedGame(); window.open(renderUrl(state.preview,game,true), "_blank", "noopener"); });
+  document.querySelector("#open-view")?.addEventListener("click", () => { const game = selectedGame(); window.open(publicOutputUrl(renderUrl(state.preview,game,true)), "_blank", "noopener"); });
   document.querySelector("#copy-url")?.addEventListener("click", async () => { const field = document.querySelector("#current-obs-url"); const button = document.querySelector("#copy-url"); try { await navigator.clipboard.writeText(field.value); button.textContent = t("URL zkopírována"); } catch { field.focus(); field.select(); document.execCommand("copy"); button.textContent = t("URL označena"); } setTimeout(() => button.textContent = t("Kopírovat OBS URL"), 1400); });
   document.querySelector("#download-from-control")?.addEventListener("click", () => { const frame = document.querySelector("#preview"); frame.contentWindow.downloadThumbnail?.(); });
 }
