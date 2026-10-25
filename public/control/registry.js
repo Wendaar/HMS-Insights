@@ -25,6 +25,7 @@ export const organizations = [
 const missing = (id, category, name, description) => ({id,category,name,description,
   status:'missing', dataSource:'Nenastaveno', note:'Aplikace je v inventáři; její adresu a zdroj je potřeba ověřit.', links:{}});
 const applications = [
+  {id:'operations',category:'data',name:'HMS Operations',description:'Směny, kontrola obsazení, CASH, volný led a podklady měsíční uzávěrky.',status:'partial',dataSource:'Společné HMS API · provozní přístup organizace',note:'Pracovní verze. Živá data vyžadují samostatný provozní kód; mapování CASH / PAID a účetní sazby musí potvrdit organizace.',links:{open:'/operations?org=phm',manage:'/operations?org=phm',github:code('docs/OPERATIONS.md')}},
   {id:'broadcast',category:'media',name:'Opening Studio · OBS',description:'Předzápasová vrstva pro OBS a YouTube miniatura z HMS API.',status:'available',dataSource:'HMS API · zápas, týmy, loga a pořadatelé',note:'Čistý OBS výstup 1920 × 1080. Vyberte zápas v ovládání a zkopírujte jeho URL.',links:{open:'/broadcast/index.html?org=PHM',manage:'/broadcast/index.html?org=PHM',source:'/api/broadcast?org=PHM',github:'https://github.com/Wendaar/Youtube-Overlays'}},
   {id:'studio',category:'media',name:'Media Studio',description:'Grafika zápasů a Insights, náhledy a export PNG.',status:'available',dataSource:'HMS API / uložené snapshoty zápasů',note:'Dostupnost živých dat závisí na připojení organizace.',links:{open:'/studio/phm?lang=cs',manage:'/studio/phm?lang=cs',github:code('public/studio/app.js')}},
   {id:'all-stars',category:'media',name:'All Stars Generator',description:'Měsíční výběr hráčů, nominace a grafika All Stars.',status:'partial',dataSource:'Google Sheet → XLSX / přibalený snímek k 2. 10. 2026',note:'Samostatná aplikace. Průběžné HMS API zatím není připojeno; adresa Sheetu není ověřena.',links:{open:'https://wendaar.github.io/PHM-All-Stars-generator/',public:'https://wendaar.github.io/PHM-All-Stars-generator/',github:'https://github.com/Wendaar/PHM-All-Stars-generator'}},
@@ -67,6 +68,7 @@ export function appsForOrganization(id) {
   if (!org) return [];
   if (org.id === 'phm') return applications.map(publicLinks);
   if (org.id === 'euchl') return applications.map(app=>{
+    if(app.id==='operations')return {...app,links:{...app.links,open:'/operations?org=euchl',manage:'/operations?org=euchl'}};
     if(['games-view','game-center','data-engine','database','security'].includes(app.id))return app;
     if(app.id==='sponsors-catalog')return {...app,links:{open:'https://hms-insights-git-codex-broadcast-expansion-preview-wendaar.vercel.app/broadcast/sponsors.html?org=EUCHL'}};
     if(app.id==='broadcast')return {...app,links:{...app.links,open:'/broadcast/index.html?org=EUCHL',manage:'/broadcast/index.html?org=EUCHL',source:'/api/broadcast?org=EUCHL'}};

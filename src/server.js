@@ -1,3 +1,4 @@
+import {createOperationsHandler} from './web/operations-handler.js';
 import {createOrganizationImportHandler} from './web/organization-import-handler.js';
 import {createSeasonGamesHandler} from './web/season-games-handler.js';
 import {createToolsHandler} from './web/tools-handler.js';
@@ -55,6 +56,18 @@ const assets = {
 
 export const server = createServer(async (request, response) => {
   const url = new URL(request.url, `http://${request.headers.host ?? "localhost"}`);
+  if(url.pathname==='/api/operations'||url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='operations'){
+    request.query=Object.fromEntries(url.searchParams);
+    await createOperationsHandler()(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json; charset=utf-8');response.end(JSON.stringify(body));}});return;
+  }
+  if(['/operations','/operations/','/operations/index.html','/operations/app.js','/operations/model.js','/operations/demo.js','/operations/styles.css'].includes(url.pathname)){
+    if(!['GET','HEAD'].includes(request.method)){response.writeHead(405,{allow:'GET, HEAD'});response.end();return;}
+    const name=['/operations','/operations/'].includes(url.pathname)?'index.html':url.pathname.split('/').pop();
+    response.setHeader('content-type',name.endsWith('.html')?'text/html; charset=utf-8':name.endsWith('.css')?'text/css; charset=utf-8':'text/javascript; charset=utf-8');
+    response.setHeader('cache-control','no-store');response.setHeader('x-robots-tag','noindex, nofollow');response.setHeader('x-content-type-options','nosniff');response.setHeader('referrer-policy','no-referrer');
+    response.setHeader('content-security-policy',"default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
+    response.end(request.method==='HEAD'?undefined:await readFile(join(publicDirectory,'operations',name)));return;
+  }
   if(url.pathname==='/api/games'||url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='games'){
     request.query=Object.fromEntries(url.searchParams);
     await createSeasonGamesHandler()(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json; charset=utf-8');response.end(JSON.stringify(body));}});return;
