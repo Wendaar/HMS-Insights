@@ -1,5 +1,5 @@
 import {publicOrganizations} from '../app/organizations.js';
-import {controlContextCatalog,controlGameCatalog} from '../app/control-context.js';
+import {controlContextCatalog,controlGameCatalog,controlSeasonLink} from '../app/control-context.js';
 import { browseMedia, mediaGame } from '../app/media-engine.js';
 export function createStudioHandler(options={}) {
   return async (req,res)=>{
@@ -12,6 +12,7 @@ export function createStudioHandler(options={}) {
       if(q.catalog==='1')return res.status(200).json({organizations:publicOrganizations(options.env??process.env)});
       if(q.catalog==='leagues')return res.status(200).json(await controlContextCatalog(q.org,options));
       if(q.catalog==='games')return res.status(200).json(await controlGameCatalog(q.org,q.seasonId,options));
+      if(q.catalog==='season-link')return res.status(200).json(await controlSeasonLink(q.seasonId,options));
       const result=q.gameId
         ? await (options.mediaGame??mediaGame)(q.org,q.gameId,{...options,refresh:q.refresh==='1'})
         : await (options.browseMedia??browseMedia)({org:q.org,query:typeof q.query==='string'?q.query.slice(0,160):'',type:typeof q.type==='string'?q.type:'',filter:q.filter??'Today',section:q.section==='insights'?'insights':'games',offset:integer(q.offset,100000),windowPage:integer(q.windowPage,120)},options);

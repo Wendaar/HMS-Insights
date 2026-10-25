@@ -6,11 +6,17 @@ const html=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt
 let params=new URLSearchParams(location.search),lang=reportLanguage(params.get('lang')),last=null,controller=null,requestId=0;
 const t=key=>words[lang][key]??key;
 const dateLabel=(date,long=false)=>new Intl.DateTimeFormat(reportLocale(lang),{day:'numeric',month:long?'long':'short',year:'numeric',...(long?{weekday:'long'}:{}),timeZone:'UTC'}).format(new Date(date+'T12:00:00Z'));
-function updateUrl(){history.replaceState(null,'',location.pathname+'?'+params.toString());}
+let canonicalPath=location.pathname,prettyRoute=false,navigationVersion=0;
+const periods={today:'Today',yesterday:'Yesterday','next-week':'+7 days','last-week':'-7 days',past:'Past',future:'Future',date:'Date'};
+function updateUrl(){
+ const shown=new URLSearchParams(params);
+ if(prettyRoute){shown.delete('seasonId');const filter=shown.get('filter');shown.delete('filter');const period=Object.entries(periods).find(([,value])=>value===filter)?.[0];if(period&&period!=='today')shown.set('period',period);const defaultLang=canonicalPath.split('/')[2]==='euchl'?'en':'cs';if(shown.get('lang')===defaultLang)shown.delete('lang');}
+ const query=shown.toString();history.replaceState(null,'',canonicalPath+(query?'?'+query:''));
+}
 function labels(){
   document.documentElement.lang=lang;document.title=t('games')+' | HMS Game Center';$('heading').textContent=t('games');
   document.querySelectorAll('[data-label]').forEach(node=>node.textContent=t(node.dataset.label));
-  $('search-button').textContent=t('find');$('search').placeholder=t('placeholder');$('refresh').textContent=t('refresh');
+  $('search-button').textContent=t('find');$('search').placeholder=t('placeholder');$('refresh').textContent=t('refresh');$('copy-link').textContent=lang==='en'?'Copy link':'Kopírovat odkaz';
   $('earlier').textContent=t('older');$('later').textContent=t('newer');$('previous').textContent=t('previous');$('next').textContent=t('next');
   document.querySelectorAll('[data-lang]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.lang===lang)));
   $('period-tabs').replaceChildren(...filters.map(filter=>{const button=document.createElement('button');button.type='button';button.textContent=t(filter);button.dataset.filter=filter;button.setAttribute('aria-pressed',String(filter===(params.get('filter')??'Today')));return button;}));
@@ -73,6 +79,27 @@ $('next').addEventListener('click',()=>change({offset:Number(params.get('offset'
 $('earlier').addEventListener('click',()=>change({windowPage:Number(params.get('windowPage')??0)+(params.get('filter')==='Past'?1:-1)}));
 $('later').addEventListener('click',()=>change({windowPage:Number(params.get('windowPage')??0)+(params.get('filter')==='Past'?-1:1)}));
 $('refresh').addEventListener('click',load);
-window.addEventListener('popstate',()=>{params=new URLSearchParams(location.search);lang=reportLanguage(params.get('lang'));load();});
+window.addEventListener('popstate',initialize);
 document.addEventListener('error',event=>{if(event.target instanceof HTMLImageElement)event.target.hidden=true;},true);
-load();
+async function initialize(){
+ const navigation=++navigationVersion;
+ canonicalPath=location.pathname;prettyRoute=/^\/games\/[a-z0-9-]+\/[a-z0-9-]+(?:\/[a-z0-9-]+)?\/?$/.test(canonicalPath);
+ params=new URLSearchParams(location.search);if(params.has('period')){params.set('filter',periods[params.get('period')]??'invalid');params.delete('period');}
+ lang=reportLanguage(params.get('lang'),{competition:prettyRoute&&canonicalPath.split('/')[2]==='euchl'?'EUCHL':''});
+ if(prettyRoute){
+  try{
+   const org=canonicalPath.split('/')[2],response=await fetch('/api/studio?'+new URLSearchParams({catalog:'leagues',org}),{signal:AbortSignal.timeout(10000)});
+   if(!response.ok)throw Error();const catalog=await response.json();if(navigation!==navigationVersion)return;if(catalog.org?.toLowerCase()!==org)throw Error();
+   const item=catalog.items?.find(item=>item.gamesPath===canonicalPath.replace(/\/$/,''));if(!item)throw Error();params.set('seasonId',item.seasonId);
+  }catch{labels();$('message').className='error';$('message').textContent=lang==='en'?'This season link is unavailable. Open the Control Center to choose another season.':'Odkaz na tuto sezonu není dostupný. Vyberte jinou sezonu v rozcestníku.';return;}
+ }
+ await load();if(navigation!==navigationVersion)return;
+ if(!prettyRoute&&params.get('seasonId')){
+  try{
+   const response=await fetch('/api/studio?'+new URLSearchParams({catalog:'season-link',seasonId:params.get('seasonId')}),{signal:AbortSignal.timeout(8000)});
+   if(response.ok){const data=await response.json();if(navigation!==navigationVersion)return;if(/^\/games\/[a-z0-9-]+\/[a-z0-9-]+(?:\/[a-z0-9-]+)?$/.test(data.path??'')){canonicalPath=data.path;prettyRoute=true;updateUrl();}}
+  }catch{/* Original UUID links remain usable when the optional readable alias is unavailable. */}
+ }
+}
+$('copy-link').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(location.href);$('copy-status').textContent=lang==='en'?'Link copied':'Odkaz zkopírován';}catch{$('copy-status').textContent=lang==='en'?'Copy the address from your browser.':'Zkopírujte adresu z prohlížeče.';}});
+initialize();

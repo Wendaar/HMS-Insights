@@ -346,6 +346,10 @@ export async function loadControlLeagues(organizationId,options={}) {
     and competition_name is not null and season_name is not null
     order by competition_name,season_name desc limit 300`,[organizationId]);
 }
+export async function loadControlSeason(seasonId,options={}) {
+ const sql=options.sql??createSql(databaseUrlFromEnv(options.env));
+ return sql.query('select distinct organization_id from games where season_id=$1::uuid limit 2',[seasonId]);
+}
 export async function loadControlGames(organizationId,seasonId,options={}) {
   const sql=options.sql??createSql(databaseUrlFromEnv(options.env));
   return sql.query(`select game_id,season_id,organization_id,played_on,home_team_name,away_team_name

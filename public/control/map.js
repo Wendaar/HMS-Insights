@@ -28,6 +28,7 @@ export function mapForOrganization(org){
 export function nodeUrl(node,org,context={}){
   if(node.status==='Planned')return null;
   if(node.id==='game-report')return validId(context.gameId)?gameReportUrl(org,context.gameId):null;
+  if(node.id==='games-view'&&/^\/games\/[a-z0-9-]+\/[a-z0-9-]+(?:\/[a-z0-9-]+)?$/.test(context.gamesPath??''))return context.gamesPath;
   if(node.id==='games-view')return validId(context.seasonId)?'/game-center?'+new URLSearchParams({seasonId:context.seasonId,lang:'cs'}):null;
   if(node.kind==='output')return validId(context.gameId)?'/broadcast/index.html?'+new URLSearchParams({org:org.toUpperCase(),game:context.gameId,mode:'overlay',source:'hms',lang:'cs'}):null;
   if(node.kind==='export')return node.application?.links.open??null;

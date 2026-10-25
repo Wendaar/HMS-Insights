@@ -6,7 +6,7 @@ const workBranches={broadcast:['broadcast','sponsors','gameshow'],social:['socia
 function anchor(href,label,cls){const a=el('a',label,cls);a.href=href;a.target='_blank';a.rel='noopener noreferrer';return a;}
 function persist(){if(!writeContext(localStorage,orgId,context))$('organization-note').textContent='Kontext je aktivní, ale prohlížeč nepovolil jeho uložení.';}
 function selectedLeague(){return (context.leagues??[]).find(l=>l.name===context.league);}
-function activeContext(){return {...context,seasonId:selectedLeague()?.seasonId??''};}
+function activeContext(){return {...context,seasonId:selectedLeague()?.seasonId??'',gamesPath:selectedLeague()?.gamesPath??null};}
 function showSettings(){
  $('context-title').textContent='Sezona a zápas · '+(organizationById(orgId)?.name??'');
  fillLeagueMenu($('context-league'));$('context-league').value=context.league??'';

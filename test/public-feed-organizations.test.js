@@ -24,7 +24,7 @@ test('selection and archive HTML, navigation, metadata and all option loaders st
   assert.equal(res.code,200);assert.ok(calls.every(p=>p.organizationId===(code==='PHM'?PHM_ORGANIZATION_ID:other)));
   assert.match(res.body,new RegExp(code+' Home'));assert.doesNotMatch(res.body,new RegExp((code==='PHM'?'EUCHL':'PHM')+' Home'));assert.doesNotMatch(res.body,/PRIVATE_SENTINEL|11111111-1111/);
   assert.match(res.body,new RegExp('"organization":"'+code+'"'));assert.match(res.body,/src="\/app.js/);assert.match(res.body,/href="\/styles.css/);
-  if(code==='EUCHL'){assert.match(res.body,/href="\/priklepy\/euchl"/);if(mode==='archive')assert.match(res.body,/href="\/archiv\/euchl"/);}else assert.doesNotMatch(res.body,/href="\/(priklepy|archiv)\/euchl"/);
+  if(code==='EUCHL'){assert.match(res.body,/href="\/priklepy\/euchl\?lang=en"/);if(mode==='archive')assert.match(res.body,/href="\/archiv\/euchl\?lang=en"/);}else assert.doesNotMatch(res.body,/href="\/(priklepy|archiv)\/euchl"/);
  }
 });
 test('selection search and archive paging/counts/filter queries always carry org UUID and return canonical org code',async()=>{

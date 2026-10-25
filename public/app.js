@@ -1,3 +1,4 @@
+import {feedLanguage,feedLocale,feedText,feedHtml,insightCopy,insightStat} from './insights-i18n.js';
 const search = document.querySelector("#search");
 const selects = [...document.querySelectorAll("[data-filter]")];
 const count = document.querySelector("#result-count");
@@ -12,6 +13,7 @@ const dialog = document.querySelector("#detail-dialog");
 const dialogContent = document.querySelector("#dialog-content");
 let items = JSON.parse(document.querySelector("#feed-data").textContent);
 let feedMeta = JSON.parse(document.querySelector("#feed-meta").textContent);
+const lang=feedLanguage(feedMeta.lang,feedMeta.organization),t=value=>feedText(value,lang);
 let newestDate = items[0]?.date ?? null;
 let loading = false;
 let requestVersion = 0;
@@ -32,13 +34,13 @@ function updateControls(resultTotal = feedMeta.total) {
 }
 
 function sectionFor(date) {
-  if (!newestDate) return { key: "latest", label: "Nejnovější" };
+  if (!newestDate) return { key: "latest", label: t("Nejnovější") };
   const days = Math.round((new Date(`${newestDate}T12:00:00`) - new Date(`${date}T12:00:00`)) / 86400000);
   return days === 0
-    ? { key: "latest", label: "Nejnovější" }
+    ? { key: "latest", label: t("Nejnovější") }
     : days === 1
-      ? { key: "yesterday", label: "Včera" }
-      : { key: "earlier", label: "Dříve" };
+      ? { key: "yesterday", label: t("Včera") }
+      : { key: "earlier", label: t("Dříve") };
 }
 
 function ensureSection(info) {
@@ -73,7 +75,7 @@ function appendPage(page, replace) {
 }
 
 function feedParams(offset) {
-  const params = new URLSearchParams({ org: feedOrganization, limit: "40", offset: String(offset) });
+  const params = new URLSearchParams({ lang, org: feedOrganization, limit: "40", offset: String(offset) });
   if (embeddedTeamId) params.set("teamId", embeddedTeamId);
   if (search?.value.trim()) params.set("q", search.value.trim());
   selects.forEach((select) => {
@@ -87,18 +89,18 @@ async function loadPage(replace = false) {
   if (loading && !replace) return;
   const version = replace ? ++requestVersion : requestVersion;
   loading = true;
-  sentinel.textContent = "Načítám starší Příklepy…";
+  sentinel.textContent = t("Načítám starší Příklepy…");
   try {
     const endpoint = isArchive ? "/api/feed" : "/api/selection";
     const response = await fetch(`${endpoint}?${feedParams(replace ? 0 : items.length)}`);
     const page = await response.json();
-    if (!response.ok) throw new Error(page.error || "Příklepy se nepodařilo načíst.");
+    if (!response.ok) throw new Error(t("Příklepy se nepodařilo načíst."));
     if (version !== requestVersion) return;
-    if (page.organization !== feedOrganization) throw new Error("Zdroj neodpovídá organizaci této stránky.");
+    if (page.organization !== feedOrganization) throw new Error(t("Zdroj neodpovídá organizaci této stránky."));
     appendPage(page, replace);
   } catch (error) {
     sentinel.hidden = false;
-    sentinel.textContent = `${error.message} Posuňte stránku znovu pro další pokus.`;
+    sentinel.textContent = `${error.message} ${t("Posuňte stránku znovu pro další pokus.")}`;
   } finally {
     if (version === requestVersion) loading = false;
   }
@@ -120,22 +122,15 @@ function safeColor(value, fallback) {
 
 function achievementLabel(type) {
   return ({
-    BIG_WIN: "VELKÁ VÝHRA",
-    EARLY_GOAL: "RYCHLÝ GÓL",
-    MULTIPOINT_GAME: "VÍCEBODOVÝ ZÁPAS",
+    BIG_WIN: t("VELKÁ VÝHRA"),
+    EARLY_GOAL: t("RYCHLÝ GÓL"),
+    MULTIPOINT_GAME: t("VÍCEBODOVÝ ZÁPAS"),
     HATTRICK: "HATTRICK",
-    BIG_SAVES: "BRANKÁŘSKÝ VÝKON",
+    BIG_SAVES: t("BRANKÁŘSKÝ VÝKON"),
   })[type] ?? type.replaceAll("_", " ");
 }
 
-function achievementStat(item) {
-  if (item.type === "HATTRICK") return "HATTRICK";
-  if (item.type === "BIG_SAVES") return `${item.facts?.saves ?? "30+"} ZÁKROKŮ`;
-  if (item.type === "MULTIPOINT_GAME") return `${item.facts?.points ?? "2+"} BODY`;
-  if (item.type === "EARLY_GOAL") return `GÓL ${item.facts?.gameTime ?? "BRZY"}`;
-  if (item.type === "BIG_WIN") return `VÝHRA +${item.facts?.scoreDifference ?? "5"}`;
-  return achievementLabel(item.type);
-}
+function achievementStat(item) {return insightStat(item,lang);}
 
 function outstandingLabel(item) {
   if (item.type === "HATTRICK" || item.importance >= 95) return "🔥 ON FIRE";
@@ -151,10 +146,10 @@ function detailUrl(id) {
 }
 
 async function shareMoment(item, button) {
-  const subject = item.player || item.team || "Týmový moment";
+  const subject = item.player || item.team || t("Týmový moment");
   const data = {
     title: `${achievementStat(item)} · ${subject}`,
-    text: `${item.text} — HMS Příklepy`,
+    text: `${item.text} — HMS ${lang==='en'?'Insights':'Příklepy'}`,
     url: detailUrl(item.id),
   };
   if (navigator.share) {
@@ -167,14 +162,15 @@ async function shareMoment(item, button) {
   }
   await navigator.clipboard.writeText(data.url);
   const original = button.innerHTML;
-  button.innerHTML = "✓ Odkaz zkopírován";
+  button.innerHTML = t("✓ Odkaz zkopírován");
   setTimeout(() => { button.innerHTML = original; }, 1800);
 }
 
 function openDetail(id, updateUrl = true) {
-  const item = items.find((candidate) => candidate.id === id);
-  if (!item) return;
-  const subject = item.player || item.team || "Týmový moment";
+  const original = items.find((candidate) => candidate.id === id);
+  if (!original) return;
+  const item=insightCopy(original,lang);
+  const subject = item.player || item.team || t("Týmový moment");
   const subjectInitials = subject.split(/\s+/).map((part) => part[0]).slice(0,2).join("");
   const hasPlayerImage = usableImage(item.playerImageUrl);
   const hasTeamLogo = usableImage(item.teamLogoUrl);
@@ -201,7 +197,7 @@ function openDetail(id, updateUrl = true) {
     ? `<a class="share-score" href="${escapeHtml(item.gameDetailUrl)}" target="_blank" rel="noopener" title="Otevřít detail zápasu v HMS">${scoreContent}</a>`
     : `<div class="share-score">${scoreContent}</div>`;
   const status = outstandingLabel(item);
-  dialogContent.innerHTML = `<article class="share-card" style="--card-team:${safeColor(item.teamColor, "#8fe7ff")};--card-group:${safeColor(item.groupColor, "#a454ff")}">
+  dialogContent.innerHTML = feedHtml(`<article class="share-card" style="--card-team:${safeColor(item.teamColor, "#8fe7ff")};--card-group:${safeColor(item.groupColor, "#a454ff")}">
     ${teamLogo}
     <header class="share-head"><span class="share-brand"><span class="hms-brand"><a class="hms-company" href="https://www.heromanagementsystem.com/" target="_blank" rel="noopener noreferrer" aria-label="HMS · Hero Management System"><span class="hms-logo"><img src="/hms-logo.png" width="3508" height="3508" alt="HMS · Hero Management System"></span></a><span class="hms-product">PŘÍKLEPY</span></span></span><span class="share-group">${groupLogo}${escapeHtml(item.group)}</span></header>
     <div class="share-copy">
@@ -215,13 +211,13 @@ function openDetail(id, updateUrl = true) {
     <button class="share-action" type="button" aria-label="Sdílet tento Příklep"><span>↗</span> Sdílet</button>
     <footer class="share-foot">
       ${score}
-      <div class="share-context"><span>${venueLogo}${escapeHtml(item.venue)}</span><span>${new Intl.DateTimeFormat("cs-CZ").format(new Date(`${item.date}T12:00:00`))}</span><small>síla ${item.importance}</small></div>
+      <div class="share-context"><span>${venueLogo}${escapeHtml(item.venue)}</span><span>${new Intl.DateTimeFormat(feedLocale(lang)).format(new Date(`${item.date}T12:00:00`))}</span><small>${lang==='en'?'impact':'síla'} ${item.importance}</small></div>
     </footer>
-  </article>`;
+  </article>`,lang,[item.player,item.team,item.homeTeam,item.awayTeam,item.group,item.venue].filter(Boolean).map(escapeHtml));
   if (/^\/game-center\/[0-9a-f-]{36}$/i.test(item.gameReportUrl ?? "")) {
     const reportLink = document.createElement("a");
-    reportLink.href = item.gameReportUrl;
-    reportLink.textContent = "Otevřít Game Report →";
+    reportLink.href = item.gameReportUrl+'?lang='+lang;reportLink.target='_blank';reportLink.rel='noopener noreferrer';
+    reportLink.textContent = t("Otevřít Game Report →");
     reportLink.className = "game-report-link";
     dialogContent.append(reportLink);
   }
@@ -278,3 +274,11 @@ if (isArchive) {
 
 const initialMoment = new URLSearchParams(window.location.hash.slice(1)).get("priklep");
 if (initialMoment) openDetail(initialMoment, false);
+
+for(const link of document.querySelectorAll('.feed-language a')){
+ link.hash=location.hash;
+ link.addEventListener('click',()=>{const next=new URL(link.href);const selected=feedParams(0);for(const [key,value]of selected)if(!['org','limit','offset','lang'].includes(key))next.searchParams.set(key,value);link.href=next.href;});
+}
+const initialParams=new URLSearchParams(location.search);if(search)search.value=initialParams.get('q')??'';
+for(const select of selects){const value=initialParams.get(select.dataset.filter==='teams'?'team':select.dataset.filter);if(value&&[...select.options].some(o=>o.value===value))select.value=value;}
+updateControls();

@@ -1,5 +1,6 @@
-import {organizationConfig} from './organizations.js';
-import {loadControlLeagues,loadControlGames} from '../infrastructure/postgres-repository.js';
+import {organizationConfig,organizationForId} from './organizations.js';
+import {loadControlLeagues,loadControlGames,loadControlSeason} from '../infrastructure/postgres-repository.js';
+import {seasonLinks} from '../domain/season-links.js';
 import {isGameId} from '../domain/game-summary.js';
 export async function controlContextCatalog(org,options={}){
   const config=organizationConfig(org,options.env??process.env);
@@ -8,9 +9,18 @@ export async function controlContextCatalog(org,options={}){
   for(const row of rows){
     if(String(row.organization_id).toLowerCase()!==config.id.toLowerCase())throw new Error('Catalog organization mismatch');
     if(!isGameId(row.season_id)||!row.competition_name||!row.season_name)continue;
-    items.set(row.season_id.toLowerCase(),{seasonId:row.season_id.toLowerCase(),name:`${String(row.competition_name).slice(0,120)} · ${String(row.season_name).slice(0,80)}`});
+    items.set(row.season_id.toLowerCase(),{seasonId:row.season_id.toLowerCase(),competition:String(row.competition_name).slice(0,120),season:String(row.season_name).slice(0,80),name:`${String(row.competition_name).slice(0,120)} · ${String(row.season_name).slice(0,80)}`});
   }
-  return {org:config.code,items:[...items.values()].sort((a,b)=>a.name.localeCompare(b.name,'cs')),source:'imported-hms-seasons'};
+  return {org:config.code,items:seasonLinks(config.slug,[...items.values()]).sort((a,b)=>a.name.localeCompare(b.name,'cs')),source:'imported-hms-seasons'};
+}
+export async function controlSeasonLink(seasonId,options={}){
+ if(!isGameId(seasonId))throw new TypeError('Neplatná sezona.');
+ const rows=await(options.loadControlSeason??loadControlSeason)(seasonId,options);
+ const ids=[...new Set(rows.map(row=>row.organization_id.toLowerCase()))];
+ if(ids.length!==1)return {path:null};
+ const org=organizationForId(ids[0],options.env??process.env);if(!org)return {path:null};
+ const catalog=await controlContextCatalog(org.code,options);
+ return {path:catalog.items.find(item=>item.seasonId===seasonId.toLowerCase())?.gamesPath??null};
 }
 export async function controlGameCatalog(org,seasonId,options={}){
   const config=organizationConfig(org,options.env??process.env);

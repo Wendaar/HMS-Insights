@@ -1,3 +1,4 @@
+import {feedLanguage} from '../../public/insights-i18n.js';
 import {organizationConfig} from '../app/organizations.js';
 import {loadPublicFeedOptions,loadPublicFeedPage,loadPublicSelection} from '../infrastructure/postgres-repository.js';
 import {renderPriklepyPage,renderFeedCards} from './render.js';
@@ -22,6 +23,7 @@ export function createPublicFeedHandler({mode='selection',html=false,...options}
     if(request.method!=='GET'){response.setHeader('Allow','GET');return fail(405,'Method not allowed');}
     try{
       const env=options.env??process.env,org=publicFeedOrganization(request,{html,env}),query=request.query??{};
+      const lang=feedLanguage(query.lang,org.code);
       const requestedTeamId=typeof query.teamId==='string'?query.teamId:'';
       const teamId=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestedTeamId)?requestedTeamId:null;
       const common={env,organizationId:org.id,query:query.q,group:query.group,team:query.team};
@@ -35,9 +37,9 @@ export function createPublicFeedHandler({mode='selection',html=false,...options}
       if(html){
         response.setHeader('Content-Type','text/html; charset=utf-8');
         response.setHeader('Cache-Control','s-maxage=60, stale-while-revalidate=300');
-        return response.status(200).send(renderPriklepyPage(page.items,{...page,filterOptions,mode,organization,teamId,teamName:teamId?page.items.find(item=>item.team)?.team:null}));
+        return response.status(200).send(renderPriklepyPage(page.items,{...page,filterOptions,mode,organization,lang,teamId,teamName:teamId?page.items.find(item=>item.team)?.team:null}));
       }
-      return response.status(200).json({...page,organization:org.code,html:renderFeedCards(page.items,page.offset??0)});
+      return response.status(200).json({...page,organization:org.code,html:renderFeedCards(page.items,page.offset??0,lang)});
     }catch(error){
       // Never expose/log upstream connection strings, credentials or SQL errors.
       return fail(error instanceof TypeError?404:503,error instanceof TypeError?'Organizace nebyla nalezena.':'Příklepy této organizace zatím nejsou dostupné.');

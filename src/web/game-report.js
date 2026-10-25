@@ -12,7 +12,7 @@ export function renderGameReport(summary, { preview = false, lang: requestedLang
   const lang = reportLanguage(requestedLanguage, s);
   const gamesHref=s.seasonId?`/game-center?seasonId=${encodeURIComponent(s.seasonId)}&lang=${lang}`:null;
 
-  const insightsLink=/^\/priklepy\/[a-z][a-z0-9-]{1,39}$/.test(s.insightsPath??'')?`<a href="${html(s.insightsPath)}">Příklepy ↗</a>`:'';
+  const insightsLink=/^\/priklepy\/[a-z][a-z0-9-]{1,39}$/.test(s.insightsPath??'')?`<a href="${html(s.insightsPath)}?lang=${lang}">Příklepy ↗</a>`:'';
   const gamesLink=s.seasonId?`<a class="season-games-link" href="/game-center?seasonId=${encodeURIComponent(s.seasonId)}&amp;lang=${lang}">Přehled zápasů</a>`:'';
   const timelineHtml = renderInteractiveTimeline(s, lang);
   const data = JSON.stringify({ summary: s, catalog: reportCatalog }).replace(/[<>&\u2028\u2029]/g, (c) => "\\u" + c.charCodeAt(0).toString(16).padStart(4, "0"));
