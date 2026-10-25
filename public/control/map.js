@@ -15,13 +15,24 @@ export const branches=[
   {id:'development',name:'Vývoj & provoz',color:'slate',nodes:[stage('code','Code · GitHub','repository'),stage('deploy','Deploy','deploy'),stage('security','Security','security','github')]},
 ];
 branches.unshift(branches.splice(branches.findIndex(b=>b.id==='sponsors'),1)[0]);
+// Access intent is separate from implementation readiness. It is NOT a live authorization test.
+const PUBLIC_IDS=new Set(['games-view','game-report','insights-public','insights-archive','obs-output','all-stars','hall-of-fame','playoff-bracket','calendar']);
+const ADMIN_IDS=new Set(['insights-definition','awards-definition','gameshow-definition','sponsor-definition','social-setup','obs-definition','api','engine','database','code','deploy','security']);
+export function accessForNode(node){
+  if(node.status==='Planned')return {type:'PLANNED',label:'Zatím neexistuje',verified:false};
+  if(PUBLIC_IDS.has(node.id))return {type:'PUBLIC',label:'Veřejný cíl · ověřit bez loginu',verified:false};
+  if(ADMIN_IDS.has(node.id))return {type:'ADMIN',label:'Administrace · chránit',verified:false};
+  return {type:'STAFF',label:'Pracovní nástroj · přístup ověřit',verified:false};
+}
+
 export function mapForOrganization(org){
   const apps=new Map(appsForOrganization(org).map(a=>[a.id,a]));
   return branches.map(branch=>({...branch,nodes:branch.nodes.map(node=>{
     const app=apps.get(node.app),href=app?.links[node.kind]??(node.kind==='open'?app?.links.manage:null);
     const special=app&&app.status!=='prepared'&&['output','export'].includes(node.kind);
     const status=!app||app.status==='prepared'||app.status==='missing'?'Planned':app.status==='partial'||special?'Beta':'Ready';
-    return {...node,application:app,status,href:href??null,note:node.note??app?.note??(!app?'Zatím plánováno. Odkaz není připojený.':'')};
+    const result={...node,application:app,status,href:href??null,note:node.note??app?.note??(!app?'Zatím plánováno. Odkaz není připojený.':'')};
+    return {...result,access:accessForNode(result)};
   })}));
 }
 // Only forward parameters the destination actually supports. Never rewrite external URLs.
