@@ -1,6 +1,10 @@
 # HMS Insights / Příklepy — MVP 0.1
 
-[Opening Studio / OBS](docs/BROADCAST.md): předzápasová vrstva PHM/EUCHL z HMS API, vstup `/broadcast/index.html`.
+Interní HMS Control Center V1: `/control`. [Registr aplikací a ověření](docs/CONTROL-CENTER.md).
+
+První konfigurovatelná aplikace: [Hráči do playoff](docs/PLAYOFF-PLAYERS.md) — pracovní verze, centrální nastavení, náhled a publikace pro web.
+
+[Opening Studio / OBS](docs/BROADCAST.md): předzápasová vrstva pro PHM a EUCHL čte HMS API, vstup `/broadcast/index.html`.
 
 Media Studio MVP 1.0, Sprint 1: `/studio`. [Implementation and verification](docs/MEDIA-STUDIO.md).
 
