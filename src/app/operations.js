@@ -1,24 +1,100 @@
 import {organizationConfig} from './organizations.js';
-import {fetchGames,hmsConfigFromEnv} from '../hms/client.js';
+import {fetchGames, fetchGameDetail, fetchPublicGameMetadata, fetchOrganization, hmsConfigFromEnv} from '../hms/client.js';
 import {gameRows} from './backfill-finished-games.js';
 import {isGameId} from '../domain/game-summary.js';
-import {periods,normalizeGame,dateValid} from '../../public/operations/model.js';
-export async function readOperations(query,options={}){
- const env=options.env??process.env,org=organizationConfig(query.org,env),windows=periods(query.from,query.to);
- if(!org.token)throw new Error('HMS connection unavailable');
- const rules=JSON.parse(env[`HMS_${org.code}_OPERATIONS_RULES`]||'{}');
- const config={...hmsConfigFromEnv({...env,HMS_API_TOKEN:org.token}),timeoutMs:5000,retries:0,signal:AbortSignal.timeout(22000)};
- const games=new Map(),limit=100;
- for(let skip=0;skip<=1000;skip+=limit){
-  const rows=gameRows(await(options.fetchGames??fetchGames)({from:windows.previous.from,to:windows.next.to,status:'ALL',limit,skip},{config}));
-  if(rows.length>limit||skip+rows.length>1000)throw new Error('Range too large');
-  for(const g of rows){
-   if(String(g.organizationId).toLowerCase()!==org.id.toLowerCase()||!isGameId(g.gameId)||!dateValid(g.startDate)||g.startDate<windows.previous.from||g.startDate>windows.next.to)throw new Error('Invalid source scope');
-   if(g.isDeleted)continue;
-   const id=g.gameId.toLowerCase();if(games.has(id))throw new Error('Duplicate source page');
-   games.set(id,normalizeGame(g,rules));
+import {periods, normalizeGame, dateValid} from '../../public/operations/model.js';
+
+export const OPERATIONS_PAGE_SIZE = 20;
+const same = (a, b) => typeof a === 'string' && typeof b === 'string' && a.toLowerCase() === b.toLowerCase();
+const cache = new Map();
+function assertGame(game, org, window, expectedId) {
+  if (!same(game.organizationId, org.id) || !isGameId(game.gameId) || (expectedId && !same(expectedId, game.gameId)) ||
+      !dateValid(game.startDate) || game.startDate < window.from || game.startDate > window.to) throw new Error('Invalid HMS source scope');
+}
+export function enrichOperationsGame(game, metadata) {
+  const homeId = game.HomeTeam?.teamId ?? game.homeTeamId, awayId = game.AwayTeam?.teamId ?? game.awayTeamId;
+  if (!metadata || metadata.startDate !== game.startDate || !same(homeId, metadata.HomeTeam?.teamId) || !same(awayId, metadata.AwayTeam?.teamId)) return game;
+  const result = {...game};
+  for (const side of ['HomeTeam', 'AwayTeam']) result[side] = {...metadata[side], ...game[side]};
+  for (const field of ['Venue', 'Phase']) result[field] = {...metadata[field], ...game[field]};
+  for (const field of ['referee', 'timekeeper']) if (game[field] === undefined) result[field] = metadata[field];
+  return result;
+}
+function financialFields(object, prefix = '', depth = 0) {
+  if (!object || typeof object !== 'object' || depth > 4) return [];
+  return Object.entries(object).flatMap(([key, value]) => {
+    const path = prefix ? prefix + '.' + key : key;
+    if (/payment|paid|foreign|foreing|external/i.test(key)) {
+      const text = typeof value === 'string' ? value.trim().toUpperCase() : '';
+      return [{path, type: value === null ? 'null' : typeof value,
+        status: ['PAID', 'NOT PAID', 'NOT_PAID', 'UNPAID', 'CASH', 'HOTOVĚ', 'HOTOVE', 'FAKTURY', 'FAKTURA'].includes(text) ? text : 'other'}];
+    }
+    return value && typeof value === 'object' && !Array.isArray(value) ? financialFields(value, path, depth + 1) : [];
+  });
+}
+export async function readOperations(query, options = {}) {
+  const env = options.env ?? process.env, org = organizationConfig(query.org, env);
+  const windows = periods(query.from, query.to), window = {from: windows.previous.from, to: windows.next.to};
+  const offset = Number(query.offset ?? 0);
+  if (Array.isArray(query.offset) || !Number.isSafeInteger(offset) || offset < 0 || offset > 3000 || offset % OPERATIONS_PAGE_SIZE) throw new TypeError('Neplatná stránka.');
+  if (!org.token) throw new Error('HMS connection unavailable');
+  const rules = JSON.parse(env[`HMS_${org.code}_OPERATIONS_RULES`] || '{}');
+  const config = {...hmsConfigFromEnv({...env, HMS_API_TOKEN: org.token}), timeoutMs: 4500, retries: 0, signal: AbortSignal.timeout(23000)};
+  const rows = gameRows(await (options.fetchGames ?? fetchGames)({...window, status: 'ALL', limit: OPERATIONS_PAGE_SIZE, skip: offset}, {config}));
+  if (rows.length > OPERATIONS_PAGE_SIZE || offset + rows.length > 3000) throw new Error('Range too large');
+  const unique = new Set();
+  for (const game of rows) {
+    assertGame(game, org, window);
+    if (unique.has(game.gameId.toLowerCase())) throw new Error('Duplicate source page');
+    unique.add(game.gameId.toLowerCase());
   }
-  if(rows.length<limit)return {org:org.code,organizationSlug:org.slug,games:[...games.values()],windows,complete:true,source:'HMS API',readAt:new Date().toISOString(),mapping:{cash:!!rules.cashPath,paid:!!rules.paidPath},timezone:'Europe/Prague'};
- }
- throw new Error('Incomplete source');
+  if (query.action === 'source-fields') {
+    const sample = rows[0];
+    if (!sample) return {org: org.code, fields: [], source: 'HMS API'};
+    const detail = await (options.fetchDetail ?? fetchGameDetail)(sample.gameId, {config});
+    assertGame(detail, org, window, sample.gameId);
+    const organization = await (options.fetchOrganization ?? fetchOrganization)({config});
+    if (!same(organization.organizationId, org.id)) throw new Error('Organization source mismatch');
+    return {org: org.code, gameKeys: Object.keys(sample), detailKeys: Object.keys(detail),
+      homeKeys: Object.keys(detail.HomeTeam ?? sample.HomeTeam ?? {}), awayKeys: Object.keys(detail.AwayTeam ?? sample.AwayTeam ?? {}),
+      organizationKeys: Object.keys(organization), fields: financialFields({...sample, ...detail})};
+  }
+  let cursor = 0;
+  const result = new Array(rows.length);
+  await Promise.all(Array.from({length: Math.min(3, rows.length)}, async () => {
+    while (cursor < rows.length) {
+      const index = cursor++, game = rows[index];
+      if (game.isDeleted) { result[index] = null; continue; }
+      const key = org.id.toLowerCase() + ':' + game.gameId.toLowerCase();
+      const cached = !options.fetchGames && cache.get(key);
+      if (cached?.until > Date.now()) { result[index] = cached.game; continue; }
+      const needsDetail = !game.HomeTeam?.name || !game.AwayTeam?.name || !game.Venue?.name || game.referee === undefined || game.timekeeper === undefined ||
+        !['foreignId', 'foreingId', 'externalId'].some(key => Object.hasOwn(game.HomeTeam ?? {}, key));
+      let detail = game;
+      if (needsDetail) {
+        const loaded = await (options.fetchDetail ?? fetchGameDetail)(game.gameId, {config});
+        assertGame(loaded, org, window, game.gameId);
+        detail = {...game, ...loaded};
+        for (const side of ['HomeTeam', 'AwayTeam']) if (game[side] || loaded[side]) detail[side] = {...game[side], ...loaded[side]};
+        if (!detail.HomeTeam?.name || !detail.AwayTeam?.name || !detail.Venue?.name || !detail.Phase?.Group?.Season?.Competition?.name) {
+          const metadata = await (options.fetchMetadata ?? fetchPublicGameMetadata)(game.gameId, {config});
+          detail = enrichOperationsGame(detail, metadata);
+        }
+      }
+      const normalized = normalizeGame(detail, rules);
+      result[index] = normalized;
+      if (!options.fetchGames) {
+        if (cache.size >= 4000) cache.delete(cache.keys().next().value);
+        cache.set(key, {game: normalized, until: Date.now() + 120000});
+      }
+    }
+  }));
+  const games = result.filter(Boolean), hasMore = rows.length === OPERATIONS_PAGE_SIZE;
+  return {org: org.code, organizationSlug: org.slug, games, windows, offset, nextOffset: offset + rows.length, hasMore, complete: !hasMore,
+    source: 'HMS API', readAt: new Date().toISOString(), timezone: 'Europe/Prague',
+    coverage: {teams: games.flatMap(game => [game.home, game.away]).filter(team => team.id && team.cash !== null).length,
+      payments: games.flatMap(game => [game.home, game.away]).filter(team => team.id && team.paid !== null).length,
+      staff: games.filter(game => game.referees !== null && game.timekeepers !== null).length},
+    mapping: {cash: true, paid: true, paymentScope: 'team'}
+  };
 }
