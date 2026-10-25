@@ -178,15 +178,28 @@ ID případných jednotlivých týmových/skupinových filtrů ani reportů záp
 
 ### Vlastní doména
 
+Produkční veřejná doména je nyní `https://app.phmcup.cz`. Společný modul
+`public/public-output.js` skládá veřejné odkazy nezávisle na tom, odkud byla
+otevřena správa: Insights detail/share, Games copy/report, veřejný playoff
+odkaz a iframe, OBS URL a veřejný stálý kanál. Zachovává cestu, organizaci,
+jazyk, filtry a identifikátor momentu. Také veřejné vstupy z mapy a seznamu
+vedou na PHM doménu. Při testování z preview tedy veřejné odkazy otevírají
+produkci; pracovní náhledy a API zůstávají v původním prostředí.
+
+Soukromý OBS control link se nepřepisuje. Katalog sponzorů, nastavení,
+generátory a odkazy na zdrojový kód se tímto nepřesouvají. Interní iframe
+náhledu ve Broadcast Studiu zůstává na stejném originu kvůli PNG exportu.
+Staré veřejné adresy nadále fungují; nejde o plošné přesměrování hostitele.
+Ručně vložené odkazy ve Webnode je třeba aktualizovat samostatně.
+
 Dlouhá doména s `git-codex-...vercel.app` je adresa náhledu. Čitelné cesty řeší
-část za doménou; vlastní doména/subdoména řeší jméno hostitele. Je možné
-použít např. `app.phmcup.cz`, pokud to vlastník zvolí, nebo subdoménu společné
-značky HMS. Příklady nejsou připojené ani zarezervované domény.
+část za doménou; vlastní doména/subdoména řeší jméno hostitele.
+`app.phmcup.cz` je připojená k produkci existujícího projektu HMS Insights.
 
 V existujícím projektu Vercel se zvolená doména přidá v Settings → Domains.
 Potom se u poskytovatele DNS nastaví přesně záznam, který Vercel pro tento
 projekt ukáže. Nevymýšlet univerzální cílový CNAME, neměnit DNS hlavního webu
 ani e-mailů a nepřesouvat kvůli tomu celý projekt na nové hostování. Před
 přepnutím návštěvníků je nutné nasadit ověřenou verzi do zamýšlené cílové
-větve a zkontrolovat správné přiřazení domény. Tato úprava DNS ani domény
-sama nemění a nevytváří nový projekt.
+větve a zkontrolovat správné přiřazení domény. Úprava veřejných odkazů
+DNS ani přiřazení domény nemění a nevytváří nový projekt.

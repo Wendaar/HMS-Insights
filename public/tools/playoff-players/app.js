@@ -1,3 +1,4 @@
+import {publicOutputUrl} from '../../public-output.js';
 const $=id=>document.getElementById(id),params=new URLSearchParams(location.search);
 const managing=location.pathname.startsWith('/control/'),segments=location.pathname.split('/').filter(Boolean);
 const org=(managing?(params.get('org')??'phm'):(segments[2]??'phm')).toLowerCase();
@@ -8,7 +9,7 @@ const node=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefi
 const fold=value=>String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
 const plural=new Intl.PluralRules('cs');
 const unit=(value,one,few,other)=>({one,few,other}[plural.select(value)]??other);
-const publicPath=()=>`/tools/playoff-players/${encodeURIComponent(org)}/${encodeURIComponent(slug)}`;
+const publicPath=()=>publicOutputUrl(`/tools/playoff-players/${encodeURIComponent(org)}/${encodeURIComponent(slug)}`);
 const mappingLabels={id:'ID hráče',name:'Celé jméno',firstName:'Jméno',lastName:'Příjmení',team:'Název týmu',teamId:'ID týmu',starts:'Počet startů',goals:'Góly',assists:'Asistence',level:'Úroveň hráče',photo:'Fotografie hráče',teamLogo:'Logo týmu',competition:'Soutěž',season:'Sezona',group:'Skupina',phase:'Fáze'};
 document.body.classList.toggle('manage',managing);document.body.classList.toggle('embed',!managing&&params.get('embed')==='1');
 document.documentElement.classList.toggle('embed',!managing&&params.get('embed')==='1');

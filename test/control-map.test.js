@@ -13,7 +13,7 @@ test('launchers require valid context and forward only supported destination par
   const find=(org,id)=>nodes(org).find(n=>n.id===id);
   assert.equal(nodeUrl(find('phm','game-report'),'phm'),null);
   assert.equal(nodeUrl(find('phm','games-view'),'phm',{seasonId:'bad'}),null);
-  assert.equal(nodeUrl(find('phm','game-report'),'phm',{gameId:id}),'/game-center/'+id);
+  assert.equal(nodeUrl(find('phm','game-report'),'phm',{gameId:id}),'https://app.phmcup.cz/game-center/'+id);
   const schedule=new URL(nodeUrl(find('euchl','games-view'),'euchl',{seasonId:id}),'https://hms.test');assert.equal(schedule.searchParams.get('seasonId'),id);
   const obs=new URL(nodeUrl(find('euchl','obs-output'),'euchl',{gameId:id}),'https://hms.test');
   assert.equal(obs.searchParams.get('org'),'EUCHL');assert.equal(obs.searchParams.get('game'),id);assert.equal(obs.searchParams.get('mode'),'overlay');

@@ -1,4 +1,5 @@
 import {feedLanguage,feedLocale,feedText,feedHtml,insightCopy,insightStat} from './insights-i18n.js';
+import {publicOutputUrl} from './public-output.js';
 const search = document.querySelector("#search");
 const selects = [...document.querySelectorAll("[data-filter]")];
 const count = document.querySelector("#result-count");
@@ -142,7 +143,7 @@ function outstandingLabel(item) {
 function detailUrl(id) {
   const url = new URL(window.location.href);
   url.hash = `priklep=${encodeURIComponent(id)}`;
-  return url.toString();
+  return publicOutputUrl(url.href);
 }
 
 async function shareMoment(item, button) {
@@ -216,7 +217,7 @@ function openDetail(id, updateUrl = true) {
   </article>`,lang,[item.player,item.team,item.homeTeam,item.awayTeam,item.group,item.venue].filter(Boolean).map(escapeHtml));
   if (/^\/game-center\/[0-9a-f-]{36}$/i.test(item.gameReportUrl ?? "")) {
     const reportLink = document.createElement("a");
-    reportLink.href = item.gameReportUrl+'?lang='+lang;reportLink.target='_blank';reportLink.rel='noopener noreferrer';
+    reportLink.href = publicOutputUrl(item.gameReportUrl+'?lang='+lang);reportLink.target='_blank';reportLink.rel='noopener noreferrer';
     reportLink.textContent = t("Otevřít Game Report →");
     reportLink.className = "game-report-link";
     dialogContent.append(reportLink);

@@ -1,4 +1,5 @@
 // Public navigation metadata only. Never put credentials or private source exports here.
+import {publicOutputUrl} from '../public-output.js';
 export const repository = 'https://github.com/Wendaar/HMS-Insights';
 const code = path => `${repository}/blob/main/${path}`;
 export const categories = [
@@ -64,7 +65,7 @@ export function organizationById(id) {
 export function appsForOrganization(id) {
   const org = organizationById(id);
   if (!org) return [];
-  if (org.id === 'phm') return applications;
+  if (org.id === 'phm') return applications.map(publicLinks);
   if (org.id === 'euchl') return applications.map(app=>{
     if(['games-view','game-center','data-engine','database','security'].includes(app.id))return app;
     if(app.id==='sponsors-catalog')return {...app,links:{open:'https://hms-insights-git-codex-broadcast-expansion-preview-wendaar.vercel.app/broadcast/sponsors.html?org=EUCHL'}};
@@ -74,7 +75,7 @@ export function appsForOrganization(id) {
     if(app.id==='insights-archive')return {...app,links:{...app.links,open:'/archiv/euchl',public:'/archiv/euchl',source:'/api/feed?org=EUCHL'}};
     if(app.category==='development')return app;
     return {...app,status:'prepared',dataSource:'Nenastaveno',gamePath:undefined,links:{},note:'Pro EUCHL zatím není tento nástroj nastavený.'};
-  });
+  }).map(publicLinks);
   return applications.map(app => ({id:app.id,category:app.category,name:app.id==='phm-tv'?`${org.name} TV`:app.name,
     description:app.description,status:'prepared',dataSource:'Nenastaveno',links:{},
     note:`Pro ${org.name} zatím nejsou ověřené odkazy ani datové připojení.`}));
@@ -83,7 +84,11 @@ export function gameReportUrl(orgId, value) {
   const path = appsForOrganization(orgId).find(app => app.id === 'game-center')?.gamePath;
   const id = String(value ?? '').trim();
   if (!path || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return null;
-  return path + encodeURIComponent(id);
+  return publicOutputUrl(path + encodeURIComponent(id));
+}
+function publicLinks(app){
+ return {...app,links:Object.fromEntries(Object.entries(app.links).map(([kind,href])=>[kind,
+  href.startsWith('/')&&(kind==='public'||kind==='open'&&['insights-public','insights-archive'].includes(app.id))?publicOutputUrl(href):href]))};
 }
 const fold = value => String(value).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 export function filterApps(apps, {query='', category='all', status='all'}={}) {
