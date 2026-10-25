@@ -140,7 +140,7 @@ function render() {
     for (const [label, count, note, target, filter] of [
       ['Zápasy v období', games.length, 'Otevřít zápasy a Venue', 'games', ''],
       ['Chybějící personál', games.filter(game => game.warnings.some(warning => ['referee', 'timekeeper'].includes(warning))).length, 'Zápasy bez rozhodčího či časoměřiče', 'games', 'staff'],
-      ['HOTOVĚ · úhrady ke kontrole', cashIssues.length, 'Konkrétní týmy v minulých zápasech', 'games', 'cash'],
+      ['HOTOVĚ · úhrady ke kontrole', unknownTeams || unknownPayments ? (cashIssues.length ? cashIssues.length + '+' : 'Neověřeno') : cashIssues.length, 'Konkrétní týmy v minulých zápasech', 'games', 'cash'],
       ['Potenciálně volný led', games.filter(game => game.warnings.includes('ice')).length, 'Dnešní a budoucí zápasy bez soupeřů', 'games', 'ice']
     ]) {
       const card = el('button', undefined, 'card'); card.append(el('small', label), el('b', count), el('p', note)); card.onclick = () => navigate(target, filter); cards.append(card);
@@ -161,17 +161,17 @@ function render() {
   } else if (view === 'teams') {
     $('content').append(table('Fakturace týmů', 'Počet zápasů po týmech a soutěžích. Platební režim čteme z External ID týmu; filtrem FAKTURY oddělíte týmy pro fakturaci od HOTOVĚ.', teams, teamColumns));
   } else {
-    const section = panel('Měsíční uzávěrka · podklady pro Nikolu', `${range().from} – ${range().to}. Zkontrolujte výjimky a stáhněte podklady k fakturaci a směnám.`);
+    const section = panel('Měsíční uzávěrka · fakturace a mzdy', `${range().from} – ${range().to}. Zkontrolujte výjimky a stáhněte podklady k fakturaci a směnám.`);
     const steps = el('div', undefined, 'closing-steps');
     for (const [number, title, note] of [
-      ['1', 'Zkontrolovat hotovost', cashIssues.length + ' týmových úhrad ke kontrole v minulých zápasech.'],
-      ['2', 'Připravit faktury', teams.filter(team => team.cash === false).length + ' řádků tým × soutěž v režimu FAKTURY.'],
-      ['3', 'Připravit podklady ke mzdám', staff.filter(person => person.selected > 0).length + ' řádků člověk × role × soutěž ve vybraném období.']
+      ['1', 'Zkontrolovat hotovost', unknownTeams || unknownPayments ? 'Kontrola není úplná: některé platební údaje nejsou dostupné.' : cashIssues.length + ' týmových úhrad ke kontrole v minulých zápasech.'],
+      ['2', 'Připravit faktury', teams.filter(team => team.cash === false).length + ' týmových podkladů podle soutěží v režimu FAKTURY.'],
+      ['3', 'Připravit podklady ke mzdám', staff.filter(person => person.selected > 0).length + ' personálních podkladů podle rolí a soutěží ve vybraném období.']
     ]) { const step = el('div'); step.append(el('span', number, 'step-number'), el('h3', title), el('p', note)); steps.append(step); }
     section.append(steps, el('p', 'Jde o kontrolní a exportní podklady. Tato stránka nevystavuje faktury, nevyplácí mzdy a neoznačuje měsíc jako uzavřený. Zrušené zápasy se nepočítají.'));
     $('content').append(section,
       table('1 · HOTOVĚ bez PAID', 'Konkrétní tým, zápas a jeho vlastní stav úhrady. Budoucí zápasy jsou vynechané.', cashIssues, cashColumns),
-      table('2 · Týmy pro fakturaci', 'Jen týmy s potvrzeným příznakem FAKTURY. Žádné počítadlo „CASH účastí“ ani „dokončených zápasů“.', teams.filter(team => team.cash === false), teamColumns),
+      table('2 · Týmy pro fakturaci', 'Počty zápasů k fakturaci podle týmů a soutěží. Jen týmy s potvrzeným režimem FAKTURY.', teams.filter(team => team.cash === false), teamColumns),
       table('3 · Podklady ke mzdám', 'Pouze přiřazení ve vybraném období. Částky se doplní po nastavení sazeb.', staff.filter(person => person.selected > 0), [['name', 'Člověk'], ['role', 'Role'], ['competition', 'Soutěž'], ['selected', 'Počet směn']]));
     const other = games.filter(game => game.warnings.some(warning => !['cash', 'payment_unknown'].includes(warning)));
     if (other.length) $('content').append(table('Další údaje k ověření', 'Obsazení personálem, soupeři a dostupnost platebního režimu.', gameRows(other), gameColumns));

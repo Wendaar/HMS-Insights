@@ -128,6 +128,23 @@ test('Operations remains organization-scoped Beta in the central map', () => {
   for (const code of ['phm', 'euchl']) { const app = appsForOrganization(code).find(app => app.id === 'operations'); assert.equal(app.status, 'partial'); assert.equal(app.links.open, '/operations?org=' + code); }
   assert.deepEqual(appsForOrganization('yhg').find(app => app.id === 'operations').links, {});
 });
+test('standalone Teams catalog joins External Id by verified team identity, preserving side payments', async () => {
+  const result = await readOperations(query, {env, fetchGames: async () => [fixture()], fetchTeams: async () => [
+    {teamId: homeId, organizationId: org, externalId: 'FAKTURA'},
+    {teamId: awayId, organizationId: org, externalId: 'HOTOVĚ'}
+  ]});
+  assert.equal(result.games[0].home.cash, false); assert.equal(result.games[0].away.cash, true);
+  assert.equal(result.games[0].home.paid, false); assert.equal(result.games[0].away.paid, true);
+  assert.equal(result.teamDirectoryStatus, 'available');
+});
+test('foreign team catalogs and conflicting embedded team IDs fail closed', async () => {
+  await assert.rejects(readOperations(query, {env, fetchGames: async () => [fixture()], fetchTeams: async () => [{teamId: homeId, organizationId: 'other', externalId: 'HOTOVĚ'}]}));
+  await assert.rejects(readOperations(query, {env, fetchGames: async () => [fixture({homeTeamId: awayId})]}));
+});
+test('unavailable team source remains unknown without suppressing sporting data', async () => {
+  const result = await readOperations(query, {env, fetchGames: async () => [fixture()], fetchTeams: async () => {throw new Error('temporarily unavailable');}});
+  assert.equal(result.games.length, 1); assert.equal(result.teamDirectoryStatus, 'unavailable');
+});
 test('public shell, shared real HMS logo and demo serve while live API stays protected', async () => {
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   try {
