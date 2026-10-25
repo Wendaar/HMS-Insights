@@ -208,3 +208,7 @@ and cookies/headers to permit the intended embedding domain. The /games route
 currently has frame-ancestors 'none', therefore public display does not yet
 imply iframe readiness. Do not mark it embed-ready without a targeted CSP change
 and verification.
+
+## Public iframe allowlist (pending deployment)
+
+The latest vercel.json revision permits `/games/:path*` and `/game-center` to be framed by `https://phmcup.cz` and `https://www.phmcup.cz`, plus same origin. The control center remains non-embeddable. Any other domain must be explicitly reviewed and added. This is source code in a PR, NOT a deployed or anonymously verified production change. Production Vercel deployment protection still requires owner review in the dashboard; do not disable preview protection as a shortcut. Verify production public pages and live iframe in an anonymous browser after merging/deploying.
