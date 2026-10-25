@@ -10,11 +10,12 @@ export function createToolsHandler(options={}){
     res.setHeader('cache-control','no-store');res.setHeader('x-content-type-options','nosniff');res.setHeader('referrer-policy','no-referrer');
     const fail=(status,error)=>res.status(status).json({error});
     const action=req.query?.action??'public';
-    const admin=action!=='public';
+    const admin=!['public','access'].includes(action);
     const methods=admin&&action!=='manage'?'POST':'GET';
-    if(!['public','manage','preview','save','publish','duplicate'].includes(action))return fail(400,'Neznámá operace.');
+    if(!['public','access','manage','preview','save','publish','duplicate'].includes(action))return fail(400,'Neznámá operace.');
     if(req.method!==methods){res.setHeader('allow',methods);return fail(405,'Nepovolená metoda.');}
     let org;try{org=organizationEntry(req.query?.org??'phm',env);}catch{return fail(404,'Neznámá organizace.');}
+    if(action==='access')return res.status(200).json({org:org.code,configured:!!(env[`HMS_${org.code}_TOOLS_ADMIN_SECRET`]||env[`HMS_${org.code}_WEBHOOK_SECRET`]||(org.code==='PHM'?env.HMS_WEBHOOK_SECRET:null))});
     const slug=req.query?.instance??'phm-cup-2026';
     if(typeof slug!=='string'||slug.length>64||!slugPattern.test(slug))return fail(400,'Neplatná adresa výstupu.');
     if(admin){

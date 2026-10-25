@@ -113,3 +113,44 @@ Ověření: úplná sada Node testů, nové kontrakty launcherů, izolace kontex
 neaktivní plánované nástroje a odolnost úložiště. Ruční browser QA přes
 podporovaný in-app browser: uložení a obnovení kontextu, přepnutí organizace,
 velké launchery, Planned dialog, katalog, hledání a mobilní rozložení.
+
+## Úprava výběru kontextu a navigace
+
+Běžné ovládání již neobsahuje textová pole pro UUID. Sezony se načítají podle
+názvu soutěže a sezony přes existující Studio API (`catalog=leagues`). Zdrojem
+jsou sezony importovaných HMS zápasů dané organizace. Další katalog
+`catalog=games` vrací nejvýše 100 posledních načtených zápasů vybrané sezony
+podle týmů a data. Oba dotazy jsou serverově omezené organizací; technická ID
+se pouze interně předávají do existujících adres. Toto není úplný seznam všech
+budoucích sezon v HMS; chybějící sezony musí doplnit datové napojení. Rozhraní
+při prázdné nabídce nebo chybě po uživateli nepožaduje kopírování ID či URL.
+
+Všechny odkazy na nástroje/kód/výstupy se otevírají s `target=_blank` a
+`rel=noopener noreferrer`, takže mapa zůstává otevřená. Volba organizace se
+nemění. Sponzoři jsou společný zdroj hned vedle HMS a první větev mapy.
+Odkaz katalogu vede do skutečného samostatného náhledu nové API vrstvy,
+odděleně pro PHM/EUCHL. Neprohlašuje se tím za hotové sdílení sponzorů ve
+všech nástrojích.
+
+### Sponzoři: navazující sjednocení
+
+Evidence a vazby sponzorů musí pocházet z nové HMS API vrstvy, stejně jako
+v aktuálním sponzorském náhledu Broadcast Studia. Media Studio má dosud
+samostatné ruční nastavení; jeho převod a převod dalších nástrojů je
+naplánovaný. Při převodu zachovat existující nastavení a rozlišit HMS evidenci
+od pravidel zobrazení pro konkrétní výstup. Nepředstírat hotové propojení.
+
+### Přístup do playoff správy
+
+Publikování zatím chrání serverový přístupový kód organizace. Není to
+přihlášení uživatele do HMS. Nový read-only `action=access` sděluje pouze,
+zda je přístup nastavený; nevrací kód, neodemyká změny a neoslabuje původní
+ověření. Pokud přístup není nastavený, UI zobrazí čekání na zprovoznění správy,
+nikoli formulář vyžadující neznámé heslo. Veřejný výstup je dostupný bez kódu.
+
+### Nové nástroje: nejdříve do mapy
+
+Každý nový HMS nástroj nejprve přidat do registru a odpovídající větve mapy
+jako Planned. Uvést, odkud čte data a kam jeho výstup patří. Teprve po ověření
+skutečné adresy a chování přidat launcher a změnit stav na Beta nebo Ready.
+Nezakládat další samostatný rozcestník. Zachovat trvalý vstup `/control`.

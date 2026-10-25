@@ -7,7 +7,7 @@ test('planned organizations and Game Show never acquire launch URLs from PHM',()
   for(const org of ['yhg','fllh','unknown'])for(const n of nodes(org)){
     assert.equal(n.status,'Planned');assert.equal(nodeUrl(n,org,{gameId:id,seasonId:id}),null);
   }
-  for(const n of nodes('phm').filter(n=>n.id.startsWith('gameshow')||n.id.startsWith('sponsor'))){assert.equal(n.status,'Planned');assert.equal(nodeUrl(n,'phm',{gameId:id}),null);}
+  for(const n of nodes('phm').filter(n=>n.id.startsWith('gameshow')||['sponsor-broadcast','sponsor-output'].includes(n.id))){assert.equal(n.status,'Planned');assert.equal(nodeUrl(n,'phm',{gameId:id}),null);}
 });
 test('launchers require valid context and forward only supported destination parameters',()=>{
   const find=(org,id)=>nodes(org).find(n=>n.id===id);
@@ -30,3 +30,5 @@ test('local context is organization scoped, durable and resilient to invalid bro
   values.set('hms-map-v2:phm',JSON.stringify({leagues:'bad',gameId:'<bad>',work:'bad'}));assert.deepEqual(readContext(storage,'phm').leagues,[]);assert.equal(readContext(storage,'phm').gameId,'');
   assert.equal(writeContext({setItem(){throw Error();}},'phm',{}),false);
 });
+
+test('shared sponsor catalog remains explicitly Beta with separate organization links',()=>{const phm=nodes('phm').find(n=>n.id==='sponsor-definition'),euchl=nodes('euchl').find(n=>n.id==='sponsor-definition');assert.equal(phm.status,'Beta');assert.match(nodeUrl(phm,'phm'),/org=PHM/);assert.match(nodeUrl(euchl,'euchl'),/org=EUCHL/);});

@@ -51,6 +51,7 @@ const applications = [
   {id:'documentation',category:'development',name:'Dokumentace',description:'Zapojení Studia, Game Center a organizačních zdrojů.',status:'available',dataSource:'Dokumentace v repozitáři',links:{open:code('docs/MEDIA-STUDIO.md'),github:`${repository}/tree/main/docs`}},
 ];
 applications.push(
+  {id:'sponsors-catalog',category:'data',name:'Sponzoři z HMS · náhled API',description:'Čtecí katalog sponzorů a jejich vazeb z nové HMS API vrstvy. Otevírá samostatný existující náhled.',status:'partial',dataSource:'HMS API · sponzoři a vazby',note:'Beta v samostatném náhledu. Sjednocení Media Studia a dalších nástrojů nad touto vrstvou je plánované.',links:{open:'https://hms-insights-git-codex-broadcast-expansion-preview-wendaar.vercel.app/broadcast/sponsors.html?org=PHM'}},
   {id:'games-view',category:'stats',name:'Games View',description:'Přehled zápasů vybrané ligy a sezony.',status:'available',dataSource:'HMS API · Season ID',links:{open:'/game-center',github:code('public/games/app.js')}},
   {id:'data-engine',category:'data',name:'Data Engine',description:'Společná datová vrstva HMS. Odkaz otevře kód.',status:'available',dataSource:'HMS → importy a snapshoty',links:{github:`${repository}/tree/main/src/app`}},
   {id:'database',category:'data',name:'DB · PostgreSQL',description:'Schéma databáze v kódu; přístup do konzole není nakonfigurovaný.',status:'partial',dataSource:'PostgreSQL',links:{github:`${repository}/tree/main/db`}},
@@ -66,6 +67,7 @@ export function appsForOrganization(id) {
   if (org.id === 'phm') return applications;
   if (org.id === 'euchl') return applications.map(app=>{
     if(['games-view','game-center','data-engine','database','security'].includes(app.id))return app;
+    if(app.id==='sponsors-catalog')return {...app,links:{open:'https://hms-insights-git-codex-broadcast-expansion-preview-wendaar.vercel.app/broadcast/sponsors.html?org=EUCHL'}};
     if(app.id==='broadcast')return {...app,links:{...app.links,open:'/broadcast/index.html?org=EUCHL',manage:'/broadcast/index.html?org=EUCHL',source:'/api/broadcast?org=EUCHL'}};
     if(app.id==='studio')return {...app,links:{...app.links,open:'/studio/euchl?lang=cs',manage:'/studio/euchl?lang=cs'}};
     if(app.id==='insights-public')return {...app,note:'Výběr EUCHL z importovaných zápasů.',links:{...app.links,open:'/priklepy/euchl',public:'/priklepy/euchl',source:'/api/selection?org=EUCHL'}};

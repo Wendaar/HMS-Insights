@@ -15,7 +15,7 @@ document.documentElement.classList.toggle('embed',!managing&&params.get('embed')
 $('manager').hidden=!managing;$('viewer').hidden=managing;$('public-link').hidden=!managing;
 $('org-label').textContent=org.toUpperCase();
 function links(){
-  const path=publicPath();$('public-link').href=path;
+  const path=publicPath();$('public-link').href=path;$('view-without-code').href=path;
   const url=new URL(path,location.origin);$('share-url').href=url.href;$('share-url').textContent=url.href;
   url.searchParams.set('embed','1');$('embed-code').value=`<iframe src="${url.href}" title="Hráči do playoff" width="100%" height="1100" style="border:0" loading="lazy"></iframe>`;
 }
@@ -134,4 +134,13 @@ links();if(!managing){
   document.querySelector('.topbar').remove();document.querySelector('footer').remove();
   $('manager').remove();$('duplicate-dialog').remove();document.querySelector('.view-heading .eyebrow').remove();
   loadPublic();setInterval(()=>{if(!document.hidden&&!$('refresh').disabled)loadPublic();},900000);
+}
+
+if(managing){
+ $('view-without-code').href=publicPath();
+ fetch('/api/tools?'+new URLSearchParams({action:'access',org})).then(async response=>{
+  if(!response.ok)throw Error();const data=await response.json();if(data.org!==org.toUpperCase())throw Error();
+  $('unlock-form').hidden=!data.configured;
+  $('access-status').textContent=data.configured?'Publikování této organizace je zprovozněné. Kód potřebuje jen člověk, který mění pravidla nebo zveřejňuje novou verzi.':'Publikování této organizace zatím není zprovozněné. Není to chybějící heslo na vaší straně; správu musí nejdříve připojit správce aplikace. Veřejný přehled můžete otevřít bez kódu.';
+ }).catch(()=>{$('unlock-form').hidden=true;$('access-status').textContent='Stav přístupu nyní nelze ověřit. Obnovte stránku; veřejný přehled lze otevřít samostatně.';});
 }

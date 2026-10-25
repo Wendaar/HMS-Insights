@@ -2,3 +2,5 @@
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 
 .source-column{display:block}#hub{position:sticky;top:60px;margin-top:70px}.node-top,.badge{font-size:9px}.node-bottom small,.info{font-size:9px}.node-action{font-size:18px}.branch-title{font-size:11px}.node-top{letter-spacing:.4px}
+
+.source-stack{position:sticky;top:25px;margin-top:20px;width:190px}#hub{position:static;margin-top:0;padding:20px 13px}.source-sponsors{margin-top:14px;background:#fff9ed;border:1px solid #e8d3a6;border-radius:12px;padding:15px;color:#6a5329}.source-sponsors .eyebrow{font-size:8px;letter-spacing:.7px;color:#9a7b40}.source-link{display:block;font-weight:700;font-size:16px;text-decoration:none}.source-sponsors small{display:block;font-size:10px;line-height:1.6;margin-top:8px;color:#9a865f}#catalog-note{font-size:12px;line-height:1.6}.hint{font-size:11px;color:#8291a5}
