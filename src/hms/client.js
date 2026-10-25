@@ -74,6 +74,10 @@ export function fetchGames(params = {}, options = {}) {
   return request("games", params, options);
 }
 
+export function fetchTeams(options = {}) {
+  return request('teams', {}, options);
+}
+
 export async function fetchGameResponses(gameId, options = {}) {
   return Promise.all([
     request("game", { gameId }, options),

@@ -23,7 +23,7 @@ export function people(value) {
   ).map(clean).filter(Boolean))];
 }
 export function teamCash(team, rules = {}) {
-  const paths = rules.cashPath ? [rules.cashPath] : ['foreignId', 'foreingId', 'externalId'];
+  const paths = rules.cashPath ? [rules.cashPath] : ['externalId', 'foreignId', 'foreingId'];
   const value = paths.map(path => atPath(team, path)).find(v => v !== undefined && v !== null);
   if (value === undefined) return null;
   const markers = tokens(value);

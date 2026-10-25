@@ -73,3 +73,26 @@ hotovostní dlužník, zákaz budoucích dluhů, fakturační filtr, ranking a s
 grafu, stránkování, organizační izolace, vázání detailů, bezpečné exporty a HTTP.
 `node --test` ověří i stávající HMS aplikace. Produkční datové pokrytí se
 ověřuje po nasazení s provozním kódem; ukázka jej nenahrazuje.
+
+## Ověřené živé pokrytí 26. 10. 2026
+
+Organizační přístup a živé zápasy, soutěže, Venue a personál byly ověřeny.
+Aktuální chráněné API v1 `/games` ani `/game` ve skutečné odpovědi nevrací
+Payment Host / Payment Guest. Vložené HomeTeam/AwayTeam vrací teamId, názvy,
+status, loga a barvy, ale žádné External ID / foreignId. `/organization`
+vrací identitu a branding, nikoli administrativní týmová data.
+
+Proto jsou ve skutečných datech finanční režimy a úhrady zatím neznámé.
+UI při neúplném pokrytí neukazuje nulu jako potvrzení bezproblémových plateb;
+ukazuje „Neověřeno“. Fakturační filtr neznámé týmy automaticky nezařazuje.
+
+Dokončení platební integrace vyžaduje rozšířit upstream výstup nebo dodat
+administrativní čtecí endpoint s organizačním oprávněním. Potřebný kontrakt:
+
+- u týmu stabilní teamId a External ID obsahující FAKTURY/HOTOVĚ/CASH;
+- u zápasu stabilní gameId, organizationId, homeTeamId a awayTeamId;
+- zvlášť skutečná úhrada domácích a hostů, se zdokumentovanými hodnotami PAID/NOT PAID.
+
+Názvy těchto polí mohou být jiné; adaptér má organizační mapování. Stejný
+kontrakt se musí použít pro ostatní organizace. Nepřebírat interní přihlašovací
+cookie HMS, neukládat jeho osobní hesla a nezpřístupňovat finanční data veřejně.

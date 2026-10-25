@@ -1,5 +1,5 @@
 import {organizationConfig} from './organizations.js';
-import {fetchGames, fetchGameDetail, fetchPublicGameMetadata, fetchOrganization, hmsConfigFromEnv} from '../hms/client.js';
+import {fetchGames, fetchGameDetail, fetchPublicGameMetadata, fetchOrganization, fetchTeams, hmsConfigFromEnv} from '../hms/client.js';
 import {gameRows} from './backfill-finished-games.js';
 import {isGameId} from '../domain/game-summary.js';
 import {periods, normalizeGame, dateValid} from '../../public/operations/model.js';
@@ -7,9 +7,34 @@ import {periods, normalizeGame, dateValid} from '../../public/operations/model.j
 export const OPERATIONS_PAGE_SIZE = 20;
 const same = (a, b) => typeof a === 'string' && typeof b === 'string' && a.toLowerCase() === b.toLowerCase();
 const cache = new Map();
+const teamCache = new Map();
+async function teamDirectory(org, config, options) {
+  if (options.fetchGames && !options.fetchTeams) return {teams: [], status: 'not-loaded'};
+  const cached = !options.fetchTeams && teamCache.get(org.id.toLowerCase());
+  if (cached?.until > Date.now()) return cached.value;
+  try {
+    const payload = await (options.fetchTeams ?? fetchTeams)({config});
+    const teams = Array.isArray(payload) ? payload : payload?.teams ?? payload?.items ?? payload?.data;
+    if (!Array.isArray(teams) || teams.length > 10000) throw new Error('Invalid team directory');
+    const ids = new Set();
+    for (const team of teams) {
+      if (!isGameId(team.teamId) || (team.organizationId && !same(team.organizationId, org.id)) || ids.has(team.teamId.toLowerCase())) throw new Error('Team directory scope mismatch');
+      ids.add(team.teamId.toLowerCase());
+    }
+    const value = {teams, status: 'available'};
+    if (!options.fetchTeams) { if (teamCache.size >= 40) teamCache.delete(teamCache.keys().next().value); teamCache.set(org.id.toLowerCase(), {value, until: Date.now() + 300000}); }
+    return value;
+  } catch (error) {
+    if (error.message === 'Team directory scope mismatch') throw error;
+    return {teams: [], status: 'unavailable'};
+  }
+}
 function assertGame(game, org, window, expectedId) {
   if (!same(game.organizationId, org.id) || !isGameId(game.gameId) || (expectedId && !same(expectedId, game.gameId)) ||
       !dateValid(game.startDate) || game.startDate < window.from || game.startDate > window.to) throw new Error('Invalid HMS source scope');
+  for (const [side, field] of [['HomeTeam', 'homeTeamId'], ['AwayTeam', 'awayTeamId']]) {
+    if (Object.hasOwn(game, field) && game[side]?.teamId && !same(game[field], game[side].teamId)) throw new Error('Conflicting team identity');
+  }
 }
 export function enrichOperationsGame(game, metadata) {
   const homeId = game.HomeTeam?.teamId ?? game.homeTeamId, awayId = game.AwayTeam?.teamId ?? game.awayTeamId;
@@ -48,6 +73,8 @@ export async function readOperations(query, options = {}) {
     if (unique.has(game.gameId.toLowerCase())) throw new Error('Duplicate source page');
     unique.add(game.gameId.toLowerCase());
   }
+  const directory = rows.length ? await teamDirectory(org, config, options) : {teams: [], status: 'not-needed'};
+  const byTeam = new Map(directory.teams.map(team => [team.teamId.toLowerCase(), team]));
   if (query.action === 'source-fields') {
     const sample = rows[0];
     if (!sample) return {org: org.code, fields: [], source: 'HMS API'};
@@ -57,7 +84,9 @@ export async function readOperations(query, options = {}) {
     if (!same(organization.organizationId, org.id)) throw new Error('Organization source mismatch');
     return {org: org.code, gameKeys: Object.keys(sample), detailKeys: Object.keys(detail),
       homeKeys: Object.keys(detail.HomeTeam ?? sample.HomeTeam ?? {}), awayKeys: Object.keys(detail.AwayTeam ?? sample.AwayTeam ?? {}),
-      organizationKeys: Object.keys(organization), fields: financialFields({...sample, ...detail})};
+      organizationKeys: Object.keys(organization), teamDirectoryStatus: directory.status, teamDirectoryCount: directory.teams.length,
+      teamDirectoryKeys: Object.keys(directory.teams[0] ?? {}),
+      fields: financialFields({...sample, ...detail}), teamFields: directory.teams.slice(0, 3).flatMap(team => financialFields(team))};
   }
   let cursor = 0;
   const result = new Array(rows.length);
@@ -81,6 +110,12 @@ export async function readOperations(query, options = {}) {
           detail = enrichOperationsGame(detail, metadata);
         }
       }
+      assertGame(detail, org, window, game.gameId);
+      for (const [side, idField] of [['HomeTeam', 'homeTeamId'], ['AwayTeam', 'awayTeamId']]) {
+        const teamId = detail[side]?.teamId ?? detail[idField];
+        const listed = typeof teamId === 'string' ? byTeam.get(teamId.toLowerCase()) : null;
+        if (listed) detail[side] = {...detail[side], ...listed};
+      }
       const normalized = normalizeGame(detail, rules);
       result[index] = normalized;
       if (!options.fetchGames) {
@@ -91,10 +126,10 @@ export async function readOperations(query, options = {}) {
   }));
   const games = result.filter(Boolean), hasMore = rows.length === OPERATIONS_PAGE_SIZE;
   return {org: org.code, organizationSlug: org.slug, games, windows, offset, nextOffset: offset + rows.length, hasMore, complete: !hasMore,
-    source: 'HMS API', readAt: new Date().toISOString(), timezone: 'Europe/Prague',
+    source: 'HMS API', readAt: new Date().toISOString(), timezone: 'Europe/Prague', teamDirectoryStatus: directory.status,
     coverage: {teams: games.flatMap(game => [game.home, game.away]).filter(team => team.id && team.cash !== null).length,
       payments: games.flatMap(game => [game.home, game.away]).filter(team => team.id && team.paid !== null).length,
       staff: games.filter(game => game.referees !== null && game.timekeepers !== null).length},
-    mapping: {cash: true, paid: true, paymentScope: 'team'}
+    mapping: {cash: games.some(game => [game.home, game.away].some(team => team.cash !== null)), paid: games.some(game => [game.home, game.away].some(team => team.paid !== null)), paymentScope: 'team'}
   };
 }
