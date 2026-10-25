@@ -339,6 +339,23 @@ export async function loadStudioPage(options = {}) {
 }
 
 // One bounded metadata query for the selected HMS page; no per-game snapshots.
+export async function loadControlLeagues(organizationId,options={}) {
+  const sql=options.sql??createSql(databaseUrlFromEnv(options.env));
+  return sql.query(`select distinct organization_id,season_id,competition_name,season_name
+    from games where organization_id=$1::uuid and season_id is not null
+    and competition_name is not null and season_name is not null
+    order by competition_name,season_name desc limit 300`,[organizationId]);
+}
+export async function loadControlSeason(seasonId,options={}) {
+ const sql=options.sql??createSql(databaseUrlFromEnv(options.env));
+ return sql.query('select distinct organization_id from games where season_id=$1::uuid limit 2',[seasonId]);
+}
+export async function loadControlGames(organizationId,seasonId,options={}) {
+  const sql=options.sql??createSql(databaseUrlFromEnv(options.env));
+  return sql.query(`select game_id,season_id,organization_id,played_on,home_team_name,away_team_name
+    from games where organization_id=$1::uuid and season_id=$2::uuid
+    order by played_on desc,game_id limit 100`,[organizationId,seasonId]);
+}
 export async function loadAvailableGameReports(gameIds,seasonId,options={}) {
   if(!gameIds.length)return [];
   const sql=options.sql??createSql(databaseUrlFromEnv(options.env));

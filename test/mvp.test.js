@@ -214,7 +214,7 @@ test("stránka obsahuje vyhledávání, všechny filtry a rozkliknutelné karty"
   assert.match(html, /id="feed-sentinel"/);
   assert.match(html, /id="feed-meta"/);
   assert.match(html, /Archiv Příklepů/);
-  assert.match(html, /href="\/archiv" aria-current="page"/);
+  assert.match(html, /href="\/archiv\?lang=cs" aria-current="page"/);
 });
 
 test("veřejný výběr je oddělený od úplného archivu", () => {

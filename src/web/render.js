@@ -1,3 +1,4 @@
+import {feedLanguage,feedLocale,feedHtml,insightCopy,insightStat} from '../../public/insights-i18n.js';
 import {hmsBrand} from '../../public/hms-brand.js';
 const labels = {
   BIG_WIN: "Velká výhra",
@@ -21,8 +22,8 @@ function initials(value) {
   return String(value ?? "HMS").split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
 }
 
-function formatDate(date) {
-  return new Intl.DateTimeFormat("cs-CZ", { day: "numeric", month: "long", year: "numeric" })
+function formatDate(date,lang) {
+  return new Intl.DateTimeFormat(feedLocale(lang), { day: "numeric", month: "long", year: "numeric" })
     .format(new Date(`${date}T12:00:00`));
 }
 
@@ -37,14 +38,7 @@ function optionValues(values = []) {
   return values.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("");
 }
 
-function momentStat(item) {
-  if (item.type === "HATTRICK") return "HATTRICK";
-  if (item.type === "BIG_SAVES") return `${item.facts?.saves ?? "30+"} ZÁKROKŮ`;
-  if (item.type === "MULTIPOINT_GAME") return `${item.facts?.points ?? "2+"} BODY`;
-  if (item.type === "EARLY_GOAL") return `GÓL ${item.facts?.gameTime ?? "BRZY"}`;
-  if (item.type === "BIG_WIN") return `VÝHRA +${item.facts?.scoreDifference ?? "5"}`;
-  return labels[item.type] ?? item.type;
-}
+function momentStat(item,lang) {return insightStat(item,lang);}
 
 function outstandingStatus(item) {
   if (item.type === "HATTRICK" || item.importance >= 95) return { className: "on-fire", icon: "🔥", label: "On fire" };
@@ -53,7 +47,8 @@ function outstandingStatus(item) {
   return null;
 }
 
-function card(item, index) {
+function card(original, index, lang='cs') {
+  const item=insightCopy(original,lang);
   const outstanding = outstandingStatus(item);
   const subject = item.player || item.team || "Týmový moment";
   const search = [item.title, item.text, item.player, item.team, item.homeTeam, item.awayTeam, labels[item.type]].join(" ");
@@ -94,12 +89,12 @@ function card(item, index) {
       <span class="row-avatar"><span class="photo-fallback">${escapeHtml(initials(subject))}</span>${avatarImage}${missingPlayerBadge}</span>
       <span class="row-story">
         <span class="row-flags">${outstandingBadge}<span class="group-badge">${groupMark}${escapeHtml(item.group)}</span></span>
-        <span class="row-title"><strong class="moment-stat">${escapeHtml(momentStat(item))}</strong><b class="subject-name">${escapeHtml(subject)}</b></span>
+        <span class="row-title"><strong class="moment-stat">${escapeHtml(momentStat(item,lang))}</strong><b class="subject-name">${escapeHtml(subject)}</b></span>
         <span class="moment-copy">${escapeHtml(item.text)}</span>
       </span>
       <span class="row-game">
         <span class="game-line" ${gameLinkAttributes}><b>${escapeHtml(item.homeTeam)}</b><i>${item.homeScore}:${item.awayScore}</i><b>${escapeHtml(item.awayTeam)}</b></span>
-        <span class="row-context"><span class="venue-name">${venueMark}${escapeHtml(item.venue)}</span><span>${formatDate(item.date)}</span></span>
+        <span class="row-context"><span class="venue-name">${venueMark}${escapeHtml(item.venue)}</span><span>${formatDate(item.date,lang)}</span></span>
       </span>
       <span class="row-team">${teamMark}</span>
       <span class="row-open" aria-hidden="true">›</span>
@@ -107,8 +102,8 @@ function card(item, index) {
     </button>`;
 }
 
-export function renderFeedCards(items, startIndex = 0) {
-  return items.map((item, index) => card(item, startIndex + index)).join("");
+export function renderFeedCards(items, startIndex = 0,lang='cs') {
+  return feedHtml(items.map((item, index) => card(item, startIndex + index,lang)).join(""),lang,items.flatMap(item=>[item.player,item.team,item.homeTeam,item.awayTeam,item.group,item.season,item.venue]).map(value=>escapeHtml(value)));
 }
 
 function dateSections(items) {
@@ -127,6 +122,7 @@ function dateSections(items) {
 }
 
 export function renderPriklepyPage(items, config = {}) {
+  const lang=feedLanguage(config.lang,config.organization?.code??'PHM');
   const filterOptions = config.filterOptions ?? {};
   const total = Number(config.total ?? items.length);
   const hasMore = Boolean(config.hasMore);
@@ -136,35 +132,36 @@ export function renderPriklepyPage(items, config = {}) {
   const suffix=organization&&organization.code!=='PHM'?`/${encodeURIComponent(organization.slug)}`:'';
   const selectionPath=`/priklepy${suffix}`,archivePath=`/archiv${suffix}`;
   const assetPrefix=organization?'/':'./';
-  const selectionTitle = config.teamName ? `To nejlepší pro ${config.teamName}` : "To nejlepší z ledu";
+  const selectionTitle = config.teamName ? (lang==='en'?`Highlights for ${config.teamName}`:`To nejlepší pro ${config.teamName}`) : (lang==='en'?'The best from the ice':'To nejlepší z ledu');
   let cardIndex = 0;
   const sections = dateSections(items).map((section) => `
     <section class="date-section" data-feed-section data-section-key="${section.key}">
       <div class="date-heading"><h2>${section.label}</h2><span></span><b data-section-count>${section.items.length}</b></div>
-      <div class="feed-list">${section.items.map((item) => card(item, cardIndex++)).join("")}</div>
+      <div class="feed-list">${section.items.map((item) => card(item, cardIndex++,lang)).join("")}</div>
     </section>`).join("");
   const teams = [...new Set(items.flatMap((item) => [item.homeTeam, item.awayTeam]))]
     .sort((a, b) => a.localeCompare(b, "cs"))
     .map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("");
 
-  return `<!doctype html>
-<html lang="cs">
+  const markup = `<!doctype html>
+<html lang="${lang}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Přehled automaticky nalezených hokejových momentů z HMS zápasů">
-  <title>${organization?escapeHtml(organization.name)+" · ":""}Příklepy · HMS Insights</title>
+  <title>${organization?escapeHtml(organization.name)+" · ":""}${lang==='en'?'Insights':'Příklepy'} · HMS Insights</title>
   <link rel="icon" type="image/png" sizes="32x32" href="${assetPrefix}hms-favicon-32.png">
   <link rel="stylesheet" href="${assetPrefix}styles.css?v=org-feeds-1">
-  <script src="${assetPrefix}app.js?v=org-feeds-1" defer></script>
+  <script type="module" src="${assetPrefix}app.js?v=org-feeds-2"></script>
 <link rel="stylesheet" href="${assetPrefix}hms-brand.css"></head>
 <body>
   <header class="topbar">
     ${hmsBrand('PŘÍKLEPY',assetPrefix)}
     <nav class="view-nav" aria-label="Pohled Příklepů">
-      <a href="${selectionPath}" ${isSelection ? 'aria-current="page"' : ""}>Výběr</a>
-      ${isSelection ? "" : `<a href="${archivePath}" aria-current="page">Archiv</a>`}
+      <a href="${selectionPath}?lang=${lang}" ${isSelection ? 'aria-current="page"' : ""}>Výběr</a>
+      ${isSelection ? "" : `<a href="${archivePath}?lang=${lang}" aria-current="page">Archiv</a>`}
     </nav>
+    <nav class="feed-language" aria-label="Language"><a href="${isSelection?selectionPath:archivePath}?lang=cs${config.teamId?'&amp;teamId='+encodeURIComponent(config.teamId):''}" lang="cs" ${lang==='cs'?'aria-current="true"':''}>CZ</a><a href="${isSelection?selectionPath:archivePath}?lang=en${config.teamId?'&amp;teamId='+encodeURIComponent(config.teamId):''}" lang="en" ${lang==='en'?'aria-current="true"':''}>EN</a></nav>
     <span class="feed-state"><i></i> ${organization?escapeHtml(organization.name)+" · ":""}živý přehled</span>
   </header>
   <main>
@@ -196,7 +193,8 @@ export function renderPriklepyPage(items, config = {}) {
 
   <dialog id="detail-dialog"><button class="dialog-close" type="button" aria-label="Zavřít">×</button><div id="dialog-content"></div></dialog>
   <script type="application/json" id="feed-data">${JSON.stringify(items).replace(/</g, "\\u003c")}</script>
-  <script type="application/json" id="feed-meta">${JSON.stringify({ total, hasMore: !isSelection && hasMore, mode, organization: organization?.code ?? "PHM", teamId: config.teamId ?? null }).replace(/</g, "\\u003c")}</script>
+  <script type="application/json" id="feed-meta">${JSON.stringify({ total, hasMore: !isSelection && hasMore, mode, lang, organization: organization?.code ?? "PHM", teamId: config.teamId ?? null }).replace(/</g, "\\u003c")}</script>
 </body>
 </html>`;
+  return feedHtml(markup,lang,items.flatMap(item=>[item.player,item.team,item.homeTeam,item.awayTeam,item.group,item.season,item.venue]).map(value=>escapeHtml(value)));
 }

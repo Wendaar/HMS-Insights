@@ -11,7 +11,7 @@ await mkdir(output, { recursive: true });
 await writeFile(join(output, "index.html"), renderPriklepyPage(feedDemo), "utf8");
 await writeFile(join(output, ".nojekyll"), "", "utf8");
 
-for (const asset of ["app.js", "favicon.svg", "styles.css", "hms-brand.css", "hms-brand.js", "hms-logo.png", "hms-favicon-32.png"]) {
+for (const asset of ["app.js", "insights-i18n.js", "favicon.svg", "styles.css", "hms-brand.css", "hms-brand.js", "hms-logo.png", "hms-favicon-32.png"]) {
   await copyFile(join(root, "public", asset), join(output, asset));
 }
 
