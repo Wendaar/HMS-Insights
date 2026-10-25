@@ -18,7 +18,7 @@ export async function readOperations(query,options={}){
    const id=g.gameId.toLowerCase();if(games.has(id))throw new Error('Duplicate source page');
    games.set(id,normalizeGame(g,rules));
   }
-  if(rows.length<limit)return {org:org.code,games:[...games.values()],windows,complete:true,source:'HMS API',readAt:new Date().toISOString(),mapping:{cash:!!rules.cashPath,paid:!!rules.paidPath},timezone:'Europe/Prague'};
+  if(rows.length<limit)return {org:org.code,organizationSlug:org.slug,games:[...games.values()],windows,complete:true,source:'HMS API',readAt:new Date().toISOString(),mapping:{cash:!!rules.cashPath,paid:!!rules.paidPath},timezone:'Europe/Prague'};
  }
  throw new Error('Incomplete source');
 }
