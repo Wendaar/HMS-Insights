@@ -2,6 +2,17 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {graphicSettings,formats,candidatePage} from '../public/all-stars/presentation.js';
 import {allStarsSettings} from '../src/app/all-stars.js';
+import {designTypography} from '../public/studio/typography.js';
+test('All Stars shares Studio heading families and uses organization-specific defaults',()=>{
+ for(const [style,font]of Object.entries({clean:'Anton',crazy:'Permanent Marker',artistic:'Noto Serif',technical:'Anton',pantha:'Pantha'})){
+   const type=designTypography(style,'Roboto Condensed');assert.equal(type.headline,font);assert.equal(type.body,'Roboto Condensed');
+ }
+ assert.equal(graphicSettings({},'phm').design,'pantha');assert.equal(graphicSettings({},'PHM').font,'Hitch Grotesk');
+ for(const org of ['euchl','EUCHL','yhg']){assert.equal(graphicSettings({},org).design,'clean');assert.equal(graphicSettings({},org).font,'Barlow Condensed');}
+ assert.equal(graphicSettings({design:'crazy',font:'Oswald'},'euchl').font,'Oswald');
+ const config={title:'Test',seasonId:'11111111-1111-4111-8111-111111111111',groupId:'22222222-2222-4222-8222-222222222222',month:'2026-09',selection:{F:[],D:[],G:[]}};
+ assert.deepEqual(allStarsSettings(config,'EUCHL').graphics,graphicSettings({},'EUCHL'));
+});
 test('candidate paging applies named team/search filters before the bounded window',()=>{
  const candidates=Array.from({length:65},(_,i)=>({id:String(i),teamId:i<45?'a':'b',name:`Hráč ${i}`,team:i<45?'Praha':'Brno'}));
  let page=candidatePage(candidates);assert.equal(page.items.length,20);assert.equal(page.total,65);assert.equal(page.hasMore,true);

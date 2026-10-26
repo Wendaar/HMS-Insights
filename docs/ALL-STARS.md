@@ -82,8 +82,13 @@ Clean, Crazy, Artistic, Technical a Pantha sdílejí efekty s Media Studiem.
 Pantha pro PHM používá původní dodaná pozadí z generátoru, optimalizovaná
 do lokálního WebP. Jiné organizace PHM pozadí nikdy nepřebírají.
 
-Fonty se načítají z existujícího `/studio/fonts/fonts.css`: Pantha pro hlavní
-titulek, Frontline pro popisky a ve výchozím stavu Hitch Grotesk pro jména.
+Fonty se načítají z existujícího `/studio/fonts/fonts.css`. Hlavní titulek
+sdílí s Media Studiem `designTypography`: Clean a Technical používají Anton,
+Crazy hravý Permanent Marker, Artistic Noto Serif a pouze Pantha používá Pantha.
+Popisky rolí, organizační řádek a patička používají zvolené písmo jmen; pouze
+styl Pantha zachovává původní Frontline. Výchozí PHM je Pantha / Hitch Grotesk,
+ostatní organizace začínají ve stylu Clean / Barlow Condensed. Ručně zvolené
+styly a písma v uložených konfiguracích zůstávají zachovány.
 Volba písma sdílí katalog Studia i jeho kontrolu podporovaných znaků;
 chybějící diakritika přepne na vhodný font, jména se netransliterují.
 

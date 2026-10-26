@@ -1,4 +1,4 @@
-import {fontSpec,fontForText} from '../studio/typography.js';
+import {fontSpec,fontForText,designTypography} from '../studio/typography.js';
 import {designs,loadImage,effects,designAtmosphere} from '../studio/graphics.js';
 import {sportingImage} from '../game-report-media.js';
 import {formats,graphicSettings} from './presentation.js';
@@ -21,12 +21,13 @@ function cover(c,image,x,y,w,h){const scale=Math.max(w/image.width,h/image.heigh
 function contain(c,image,x,y,w,h){const scale=Math.min(w/image.width,h/image.height);c.drawImage(image,x+(w-image.width*scale)/2,y+(h-image.height*scale)/2,image.width*scale,image.height*scale);}
 const roleLabels={cs:{F:'ÚTOČNÍK',D:'OBRÁNCE',G:'BRANKÁŘ'},en:{F:'FORWARD',D:'DEFENDER',G:'GOALIE'}};
 export async function renderAllStarsGraphic(canvas,lineup,context,preferences){
-  const settings=graphicSettings(preferences),[w,h]=formats[settings.format],portrait=h>w,square=w===h,lang=context.lang==='en'?'en':'cs';
+  const settings=graphicSettings(preferences,context.org),[w,h]=formats[settings.format],portrait=h>w,square=w===h,lang=context.lang==='en'?'en':'cs';
+  const typography=designTypography(settings.design,settings.font),labelFont=settings.design==='pantha'?'Frontline':typography.body;
   const labels=roleLabels[lang],c=canvas.getContext('2d'),accent=settings.design==='artistic'?'#f0ca77':settings.design==='pantha'?'#dfff3f':'#8de1c9';
   const players=['F','D','G'].flatMap(role=>lineup[role]??[]),missing=[];
   // Load the exact families used in the graphic; the Studio's glyph-aware font
   // selection preserves Czech names instead of silently dropping diacritics.
-  const fontLoads=[['Pantha','ALL STARS'],['Frontline',labels.D],[settings.font,players.map(p=>p.name).join(' ')]];
+  const fontLoads=[[typography.headline,'ALL STARS'],[labelFont,Object.values(labels).join(' ')+' HALL OF FAME HMS HVĚZDY MĚSÍCE'],[typography.body,players.map(p=>p.name+' '+p.team).join(' ')+' Vyberte hráče Choose a player '+(context.group??'')]];
   await Promise.all(fontLoads.map(([family,value])=>document.fonts.load(fontSpec(fontForText(family,value),32,value),value)));
   await document.fonts.ready;
   const bgPath=context.org?.toLowerCase()==='phm'&&settings.design==='pantha'?'/all-stars/assets/'+(portrait?'portrait':'landscape')+'.webp':null;
@@ -39,8 +40,8 @@ export async function renderAllStarsGraphic(canvas,lineup,context,preferences){
   effects(c,w,h,accent,settings.design==='crazy');designAtmosphere(c,w,h,settings.design==='artistic',settings.design==='technical',accent);
   const shade=c.createLinearGradient(0,0,0,h);shade.addColorStop(0,'#02091230');shade.addColorStop(1,'#020912b0');c.fillStyle=shade;c.fillRect(0,0,w,h);
   const margin=w*.055,head=h*(portrait?.15:.19),safeTop=settings.format==='9:16'?120:0,safeBottom=settings.format==='9:16'?150:0;
-  text(c,`${String(context.org??'HMS').toUpperCase()} / HALL OF FAME`,margin,margin*.7+safeTop,w*.6,Math.min(25,w*.022),'Frontline',accent,'left');
-  text(c,'ALL STARS',margin,head+safeTop,w*.88,portrait?112:square?105:122,'Pantha','#fff','left');
+  text(c,`${String(context.org??'HMS').toUpperCase()} / HALL OF FAME`,margin,margin*.7+safeTop,w*.6,Math.min(25,w*.022),labelFont,accent,'left');
+  text(c,'ALL STARS',margin,head+safeTop,w*.88,portrait?112:square?105:122,typography.headline,'#fff','left');
   let month=context.month??'';if(/^\d{4}-\d{2}$/.test(month))month=new Date(month+'-15T12:00:00Z').toLocaleDateString(lang==='cs'?'cs-CZ':'en-GB',{month:'long',year:'numeric',timeZone:'UTC'});
   const subtitle=[context.group,month].filter(Boolean).join(' · '),sy=head+safeTop+(portrait?56:48);
   if(groupLogo)contain(c,groupLogo,margin,sy-32,45,45);
@@ -67,11 +68,11 @@ export async function renderAllStarsGraphic(canvas,lineup,context,preferences){
     if(asset?.logo){const size=Math.min(29,ch*.12);contain(c,asset.logo,x-cw*.4,teamY-size*.85,size,size);}
     if(p?.teamLogoUrl&&!asset?.logo)missing.push(`${lang==='en'?'Team logo':'Logo týmu'} · ${team}`);
     text(c,team,x+(asset?.logo?12:0),teamY,cw*(asset?.logo?.75:.88),Math.min(24,cw*.065),settings.font,'#c2d4e4');
-    text(c,labels[role],x,teamY+Math.min(30,ch*.12),cw*.9,Math.min(21,cw*.055),'Frontline',accent);
+    text(c,labels[role],x,teamY+Math.min(30,ch*.12),cw*.9,Math.min(21,cw*.055),labelFont,accent);
   }
   c.strokeStyle='#ffffff40';c.beginPath();c.moveTo(margin,h-safeBottom-51);c.lineTo(w-margin,h-safeBottom-51);c.stroke();
   const selected=players.length,footer=selected===6?(lang==='en'?'STARS OF THE MONTH':'HVĚZDY MĚSÍCE'):`${lang==='en'?'DRAFT':'PRACOVNÍ NÁHLED'} · ${selected} / 6`;
-  text(c,footer,margin,h-safeBottom-23,w*.7,19,'Frontline','#a9c3d4','left');text(c,'HMS',w-margin,h-safeBottom-23,w*.15,19,'Frontline','#a9c3d4','right');
+  text(c,footer,margin,h-safeBottom-23,w*.7,19,labelFont,'#a9c3d4','left');text(c,'HMS',w-margin,h-safeBottom-23,w*.15,19,labelFont,'#a9c3d4','right');
   if(groupImage&&!groupLogo)missing.push(lang==='en'?'Division logo':'Logo divize');
   return {width:w,height:h,missing:[...new Set(missing)],settings};
 }

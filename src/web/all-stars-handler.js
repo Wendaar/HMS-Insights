@@ -41,13 +41,13 @@ export function createAllStarsHandler(options={}){
       let body;try{if(Buffer.byteLength(JSON.stringify(req.body??''))>20000)throw new Error();body=typeof req.body==='string'?JSON.parse(req.body):req.body;if(!body||typeof body!=='object'||Array.isArray(body))throw new Error();}catch{return fail(400,'Neplatné nastavení.','Invalid settings.');}
       if(!Number.isInteger(body.revision)||body.revision!==(instance?.revision??0))return fail(409,'Nastavení změnil jiný správce. Načtěte jej znovu.','Another editor changed the draft. Reload it.');
       if(action==='save'){
-        const config=allStarsSettings(body.config),data=await read(org.code,config,{...options,env});
+        const config=allStarsSettings(body.config,org.code),data=await read(org.code,config,{...options,env});
         resolvedSelection(config,data);
         const saved=await store.save(org.code,slug,config,body.revision,null);
         return saved?res.status(200).json({instance:saved}):fail(409,'Nastavení se změnilo.','The draft changed.');
       }
       if(!instance)throw new TypeError('draft');
-      const config=allStarsSettings(instance.draft),data=await read(org.code,config,{...options,env});
+      const config=allStarsSettings(instance.draft,org.code),data=await read(org.code,config,{...options,env});
       if(!data.monthClosed||!data.coverage.complete)return fail(422,'Publikace vyžaduje uzavřený měsíc a všechny dokončené zápasy s ověřenými statistikami.','Publication requires a closed month and verified statistics for every finished game.');
       const lineup=resolvedSelection(config,data,{complete:true});
       const output={lineup,graphics:config.graphics,season:data.season,group:data.groups.find(g=>g.id===config.groupId),coverage:data.coverage,readAt:data.readAt,rules:data.rules,source:data.source};
