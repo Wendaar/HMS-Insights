@@ -27,6 +27,7 @@ const source=params.get('source')??'hms';
 const org=(params.get('org')??'PHM').toUpperCase();
 const API_BASE=location.pathname.startsWith('/broadcast/')?'/api/broadcast':'https://hms-insights-five.vercel.app/api/broadcast';
 const state = { games: [], teams: [], selectedId: params.get("game"), date: null, preview: "overlay", filter:params.get('filter')??'Today', readAt:null };
+state.partnerScope=['organization','team'].includes(params.get('partnerScope'))?params.get('partnerScope'):mode==='control'?'organization':'team';
 state.browseIds=null;state.controlError='';state.standingsView=params.get('standingsView')==='full'?'full':'opponents';
 Object.assign(state,{corner:['top-left','top-right','bottom-left','bottom-right'].includes(params.get('corner'))?params.get('corner'):'bottom-left',metric:['goals','assists','points'].includes(params.get('metric'))?params.get('metric'):'goals',assetId:params.get('assetId')??'',rotateSeconds:Math.min(300,Math.max(5,Number(params.get('rotateSeconds'))||15)),items:[],rotationIndex:0,partnerSource:params.get('partnerSource')==='hms'||mode==='control'&&params.get('partnerSource')!=='library'?'hms':'library',sponsorCatalog:null});
 let sandbox=false,rotationTimer,contextLoading=false,contextLoaded=false,lastPartnerRead=0,leagueLoading=false,lastLeagueRead=0;
@@ -34,7 +35,7 @@ Object.assign(state,{layer:layers.includes(params.get('layer'))?params.get('laye
 let refreshing=false,lastSuccess=0,lastVisual='',pollTimer;
 let previewObserver;
 const channel=mode==='control'&&source==='hms'?createChannelControl({api:API_BASE,base:location.href,
-  getState:()=>({org,gameId:state.selectedId,lang,layer:state.layer,side:state.side,period:state.period,page:state.page,insight:state.insight,corner:state.corner,metric:state.metric,assetId:state.assetId,rotateSeconds:state.rotateSeconds,partnerSource:state.partnerSource,standingsView:state.standingsView}),
+  getState:()=>({org,gameId:state.selectedId,lang,layer:state.layer,side:state.side,period:state.period,page:state.page,insight:state.insight,corner:state.corner,metric:state.metric,assetId:state.assetId,rotateSeconds:state.rotateSeconds,partnerSource:state.partnerSource,partnerScope:state.partnerScope,standingsView:state.standingsView}),
   onChange:()=>updateChannelPanel()}):null;
 function channelMarkup(){
   if(!channel)return '';
@@ -54,7 +55,7 @@ function updateChannelPanel(){
   const sync=document.querySelector('#sync-channel');if(sync){sync.disabled=!selectedGame();sync.addEventListener('click',async()=>{await channel.init();channel.publish();});}
   const libraryId=channel.info().id;
   const partnerSlot=document.getElementById('partner-slot'),partnerKey=libraryId+':'+channel.info().ready;
-  if(partnerSlot&&selectedGame()&&partnerSlot.dataset.binding!==partnerKey){partnerSlot.dataset.binding=partnerKey;mountPartnerPlaylist(partnerSlot,{catalog:state.sponsorCatalog,game:selectedGame(),side:state.side,channel,lang,onSaved:()=>{state.libraryLoaded='';renderControl();}});}
+  if(partnerSlot&&selectedGame()&&partnerSlot.dataset.binding!==partnerKey){partnerSlot.dataset.binding=partnerKey;mountPartnerPlaylist(partnerSlot,{catalog:state.sponsorCatalog,game:selectedGame(),side:state.side,partnerScope:state.partnerScope,channel,lang,onSaved:()=>{state.libraryLoaded='';renderControl();}});}
   if(libraryId&&state.libraryLoaded!==libraryId){
     state.libraryLoaded=libraryId;
     channel.library().then(data=>{state.items=data.items??[];if(['cta','sponsors','announcement'].includes(state.layer))renderControl();}).catch(()=>{state.libraryLoaded='';});
@@ -112,7 +113,7 @@ function layerControls(game){
   const option=(value,label,current)=>`<option value="${escapeHtml(value)}" ${value===current?'selected':''}>${escapeHtml(t(label))}</option>`;
   const m=game.match;
   const partnerLayer=['sponsors','announcement'].includes(state.layer);
-  const partnerOptions=partnerLayer&&state.partnerSource==='hms'?teamPartners(state.sponsorCatalog,game,state.side,state.items):eligibleAssets(state.items,{org,gameId:game.ID,homeId:game.homeId,awayId:game.awayId,side:state.side,kind:state.layer==='cta'?'cta':'sponsor'});
+  const partnerOptions=partnerLayer&&state.partnerSource==='hms'?teamPartners(state.sponsorCatalog,game,state.side,state.items,state.partnerScope):eligibleAssets(state.items,{org,gameId:game.ID,homeId:game.homeId,awayId:game.awayId,side:state.side,kind:state.layer==='cta'?'cta':'sponsor'});
   const size=state.side==='both'?12:20;
   const count=state.layer==='lineup'?Math.max(...['home','away'].filter(s=>state.side==='both'||s===state.side).map(s=>m?.roster.filter(p=>p.side===s).length??0)):m?.goals.filter(g=>state.side==='both'||g.side===state.side).length??0;
   const pages=state.layer==='standings'?Math.max(1,Math.ceil((game.league?.standings?.length??0)/8)):Math.max(1,Math.ceil(count/(state.layer==='lineup'?size:8)));
@@ -120,13 +121,14 @@ function layerControls(game){
     ${['lineup','scoresheet'].includes(state.layer)?`<label>${t('Tým')}<select id="layer-side">${[['home','Domácí'],['away','Hosté'],['both','Oba týmy']].map(([v,l])=>option(v,l,state.side)).join('')}</select></label><label>${t('Strana')}<select id="layer-page">${Array.from({length:pages},(_,i)=>option(String(i+1),String(i+1),String(state.page))).join('')}</select></label>`:''}
     ${state.layer==='periods'?`<label>${t('Třetina / stav')}<select id="layer-period">${[['current','Aktuální / konečný stav'],['1','Po 1. třetině'],['2','Po 2. třetině'],['3','Po 3. třetině']].map(([v,l])=>option(v,l,state.period)).join('')}</select></label>`:''}
     ${state.layer==='insights'?`<label>${t('Insight')}<select id="layer-insight">${m?.insights.length?m.insights.map(i=>option(i.id,`${i.name} · ${t(i.type==='hat-trick'?'Hattrick':'Vícebodový zápas')}`,state.insight)).join(''):option('','Žádný dostupný insight','')}</select></label>`:''}
-    ${['powerplay','leaders','leaders-strip','next','results','cta','sponsors','announcement'].includes(state.layer)?`<label>${t('Tým')}<select id="layer-side">${[['home',game['Home Team']],['away',game['Away Team']],...(state.layer==='cta'||state.layer==='sponsors'&&state.partnerSource==='library'?[['both','Oba týmy']]:[])].map(([v,l])=>option(v,l,state.side)).join('')}</select></label>`:''}
+    ${(['powerplay','leaders','leaders-strip','next','results','cta'].includes(state.layer)||partnerLayer&&(state.partnerSource!=='hms'||state.partnerScope==='team'))?`<label>${t('Tým')}<select id="layer-side">${[['home',game['Home Team']],['away',game['Away Team']],...(state.layer==='cta'||state.layer==='sponsors'&&state.partnerSource==='library'?[['both','Oba týmy']]:[])].map(([v,l])=>option(v,l,state.side)).join('')}</select></label>`:''}
     ${['leaders','leaders-strip'].includes(state.layer)?`<label>${t('Statistika')}<select id="layer-metric">${[['points','Body'],['goals','Góly'],['assists','Asistence']].map(([v,l])=>option(v,l,state.metric)).join('')}</select></label>`:''}
     ${state.layer==='standings'?`<label>${t('Rozsah tabulky')}<select id="standings-view">${[['opponents','Oba soupeři · skutečné pořadí'],['full','Celá tabulka · po stránkách']].map(([v,l])=>option(v,l,state.standingsView)).join('')}</select></label>${state.standingsView==='full'?`<label>${t('Strana')}<select id="layer-page">${Array.from({length:pages},(_,i)=>option(String(i+1),String(i+1),String(state.page))).join('')}</select></label>`:''}`:''}
     ${['cta','sponsors','powerplay','leaders-strip','standings'].includes(state.layer)?`<label>${t('Umístění')}<select id="layer-corner">${[['top-left','Vlevo nahoře'],['top-right','Vpravo nahoře'],['bottom-left','Vlevo dole'],['bottom-right','Vpravo dole']].map(([v,l])=>option(v,l,state.corner)).join('')}</select></label>`:''}
     ${['cta','sponsors','announcement'].includes(state.layer)?`<label>${t('Položka')}<select id="layer-asset">${option('','Střídat všechny odpovídající',state.assetId)}${partnerOptions.map(a=>option(a.id,a.title,state.assetId)).join('')}</select></label><label>${t('Střídat každých (sekund)')}<select id="layer-rotation">${[5,10,15,30,60,120,300].map(v=>option(String(v),String(v),String(state.rotateSeconds))).join('')}</select></label>`:''}
     ${state.layer==='powerplay'?`<p>${t('Vyberte tým, který hraje přesilovku. PP patří tomuto týmu, PK soupeři. Zapnutí vrstvy je ruční, bez živé časomíry.')}</p>`:''}
-    ${partnerLayer?`<label>${t('Zdroj partnerů')}<select id="partner-source">${[['hms','Centrální katalog HMS · vybraný tým'],['library','Doplňky pouze pro tento kanál']].map(([v,l])=>option(v,l,state.partnerSource)).join('')}</select></label>`:''}
+    ${partnerLayer&&state.partnerSource==='hms'?`<label>${t('Partneři')}<select id="partner-scope">${[['organization','Celá organizace'],['team','Vybraný tým']].map(([v,l])=>option(v,l,state.partnerScope)).join('')}</select></label>`:''}
+    ${partnerLayer?`<label>${t('Zdroj partnerů')}<select id="partner-source">${[['hms','Centrální katalog HMS'],['library','Doplňky pouze pro tento kanál']].map(([v,l])=>option(v,l,state.partnerSource)).join('')}</select></label>`:''}
     ${state.layer==='cta'?`<p>${t('Centrální QR soubory zatím HMS API neposkytuje. Zde vybíráte hotové QR z doplňků tohoto kanálu; logo partnera se za QR nezaměňuje.')}</p>`:''}
     <p id="layer-help">${t(channel?.info().bound?'Přepínání níže automaticky mění obsah stálého OBS kanálu.':'Výběr vrstvy mění náhled a kopírovanou adresu. V OBS použijte adresu dané vrstvy.')}</p></section>${partnerLayer&&state.partnerSource==='hms'?'<section class="partner-panel" id="partner-slot"></section>':''}`;
 }
@@ -356,15 +358,15 @@ function wireControl() {
   localize(app,lang);
   if(state.controlError)document.querySelector('#connection-status').textContent=t(state.controlError);
   document.querySelector('#language')?.addEventListener('change',event=>{lang=language(event.target.value);document.documentElement.lang=lang;const url=new URL(location.href);url.searchParams.set('lang',lang);history.replaceState(null,'',url);renderControl();if(selectedGame())channel?.publish();});
-  const settings={layer:'layer','layer-side':'side','layer-period':'period','layer-page':'page','layer-insight':'insight','layer-corner':'corner','layer-metric':'metric','layer-asset':'assetId','layer-rotation':'rotateSeconds','partner-source':'partnerSource','standings-view':'standingsView'};
+  const settings={layer:'layer','layer-side':'side','layer-period':'period','layer-page':'page','layer-insight':'insight','layer-corner':'corner','layer-metric':'metric','layer-asset':'assetId','layer-rotation':'rotateSeconds','partner-source':'partnerSource','partner-scope':'partnerScope','standings-view':'standingsView'};
   for(const [id,key] of Object.entries(settings))document.getElementById(id)?.addEventListener('change',event=>{
     state[key]=['page','rotateSeconds'].includes(key)?Number(event.target.value):event.target.value;
     if(key==='layer'||key==='side'||key==='standingsView')state.page=1;
     if(key==='layer'&&state.layer==='leaders-strip')state.metric='points';
     if(['leaders','leaders-strip','standings'].includes(state.layer)&&selectedGame()&&!selectedGame().league&&!leagueLoading)loadLeague(selectedGame());
-    if(key==='layer'||key==='side'||key==='partnerSource')state.assetId='';
+    if(key==='layer'||key==='side'||key==='partnerSource'||key==='partnerScope')state.assetId='';
     if((['powerplay','leaders','leaders-strip','next','results','announcement'].includes(state.layer)||state.layer==='sponsors'&&state.partnerSource==='hms')&&state.side==='both')state.side='home';
-    const url=new URL(location.href);for(const k of ['layer','side','period','page','insight','corner','metric','assetId','rotateSeconds','partnerSource','standingsView'])url.searchParams.set(k,state[k]);history.replaceState(null,'',url);renderControl();channel?.publish();
+    const url=new URL(location.href);for(const k of ['layer','side','period','page','insight','corner','metric','assetId','rotateSeconds','partnerSource','partnerScope','standingsView'])url.searchParams.set(k,state[k]);history.replaceState(null,'',url);renderControl();channel?.publish();
   });
   previewObserver?.disconnect();
   const previewBox=document.querySelector('.preview-frame');

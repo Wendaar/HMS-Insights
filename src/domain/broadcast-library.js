@@ -9,8 +9,8 @@ export function broadcastLibrary(value){
       ||!['organization','team','game'].includes(item.scope)||item.scope!=='organization'&&!isGameId(item.targetId)||typeof item.enabled!=='boolean')throw new TypeError('Library item');
     ids.add(item.id.toLowerCase());
     if(item.kind==='hms-sponsor'){
-      if(item.scope!=='team'||!isGameId(item.sponsorId))throw new TypeError('Sponsor reference');
-      return {id:item.id.toLowerCase(),kind:item.kind,org:item.org,scope:'team',targetId:item.targetId.toLowerCase(),sponsorId:item.sponsorId.toLowerCase(),enabled:item.enabled};
+      if(!['team','game'].includes(item.scope)||!isGameId(item.sponsorId))throw new TypeError('Sponsor reference');
+      return {id:item.id.toLowerCase(),kind:item.kind,org:item.org,scope:item.scope,targetId:item.targetId.toLowerCase(),sponsorId:item.sponsorId.toLowerCase(),enabled:item.enabled};
     }
     const match=/^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/]+={0,2})$/.exec(item.image??'');
     if(!match||match[2].length>350000)throw new TypeError('Image size');

@@ -1,5 +1,6 @@
 export const language=value=>value==='en'?'en':'cs';
 const en={
+'Partneři':'Partners','Celá organizace':'Whole organization','Vybraný tým':'Selected team','Centrální katalog HMS':'Central HMS catalog','Partner organizace':'Organization partner','Organizace nemá v HMS žádné sponzory.':'No sponsors are available in this organization in HMS.','Výběr z celého katalogu organizace. Ukládá se pro tento zápas a kanál; týmové vazby nejsou nutné.':'Select from the full organization catalog. Saved for this game and channel; team assignments are not required.',
 'Centrální katalog partnerů':'Central partner catalog',
 'Centrální katalog HMS · vybraný tým':'Central HMS catalog · selected team',
 'Doplňky pouze pro tento kanál':'Extras for this channel only',

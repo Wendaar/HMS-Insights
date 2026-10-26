@@ -12,7 +12,7 @@ export function channelState(value,env){
     ||!Number.isInteger(value.page)||value.page<1||value.page>50||typeof value.visible!=='boolean'
     ||value.insight!==''&&!isGameId(value.insight))throw new TypeError('Invalid channel state');
   const state=Object.fromEntries(['org','gameId','lang','layer','side','period','page','insight','visible'].map(k=>[k,value[k]]));
-  for(const [key,allowed] of Object.entries({corner:['top-left','top-right','bottom-left','bottom-right'],metric:['goals','assists','points'],partnerSource:['hms','library'],standingsView:['opponents','full']}))if(value[key]!==undefined){if(!allowed.includes(value[key]))throw new TypeError();state[key]=value[key];}
+  for(const [key,allowed] of Object.entries({corner:['top-left','top-right','bottom-left','bottom-right'],metric:['goals','assists','points'],partnerSource:['hms','library'],partnerScope:['organization','team'],standingsView:['opponents','full']}))if(value[key]!==undefined){if(!allowed.includes(value[key]))throw new TypeError();state[key]=value[key];}
   if(value.assetId!==undefined){if(value.assetId!==''&&!isGameId(value.assetId))throw new TypeError();state.assetId=value.assetId;}
   if(value.rotateSeconds!==undefined){if(!Number.isInteger(value.rotateSeconds)||value.rotateSeconds<5||value.rotateSeconds>300)throw new TypeError();state.rotateSeconds=value.rotateSeconds;}
   return state;

@@ -8,6 +8,8 @@ Přehled `sponsors.html` i Studio čtou stejný organizační endpoint `catalog=
 
 Vlastní knihovna je označena jako doplněk konkrétního kanálu, nikoli jako centrální katalog organizace. Ani položka s omezením na organizaci se tím nestává sdílenou mezi kanály.
 
+Výchozí volba ve Studiu **Celá organizace** nabízí celý katalog aktuální organizace bez nutnosti týmových vazeb. Zaškrtávací seznam ukládá povolení a pořadí jako reference `hms-sponsor` s rozsahem `game` pro daný zápas a kanál. **Vybraný tým** zachovává dosavadní týmový filtr a oddělené reference `team`. Vypnutý seznam se nezmění automaticky na všechny partnery. Položka **Střídat všechny odpovídající** rotuje povolené položky; výběr konkrétního jména zobrazí jen tuto povolenou položku. Oba partnerské formáty sdílejí výběr. Starší OBS adresy bez `partnerScope` zachovávají týmový výklad.
+
 Navržené budoucí centrální ukládání QR: soubor partnera s rolí QR přiřadit ke skutečnému sponzorovi; obecnou výzvu na sociální sítě, rozcestník nebo kanál přiřadit k organizaci, případně omezit na tým či zápas. Obecná výzva se nemá vydávat za sponzora. Tato část čeká na podporu souborů a jejich rolí v HMS API. Do té doby funguje ruční přidání hotového QR pro kanál; běžné logo se nikdy automaticky nepovažuje za QR.
 
 ## Fotografie a týmová identita

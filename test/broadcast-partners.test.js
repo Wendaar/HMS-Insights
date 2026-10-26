@@ -29,3 +29,24 @@ test('channel validates new output and source, preserving former layers and opti
   const state={org:'EUCHL',gameId:id(1),lang:'cs',layer:'announcement',side:'home',period:'current',page:1,insight:'',visible:false,partnerSource:'hms'};
   const env={HMS_EUCHL_ORGANIZATION_ID:id(9),HMS_EUCHL_API_TOKEN:'test'};assert.equal(channelState(state,env).layer,'announcement');assert.throws(()=>channelState({...state,partnerSource:'external'},env));
 });
+
+test('organization catalog needs no team bindings and saves independent per-game references for both formats',()=>{
+  const unbound={...catalog,items:catalog.items.map(s=>({...s,scopeRefs:{}}))};
+  const rules=[{...ref(id(6)),scope:'game',targetId:game.ID},{...ref(id(4),false),scope:'game',targetId:game.ID},{...ref(id(5),false),scope:'game',targetId:game.ID}];
+  assert.equal(teamPartners(unbound,game).length,0);
+  assert.equal(teamPartners(unbound,game,'home',[],'organization').length,3);
+  assert.deepEqual(teamPartners(unbound,game,'home',rules,'organization').map(a=>a.id),[id(6)]);
+  assert.equal(teamPartners(unbound,{...game,ID:id(99)},'home',rules,'organization').length,3);
+  assert.deepEqual(broadcastLibrary(rules),rules);
+  for(const layer of ['sponsors','announcement']){
+    const settings={layer,org:'EUCHL',partnerSource:'hms',partnerScope:'organization',sponsorCatalog:unbound,items:rules};
+    assert.match(renderExtraLayer(game,settings),/Other/);
+    assert.doesNotMatch(renderExtraLayer(game,settings),/Partner A|Guardians/);
+    assert.equal(renderExtraLayer(game,{...settings,assetId:id(4)}),'');
+    assert.equal(renderExtraLayer(game,{...settings,items:rules.map(r=>({...r,enabled:false}))}),'');
+  }
+  const env={HMS_EUCHL_ORGANIZATION_ID:id(9),HMS_EUCHL_API_TOKEN:'test'};
+  const state={org:'EUCHL',gameId:id(1),lang:'cs',layer:'sponsors',side:'home',period:'current',page:1,insight:'',visible:false,partnerScope:'organization'};
+  assert.equal(channelState(state,env).partnerScope,'organization');
+  assert.throws(()=>channelState({...state,partnerScope:'external'},env));
+});

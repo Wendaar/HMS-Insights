@@ -18,11 +18,11 @@ export function renderExtraLayer(game,settings){
   const shell=(content,footer='')=>`<main class="extra-layer ${compact?'corner-layer '+esc(corner):''}" data-layer="${esc(layer)}"><div class="extra-kicker">${t(['sponsors','announcement'].includes(layer)?'Partner přenosu':extraNames[layer])}</div>${content}${footer?`<footer>${footer}</footer>`:''}</main>`;
   if(layer==='cta'||layer==='sponsors'||layer==='announcement'){
     const hms=layer!=='cta'&&settings.partnerSource==='hms';
-    const available=hms?(settings.sponsorCatalog?.org===org?teamPartners(settings.sponsorCatalog,game,rawSide,items):[]):eligibleAssets(items,{org,gameId:game.ID,homeId:game.homeId,awayId:game.awayId,side:rawSide,kind:layer==='cta'?'cta':'sponsor'});
+    const available=hms?(settings.sponsorCatalog?.org===org?teamPartners(settings.sponsorCatalog,game,rawSide,items,settings.partnerScope):[]):eligibleAssets(items,{org,gameId:game.ID,homeId:game.homeId,awayId:game.awayId,side:rawSide,kind:layer==='cta'?'cta':'sponsor'});
     const list=assetId?available.filter(a=>a.id===assetId):available,item=list[rotationIndex%list.length];
     if(!item)return hms?'':shell(empty('Pro tento výběr není nastavená žádná položka.'));
     let host='';try{host=new URL(item.url).hostname;}catch{}
-    return shell(`<article class="asset-card">${item.image?`<img class="${layer==='cta'?'qr-image':'sponsor-image'}" src="${esc(item.image)}" alt="${esc(item.title)}">`:''}<div><h2>${esc(item.title)}</h2>${item.claim?`<p>${esc(item.claim)}</p>`:''}${host?`<small>${esc(host)}</small>`:''}</div></article>`,layer==='cta'?t('Načtěte QR kód fotoaparátem'):hms?`${t('Partner týmu')} · ${esc(game[side==='away'?'Away Team':'Home Team'])}`:t('Partner přenosu'));
+    return shell(`<article class="asset-card">${item.image?`<img class="${layer==='cta'?'qr-image':'sponsor-image'}" src="${esc(item.image)}" alt="${esc(item.title)}">`:''}<div><h2>${esc(item.title)}</h2>${item.claim?`<p>${esc(item.claim)}</p>`:''}${host?`<small>${esc(host)}</small>`:''}</div></article>`,layer==='cta'?t('Načtěte QR kód fotoaparátem'):hms&&settings.partnerScope==='organization'?`${t('Partner organizace')} · ${esc(org)}`:hms?`${t('Partner týmu')} · ${esc(game[side==='away'?'Away Team':'Home Team'])}`:t('Partner přenosu'));
   }
   const context=game.context;
   if(!context)return shell(empty('Načítám kontext týmu…'));
