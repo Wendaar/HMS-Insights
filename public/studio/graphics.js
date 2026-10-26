@@ -95,7 +95,7 @@ function plate(c,x,y,w,h,fill,stroke=null,r=24){
   c.fillStyle=fill;panel(c,x,y,w,h,r);c.fill();c.restore();
   if(stroke){c.strokeStyle=stroke;c.lineWidth=2;panel(c,x,y,w,h,r);c.stroke();}
 }
-function effects(c,w,h,accent,crazy){
+export function effects(c,w,h,accent,crazy){
   const g=c.createRadialGradient(w*.75,h*.35,0,w*.75,h*.35,w);g.addColorStop(0,accent+'45');g.addColorStop(1,'#00000000');c.fillStyle=g;c.fillRect(0,0,w,h);
   if(!crazy)return;
   c.save();c.globalCompositeOperation='screen';
@@ -113,7 +113,7 @@ function laurels(c,x,y,r){
     for(let i=0;i<12;i++){const a=(side<0?Math.PI*.62:Math.PI*1.56)+i*.22;c.save();c.translate(x+Math.cos(a)*r*.89,y+Math.sin(a)*r);c.rotate(a+side*.65);c.beginPath();c.ellipse(0,0,7,18,0,0,Math.PI*2);c.fill();c.restore();}}
   c.restore();
 }
-function designAtmosphere(c,w,h,artistic,technical,accent){
+export function designAtmosphere(c,w,h,artistic,technical,accent){
   if(artistic){
     const gold=c.createRadialGradient(w*.58,h*.44,0,w*.58,h*.44,w*.8);gold.addColorStop(0,'#d6a34765');gold.addColorStop(.5,'#6b402520');gold.addColorStop(1,'#00000000');c.fillStyle=gold;c.fillRect(0,0,w,h);
     c.save();c.globalCompositeOperation='screen';

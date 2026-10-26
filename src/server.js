@@ -62,13 +62,13 @@ export const server = createServer(async (request, response) => {
     if(request.method==='POST'){let body='';for await(const chunk of request){body+=chunk;if(Buffer.byteLength(body)>20000){response.writeHead(413);response.end();return;}}request.body=body;}
     await createAllStarsHandler()(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json; charset=utf-8');response.end(JSON.stringify(body));}});return;
   }
-  const allStarsAsset=/^\/all-stars\/(app.js|app.css|index.html)$/.exec(url.pathname);
+  const allStarsAsset=/^\/all-stars\/(app.js|app.css|index.html|graphics.js|presentation.js|assets\/(?:landscape|portrait)\.webp)$/.exec(url.pathname);
   if(allStarsAsset||/^\/all-stars\/[a-z0-9-]+(?:\/[a-z0-9-]+)?\/?$/.test(url.pathname)||url.pathname==='/control/apps/all-stars'){
     if(!['GET','HEAD'].includes(request.method)){response.writeHead(405,{allow:'GET, HEAD'});response.end();return;}
     const name=allStarsAsset?.[1]??'index.html';
-    response.setHeader('content-type',name.endsWith('.html')?'text/html; charset=utf-8':name.endsWith('.css')?'text/css; charset=utf-8':'text/javascript; charset=utf-8');
+    response.setHeader('content-type',name.endsWith('.html')?'text/html; charset=utf-8':name.endsWith('.css')?'text/css; charset=utf-8':name.endsWith('.webp')?'image/webp':'text/javascript; charset=utf-8');
     response.setHeader('x-content-type-options','nosniff');response.setHeader('referrer-policy','no-referrer');
-    response.setHeader('content-security-policy',"default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' blob:; base-uri 'none'; form-action 'self'; frame-ancestors "+(url.pathname.startsWith('/control')?"'none'":'*'));
+    response.setHeader('content-security-policy',"default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; connect-src 'self'; img-src 'self' blob:; base-uri 'none'; form-action 'self'; frame-ancestors "+(url.pathname.startsWith('/control')?"'none'":'*'));
     if(url.pathname.startsWith('/control'))response.setHeader('x-robots-tag','noindex, nofollow');
     response.end(request.method==='HEAD'?undefined:await readFile(join(publicDirectory,'all-stars',name)));return;
   }
