@@ -1,4 +1,5 @@
 import {viewUrl} from './hms-source.js';
+import {publicOutputUrl} from '../public-output.js';
 const valid=id=>typeof id==='string'&&/^[a-f0-9]{48}$/.test(id);
 const storageKey='hms-obs-control-v1';
 // Keep layout at the OBS design resolution; fit the whole frame, never crop it.
@@ -12,7 +13,7 @@ export function fitBroadcastCanvas(element){
   resize();addEventListener('resize',resize);
   return ()=>removeEventListener('resize',resize);
 }
-export function channelUrl(base,id){const url=new URL('index.html',base);url.search=new URLSearchParams({mode:'channel',channel:id});url.hash='';return url.href;}
+export function channelUrl(base,id){const url=new URL('/broadcast/index.html',base);url.search=new URLSearchParams({mode:'channel',channel:id});url.hash='';return publicOutputUrl(url.href);}
 export function createChannelControl({api,base,getState,onChange}){
   let binding=null,revision=0,visible=true,queued=null,sending=false,problem='',ready=false,lastState=null;
   try{const saved=JSON.parse(localStorage.getItem(storageKey));if(valid(saved?.id)&&/^[a-f0-9]{64}$/.test(saved.key))binding=saved;}catch{}

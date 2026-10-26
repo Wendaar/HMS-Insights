@@ -139,6 +139,7 @@ export function normalizeHmsGame(gameEventsResponse, lineupResponse, gameDetailR
     playerName: playerName(item.Player, item.name),
     teamId: item.teamId,
     number: item.number ?? null,
+    position: /^(O|D)$/.test(item.ListPosition?.short??'')?'D':/^(Ú|U|F)$/.test(item.ListPosition?.short??'')?'F':null,
     isGoalie: item.ListPosition?.isGoalie === true || goalieIds.has(item.playerId),
     playerImageUrl: entityMediaUrl(item.Player),
     playerImageTemplateUrl: entityMediaTemplate(item.Player),
@@ -298,7 +299,7 @@ export function normalizeHmsGame(gameEventsResponse, lineupResponse, gameDetailR
   normalized.eventSnapshot = buildEventSnapshot(normalized, groupedEvents, players, penaltyMinutes);
   normalized.eventSnapshot.branding=hmsMediaContext({Phase:phase,Group:group,Season:season,Competition:competition});
   normalized.eventSnapshot.faceoffs = faceoffSnapshot(gameEventsResponse, gameDetailResponse, publicMetadata, normalized, players);
-  normalized.eventSnapshot.roster=[...players.values()].map(p=>({id:p.playerId,teamId:p.teamId,isGoalie:p.isGoalie}));
+  normalized.eventSnapshot.roster=[...players.values()].map(p=>({id:p.playerId,teamId:p.teamId,isGoalie:p.isGoalie,...(p.position?{position:p.position}:{})}));
   normalized.eventSnapshot.jerseyColors={home:jerseyColor(gameResponse.homeJerseyColor),away:jerseyColor(gameResponse.awayJerseyColor)};
   normalized.eventSnapshot.media = { albumUrl: flickrAlbum(gameResponse.flickrAlbum)
     ?? (publicMetadata?.gameId?.toLowerCase()===gameId.toLowerCase()?flickrAlbum(publicMetadata.flickrAlbum):null) };

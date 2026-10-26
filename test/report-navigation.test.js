@@ -19,7 +19,7 @@ test('report Highlights resolve stored organization ownership, never default a d
   const s=await getGameSummary(snapshot.game.game_id,{env,loadSnapshot:async()=>snapshot});
   assert.equal(s.insightsPath,'/priklepy/euchl');
   const page=renderGameReport(s,{lang:'en'});
-  assert.match(page,/href="\/priklepy\/euchl">Highlights/);
+  assert.match(page,/href="\/priklepy\/euchl\?lang=en">Highlights/);
   assert.doesNotMatch(page,/href="\/priklepy"/);
   const unknown=await getGameSummary(snapshot.game.game_id,{env:{HMS_PHM_ORGANIZATION_ID:'00000000-0000-0000-0000-000000000001'},loadSnapshot:async()=>snapshot});
   assert.equal(unknown.insightsPath,null);

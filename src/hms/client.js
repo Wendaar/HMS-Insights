@@ -76,6 +76,10 @@ export function fetchGames(params = {}, options = {}) {
 export function fetchSponsors(options = {}) {return request('sponsors',{},options);}
 export function fetchTeams(options = {}) {return request('teams',{},options);}
 
+export function fetchTeams(options = {}) {
+  return request('teams', {}, options);
+}
+
 export async function fetchGameResponses(gameId, options = {}) {
   return Promise.all([
     request("game", { gameId }, options),

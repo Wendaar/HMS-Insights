@@ -1,5 +1,8 @@
+import {createOperationsHandler} from './web/operations-handler.js';
+import {createAllStarsHandler} from './web/all-stars-handler.js';
 import {createOrganizationImportHandler} from './web/organization-import-handler.js';
 import {createSeasonGamesHandler} from './web/season-games-handler.js';
+import {createToolsHandler} from './web/tools-handler.js';
 import {createBroadcastHandler} from './web/broadcast-handler.js';
 import {createOrganizationImportPage} from './web/organization-import-page.js';
 import {createPublicFeedHandler} from './web/public-feed-handler.js';
@@ -27,13 +30,16 @@ const directory = dirname(fileURLToPath(import.meta.url));
 const publicDirectory = join(directory, "..", "public");
 const port = Number(process.env.PORT ?? 3000);
 const zbraslavAnalysis = analyzeHmsResponses(zbraslavEvents, zbraslavLineup);
-const broadcastHandler=createBroadcastHandler();
+const toolsHandler = createToolsHandler();
+const broadcastHandler = createBroadcastHandler();
 
 const assets = {
   '/hms-favicon-public-v2.svg':['image/svg+xml','hms-favicon-public-v2.svg'],
   '/hms-favicon-control-v2.svg':['image/svg+xml','hms-favicon-control-v2.svg'],
   '/hms-favicon-public-v2.png':['image/png','hms-favicon-public-v2.png'],
   '/hms-favicon-control-v2.png':['image/png','hms-favicon-control-v2.png'],
+  '/public-output.js':['text/javascript; charset=utf-8','public-output.js'],
+  '/insights-i18n.js':['text/javascript; charset=utf-8','insights-i18n.js'],
   '/hms-brand.css':['text/css; charset=utf-8','hms-brand.css'],
   '/hms-brand.js':['text/javascript; charset=utf-8','hms-brand.js'],
   '/hms-logo.png':['image/png','hms-logo.png'],
@@ -55,12 +61,39 @@ const assets = {
 
 export const server = createServer(async (request, response) => {
   const url = new URL(request.url, `http://${request.headers.host ?? "localhost"}`);
+  if(url.pathname==='/api/all-stars'||url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='all-stars'){
+    request.query=Object.fromEntries(url.searchParams);
+    if(request.method==='POST'){let body='';for await(const chunk of request){body+=chunk;if(Buffer.byteLength(body)>20000){response.writeHead(413);response.end();return;}}request.body=body;}
+    await createAllStarsHandler()(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json; charset=utf-8');response.end(JSON.stringify(body));}});return;
+  }
+  const allStarsAsset=/^\/all-stars\/(app.js|app.css|index.html|graphics.js|presentation.js|assets\/(?:landscape|portrait)\.webp)$/.exec(url.pathname);
+  if(allStarsAsset||/^\/all-stars\/[a-z0-9-]+(?:\/[a-z0-9-]+)?\/?$/.test(url.pathname)||url.pathname==='/control/apps/all-stars'){
+    if(!['GET','HEAD'].includes(request.method)){response.writeHead(405,{allow:'GET, HEAD'});response.end();return;}
+    const name=allStarsAsset?.[1]??'index.html';
+    response.setHeader('content-type',name.endsWith('.html')?'text/html; charset=utf-8':name.endsWith('.css')?'text/css; charset=utf-8':name.endsWith('.webp')?'image/webp':'text/javascript; charset=utf-8');
+    response.setHeader('x-content-type-options','nosniff');response.setHeader('referrer-policy','no-referrer');
+    response.setHeader('content-security-policy',"default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; connect-src 'self'; img-src 'self' blob:; base-uri 'none'; form-action 'self'; frame-ancestors "+(url.pathname.startsWith('/control')?"'none'":'*'));
+    if(url.pathname.startsWith('/control'))response.setHeader('x-robots-tag','noindex, nofollow');
+    response.end(request.method==='HEAD'?undefined:await readFile(join(publicDirectory,'all-stars',name)));return;
+  }
+  if(url.pathname==='/api/operations'||url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='operations'){
+    request.query=Object.fromEntries(url.searchParams);
+    await createOperationsHandler()(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json; charset=utf-8');response.end(JSON.stringify(body));}});return;
+  }
+  if(['/operations','/operations/','/operations/index.html','/operations/app.js','/operations/loading.js','/operations/snapshot.js','/operations/model.js','/operations/demo.js','/operations/styles.css'].includes(url.pathname)){
+    if(!['GET','HEAD'].includes(request.method)){response.writeHead(405,{allow:'GET, HEAD'});response.end();return;}
+    const name=['/operations','/operations/'].includes(url.pathname)?'index.html':url.pathname.split('/').pop();
+    response.setHeader('content-type',name.endsWith('.html')?'text/html; charset=utf-8':name.endsWith('.css')?'text/css; charset=utf-8':'text/javascript; charset=utf-8');
+    response.setHeader('cache-control','no-store');response.setHeader('x-robots-tag','noindex, nofollow');response.setHeader('x-content-type-options','nosniff');response.setHeader('referrer-policy','no-referrer');
+    response.setHeader('content-security-policy',"default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
+    response.end(request.method==='HEAD'?undefined:await readFile(join(publicDirectory,'operations',name)));return;
+  }
   if(url.pathname==='/api/games'||url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='games'){
     request.query=Object.fromEntries(url.searchParams);
     await createSeasonGamesHandler()(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json; charset=utf-8');response.end(JSON.stringify(body));}});return;
   }
-  if(['/game-center','/game-center/','/games/index.html','/games/app.js','/games/styles.css'].includes(url.pathname)){
-    const path=url.pathname.startsWith('/game-center')?'/games/index.html':url.pathname;
+  if(['/game-center','/game-center/','/games/index.html','/games/app.js','/games/styles.css'].includes(url.pathname)||/^\/games\/[a-z0-9-]+\/[a-z0-9-]+(?:\/[a-z0-9-]+)?\/?$/.test(url.pathname)){
+    const path=url.pathname.startsWith('/game-center')||/^\/games\/[a-z0-9-]+\//.test(url.pathname)?'/games/index.html':url.pathname;
     response.setHeader('content-type',path.endsWith('.html')?'text/html; charset=utf-8':path.endsWith('.css')?'text/css; charset=utf-8':'text/javascript; charset=utf-8');
     response.end(await readFile(join(publicDirectory,path)));return;
   }
@@ -71,6 +104,8 @@ export const server = createServer(async (request, response) => {
     request.query=Object.fromEntries(url.searchParams);
     await broadcastHandler(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json; charset=utf-8');response.end(JSON.stringify(body));}});return;
   }
+  if(['/broadcast/sponsors.html','/sponsors/'].includes(url.pathname)){response.writeHead(302,{location:'/sponsors'+url.search});response.end();return;}
+  if(url.pathname==='/sponsors'){response.setHeader('content-type','text/html; charset=utf-8');response.setHeader('x-robots-tag','noindex, nofollow');response.setHeader('cache-control','no-cache');response.end(await readFile(join(publicDirectory,'broadcast/sponsors.html')));return;}
   if(url.pathname==='/broadcast'||url.pathname==='/broadcast/'){
     response.writeHead(302,{location:'/broadcast/index.html'+url.search});response.end();return;
   }
@@ -78,6 +113,38 @@ export const server = createServer(async (request, response) => {
     response.setHeader('content-type',url.pathname.endsWith('.html')?'text/html; charset=utf-8':url.pathname.endsWith('.css')?'text/css; charset=utf-8':url.pathname.endsWith('.woff2')?'font/woff2':'text/javascript; charset=utf-8');
     response.setHeader('x-content-type-options','nosniff');response.setHeader('referrer-policy','no-referrer');response.setHeader('cache-control','no-cache');
     response.end(await readFile(join(publicDirectory,url.pathname)));return;
+  }
+  if (url.pathname === '/api/tools' || url.pathname === '/api/game-summary' && url.searchParams.get('view') === 'tools') {
+    request.query=Object.fromEntries(url.searchParams);
+    if(request.method==='POST'){
+      let body='';for await(const chunk of request){body+=chunk;if(Buffer.byteLength(body)>20000){response.writeHead(413,{'content-type':'application/json'});response.end(JSON.stringify({error:'Nastavení je příliš velké.'}));return;}}request.body=body;
+    }
+    await toolsHandler(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json; charset=utf-8');response.end(JSON.stringify(body));}});return;
+  }
+  const toolAsset=/^\/tools\/playoff-players\/(app.js|app.css|index.html)$/.exec(url.pathname);
+  const toolPage=url.pathname==='/tools/playoff-players'||/^\/tools\/playoff-players\/[a-z0-9-]+\/[a-z0-9-]+\/?$/.test(url.pathname);
+  const toolManage=url.pathname==='/control/apps/playoff-players';
+  if(toolAsset||toolPage||toolManage){
+    if(!['GET','HEAD'].includes(request.method)){response.writeHead(405,{allow:'GET, HEAD'});response.end();return;}
+    const name=toolAsset?.[1]??'index.html';
+    response.setHeader('content-type',name.endsWith('.html')?'text/html; charset=utf-8':name.endsWith('.css')?'text/css; charset=utf-8':'text/javascript; charset=utf-8');
+    response.setHeader('x-content-type-options','nosniff');response.setHeader('referrer-policy','no-referrer');response.setHeader('cache-control','no-cache');
+    response.setHeader('content-security-policy',`default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' https:; base-uri 'none'; form-action 'self'; frame-ancestors ${toolManage?"'none'":'*'}`);
+    if(toolManage)response.setHeader('x-robots-tag','noindex, nofollow');
+    response.end(request.method==='HEAD'?undefined:await readFile(join(publicDirectory,'tools','playoff-players',name)));return;
+  }
+  if (['/control', '/control/', '/control/index.html', '/control/app.js', '/control/registry.js', '/control/map.js', '/control/work-chats.js', '/control/control.css'].includes(url.pathname)) {
+    response.setHeader('x-robots-tag', 'noindex, nofollow');
+    response.setHeader('x-content-type-options', 'nosniff');
+    response.setHeader('referrer-policy', 'no-referrer');
+    response.setHeader('content-security-policy', "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; font-src 'self'; img-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
+    if (!['GET', 'HEAD'].includes(request.method)) {
+      response.writeHead(405, {allow:'GET, HEAD'});response.end('Method not allowed');return;
+    }
+    const name = ['/control', '/control/'].includes(url.pathname) ? 'index.html' : url.pathname.split('/').pop();
+    response.setHeader('content-type', name.endsWith('.html') ? 'text/html; charset=utf-8' : name.endsWith('.css') ? 'text/css; charset=utf-8' : 'text/javascript; charset=utf-8');
+    response.setHeader('cache-control', 'no-cache');
+    response.end(request.method === 'HEAD' ? undefined : await readFile(join(publicDirectory, 'control', name)));return;
   }
   if(['/admin/import-game','/admin/backfill','/api/admin/import-game','/api/admin/backfill'].includes(url.pathname)){
     request.query=Object.fromEntries(url.searchParams);

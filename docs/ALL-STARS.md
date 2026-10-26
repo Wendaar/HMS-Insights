@@ -1,0 +1,125 @@
+# All Stars of Month · Beta
+
+Správa: `/control/apps/all-stars?org=phm&lang=cs` (také EUCHL, CS/EN).
+Veřejný seznam: `https://app.phmcup.cz/all-stars/phm`.
+Publikovaná sestava: `https://app.phmcup.cz/all-stars/<organizace>/<pojmenovana-sestava>`.
+Odkaz a iframe se zobrazí po publikaci. Nevytváříme smyšlenou první sestavu.
+
+## Pravidla a původní aplikace
+
+Původní [generátor](https://wendaar.github.io/PHM-All-Stars-generator/)
+zůstává beze změny: historické sestavy, schválená výjimka září 2026 včetně čtyř
+říjnových zápasů, XLSX, PNG, JSON a samostatný HTML/iframe export.
+Zdroj: `Wendaar/PHM-All-Stars-generator`, `domain.js`, `README.md`.
+
+Uživatel pro nové API výběry potvrdil kalendářní měsíce a ruční finální šestici:
+3 útočníci, 2 obránci, 1 brankář. Zářijová výjimka se nepřenáší do nových dat.
+Nejdříve se řadí účast ve více než polovině zápasů týmu, pak skóre.
+Původní hráčské skóre: 6× P/GP + 3× účast + 0,6× min(hvězdy,3) − 0,03× PIM.
+Původní brankářské skóre: 100× SV ratio + 8× účast + 2× SO + min(hvězdy,3) − 2× GA/GP.
+
+Společné importované snapshoty neobsahují hvězdy ani ověřené SO. Beta používá
+výslovně označené **předběžné skóre** bez těchto členů; nejde o ekvivalent
+původního plného skóre. Tyto chybějící metriky nejsou vydávány za nuly. Oficiální
+hvězdy existují v doplňkovém veřejném HMS game API (využívá Game Report), ale
+zatím nejsou součástí společného měsíčního snapshotu. Jejich ukládání a zpětné
+doplnění je navazující práce. Brankář bez ověřených přiřazených gólů/zákroků nemá
+skóre a vyžaduje ruční posouzení. GP vychází z importovaných zápasových řádků;
+není to ověření odehraného času. Hráč × tým se nikdy nesčítá přes různé týmy.
+
+Starší snapshoty neobsahují F/D. Hráči bez pozice jsou označeni a nabídnuti
+v obou rolích; stejnou nominaci nelze vybrat dvakrát. Nové importy ukládají
+rozpoznanou pozici ze zápasové sestavy. Obránci mají stejné skóre jako útočníci;
+obranné metriky se nepředstírají. Týmový/ dlouhodobý kontext není v hodnocení.
+
+## Datový a publikační kontrakt
+
+`/api/all-stars` sdílí existující serverless funkci `api/game-summary.js`.
+Katalog soutěží/sezon pochází z `controlContextCatalog` a je svázán s organizací.
+Měsíční statistiky se načítají parametrizovaným SQL z existujících tabulek
+`games`, `player_game_stats`, `goalie_game_stats`, `team_game_stats`.
+Každý den měsíce se zkontroluje veřejným HMS rozpisem přes společný
+`readPublicGameDay`, nejvýše tři souběžné dotazy, timeout a sdílený cache/cooldown.
+Měsíční dotaz má limit 500 importovaných zápasů; větší výběr selže explicitně.
+
+Dokončený zápas chybějící v DB se ukáže v seznamu chybějících importů. Zápas
+se nesouladem událostí a výsledku nebo aktuálním rozpisem se nepoužije.
+Historické importy před zavedením event snapshotů se ověřují shodou uložených
+hráčských gólů obou týmů s aktuálním oficiálním výsledkem HMS. Tento odlišný
+základ ověření je uveden v pokrytí (`verifiedByTotals`); časová osa se nepředstírá.
+Brankářské zákroky těchto importů se navíc srovnávají s aktuálním týmovým
+součtem zákroků HMS. Při nesouladu nemá brankář pořadí. Přítomný, ale rozporný
+event snapshot nikdy nepoužije historickou výjimku.
+Publikace vyžaduje uzavřený kalendářní měsíc, úplné pokrytí zvolené divize,
+3+2+1 a výběr ověřený proti právě načteným kandidátům. Výpadek API není prázdný
+úspěšný výsledek. Chybějící importy doplní stávající nástroj Historický import;
+All Stars samo nespouští importy ani nezapisuje do HMS.
+
+Přístup používá stávající organizační `HMS_<ORG>_TOOLS_ADMIN_SECRET`, případně
+jeho existující webhook secret. Chybějící přístup nebo DB se uvádí pravdivě.
+Kód zůstává pouze v paměti stránky, neposílá se ve veřejné adrese ani v exportu.
+Organizace, volba jazyka či localStorage nejsou oprávnění.
+Centrální konfigurace využívá existující `hms_tool_instances` s odděleným
+namespace `all-stars`. Původní playoff namespace a jeho data zůstávají zachována.
+Revize brání přepsání souběžné práce. Publikace ukládá ověřenou sestavu a
+provenienci jako neměnný snímek; pozdější import nebo draft ji nezmění.
+Veřejný endpoint nevrací pracovní výběr, přístupové hodnoty ani surové řádky.
+
+Správa má jmenné výběry sezony, divize, týmu a hráčů, JSON přenos sestavy
+ověřený proti aktuálním kandidátům a grafický náhled totožný s PNG exportem.
+Nový veřejný výstup lze vložit do iframe, s jazykem v URL.
+
+## Grafické výstupy a shortlist
+
+Výchozí výpis má 20 kandidátů a tlačítko „Načíst dalších 20“. Filtr týmu,
+hledání i změna pozice/kontextu vrací viditelné okno na prvních 20. Vybraní
+hráči zůstávají zachováni i mimo právě viditelnou stránku. Filtry se aplikují
+před stránkováním nad ověřenou seřazenou měsíční odpovědí; nejde o nový import.
+
+Průběžný grafický náhled ukazuje i neúplnou sestavu s prázdnými pozicemi.
+Šablony jsou „Sestava na hřišti“ (3–2–1) a „Karty hráčů“. Vizuální styly
+Clean, Crazy, Artistic, Technical a Pantha sdílejí efekty s Media Studiem.
+Pantha pro PHM používá původní dodaná pozadí z generátoru, optimalizovaná
+do lokálního WebP. Jiné organizace PHM pozadí nikdy nepřebírají.
+
+Fonty se načítají z existujícího `/studio/fonts/fonts.css`. Hlavní titulek
+sdílí s Media Studiem `designTypography`: Clean a Technical používají Anton,
+Crazy hravý Permanent Marker, Artistic Noto Serif a pouze Pantha používá Pantha.
+Popisky rolí, organizační řádek a patička používají zvolené písmo jmen; pouze
+styl Pantha zachovává původní Frontline. Výchozí PHM je Pantha / Hitch Grotesk,
+ostatní organizace začínají ve stylu Clean / Barlow Condensed. Ručně zvolené
+styly a písma v uložených konfiguracích zůstávají zachovány.
+Volba písma sdílí katalog Studia i jeho kontrolu podporovaných znaků;
+chybějící diakritika přepne na vhodný font, jména se netransliterují.
+
+Formáty: 16:9 (1920×1080), původní článek 16:10 (1600×1000), 1:1 (1080×1080),
+4:5 (1080×1350) a 9:16 (1080×1920). Story ponechává okraje pro rozhraní sociálních
+sítí. Výstupy čerpají portréty a týmová/divizní loga pouze z ověřených HMS
+sportovních URL přes existující `/api/studio-image`. Chybějící obrázky nahradí
+iniciály/text a správce dostane konkrétní upozornění. Žádná fotografie se nevymýšlí.
+
+PNG se exportuje ze stejného canvasu, který je právě v náhledu, až po načtení
+fontů a médií. Novější render vždy nahradí starší asynchronní odpověď. Grafické
+nastavení je součástí centrální pracovní verze, publikovaného snímku i JSON sestavy.
+Starší konfigurace bez grafických polí dostanou bezpečné výchozí hodnoty.
+Neuložená změna formátu/šablony blokuje publikaci stejně jako změna hráčů.
+Lokální preference zůstávají oddělené pro každou organizaci.
+
+Veřejný odkaz ukazuje grafiku a statistiky. Generovaný iframe používá `embed=1`,
+který zobrazí samotnou grafiku bez správy a duplicitního seznamu hráčů.
+Poměr stran iframe vychází ze zvoleného formátu. Veřejné URL nadále používají PHM doménu.
+
+## Další modernizace, postupně
+
+1. Dokončení All Stars: společné oficiální hvězdy, ověřené SO, backfill pozic,
+   případně migrace historických sestav.
+2. Porovnání týmů.
+3. Pavouk playoff.
+4. Betting / Sázkovka.
+5. Porovnání hráčů do playoff: odlišná funkce od nynějšího přehledu počtu startů.
+6. Player Cards.
+7. PHM Cup Winners: dohledat původní řešení a přidat do Awards; nyní není hotové.
+8. Our Team: ověřit persons API, oddělit veřejné sportovní/provozní profily
+   od neveřejných osobních dat a zobecnit konfiguraci organizací.
+
+Tento krok nerealizuje ostatní aplikace a nemění jejich stav na Ready.
