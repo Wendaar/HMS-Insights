@@ -27,6 +27,7 @@ test('public launchers use PHM while administration, external tools and planned 
  }
  const playoff=appsForOrganization('phm').find(a=>a.id==='playoff-players');
  assert.ok(playoff.links.manage.startsWith('/control/'));assert.equal(new URL(playoff.links.public).origin,PUBLIC_ORIGIN);
- assert.match(appsForOrganization('phm').find(a=>a.id==='all-stars').links.open,/github.io/);
+ const stars=appsForOrganization('phm').find(a=>a.id==='all-stars');
+ assert.equal(stars.links.open,'/control/apps/all-stars?org=phm');assert.equal(stars.links.public,PUBLIC_ORIGIN+'/all-stars/phm');
  assert.ok(mapForOrganization('yhg').flatMap(b=>b.nodes).every(n=>nodeUrl(n,'yhg')===null));
 });

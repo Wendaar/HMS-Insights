@@ -17,7 +17,7 @@ test('launchers require valid context and forward only supported destination par
   const schedule=new URL(nodeUrl(find('euchl','games-view'),'euchl',{seasonId:id}),'https://hms.test');assert.equal(schedule.searchParams.get('seasonId'),id);
   const obs=new URL(nodeUrl(find('euchl','obs-output'),'euchl',{gameId:id}),'https://hms.test');
   assert.equal(obs.searchParams.get('org'),'EUCHL');assert.equal(obs.searchParams.get('game'),id);assert.equal(obs.searchParams.get('mode'),'overlay');
-  assert.equal(nodeUrl(find('phm','all-stars'),'phm',{gameId:id,seasonId:id}),'https://wendaar.github.io/PHM-All-Stars-generator/');
+  assert.equal(nodeUrl(find('phm','all-stars'),'phm',{gameId:id,seasonId:id}),'/control/apps/all-stars?org=phm');
   assert.equal(nodeUrl(find('phm','social-output'),'phm'),'/studio/phm?lang=cs');
 });
 test('local context is organization scoped, durable and resilient to invalid browser storage',()=>{

@@ -19,9 +19,10 @@ Stavy vyjadřují úplnost registru, nikoli monitoring dostupnosti.
 PHM má 25 záznamů. Ověřené lokální cesty vycházejí z `vercel.json`, serveru a
 existujících souborů. Insights Definition odkazuje na pravidla v kódu, protože
 samostatný editor neexistuje. Player Cards mají ověřený datový endpoint,
-samostatný generátor není potvrzený. All Stars je samostatné repo
-`Wendaar/PHM-All-Stars-generator`; jeho README potvrzuje veřejnou Pages adresu
-a XLSX / přibalený snímek z Google Sheetu. Přímá URL Sheetu není ověřena.
+samostatný generátor není potvrzený. All Stars má novou API Betu přímo v HMS
+Insights se správou, CS/EN a veřejným výstupem; viz [All Stars](ALL-STARS.md).
+Původní repo `Wendaar/PHM-All-Stars-generator` a jeho historický XLSX / přibalený
+snímek z Google Sheetu zůstávají dostupné přes odkaz ve správě.
 Ostatní nástroje z inventáře zůstávají jasně nenastavené.
 
 První převedený vložený nástroj je **Hráči do playoff**, samostatná karta v
