@@ -105,6 +105,16 @@ export async function ensureEventSnapshotSchema(options = {}) {
 }
 
 // One statement observes a single committed snapshot, including games with no Příklepy.
+export async function loadAllStarsGames(organizationId,seasonId,from,to,options={}) {
+  const sql=options.sql??createSql(options.databaseUrl??databaseUrlFromEnv(options.env));
+  return sql.query(`select to_jsonb(g) as game,
+    coalesce((select jsonb_agg(t) from team_game_stats t where t.game_id=g.game_id),'[]'::jsonb) as teams,
+    coalesce((select jsonb_agg(p) from player_game_stats p where p.game_id=g.game_id),'[]'::jsonb) as players,
+    coalesce((select jsonb_agg(k) from goalie_game_stats k where k.game_id=g.game_id),'[]'::jsonb) as goalies
+    from games g where organization_id=$1::uuid and season_id=$2::uuid and played_on between $3::date and $4::date
+    and status='FINISHED' order by played_on,game_id limit 501`,[organizationId,seasonId,from,to]);
+}
+
 export async function loadGameSnapshot(gameId, options = {}) {
   const sql = options.sql ?? createSql(options.databaseUrl ?? databaseUrlFromEnv(options.env));
   const rows = await sql.query(`select to_jsonb(g) as game,
