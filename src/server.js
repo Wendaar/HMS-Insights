@@ -127,7 +127,7 @@ export const server = createServer(async (request, response) => {
     if(toolManage)response.setHeader('x-robots-tag','noindex, nofollow');
     response.end(request.method==='HEAD'?undefined:await readFile(join(publicDirectory,'tools','playoff-players',name)));return;
   }
-  if (['/control', '/control/', '/control/index.html', '/control/app.js', '/control/registry.js', '/control/map.js', '/control/control.css'].includes(url.pathname)) {
+  if (['/control', '/control/', '/control/index.html', '/control/app.js', '/control/registry.js', '/control/map.js', '/control/work-chats.js', '/control/control.css'].includes(url.pathname)) {
     response.setHeader('x-robots-tag', 'noindex, nofollow');
     response.setHeader('x-content-type-options', 'nosniff');
     response.setHeader('referrer-policy', 'no-referrer');
