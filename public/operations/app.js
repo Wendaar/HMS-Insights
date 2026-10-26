@@ -1,5 +1,6 @@
 import {operationsLoad, continueOperationsLoad} from './loading.js';
-import {aggregate, periods, warningLabels, csv, staffRanking, paymentLabel, paidLabel} from './model.js';
+import {aggregate, periods, warningLabels, csv, staffRanking, paymentLabel, paidLabel, personAssignments} from './model.js';
+import {saveSnapshot,readSnapshot,clearSnapshot} from './snapshot.js';
 import {demoData} from './demo.js';
 import {hmsBrand} from '../hms-brand.js';
 const $ = id => document.getElementById(id);
@@ -13,6 +14,12 @@ $('brand').innerHTML = hmsBrand('OPERATIONS');
 const views = {dashboard: 'Kontrolní přehled', games: 'Zápasy', staff: 'Směny a mzdy', teams: 'Fakturace týmů', closing: 'Měsíční uzávěrka'};
 let view = 'dashboard', data = null, mode = '', credential = '', requestId = 0, issue = '', chartPeriod = 'selected', chartRole = '';
 let configured = false, loadState = 'idle', loadError = '', pendingLoad = null;
+let authenticated=false,dataLoadedAt=0;
+const storage={getItem:key=>sessionStorage.getItem(key),setItem:(key,value)=>sessionStorage.setItem(key,value),removeItem:key=>sessionStorage.removeItem(key)};
+function remember(){
+  if(mode!=='live'||!data||!authenticated)return;
+  saveSnapshot(storage,$('org').value,{data,loadedAt:dataLoadedAt,range:range(),view,filters:{competition:$('competition').value,payment:$('payment').value,q:$('search').value},chartPeriod,chartRole});
+}
 const today = new Intl.DateTimeFormat('en-CA', {timeZone: 'Europe/Prague', year: 'numeric', month: '2-digit', day: '2-digit'}).format(new Date());
 $('from').value = today.slice(0, 7) + '-01';
 $('to').value = new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)), 0)).toISOString().slice(0, 10);
@@ -31,10 +38,10 @@ function select(label, entries, value, onChange) {
   menu.value = value; menu.onchange = () => onChange(menu.value); wrapper.append(menu);
   return wrapper;
 }
-function download(rows, columns) {
+function download(rows, columns, exportRange=range()) {
   const link = el('a');
   link.href = URL.createObjectURL(new Blob([csv(rows, columns)], {type: 'text/csv;charset=utf-8'}));
-  link.download = `hms-${$('org').value}-${view}-${range().from}-${range().to}${mode === 'demo' ? '-UKAZKA' : ''}.csv`;
+  link.download = `hms-${$('org').value}-${view}-${exportRange.from}-${exportRange.to}${mode === 'demo' ? '-UKAZKA' : ''}.csv`;
   link.click(); setTimeout(() => URL.revokeObjectURL(link.href), 1000);
 }
 function panel(title, note) {
@@ -42,10 +49,10 @@ function panel(title, note) {
   text.append(el('h2', title), el('p', note)); head.append(text); section.append(head);
   return section;
 }
-function table(title, note, rows, columns) {
+function table(title, note, rows, columns, exportRange) {
   const section = panel(title, note), exportButton = el('button', 'Export CSV', 'secondary');
   const exportRows = rows.map(row => ({...row, checks: row.checks?.map(key => warningLabels[key]), payment: row.payment}));
-  exportButton.disabled = !rows.length; exportButton.onclick = () => download(exportRows, columns); section.firstChild.append(exportButton);
+  exportButton.disabled = !rows.length; exportButton.onclick = () => download(exportRows, columns,exportRange); section.firstChild.append(exportButton);
   if (!rows.length) { section.append(el('p', 'Pro tento filtr nejsou žádné záznamy.', 'empty')); return section; }
   const wrap = el('div', undefined, 'table-wrap'), grid = el('table'), head = el('thead'), headRow = el('tr'), body = el('tbody');
   let ordered = [...rows], ascending = true, sortKey = '';
@@ -87,6 +94,16 @@ function gameRows(games) {
     homeBilling: paymentLabel(game.home.cash), awayBilling: paymentLabel(game.away.cash), homePaid: paidLabel(game.home.paid), awayPaid: paidLabel(game.away.paid), checks: game.warnings}));
 }
 function navigate(target, filter = '') { view = target; issue = filter; render(); }
+const detail=el('dialog',undefined,'person-detail');
+detail.setAttribute('aria-label','Konkrétní směny člověka');document.body.append(detail);
+function openPerson(name,period,role){
+  const rows=personAssignments(data.games,period,{name,role,competition:$('competition').value,payment:$('payment').value,q:$('search').value,today});
+  const close=el('button','Zavřít detail','secondary');close.onclick=()=>detail.close();
+  const header=el('div',undefined,'panel-head');header.append(el('h2','Směny · '+name),close);
+  detail.replaceChildren(header,el('p',`${period.from} – ${period.to} · ${rows.length} konkrétních směn · ${role||'všechny role'}. Filtry hlavního přehledu se nemění.`),
+    table('Zápasy a role','Každý řádek odpovídá jedné směně v grafu.',rows,[['date','Datum'],['time','Čas'],['venue','Venue'],['match','Zápas'],['competition','Soutěž'],['role','Role']],period));
+  detail.showModal();
+}
 const colors = ['#2864db', '#20a987', '#e6a32e', '#9a6bd0', '#df6e89', '#37a3c4', '#a68d42', '#738394'];
 function peopleChart(model) {
   const window = model.windows[chartPeriod], rows = staffRanking(model.staff, chartPeriod, chartRole);
@@ -108,23 +125,24 @@ function peopleChart(model) {
   for (const row of rows) {
     const column = el('button', undefined, 'person-column'), bars = el('span', undefined, 'column-bars');
     column.title = row.name + ': ' + row.total + ' směn. ' + Object.entries(row.competitions).map(([name, count]) => name + ': ' + count).join('; ');
-    column.setAttribute('aria-label', column.title + '. Otevřít směny tohoto člověka.');
+    column.setAttribute('aria-label', column.title + '. Zobrazit konkrétní zápasy a role.');column.setAttribute('aria-haspopup','dialog');
     column.append(el('b', row.total));
     for (const name of competitions) if (row.competitions[name]) {
       const segment = el('span', row.competitions[name], 'column-segment'); segment.style.height = (row.competitions[name] / max * 180) + 'px'; segment.style.backgroundColor = color(name); segment.title = name + ': ' + row.competitions[name]; bars.append(segment);
     }
     column.append(bars, el('span', row.name, 'person-name'));
-    column.onclick = () => { $('search').value = row.name; navigate('staff'); };
+    column.onclick = () => openPerson(row.name,window,chartRole);
     chart.append(column);
   }
-  scroll.append(chart); section.append(scroll, el('p', 'Kliknutím na člověka otevřete jeho tabulku. Jedna směna = přiřazení člověka v jedné roli k jednomu zápasu.', 'legend'));
+  scroll.append(chart); section.append(scroll, el('p', 'Kliknutím na sloupec otevřete konkrétní zápasy, časy, Venue a role daného člověka. Jedna směna = člověk v jedné roli u jednoho zápasu.', 'legend'));
   return section;
 }
 function render() {
+  remember();
   for (const button of $('navigation').children) button.setAttribute('aria-current', button.dataset.view === view ? 'page' : 'false');
   $('content').replaceChildren();
   if (!data) {
-    if (credential && ['loading', 'error'].includes(loadState)) {
+    if ((credential||authenticated) && ['loading', 'error'].includes(loadState)) {
       const count = pendingLoad?.games.length ?? 0;
       const section = panel(loadState === 'loading' ? 'Načítám provozní údaje HMS' : 'Načítání se přerušilo',
         count ? `Zachováno ${count} zápasů z dokončených stránek. Součty se zobrazí po načtení celého období.` : loadState === 'loading' ? 'Načítám vybrané období a podklady ke srovnání.' : 'První stránku se nepodařilo dokončit. Načítání můžete zopakovat.');
@@ -143,9 +161,9 @@ function render() {
   catch (error) { $('message').textContent = error.message; return; }
   const {games, staff, teams, cashIssues} = model, exceptions = games.filter(game => game.warnings.length);
   if (mode === 'demo') $('content').append(el('div', 'UKÁZKA · smyšlené zápasy, jména i úhrady. Pro skutečné podklady načtěte HMS.', 'notice'));
-  const unknownTeams = games.flatMap(game => [game.home, game.away]).filter(team => team.id && team.cash === null).length;
+  const unknownTeams = new Set(games.flatMap(game => [game.home, game.away]).filter(team => team.id && team.cash === null).map(team=>team.id)).size;
   const unknownPayments = games.flatMap(game => [game.home, game.away]).filter(team => team.id && team.cash === true && team.paid === null).length;
-  if (mode === 'live' && (unknownTeams || unknownPayments)) $('content').append(el('div', `Dostupnost údajů: ${unknownTeams} týmových záznamů bez platebního režimu, ${unknownPayments} hotovostních týmových záznamů bez úhrady. Neznámé hodnoty jsou označené „K ověření“ nebo „API neuvádí“.`, 'notice'));
+  if (mode === 'live' && (unknownTeams || unknownPayments)) $('content').append(el('div', `Platební údaje zatím nejsou úplně připojené z HMS. U ${unknownTeams} různých týmů API neposkytlo External Id; u ${unknownPayments} hotovostních týmových účastí neposkytlo úhradu. Vyplněné údaje v HMS není potřeba opravovat. Nejde o zjištěné chyby týmů.`, 'notice'));
   if (view === 'dashboard') {
     const cards = el('div', undefined, 'cards');
     for (const [label, count, note, target, filter] of [
@@ -192,10 +210,13 @@ function choices() {
   const value = $('competition').value, options = new Map(data.games.map(game => [game.competitionId || game.competition, game.competition]));
   $('competition').replaceChildren(new Option('Všechny soutěže', ''), ...[...options].map(([id, name]) => new Option(name, id)));
   if (options.has(value)) $('competition').value = value;
+  const billingAvailable=data.games.some(game=>[game.home,game.away].some(team=>team.id&&team.cash!==null));
+  for(const option of $('payment').options)if(['cash','invoice'].includes(option.value)){option.disabled=!billingAvailable;option.title=billingAvailable?'':'Platební režimy se zatím z HMS nepřenášejí.';}
+  if([...$('payment').options].find(option=>option.value===$('payment').value)?.disabled)$('payment').value='';
 }
 async function load(resume = false) {
   try { periods(range().from, range().to); } catch (error) { $('message').textContent = error.message; return; }
-  if (!credential) { $('message').textContent = 'Zadejte provozní kód organizace.'; return; }
+  if (!credential&&!authenticated) { $('message').textContent = 'Zadejte provozní kód organizace.'; return; }
   const id = ++requestId, org = $('org').value, requestedRange = range(), requestCredential = credential;
   if (!resume || !pendingLoad || pendingLoad.org !== org || pendingLoad.range.from !== requestedRange.from || pendingLoad.range.to !== requestedRange.to) pendingLoad = operationsLoad(org, requestedRange);
   const state = pendingLoad;
@@ -209,7 +230,7 @@ async function load(resume = false) {
       progress: (count, delay) => { if (id === requestId) $('message').textContent = delay ? 'HMS je dočasně vytížené. Opakuji stránku za ' + Math.ceil(delay / 1000) + ' s · načteno ' + count + ' zápasů.' : 'Načítám HMS · ' + count + ' zápasů včetně srovnávacích období…'; },
       readPage: async offset => {
         let response;
-        try { response = await fetch('/api/operations?' + new URLSearchParams({org, ...requestedRange, offset}), {headers: {authorization: 'Bearer ' + requestCredential}, cache: 'no-store', signal: AbortSignal.timeout(28000)}); }
+        try { response = await fetch('/api/operations?' + new URLSearchParams({org, ...requestedRange, offset}), {headers: requestCredential?{authorization:'Bearer '+requestCredential}:{}, cache: 'no-store', signal: AbortSignal.timeout(28000)}); }
         catch (cause) { const error = Error('Spojení s HMS se přerušilo.'); error.retryable = true; throw error; }
         let result;
         try { result = await response.json(); } catch { const error = Error('HMS nevrátilo datovou odpověď.'); error.retryable = response.status >= 500; throw error; }
@@ -218,42 +239,76 @@ async function load(resume = false) {
       }
     });
     if (!done || id !== requestId) return;
-    data = {...state.last, games: state.games}; mode = 'live'; loadState = 'ready'; pendingLoad = null;
+    data = {...state.last, games: state.games}; dataLoadedAt=Date.now(); mode = 'live'; loadState = 'ready'; pendingLoad = null;
     $('source').textContent = 'HMS API · živá data';
     $('message').textContent = 'Načteno ' + new Date(data.readAt).toLocaleString('cs-CZ') + ' · ' + data.games.length + ' zápasů včetně srovnávacích období.';
     $('access-note').textContent = 'Živá data jsou odemčená pro tuto organizaci.'; choices(); render();
   } catch (error) {
     if (id !== requestId) return;
     data = null; loadState = 'error'; loadError = error.message;
-    if (error.status === 401) { credential = ''; pendingLoad = null; loadState = 'idle'; }
+    if (error.status === 401) { authenticated=false;clearSnapshot(storage,org);credential = ''; pendingLoad = null; loadState = 'idle'; }
     $('message').textContent = error.message;
-    if (credential) { $('source').textContent = 'HMS · načítání přerušeno'; $('access-note').textContent = 'Kód zůstává v paměti. Načtené stránky lze zachovat a pokračovat.'; }
+    if (credential||authenticated) { $('source').textContent = 'HMS · načítání přerušeno'; $('access-note').textContent = 'Kód zůstává v paměti. Načtené stránky lze zachovat a pokračovat.'; }
     render();
   }
 }
 async function access() {
-  const id = ++requestId, org = $('org').value;
-  credential = ''; $('secret').value = ''; data = null; mode = ''; configured = false; loadState = 'idle'; loadError = ''; pendingLoad = null;
-  $('lock').hidden = true; $('competition').replaceChildren(new Option('Všechny soutěže', '')); $('payment').value = ''; $('search').value = '';
-  $('map-link').href = '/control?' + new URLSearchParams({org}); history.replaceState(null, '', '?' + new URLSearchParams({org}));
-  $('source').textContent = 'Přístup k provozním datům'; $('access-note').textContent = 'Živá data chrání provozní kód vaší organizace.'; $('message').textContent = ''; render();
-  try {
-    const response = await fetch('/api/operations?' + new URLSearchParams({org, action: 'access'})); const info = await response.json();
-    if (id !== requestId) return; if (!response.ok) throw Error(info.error);
-    for (const organization of info.organizations ?? []) if (![...$('org').options].some(option => option.value === organization.slug)) $('org').append(new Option(organization.name, organization.slug));
-    configured = info.configured;
-    $('access-note').textContent = configured ? 'Zadejte provozní kód organizace. Kód se drží jen v paměti a nikam se neukládá.' : 'Živý přístup čeká na nastavení pro tuto organizaci. K dispozici je ukázka.'; render();
-  } catch (error) { if (id === requestId) $('message').textContent = error.message; }
+  const id=++requestId,org=$('org').value;
+  credential='';authenticated=false;$('secret').value='';data=null;mode='';configured=false;loadState='idle';loadError='';pendingLoad=null;
+  if(detail.open)detail.close();
+  $('lock').hidden=true;$('competition').replaceChildren(new Option('Všechny soutěže',''));$('payment').value='';$('search').value='';
+  $('map-link').href='/control?'+new URLSearchParams({org});history.replaceState(null,'','?'+new URLSearchParams({org}));
+  $('source').textContent='Přístup k provozním datům';$('access-note').textContent='Ověřuji uložené přihlášení…';$('message').textContent='';render();
+  try{
+    const response=await fetch('/api/operations?'+new URLSearchParams({org,action:'access'}),{cache:'no-store'});const info=await response.json();
+    if(id!==requestId)return;if(!response.ok)throw Error(info.error);
+    for(const organization of info.organizations??[])if(![...$('org').options].some(option=>option.value===organization.slug))$('org').append(new Option(organization.name,organization.slug));
+    configured=info.configured;authenticated=info.authorized===true;
+    $('access-note').textContent=authenticated?'Přihlášení je zapamatované. Zamknutím jej ukončíte.':configured?'Zadejte provozní kód. Přihlášení zůstane platné 8 hodin; samotný kód neukládáme.':'Živý přístup čeká na nastavení pro tuto organizaci. K dispozici je ukázka.';
+    if(!authenticated){clearSnapshot(storage,org);render();return;}
+    $('lock').hidden=false;
+    const saved=readSnapshot(storage,org);
+    if(saved){
+      data=saved.data;dataLoadedAt=saved.loadedAt;mode='live';loadState='ready';
+      $('from').value=saved.range.from;$('to').value=saved.range.to;
+      view=Object.hasOwn(views,saved.view)?saved.view:'dashboard';chartPeriod=['previous','selected','next'].includes(saved.chartPeriod)?saved.chartPeriod:'selected';chartRole=['','Rozhodčí','Časoměřič'].includes(saved.chartRole)?saved.chartRole:'';
+      choices();if([...$('competition').options].some(option=>option.value===saved.filters?.competition))$('competition').value=saved.filters.competition;
+      if(['','invoice','cash','unknown'].includes(saved.filters?.payment)&&![...$('payment').options].find(option=>option.value===saved.filters.payment)?.disabled)$('payment').value=saved.filters.payment;
+      $('search').value=typeof saved.filters?.q==='string'?saved.filters.q.slice(0,160):'';
+      $('source').textContent='HMS · obnovený přehled';$('message').textContent='Přehled obnoven bez nového načítání. Data z '+new Date(data.readAt).toLocaleString('cs-CZ')+'. Tlačítkem Použít období načtete aktuální HMS.';
+      render();
+    }else await load();
+  }catch(error){if(id===requestId)$('message').textContent=error.message;}
 }
-$('unlock').onsubmit = event => { event.preventDefault(); if ($('secret').value) credential = $('secret').value; $('secret').value = ''; load(!!pendingLoad); };
+async function unlock(event){
+  event.preventDefault();const supplied=$('secret').value;$('secret').value='';
+  if(!supplied&&!authenticated&&!credential){$('message').textContent='Zadejte provozní kód organizace.';return;}
+  if(supplied){
+    const org=$('org').value,id=++requestId;
+    try{
+      const response=await fetch('/api/operations?'+new URLSearchParams({org,action:'session'}),{method:'POST',headers:{authorization:'Bearer '+supplied},cache:'no-store'});
+      const result=await response.json();if(id!==requestId)return;if(!response.ok)throw Error(result.error||'Přístup se nepodařilo ověřit.');
+      authenticated=result.authorized===true;credential='';
+    }catch(error){$('message').textContent=error.message;return;}
+  }
+  await load(!!pendingLoad);
+}
+async function lock(){
+  const org=$('org').value;++requestId;clearSnapshot(storage,org);credential='';authenticated=false;data=null;pendingLoad=null;loadState='idle';mode='';if(detail.open)detail.close();render();
+  try{
+    const response=await fetch('/api/operations?'+new URLSearchParams({org,action:'logout'}),{method:'POST',cache:'no-store'});
+    if(!response.ok)throw Error();await access();
+  }catch{$('message').textContent='Data jsou skrytá. Spojení se přerušilo; odhlášení prosím zopakujte.';}
+}
+$('unlock').onsubmit=unlock;
 $('demo').onclick = () => {
   try {
     periods(range().from, range().to); ++requestId; pendingLoad = null; loadState = 'idle'; credential = ''; $('secret').value = ''; data = demoData($('org').value, range()); mode = 'demo';
     $('source').textContent = 'UKÁZKA · smyšlená data'; $('lock').hidden = false; $('message').textContent = 'Ukázkový režim · nejde o skutečné údaje HMS.'; choices(); render();
   } catch (error) { $('message').textContent = error.message; }
 };
-$('lock').onclick = access; $('org').onchange = access;
-$('filters').onsubmit = event => { event.preventDefault(); if (mode === 'demo') $('demo').click(); else if (credential) load(); else $('message').textContent = 'Nejdříve odemkněte data nebo otevřete ukázku.'; };
+$('lock').onclick = lock; $('org').onchange = access;
+$('filters').onsubmit = event => { event.preventDefault(); if (mode === 'demo') $('demo').click(); else if (credential||authenticated) load(); else $('message').textContent = 'Nejdříve odemkněte data nebo otevřete ukázku.'; };
 $('competition').onchange = render; $('payment').onchange = render; $('search').oninput = render;
 for (const id of ['from', 'to']) $(id).onchange = () => { ++requestId; data = null; pendingLoad = null; loadState = 'idle'; render(); $('message').textContent = 'Období změněno. Použijte období pro nové načtení.'; };
 access();
