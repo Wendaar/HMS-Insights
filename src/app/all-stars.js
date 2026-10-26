@@ -4,6 +4,8 @@ import {organizationConfig} from './organizations.js';
 import {controlContextCatalog} from './control-context.js';
 import {loadAllStarsGames} from '../infrastructure/postgres-repository.js';
 import {readPublicGameDay} from './season-games.js';
+import {graphicSettings} from '../../public/all-stars/presentation.js';
+import {sportingImage} from '../../public/game-report-media.js';
 export const limits={F:3,D:2,G:1};
 const lower=v=>String(v??'').toLowerCase();
 export function allStarsScope(input){
@@ -24,14 +26,14 @@ export function allStarsSettings(input){
       seen.add(id);return id;
     });
   }
-  return {...scope,title:input.title.trim(),selection,rules:'calendar-manual-v1'};
+  return {...scope,title:input.title.trim(),selection,graphics:graphicSettings(input.graphics),rules:'calendar-manual-v1'};
 }
 // Only recorded sporting facts enter this read model. Never sum different teams.
 export function nominateAllStars(snapshots,fixtures,scope){
   const expected=fixtures.filter(g=>g.status==='FINISHED'&&(!scope.groupId||g.group.id===scope.groupId));
   const byId=new Map(snapshots.map(s=>[lower(s.game.game_id),s]));
   const selected=expected.map(g=>byId.get(g.id)).filter(Boolean);
-  const groups=[...new Map(fixtures.filter(g=>g.group.id).map(g=>[g.group.id,g.group])).values()];
+  const groups=[...new Map(fixtures.filter(g=>g.group.id).map(g=>[g.group.id,{...g.group,logoUrl:sportingImage(snapshots.find(s=>lower(s.game.group_id)===g.group.id)?.game.group_logo_url)}])).values()];
   const teamGames=new Map(),players=new Map();let unsuitable=0,verifiedByTotals=0;
   for(const game of expected)for(const team of [game.home,game.away])teamGames.set(team.id,(teamGames.get(team.id)??0)+1);
   for(const snapshot of selected){
@@ -51,7 +53,8 @@ export function nominateAllStars(snapshots,fixtures,scope){
       const team=[summary.home,summary.away].find(t=>lower(t.id)===lower(row.teamId));
       if(!team||!isGameId(row.id))continue;
       const id=lower(row.id)+'|'+lower(team.id),key=id+'|'+role,old=players.get(key);
-      const p=old??{id,playerId:lower(row.id),teamId:lower(team.id),name:row.name,team:team.name,imageUrl:row.imageUrl,kind:role,gp:0,goals:0,assists:0,pim:0,saves:0,ga:0,statsKnown:true,positions:new Set()};
+      const p=old??{id,playerId:lower(row.id),teamId:lower(team.id),name:row.name,team:team.name,imageUrl:row.imageUrl,teamLogoUrl:team.logoUrl,kind:role,gp:0,goals:0,assists:0,pim:0,saves:0,ga:0,statsKnown:true,positions:new Set()};
+      p.imageUrl??=row.imageUrl;p.teamLogoUrl??=team.logoUrl;
       p.gp++;
       if(role==='S'){
         p.goals+=row.goals;p.assists+=row.assists;p.pim+=row.penaltyMinutes;

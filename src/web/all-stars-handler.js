@@ -50,7 +50,7 @@ export function createAllStarsHandler(options={}){
       const config=allStarsSettings(instance.draft),data=await read(org.code,config,{...options,env});
       if(!data.monthClosed||!data.coverage.complete)return fail(422,'Publikace vyžaduje uzavřený měsíc a všechny dokončené zápasy s ověřenými statistikami.','Publication requires a closed month and verified statistics for every finished game.');
       const lineup=resolvedSelection(config,data,{complete:true});
-      const output={lineup,season:data.season,group:data.groups.find(g=>g.id===config.groupId),coverage:data.coverage,readAt:data.readAt,rules:data.rules,source:data.source};
+      const output={lineup,graphics:config.graphics,season:data.season,group:data.groups.find(g=>g.id===config.groupId),coverage:data.coverage,readAt:data.readAt,rules:data.rules,source:data.source};
       // Compare-and-swap twice: publishing never overwrites a concurrent edit.
       const frozen=await store.save(org.code,slug,{...config,output},body.revision,null);
       if(!frozen)return fail(409,'Nastavení se změnilo.','The draft changed.');

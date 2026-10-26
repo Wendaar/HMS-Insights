@@ -66,13 +66,48 @@ provenienci jako neměnný snímek; pozdější import nebo draft ji nezmění.
 Veřejný endpoint nevrací pracovní výběr, přístupové hodnoty ani surové řádky.
 
 Správa má jmenné výběry sezony, divize, týmu a hráčů, JSON přenos sestavy
-ověřený proti aktuálním kandidátům a textový PNG export bez závislosti na CORS
-fotografií. Nový veřejný výstup lze vložit do iframe, s jazykem v URL.
+ověřený proti aktuálním kandidátům a grafický náhled totožný s PNG exportem.
+Nový veřejný výstup lze vložit do iframe, s jazykem v URL.
+
+## Grafické výstupy a shortlist
+
+Výchozí výpis má 20 kandidátů a tlačítko „Načíst dalších 20“. Filtr týmu,
+hledání i změna pozice/kontextu vrací viditelné okno na prvních 20. Vybraní
+hráči zůstávají zachováni i mimo právě viditelnou stránku. Filtry se aplikují
+před stránkováním nad ověřenou seřazenou měsíční odpovědí; nejde o nový import.
+
+Průběžný grafický náhled ukazuje i neúplnou sestavu s prázdnými pozicemi.
+Šablony jsou „Sestava na hřišti“ (3–2–1) a „Karty hráčů“. Vizuální styly
+Clean, Crazy, Artistic, Technical a Pantha sdílejí efekty s Media Studiem.
+Pantha pro PHM používá původní dodaná pozadí z generátoru, optimalizovaná
+do lokálního WebP. Jiné organizace PHM pozadí nikdy nepřebírají.
+
+Fonty se načítají z existujícího `/studio/fonts/fonts.css`: Pantha pro hlavní
+titulek, Frontline pro popisky a ve výchozím stavu Hitch Grotesk pro jména.
+Volba písma sdílí katalog Studia i jeho kontrolu podporovaných znaků;
+chybějící diakritika přepne na vhodný font, jména se netransliterují.
+
+Formáty: 16:9 (1920×1080), původní článek 16:10 (1600×1000), 1:1 (1080×1080),
+4:5 (1080×1350) a 9:16 (1080×1920). Story ponechává okraje pro rozhraní sociálních
+sítí. Výstupy čerpají portréty a týmová/divizní loga pouze z ověřených HMS
+sportovních URL přes existující `/api/studio-image`. Chybějící obrázky nahradí
+iniciály/text a správce dostane konkrétní upozornění. Žádná fotografie se nevymýšlí.
+
+PNG se exportuje ze stejného canvasu, který je právě v náhledu, až po načtení
+fontů a médií. Novější render vždy nahradí starší asynchronní odpověď. Grafické
+nastavení je součástí centrální pracovní verze, publikovaného snímku i JSON sestavy.
+Starší konfigurace bez grafických polí dostanou bezpečné výchozí hodnoty.
+Neuložená změna formátu/šablony blokuje publikaci stejně jako změna hráčů.
+Lokální preference zůstávají oddělené pro každou organizaci.
+
+Veřejný odkaz ukazuje grafiku a statistiky. Generovaný iframe používá `embed=1`,
+který zobrazí samotnou grafiku bez správy a duplicitního seznamu hráčů.
+Poměr stran iframe vychází ze zvoleného formátu. Veřejné URL nadále používají PHM doménu.
 
 ## Další modernizace, postupně
 
 1. Dokončení All Stars: společné oficiální hvězdy, ověřené SO, backfill pozic,
-   vizuální šablony a portréty, případně migrace historických sestav.
+   případně migrace historických sestav.
 2. Porovnání týmů.
 3. Pavouk playoff.
 4. Betting / Sázkovka.
