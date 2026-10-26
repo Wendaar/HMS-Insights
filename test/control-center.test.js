@@ -44,7 +44,7 @@ test('control routes and assets work locally without altering Studio, feeds or r
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   const root=`http://127.0.0.1:${server.address().port}`;
   try{
-    for(const path of ['/control','/control/','/control/index.html','/control/app.js','/control/registry.js','/control/map.js','/control/control.css']){
+    for(const path of ['/control','/control/','/control/index.html','/control/app.js','/control/registry.js','/control/map.js','/control/work-chats.js','/control/control.css']){
       const response=await fetch(root+path);assert.equal(response.status,200,path);
       assert.equal(response.headers.get('x-robots-tag'),'noindex, nofollow');
       assert.ok((await response.text()).length>100);

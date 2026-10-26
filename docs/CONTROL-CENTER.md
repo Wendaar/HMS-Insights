@@ -158,6 +158,25 @@ Nezakládat další samostatný rozcestník. Zachovat trvalý vstup `/control`.
 
 ## Veřejné Insights v CZ / EN a čitelné odkazy
 
+### Pracovní chaty a Worky
+
+`public/control/work-chats.js` obsahuje ověřené názvy a ID pracovních chatů
+a přiřazení k aplikacím/nodům. Záznam není obsah konverzace ani sdílený snapshot.
+Odkaz `Řešit v chatu` je dostupný přímo na nodu, v podrobnostech i v seznamu.
+Tlačítko `Chaty a Worky` otevře přehled témat a přesných názvů s možností
+zkopírování. Chybějící přiřazení je označeno výslovně; chat neovlivňuje stav
+Ready/Beta/Planned ani funkčnost aplikace pro organizaci.
+
+Lokální Worky používají podporované `codex://threads/<id>`; webový chat
+Media Studia má přímý soukromý odkaz `https://chatgpt.com/c/<id>`. Otevření
+vyžaduje odpovídající aplikaci/účet. Některé prohlížeče vyžadují potvrzení
+externí aplikace; automatizované otevření v testovacím prohlížeči bylo blokováno.
+Vždy proto zachovat dohledání podle kopírovatelného názvu. Nevytvářet veřejné
+share odkazy ani neměnit oprávnění chatů. Při založení nového pracovního chatu
+aktualizovat přiřazení; statický registr sám nezjišťuje pozdější přejmenování.
+
+## Veřejné Insights v CZ / EN a čitelné odkazy
+
 Veřejný výběr i archiv podporují `?lang=cs` a `?lang=en` a mají přepínač CZ/EN.
 EUCHL má bez parametru výchozí angličtinu, PHM češtinu. Jazyk se předává při
 filtrování, načítání dalších karet, sdílení a přechodu z reportu. Popisy výkonů
