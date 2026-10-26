@@ -44,6 +44,8 @@ try{
   await control.selectOption('#layer','sponsors');await control.selectOption('#partner-source','hms');await control.selectOption('#layer-side','home');await control.locator('.partner-choices li').first().waitFor();assert.equal(await control.locator('.partner-choices li').count(),2);
   await control.locator('[data-down="0"]').click();await Promise.all([control.waitForResponse(r=>r.request().method()==='PATCH'&&r.url().includes('library=1')),control.locator('#save-partners').click()]);await control.locator('#save-partners').waitFor();
   const library=[...libraries.values()][0];assert.deepEqual(library.items.filter(a=>a.kind==='hms-sponsor').map(a=>a.sponsorId),[uid(21),uid(20)]);assert.equal(await obs.locator('#app>iframe').count(),0,'Editing playlist must preserve hidden state');
+  await control.locator('#partner-slot').getByText('Claim B',{exact:true}).waitFor();
+  await control.locator('#partner-slot').screenshot({path:'artifacts/broadcast/central-partner-selection.png'});
   await control.locator('#toggle-channel').click();await obs.waitForFunction(()=>document.querySelector('#app>iframe')?.contentDocument?.body?.textContent.includes('Team partner B'));
   await control.selectOption('#layer','announcement');await obs.waitForFunction(()=>document.querySelector('#app>iframe')?.contentDocument?.querySelector('[data-layer=announcement]'));assert.equal(await control.locator('#channel-url').inputValue(),obsUrl);
   const announce=obs.frames().find(f=>f.url().includes('mode=overlay'));assert.equal(await announce.locator('[data-layer=announcement]').evaluate(el=>el.scrollHeight<=el.clientHeight),true);

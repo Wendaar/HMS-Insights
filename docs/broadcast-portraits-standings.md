@@ -2,6 +2,14 @@
 
 Změny jsou v testovacím PR #22, bez nasazení do produkce.
 
+## Společný katalog partnerů a QR
+
+Přehled `sponsors.html` i Studio čtou stejný organizační endpoint `catalog=sponsors`. Přehled je pouze čtecí pohled na HMS, nikoli další databáze ani samostatný editor. Zdrojové názvy, loga, claimy, weby a týmové vazby patří do HMS. Studio ukládá pouze reference na ID partnerů, povolení a pořadí pro vysílací kanál; malé a velké zobrazení sdílejí tento výběr. Odkazy na katalog jsou relativní, takže při nasazení na doménu produkce zůstanou na stejném hostiteli.
+
+Vlastní knihovna je označena jako doplněk konkrétního kanálu, nikoli jako centrální katalog organizace. Ani položka s omezením na organizaci se tím nestává sdílenou mezi kanály.
+
+Navržené budoucí centrální ukládání QR: soubor partnera s rolí QR přiřadit ke skutečnému sponzorovi; obecnou výzvu na sociální sítě, rozcestník nebo kanál přiřadit k organizaci, případně omezit na tým či zápas. Obecná výzva se nemá vydávat za sponzora. Tato část čeká na podporu souborů a jejich rolí v HMS API. Do té doby funguje ruční přidání hotového QR pro kanál; běžné logo se nikdy automaticky nepovažuje za QR.
+
 ## Fotografie a týmová identita
 
 - Soupiska ukazuje fotografii každého hráče, pokud ji HMS má, a výraznější týmové logo. Jednotýmová stránka skládá až 20 hráčů do dvou sloupců, aby portréty zůstaly čitelné. Dvoutýmový přehled zachovává 12 hráčů na tým a stránku. Ovladač a OBS mají stejné stránkování.
