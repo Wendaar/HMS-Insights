@@ -3,20 +3,34 @@ import {hasBearerSecret} from '../security/bearer-secret.js';
 import {readOperations} from '../app/operations.js';
 import {HmsRequestError} from '../hms/client.js';
 import {ScheduleSourceError} from '../app/season-games.js';
+import {hasOperationsSession, sessionCookie, clearSessionCookie} from '../security/operations-session.js';
 export function createOperationsHandler(options = {}) {
   return async (req, res) => {
-    res.setHeader('cache-control', 'private, no-store'); res.setHeader('vary', 'Authorization');
+    res.setHeader('cache-control', 'private, no-store'); res.setHeader('vary', 'Authorization, Cookie');
     res.setHeader('x-content-type-options', 'nosniff'); res.setHeader('referrer-policy', 'no-referrer');
     const fail = (status, error, code, retryable = false) => res.status(status).json({error, code, retryable});
-    if (req.method !== 'GET') { res.setHeader('allow', 'GET'); return fail(405, 'Pouze čtení.', 'method'); }
+    const action=req.query?.action;
+    const method=['session','logout'].includes(action)?'POST':'GET';
+    if (req.method !== method) { res.setHeader('allow', method); return fail(405, 'Nepovolená metoda.', 'method'); }
     const env = options.env ?? process.env;
     let org;
     try { org = organizationEntry(req.query?.org, env); } catch { return fail(404, 'Neznámá organizace.', 'organization'); }
     const secret = env[`HMS_${org.code}_OPERATIONS_SECRET`];
-    if (req.query.action === 'access') return res.status(200).json({org: org.code, configured: !!secret,
+    if(['session','logout'].includes(action)&&req.headers?.origin){
+      try{if(new URL(req.headers.origin).host!==req.headers.host)throw Error();}catch{return fail(403,'Požadavek pochází z jiné stránky.','origin');}
+    }
+    if(action==='logout'){res.setHeader('set-cookie',clearSessionCookie(org));return res.status(200).json({org:org.code,authorized:false});}
+    const bearer=!!secret&&hasBearerSecret({...req,headers:{authorization:req.headers?.authorization}},secret);
+    const authorized=bearer||hasOperationsSession(req,org,secret,options.now?.getTime());
+    if (action === 'access') return res.status(200).json({org: org.code, configured: !!secret, authorized,
       organizations: publicOrganizations(env).map(({code, slug, name}) => ({code, slug, name}))});
     if (!secret) return fail(503, 'Provozní přístup této organizace čeká na nastavení.', 'configuration');
-    if (!hasBearerSecret({...req, headers: {authorization: req.headers?.authorization}}, secret)) return fail(401, 'Zadejte platný provozní kód organizace.', 'access');
+    if(action==='session'){
+      if(!bearer)return fail(401,'Zadejte platný provozní kód organizace.','access');
+      res.setHeader('set-cookie',sessionCookie(org,secret,options.now?.getTime()));
+      return res.status(200).json({org:org.code,authorized:true});
+    }
+    if (!authorized) return fail(401, 'Zadejte platný provozní kód organizace.', 'access');
     try { return res.status(200).json(await (options.read ?? readOperations)(req.query, options)); }
     catch (error) {
       if (error instanceof TypeError && /^(Vyberte |Neplatná stránka)/.test(error.message)) return fail(400, error.message, 'query');

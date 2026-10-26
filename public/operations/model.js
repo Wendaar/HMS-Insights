@@ -15,12 +15,12 @@ const clean = value => typeof value === 'string' ? value.trim().slice(0, 160) : 
 const fold = value => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 const atPath = (object, key) => key?.split('.').reduce((value, part) => value?.[part], object);
 const tokens = value => fold(value).split(/[^a-z0-9]+/).filter(Boolean);
+const notRequiredNames=new Set(['neni potreba','neni treba','not required','not needed']);
+const assignmentNames=value=>(Array.isArray(value)?value:[value]).flatMap(person=>typeof person==='string'?person.split(/[;,\n]+/):person&&typeof person==='object'?[person.name||[person.firstName,person.lastName].filter(Boolean).join(' ')]:[]).map(clean).filter(Boolean);
+export const notRequired=value=>assignmentNames(value).length>0&&assignmentNames(value).every(name=>notRequiredNames.has(fold(name)));
 export function people(value) {
   if (value === undefined) return null;
-  return [...new Set((Array.isArray(value) ? value : [value]).flatMap(person =>
-    typeof person === 'string' ? person.split(/[;,\n]+/) : person && typeof person === 'object' ?
-      [person.name || [person.firstName, person.lastName].filter(Boolean).join(' ')] : []
-  ).map(clean).filter(Boolean))];
+  return [...new Set(assignmentNames(value).filter(name=>!notRequiredNames.has(fold(name))))];
 }
 export function teamCash(team, rules = {}) {
   const paths = rules.cashPath ? [rules.cashPath] : ['externalId', 'foreignId', 'foreingId'];
@@ -54,11 +54,11 @@ export function normalizeGame(game, rules = {}) {
     home: team(game.HomeTeam, game.homeTeamId, 'home'), away: team(game.AwayTeam, game.awayTeamId, 'away'),
     teamsKnown: (Object.hasOwn(game, 'HomeTeam') || Object.hasOwn(game, 'homeTeamId')) && (Object.hasOwn(game, 'AwayTeam') || Object.hasOwn(game, 'awayTeamId')),
     competitionId: clean(competition?.competitionId ?? game.competitionId), competition: clean(competition?.name) || 'Soutěž neurčena',
-    venue: clean(game.Venue?.name), referees: people(game.referee), timekeepers: people(game.timekeeper)
+    venue: clean(game.Venue?.name), referees: people(game.referee), timekeepers: people(game.timekeeper), refereeNotRequired:notRequired(game.referee),timekeeperNotRequired:notRequired(game.timekeeper)
   };
 }
 export const inactive = game => ['CANCELLED', 'CANCELED', 'DELETED'].includes(game.status);
-export const paymentLabel = cash => cash === true ? 'CASH / HOTOVĚ' : cash === false ? 'FAKTURY' : 'K ověření';
+export const paymentLabel = cash => cash === true ? 'CASH / HOTOVĚ' : cash === false ? 'FAKTURY' : 'API neposkytuje';
 export const paidLabel = paid => paid === true ? 'PAID' : paid === false ? 'NOT PAID' : 'API neuvádí';
 export function paymentIssues(game, today) {
   if (inactive(game) || game.date >= today) return [];
@@ -74,8 +74,8 @@ export function warnings(game, today) {
   if (inactive(game)) return [];
   const result = [];
   if (game.referees === null || game.timekeepers === null) result.push('staff_unknown');
-  if (game.referees?.length === 0) result.push('referee');
-  if (game.timekeepers?.length === 0) result.push('timekeeper');
+  if (!game.refereeNotRequired && game.referees?.length === 0) result.push('referee');
+  if (!game.timekeeperNotRequired && game.timekeepers?.length === 0) result.push('timekeeper');
   if (game.teamsKnown && (!game.home.id || !game.away.id)) result.push(game.date >= today ? 'ice' : 'past_teams');
   if (!game.teamsKnown) result.push('teams_unknown');
   const payments = paymentIssues(game, today);
@@ -87,12 +87,13 @@ export function warnings(game, today) {
 }
 export const warningLabels = {
   referee: 'Chybí rozhodčí', timekeeper: 'Chybí časoměřič', ice: 'Volný led · chybí soupeř', past_teams: 'Minulý zápas bez soupeře',
-  cash: 'HOTOVĚ · tým nemá PAID', payment_unknown: 'HOTOVĚ · úhrada týmu není v API', cash_unknown: 'Platební režim týmu k ověření',
+  cash: 'HOTOVĚ · tým nemá PAID', payment_unknown: 'HOTOVĚ · úhrada týmu není v API', cash_unknown: 'Platební režim není v API',
   staff_unknown: 'Personál není ve zdroji', teams_unknown: 'Týmy nejsou ve zdroji', competition_unknown: 'Soutěž není ve zdroji'
 };
 export function staffRanking(staff, period = 'selected', role = '') {
   const rows = new Map();
   for (const person of staff) {
+    if(notRequiredNames.has(fold(person.name)))continue;
     if (role && person.role !== role) continue;
     const count = person[period] ?? 0;
     if (!count) continue;
@@ -109,13 +110,15 @@ export function aggregate(games, range, {competition = '', q = '', today, paymen
     (!payment || [game.home, game.away].some(matchesPayment)) &&
     (!q || fold([game.home.name, game.away.name, ...game.referees ?? [], ...game.timekeepers ?? []].join(' ')).includes(fold(q))));
   const inWindow = (game, window) => game.date >= window.from && game.date <= window.to;
-  const selected = filtered.filter(game => inWindow(game, windows.selected)).map(game => ({...game, warnings: warnings(game, today)}));
+  const billingAvailable=games.some(game=>[game.home,game.away].some(team=>team.id&&team.cash!==null));
+  const selected = filtered.filter(game => inWindow(game, windows.selected)).map(game => ({...game, warnings: warnings(game, today).filter(warning=>warning!=='cash_unknown'||billingAvailable)}));
   const staff = new Map(), teams = new Map();
   for (const game of filtered) {
     if (inactive(game)) continue;
     const period = Object.keys(windows).find(key => inWindow(game, windows[key]));
     if (!period) continue;
     for (const [role, names] of [['Rozhodčí', game.referees], ['Časoměřič', game.timekeepers]]) for (const name of names ?? []) {
+      if(notRequiredNames.has(fold(name)))continue;
       const key = JSON.stringify([name, role, game.competitionId || game.competition]);
       const row = staff.get(key) ?? {name, role, competition: game.competition, previous: 0, selected: 0, next: 0};
       row[period]++; staff.set(key, row);
@@ -140,4 +143,11 @@ export function aggregate(games, range, {competition = '', q = '', today, paymen
 export function csv(rows, columns) {
   const cell = value => '"' + String(value ?? '').replaceAll('"', '""').replace(/^(?:\s*[=+@\-]|[\t\r])/, "'$&") + '"';
   return '\ufeff' + [columns.map(column => cell(column[1])).join(';'), ...rows.map(row => columns.map(([key]) => cell(Array.isArray(row[key]) ? row[key].join(', ') : row[key])).join(';'))].join('\r\n');
+}
+export function personAssignments(games,range,{name,role='',...filters}){
+  return aggregate(games,range,filters).games.filter(game=>!inactive(game)).flatMap(game=>[
+    ...(role&&role!=='Rozhodčí'||!game.referees?.includes(name)?[]:[{...game,role:'Rozhodčí'}]),
+    ...(role&&role!=='Časoměřič'||!game.timekeepers?.includes(name)?[]:[{...game,role:'Časoměřič'}])
+  ]).map(game=>({...game,match:(game.home.name||'Chybí domácí')+' — '+(game.away.name||'Chybí hosté')}))
+    .sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
 }

@@ -116,3 +116,35 @@ rozlišuje chybu zadání, rate limit, dočasné spojení a nekonzistentní zdro
 pro diagnostiku zapisuje pouze bezpečný kód chyby, organizaci a kurzor.
 Finanční pokrytí zůstává samostatná otázka upstream polí, nikoli důvod pádu
 načítání běžných zápasů a směn.
+
+## Obnovení stránky a detail člověka
+
+Po zadání kódu vznikne 8hodinová, podepsaná organizační relace v host-only
+HttpOnly/Secure/SameSite=Strict cookie. Samotný provozní kód se do browserového
+úložiště ani do cookie neukládá. Secret rotace zneplatní dřívější relace.
+POST `action=session` vyžaduje provozní kód; POST `action=logout` cookie ruší.
+Obě operace kontrolují stejný origin. GET `action=access` sděluje, zda aktuální
+cookie opravňuje ke čtení dané organizace; nevrací token ani kód.
+
+Kompletní normalizovaný přehled, období, filtry a pohled zůstávají po dobu
+10 minut v sessionStorage dané karty, odděleně pro organizace. Obnovení snímku
+je dovoleno až po serverovém ověření platné relace. Neúplný, starý, poškozený
+nebo cizí snímek se nepoužije. Po vypršení snímku se data načtou automaticky
+bez nového zadávání kódu. Zamknutí smaže snímek i relaci.
+
+Kliknutí na sloupec grafu nyní otevírá samostatný dialog s konkrétními daty,
+časy, Venue, soupeři, soutěžemi a rolemi daného člověka za zvolené období grafu.
+Počet řádků odpovídá počtu směn v příslušném sloupci. Hlavní vyhledávání se
+kliknutím nemění. Export detailu používá skutečné období detailu.
+
+NENÍ POTŘEBA / NENÍ TŘEBA / NOT REQUIRED / NOT NEEDED jsou výslovné značky
+nevyžadované role, nikoli lidé či směny. Nezvyšují ranking a nevytvářejí chybu
+chybějícího personálu. Skutečně neobsazená role se stále hlásí.
+
+Pokud API neposkytuje External Id globálně, aplikace už nevytváří opakované
+upozornění „platební režim týmu k ověření“ u každého zápasu. Zobrazuje jedinou
+informaci o neúplném datovém připojení a počet různých týmů, nikoli počet jejich
+opakovaných účastí. Hodnota je označená API neposkytuje. Fakturační/hotovostní
+filtry jsou do zpřístupnění těchto polí neaktivní, aby prázdný výsledek nepůsobil
+jako ověřený seznam bez fakturačních či hotovostních týmů. Skutečné platební
+režimy se nadále nesmějí odhadovat podle názvů nebo ručně duplikovat mimo HMS.
