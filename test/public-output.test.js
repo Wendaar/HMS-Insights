@@ -17,6 +17,7 @@ test('public OBS channel never inherits private control fragments or parameters'
  const url=new URL(channelUrl(`https://old.test/broadcast/index.html?org=EUCHL#control=${id}.${key}`,id));
  assert.equal(url.origin,PUBLIC_ORIGIN);assert.equal(url.pathname,'/broadcast/index.html');
  assert.equal(url.search,'?mode=channel&channel='+id);assert.equal(url.hash,'');assert.ok(!url.href.includes(key));
+ assert.equal(new URL(channelUrl('https://preview.test/broadcast/',id,{sandbox:true})).origin,'https://preview.test');
 });
 test('public launchers use PHM while administration, external tools and planned organizations stay separate',()=>{
  for(const org of ['phm','euchl']){

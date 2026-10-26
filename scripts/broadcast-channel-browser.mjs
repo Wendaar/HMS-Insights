@@ -50,7 +50,7 @@ try{
   assert.match(await obs.evaluate(()=>document.querySelector('#app>iframe').contentDocument.querySelector('.roster-list').textContent),/Test Away Player/);
   for(const size of [{width:1920,height:1080},{width:1280,height:720},{width:1417,height:720},{width:1024,height:768},{width:2560,height:1080}]){
     await obs.setViewportSize(size);
-    await obs.waitForFunction(()=>{const el=document.querySelector('#app>iframe'),b=el.getBoundingClientRect();return b.width<=innerWidth+1&&b.height<=innerHeight+1;});
+    await obs.waitForFunction(()=>{const el=document.querySelector('#app>iframe'),b=el.getBoundingClientRect();return b.width<=innerWidth+1&&b.height<=innerHeight+1&&Math.abs(b.x+b.width/2-innerWidth/2)<1&&Math.abs(b.y+b.height/2-innerHeight/2)<1;});
     const layout=await obs.evaluate(()=>{
       const frame=document.querySelector('#app>iframe'),d=frame.contentDocument,rows=[...d.querySelectorAll('.roster-list li')],panel=d.querySelector('.match-layer').getBoundingClientRect(),last=rows.at(-1).getBoundingClientRect(),page=d.querySelector('.page-label').getBoundingClientRect(),footer=d.querySelector('footer').getBoundingClientRect(),box=frame.getBoundingClientRect();
       return {width:frame.contentWindow.innerWidth,height:frame.contentWindow.innerHeight,count:rows.length,clear:last.bottom<=page.top&&page.bottom<footer.top&&footer.bottom<=panel.bottom,

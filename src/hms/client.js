@@ -73,6 +73,7 @@ export function fetchGameLineup(gameId, options = {}) {return request('gameLineu
 export function fetchGames(params = {}, options = {}) {
   return request("games", params, options);
 }
+export function fetchSponsors(options = {}) {return request('sponsors',{},options);}
 
 export function fetchTeams(options = {}) {
   return request('teams', {}, options);

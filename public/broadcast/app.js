@@ -3,6 +3,10 @@ import {apiGame,parseGameInput,viewUrl,organizations} from './hms-source.js';
 import {language,translate,localize} from './i18n.js';
 import {layers,layerNames,renderMatchLayer} from './match-layers.js';
 import {createChannelControl,runChannelView,fitBroadcastCanvas} from './channel.js';
+import {mountLibrary,readPublicLibrary} from './library.js';
+import {eligibleAssets} from './extra-layers.js';
+import {teamPartners,mountPartnerPlaylist} from './partner-playlist.js';
+import {broadcastIdentity} from './identity.js';
 import {publicOutputUrl} from '../public-output.js';
 const SHEET_ID = "12lxrxxyCUwbbFqv93NMNqyhpOUoXbyml00mnNSKGjQ0";
 const ASSET_BASE = "https://raw.githubusercontent.com/Wendaar/Youtube-Overlays/main/";
@@ -19,16 +23,20 @@ let lang=language(params.get('lang'));
 const t=value=>translate(value,lang);
 document.documentElement.lang=lang;
 const mode = params.get("mode") || "control";
+broadcastIdentity(mode);
 const source=params.get('source')??'hms';
 const org=(params.get('org')??'PHM').toUpperCase();
 const API_BASE=location.pathname.startsWith('/broadcast/')?'/api/broadcast':'https://hms-insights-five.vercel.app/api/broadcast';
 const state = { games: [], teams: [], selectedId: params.get("game"), date: null, preview: "overlay", filter:params.get('filter')??'Today', readAt:null };
-state.browseIds=null;state.controlError='';
+state.partnerScope=['organization','team'].includes(params.get('partnerScope'))?params.get('partnerScope'):mode==='control'?'organization':'team';
+state.browseIds=null;state.controlError='';state.standingsView=params.get('standingsView')==='full'?'full':'opponents';
+Object.assign(state,{corner:['top-left','top-right','bottom-left','bottom-right'].includes(params.get('corner'))?params.get('corner'):'bottom-left',metric:['goals','assists','points'].includes(params.get('metric'))?params.get('metric'):'goals',assetId:params.get('assetId')??'',rotateSeconds:Math.min(300,Math.max(5,Number(params.get('rotateSeconds'))||15)),items:[],rotationIndex:0,partnerSource:params.get('partnerSource')==='hms'||mode==='control'&&params.get('partnerSource')!=='library'?'hms':'library',sponsorCatalog:null});
+let sandbox=false,rotationTimer,contextLoading=false,contextLoaded=false,lastPartnerRead=0,leagueLoading=false,lastLeagueRead=0;
 Object.assign(state,{layer:layers.includes(params.get('layer'))?params.get('layer'):'opening',side:['home','away','both'].includes(params.get('side'))?params.get('side'):'home',period:['1','2','3'].includes(params.get('period'))?params.get('period'):'current',page:Math.min(50,Math.max(1,Number.parseInt(params.get('page'),10)||1)),insight:params.get('insight')??''});
 let refreshing=false,lastSuccess=0,lastVisual='',pollTimer;
 let previewObserver;
 const channel=mode==='control'&&source==='hms'?createChannelControl({api:API_BASE,base:location.href,
-  getState:()=>({org,gameId:state.selectedId,lang,layer:state.layer,side:state.side,period:state.period,page:state.page,insight:state.insight}),
+  getState:()=>({org,gameId:state.selectedId,lang,layer:state.layer,side:state.side,period:state.period,page:state.page,insight:state.insight,corner:state.corner,metric:state.metric,assetId:state.assetId,rotateSeconds:state.rotateSeconds,partnerSource:state.partnerSource,partnerScope:state.partnerScope,standingsView:state.standingsView}),
   onChange:()=>updateChannelPanel()}):null;
 function channelMarkup(){
   if(!channel)return '';
@@ -46,6 +54,13 @@ function updateChannelPanel(){
   document.querySelector('#toggle-channel')?.addEventListener('click',()=>channel.toggle());
   document.querySelector('#copy-control-link')?.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(channel.controlLink());document.querySelector('#channel-status').textContent=t('Soukromý odkaz zkopírován. Uschovejte si jej; umožňuje měnit výstup.');}catch{document.querySelector('#channel-status').textContent=t('Kopírování není dostupné v tomto prohlížeči.');}});
   const sync=document.querySelector('#sync-channel');if(sync){sync.disabled=!selectedGame();sync.addEventListener('click',async()=>{await channel.init();channel.publish();});}
+  const libraryId=channel.info().id;
+  const partnerSlot=document.getElementById('partner-slot'),partnerKey=libraryId+':'+channel.info().ready;
+  if(partnerSlot&&selectedGame()&&partnerSlot.dataset.binding!==partnerKey){partnerSlot.dataset.binding=partnerKey;mountPartnerPlaylist(partnerSlot,{catalog:state.sponsorCatalog,game:selectedGame(),side:state.side,partnerScope:state.partnerScope,channel,lang,onSaved:()=>{state.libraryLoaded='';renderControl();}});}
+  if(libraryId&&state.libraryLoaded!==libraryId){
+    state.libraryLoaded=libraryId;
+    channel.library().then(data=>{state.items=data.items??[];if(['cta','sponsors','announcement'].includes(state.layer))renderControl();}).catch(()=>{state.libraryLoaded='';});
+  }
 }
 document.body.dataset.org=org;
 if(mode==='overlay'||mode==='thumbnail')document.body.className='render-mode';
@@ -58,8 +73,29 @@ async function apiRequest(query){
 }
 async function loadGame(id){
   const data=await apiRequest({gameId:id,...(mode==='control'||state.layer!=='opening'?{live:'1'}:{})}),game=apiGame(data,org,id);
+  game.league??=state.games.find(g=>String(g.ID).toLowerCase()===id.toLowerCase())?.league??null;
+  game.context??=state.games.find(g=>String(g.ID).toLowerCase()===id.toLowerCase())?.context??null;
   state.games=[game,...state.games.filter(g=>String(g.ID).toLowerCase()!==id.toLowerCase())];state.selectedId=game.ID;state.readAt=data.readAt;
   if(mode==='control'){const url=new URL(location.href);url.searchParams.set('game',game.ID);history.replaceState(null,'',url);}return game;
+}
+async function loadContext(game){
+  contextLoading=true;
+  try{
+    const response=await fetch(apiUrl({gameId:game.ID,context:'1'}),{cache:'no-store',signal:AbortSignal.timeout(60000)});
+    const data=await response.json();if(!response.ok)throw new Error('Context unavailable');
+    const checked=apiGame(data,org,game.ID);game.context=checked.context??{historyAvailable:false,nextAvailable:false};
+  }catch{game.context={historyAvailable:false,nextAvailable:false};}
+  finally{contextLoading=false;contextLoaded=true;const current=selectedGame();if(current)current.context=game.context;renderOverlay(current??game);setTimeout(()=>{contextLoaded=false;},120000);}
+}
+async function loadLeague(game){
+  leagueLoading=true;lastLeagueRead=Date.now();
+  try{const data=await apiRequest({gameId:game.ID,league:'1'});game.league=apiGame(data,org,game.ID).league??{standingsAvailable:false,leadersAvailable:false};}
+  catch{game.league={standingsAvailable:false,leadersAvailable:false};}
+  finally{leagueLoading=false;const current=selectedGame();if(current?.ID===game.ID)current.league=game.league;if(mode==='overlay')renderOverlay(current??game);else renderControl();}
+}
+async function loadPartners(){
+  lastPartnerRead=Date.now();
+  try{const data=await apiRequest({catalog:'sponsors'});if(!Array.isArray(data.items)||!Array.isArray(data.bindings))throw new Error();state.sponsorCatalog=data;}catch{state.sponsorCatalog=null;}
 }
 async function loadDay(){
   const data=await apiRequest({filter:state.filter});
@@ -72,19 +108,30 @@ async function loadDay(){
   state.browseIds=games.map(g=>g.ID.toLowerCase());
   state.hasMore=data.hasMore;
 }
-function renderUrl(view,game,clean=false){return viewUrl(location.href,{mode:view,org,gameId:game.ID,source,clean,lang,...state});}
+function renderUrl(view,game,clean=false){return viewUrl(location.href,{mode:view,org,gameId:game.ID,source,clean,lang,...state,library:channel?.info().id??params.get('library')??''});}
 function languageControl(){return `<label class="language-control">${t('Jazyk')}<select id="language"><option value="cs" ${lang==='cs'?'selected':''}>CZ</option><option value="en" ${lang==='en'?'selected':''}>EN</option></select></label>`;}
 function layerControls(game){
   const option=(value,label,current)=>`<option value="${escapeHtml(value)}" ${value===current?'selected':''}>${escapeHtml(t(label))}</option>`;
   const m=game.match;
+  const partnerLayer=['sponsors','announcement'].includes(state.layer);
+  const partnerOptions=partnerLayer&&state.partnerSource==='hms'?teamPartners(state.sponsorCatalog,game,state.side,state.items,state.partnerScope):eligibleAssets(state.items,{org,gameId:game.ID,homeId:game.homeId,awayId:game.awayId,side:state.side,kind:state.layer==='cta'?'cta':'sponsor'});
   const size=state.side==='both'?12:20;
   const count=state.layer==='lineup'?Math.max(...['home','away'].filter(s=>state.side==='both'||s===state.side).map(s=>m?.roster.filter(p=>p.side===s).length??0)):m?.goals.filter(g=>state.side==='both'||g.side===state.side).length??0;
-  const pages=Math.max(1,Math.ceil(count/(state.layer==='lineup'?size:8)));
+  const pages=state.layer==='standings'?Math.max(1,Math.ceil((game.league?.standings?.length??0)/8)):Math.max(1,Math.ceil(count/(state.layer==='lineup'?size:8)));
   return `<section class="layer-controls"><label>${t('Vrstva')}<select id="layer">${layers.map(l=>option(l,layerNames[l],state.layer)).join('')}</select></label>
     ${['lineup','scoresheet'].includes(state.layer)?`<label>${t('Tým')}<select id="layer-side">${[['home','Domácí'],['away','Hosté'],['both','Oba týmy']].map(([v,l])=>option(v,l,state.side)).join('')}</select></label><label>${t('Strana')}<select id="layer-page">${Array.from({length:pages},(_,i)=>option(String(i+1),String(i+1),String(state.page))).join('')}</select></label>`:''}
     ${state.layer==='periods'?`<label>${t('Třetina / stav')}<select id="layer-period">${[['current','Aktuální / konečný stav'],['1','Po 1. třetině'],['2','Po 2. třetině'],['3','Po 3. třetině']].map(([v,l])=>option(v,l,state.period)).join('')}</select></label>`:''}
     ${state.layer==='insights'?`<label>${t('Insight')}<select id="layer-insight">${m?.insights.length?m.insights.map(i=>option(i.id,`${i.name} · ${t(i.type==='hat-trick'?'Hattrick':'Vícebodový zápas')}`,state.insight)).join(''):option('','Žádný dostupný insight','')}</select></label>`:''}
-    <p id="layer-help">${t(channel?.info().bound?'Přepínání níže automaticky mění obsah stálého OBS kanálu.':'Výběr vrstvy mění náhled a kopírovanou adresu. V OBS použijte adresu dané vrstvy.')}</p></section>`;
+    ${(['powerplay','leaders','leaders-strip','next','results','cta'].includes(state.layer)||partnerLayer&&(state.partnerSource!=='hms'||state.partnerScope==='team'))?`<label>${t('Tým')}<select id="layer-side">${[['home',game['Home Team']],['away',game['Away Team']],...(state.layer==='cta'||state.layer==='sponsors'&&state.partnerSource==='library'?[['both','Oba týmy']]:[])].map(([v,l])=>option(v,l,state.side)).join('')}</select></label>`:''}
+    ${['leaders','leaders-strip'].includes(state.layer)?`<label>${t('Statistika')}<select id="layer-metric">${[['points','Body'],['goals','Góly'],['assists','Asistence']].map(([v,l])=>option(v,l,state.metric)).join('')}</select></label>`:''}
+    ${state.layer==='standings'?`<label>${t('Rozsah tabulky')}<select id="standings-view">${[['opponents','Oba soupeři · skutečné pořadí'],['full','Celá tabulka · po stránkách']].map(([v,l])=>option(v,l,state.standingsView)).join('')}</select></label>${state.standingsView==='full'?`<label>${t('Strana')}<select id="layer-page">${Array.from({length:pages},(_,i)=>option(String(i+1),String(i+1),String(state.page))).join('')}</select></label>`:''}`:''}
+    ${['cta','sponsors','powerplay','leaders-strip','standings'].includes(state.layer)?`<label>${t('Umístění')}<select id="layer-corner">${[['top-left','Vlevo nahoře'],['top-right','Vpravo nahoře'],['bottom-left','Vlevo dole'],['bottom-right','Vpravo dole']].map(([v,l])=>option(v,l,state.corner)).join('')}</select></label>`:''}
+    ${['cta','sponsors','announcement'].includes(state.layer)?`<label>${t('Položka')}<select id="layer-asset">${option('','Střídat všechny odpovídající',state.assetId)}${partnerOptions.map(a=>option(a.id,a.title,state.assetId)).join('')}</select></label><label>${t('Střídat každých (sekund)')}<select id="layer-rotation">${[5,10,15,30,60,120,300].map(v=>option(String(v),String(v),String(state.rotateSeconds))).join('')}</select></label>`:''}
+    ${state.layer==='powerplay'?`<p>${t('Vyberte tým, který hraje přesilovku. PP patří tomuto týmu, PK soupeři. Zapnutí vrstvy je ruční, bez živé časomíry.')}</p>`:''}
+    ${partnerLayer&&state.partnerSource==='hms'?`<label>${t('Partneři')}<select id="partner-scope">${[['organization','Celá organizace'],['team','Vybraný tým']].map(([v,l])=>option(v,l,state.partnerScope)).join('')}</select></label>`:''}
+    ${partnerLayer?`<label>${t('Zdroj partnerů')}<select id="partner-source">${[['hms','Centrální katalog HMS'],['library','Doplňky pouze pro tento kanál']].map(([v,l])=>option(v,l,state.partnerSource)).join('')}</select></label>`:''}
+    ${state.layer==='cta'?`<p>${t('Centrální QR soubory zatím HMS API neposkytuje. Zde vybíráte hotové QR z doplňků tohoto kanálu; logo partnera se za QR nezaměňuje.')}</p>`:''}
+    <p id="layer-help">${t(channel?.info().bound?'Přepínání níže automaticky mění obsah stálého OBS kanálu.':'Výběr vrstvy mění náhled a kopírovanou adresu. V OBS použijte adresu dané vrstvy.')}</p></section>${partnerLayer&&state.partnerSource==='hms'?'<section class="partner-panel" id="partner-slot"></section>':''}`;
 }
 function connectionMarkup(){return `<section class="connection-bar"><form id="game-form"><label>Organizace<select id="org">${organizations.map(o=>`<option ${o===org?'selected':''}>${o}</option>`).join('')}</select></label><label class="game-input-label">Odkaz na zápas v HMS nebo Game ID<input id="game-input" value="${escapeHtml(state.selectedId??'')}" placeholder="https://prod.hms.wootera.net/org/euchl/games/…" required></label><button class="button primary">Načíst zápas</button></form><div class="browse-dates">${[['Today','Dnes'],['Tomorrow','Zítra'],['+7 days','Příštích 7 dnů'],['Past','Minulé zápasy']].map(([id,label])=>`<button class="button ${state.filter===id?'primary':''}" data-filter="${id}">${label}</button>`).join('')}<button class="button" id="refresh-data">Obnovit z HMS</button></div><p id="connection-status" role="status">${source==='sheet'?'Původní PHM Sheet · kompatibilní režim':`HMS API · ${org} · ${state.readAt?'načteno '+escapeHtml(new Date(state.readAt).toLocaleTimeString('cs-CZ')):'vyberte zápas'}${state.hasMore?' · zobrazeno prvních 20 zápasů, další otevřete odkazem':''}`}</p></section>`;}
 
@@ -185,7 +232,14 @@ function frameMarkup(){
 
 function renderOverlay(game) {
   document.body.className = "render-mode";
-  if(state.layer!=='opening'){app.innerHTML=renderMatchLayer(game,{...state,lang});return;}
+  if(state.layer!=='opening'){
+    const sameLayer=app.querySelector('[data-layer]')?.dataset.layer===state.layer;
+    app.innerHTML=renderMatchLayer(game,{...state,org,lang});if(sameLayer)app.querySelector('.slide-panel')?.classList.add('is-update');
+    if(['leaders','leaders-strip','standings'].includes(state.layer)&&!leagueLoading&&(!game.league||Date.now()-lastLeagueRead>=60000))loadLeague(game);
+    if(['powerplay','next','results'].includes(state.layer)&&!contextLoading&&!contextLoaded)loadContext(game);
+    if(['cta','sponsors','announcement'].includes(state.layer)&&!rotationTimer)rotationTimer=setInterval(()=>{state.rotationIndex++;app.innerHTML=renderMatchLayer(selectedGame()??game,{...state,org,lang});},state.rotateSeconds*1000);
+    return;
+  }
   const homeName = game["Home Team"] || "Bude doplněno";
   const awayName = game["Away Team"] || "Bude doplněno";
   app.innerHTML = `
@@ -261,13 +315,14 @@ function renderControl() {
   const dayGames = listed.filter((game) => (game.Date || "Bez data") === state.date);
   const game = selectedGame();
   const previewUrl = game?renderUrl(state.preview,game,state.preview==='thumbnail'):'';
-  const obsUrl = game?publicOutputUrl(renderUrl('overlay',game)):'';
+  const obsUrl = game?(sandbox?renderUrl('overlay',game):publicOutputUrl(renderUrl('overlay',game))):'';
   app.innerHTML = `
     <div class="control-shell">
       <header class="control-header">
-        ${hmsBrand()}<div class="brand-lockup">${org==='PHM'?`<img class="brand-mark" src="${BRAND_LOGOS[1]}" alt="PHM Cup" />`:`<strong class="brand-wordmark">${escapeHtml(org)}</strong>`}<div><p class="eyebrow">Broadcast graphics</p><h1>Opening Studio</h1></div></div>
+        ${hmsBrand()}<div class="brand-lockup">${org==='PHM'?`<img class="brand-mark" src="${BRAND_LOGOS[1]}" alt="PHM Cup" />`:`<strong class="brand-wordmark">${escapeHtml(org)}</strong>`}<div><p class="eyebrow">Broadcast graphics</p><h1>Broadcast Studio</h1></div></div>
         ${languageControl()}<div class="live-chip">${source==='hms'?'HMS API · '+escapeHtml(org):'Původní Google Sheet'}</div>
       </header>
+      ${sandbox?`<div class="preview-notice">${t('TESTOVACÍ VERZE · oddělené OBS kanály. Dnešní přenos používejte z dosavadní produkce.')} <a href="demo.html" target="_blank">${t('Prohlédnout ukázky nových vrstev')}</a></div>`:''}
       ${connectionMarkup()}
       <div class="control-grid">
         <aside class="match-panel">
@@ -277,6 +332,8 @@ function renderControl() {
         </aside>
         <main class="workspace">
           <div id="channel-slot"></div>
+          <section class="partner-panel catalog-source"><h2>${t('Centrální katalog partnerů')}</h2><p>${t('Stejný seznam jako v přehledu sponzorů. Loga, claimy, weby a přiřazení týmům spravujte v HMS. Ve Studiu vybíráte formát, partnery a pořadí zobrazení.')}</p><a class="button" href="/sponsors?org=${encodeURIComponent(org)}" target="_blank" rel="noopener">${t('Otevřít společný katalog')}</a></section>
+          <details class="library-panel"><summary>${t('Doplňky pro tento kanál · vlastní QR nebo mimořádný partner')}</summary><div id="library-slot"></div></details>
           ${!game?`<p class="data-alert">${t('Vyberte zápas ze seznamu nebo vložte jeho HMS odkaz. Přepnutí období nemění výstup v OBS.')}</p>`:`
           ${source==='hms'?layerControls(game):''}
           <div class="workspace-toolbar">
@@ -297,14 +354,20 @@ function renderControl() {
 
 function wireControl() {
   updateChannelPanel();
+  const leagueGame=selectedGame();if(leagueGame&&['leaders','leaders-strip','standings'].includes(state.layer)&&!leagueLoading&&(!leagueGame.league||Date.now()-lastLeagueRead>=60000))loadLeague(leagueGame);
+  document.querySelector('.library-panel')?.addEventListener('toggle',event=>{if(event.target.open){mountLibrary(document.getElementById('library-slot'),{channel,org,game:selectedGame(),lang,onSaved:()=>{state.libraryLoaded='';renderControl();}});}});
   localize(app,lang);
   if(state.controlError)document.querySelector('#connection-status').textContent=t(state.controlError);
   document.querySelector('#language')?.addEventListener('change',event=>{lang=language(event.target.value);document.documentElement.lang=lang;const url=new URL(location.href);url.searchParams.set('lang',lang);history.replaceState(null,'',url);renderControl();if(selectedGame())channel?.publish();});
-  const settings={layer:'layer','layer-side':'side','layer-period':'period','layer-page':'page','layer-insight':'insight'};
+  const settings={layer:'layer','layer-side':'side','layer-period':'period','layer-page':'page','layer-insight':'insight','layer-corner':'corner','layer-metric':'metric','layer-asset':'assetId','layer-rotation':'rotateSeconds','partner-source':'partnerSource','partner-scope':'partnerScope','standings-view':'standingsView'};
   for(const [id,key] of Object.entries(settings))document.getElementById(id)?.addEventListener('change',event=>{
-    state[key]=key==='page'?Number(event.target.value):event.target.value;
-    if(key==='layer'||key==='side')state.page=1;
-    const url=new URL(location.href);for(const k of ['layer','side','period','page','insight'])url.searchParams.set(k,state[k]);history.replaceState(null,'',url);renderControl();channel?.publish();
+    state[key]=['page','rotateSeconds'].includes(key)?Number(event.target.value):event.target.value;
+    if(key==='layer'||key==='side'||key==='standingsView')state.page=1;
+    if(key==='layer'&&state.layer==='leaders-strip')state.metric='points';
+    if(['leaders','leaders-strip','standings'].includes(state.layer)&&selectedGame()&&!selectedGame().league&&!leagueLoading)loadLeague(selectedGame());
+    if(key==='layer'||key==='side'||key==='partnerSource'||key==='partnerScope')state.assetId='';
+    if((['powerplay','leaders','leaders-strip','next','results','announcement'].includes(state.layer)||state.layer==='sponsors'&&state.partnerSource==='hms')&&state.side==='both')state.side='home';
+    const url=new URL(location.href);for(const k of ['layer','side','period','page','insight','corner','metric','assetId','rotateSeconds','partnerSource','partnerScope','standingsView'])url.searchParams.set(k,state[k]);history.replaceState(null,'',url);renderControl();channel?.publish();
   });
   previewObserver?.disconnect();
   const previewBox=document.querySelector('.preview-frame');
@@ -328,6 +391,8 @@ function wireControl() {
   document.querySelector('#refresh-data')?.addEventListener('click',async()=>{
     const status=document.querySelector('#connection-status');status.textContent=t('Obnovuji data z HMS…');
     state.controlError='';
+    lastLeagueRead=0;
+    await loadPartners();
     if(state.selectedId)try{await loadGame(state.selectedId);}catch(error){state.controlError=error.message;}
     try{await loadDay();}catch{state.controlError='Seznam zápasů se nepodařilo načíst. Zkuste Obnovit z HMS nebo vložte odkaz na zápas.';}renderControl();
   });
@@ -338,7 +403,7 @@ function wireControl() {
     catch(error){state.selectedId=previous;document.querySelector('#connection-status').textContent=t(error.message);button.disabled=false;}
   }));
   document.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => { state.preview = button.dataset.view; renderControl(); }));
-  document.querySelector("#open-view")?.addEventListener("click", () => { const game = selectedGame(); window.open(publicOutputUrl(renderUrl(state.preview,game,true)), "_blank", "noopener"); });
+  document.querySelector("#open-view")?.addEventListener("click", () => { const game = selectedGame(); window.open(sandbox?renderUrl(state.preview,game,true):publicOutputUrl(renderUrl(state.preview,game,true)), "_blank", "noopener"); });
   document.querySelector("#copy-url")?.addEventListener("click", async () => { const field = document.querySelector("#current-obs-url"); const button = document.querySelector("#copy-url"); try { await navigator.clipboard.writeText(field.value); button.textContent = t("URL zkopírována"); } catch { field.focus(); field.select(); document.execCommand("copy"); button.textContent = t("URL označena"); } setTimeout(() => button.textContent = t("Kopírovat OBS URL"), 1400); });
   document.querySelector("#download-from-control")?.addEventListener("click", () => { const frame = document.querySelector("#preview"); frame.contentWindow.downloadThumbnail?.(); });
 }
@@ -350,7 +415,10 @@ async function refreshRenderMode() {
     else [state.games,state.teams]=await Promise.all([loadSheet('Games'),loadSheet('Teams')]);
     const game = selectedGame();
     if (!game) throw new Error('Vybraný zápas nebyl nalezen.');
-    const visual=JSON.stringify(game);lastSuccess=Date.now();document.body.dataset.connection='ok';
+    if(['sponsors','announcement'].includes(state.layer)&&state.partnerSource==='hms'&&Date.now()-lastPartnerRead>=60000)await loadPartners();
+    if(['leaders','leaders-strip','standings'].includes(state.layer)&&!leagueLoading&&Date.now()-lastLeagueRead>=60000)loadLeague(game);
+    const visual=JSON.stringify(game)+(['sponsors','announcement'].includes(state.layer)?JSON.stringify(state.sponsorCatalog):'');lastSuccess=Date.now();document.body.dataset.connection='ok';
+    if(mode==='overlay'&&['powerplay','leaders','next','results'].includes(state.layer)&&!contextLoading&&!contextLoaded)loadContext(game);
     if(visual!==lastVisual){if(mode==='overlay')renderOverlay(game);if(mode==='thumbnail')renderThumbnail(game);lastVisual=visual;}
   } catch (error) {
     document.body.dataset.connection='stale';console.warn('Automatická aktualizace dat se nezdařila.');
@@ -360,6 +428,7 @@ async function refreshRenderMode() {
 
 async function start() {
   renderStatus("Načítám zápasy…");
+  if(mode==='control')try{const response=await fetch(apiUrl({capabilities:'1'}));sandbox=(await response.json()).sandbox===true;}catch{}
   try {
     if(!organizations.includes(org)||!['hms','sheet'].includes(source)||source==='sheet'&&org!=='PHM')throw new Error('Neplatná organizace nebo zdroj dat.');
     if(source==='hms'){
@@ -370,6 +439,8 @@ async function start() {
       [state.games,state.teams]=await Promise.all([loadSheet('Games'),loadSheet('Teams')]);
       if(!state.games.length)throw new Error('List Games je prázdný.');state.selectedId ||=state.games[0].ID;
     }
+    if(source==='hms'&&(mode==='control'||['sponsors','announcement'].includes(state.layer)&&state.partnerSource==='hms'))await loadPartners();
+    if(mode==='overlay'&&params.get('library'))try{state.items=await readPublicLibrary(API_BASE,params.get('library'));}catch{}
     const game = selectedGame();
     if (!game&&mode!=='control') throw new Error("Vybraný zápas nebyl nalezen.");
     lastSuccess=Date.now();lastVisual=JSON.stringify(game);document.body.dataset.connection='ok';
