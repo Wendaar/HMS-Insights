@@ -52,12 +52,15 @@ try{
   await gallery.selectOption('#demo-side','both');assert.equal(await gallery.locator('.goal-list li').count(),8);
   assert.equal(await gallery.locator('.goal-list li').last().evaluate(el=>el.getBoundingClientRect().bottom<=document.querySelector('.page-label').getBoundingClientRect().top),true,'Eight goals must fit above pagination');
   await gallery.screenshot({path:'artifacts/broadcast/expansion-eight-goals.png'});await gallery.selectOption('#demo-side','home');
-  for(const layer of ['scoresheet','cta','sponsors','announcement','powerplay','leaders','next','results'])for(const lang of ['cs','en']){
-    await gallery.selectOption('#demo-layer',layer);await gallery.selectOption('#demo-lang',lang);
+  for(const layer of ['scoresheet','insights','lineup','cta','sponsors','announcement','powerplay','leaders','leaders-strip','standings','next','results'])for(const lang of ['cs','en']){
+    await gallery.selectOption('#demo-layer',layer);await gallery.selectOption('#demo-lang',lang);await gallery.locator('[data-layer]').evaluate(async el=>{await Promise.all(el.getAnimations().map(a=>a.finished.catch(()=>{})));});
     assert.equal(await gallery.locator('[data-layer]').evaluate(el=>el.scrollHeight<=el.clientHeight),true,`${layer}/${lang} overflow`);
     assert.equal(await gallery.locator('[data-layer]').evaluate(el=>{const box=el.getBoundingClientRect();return [...el.querySelectorAll('li,footer,.extra-team,.asset-card')].every(child=>{const r=child.getBoundingClientRect();return r.top>=box.top-1&&r.bottom<=box.bottom+1&&r.left>=box.left-1&&r.right<=box.right+1;});}),true,`${layer}/${lang} children`);
     if(lang==='cs')await gallery.screenshot({path:`artifacts/broadcast/expansion-${layer}.png`});
   }
+  await gallery.selectOption('#demo-layer','standings');await gallery.selectOption('#demo-standingsView','opponents');
+  assert.deepEqual(await gallery.locator('[data-rank]').evaluateAll(es=>es.map(e=>Number(e.dataset.rank))),[3,12]);assert.equal(await gallery.locator('.standing-gap').count(),1);
+  await gallery.selectOption('#demo-standingsView','full');assert.equal(await gallery.locator('[data-rank]').count(),8);assert.equal(await gallery.locator('[data-layer]').evaluate(el=>el.scrollHeight<=el.clientHeight),true);await gallery.screenshot({path:'artifacts/broadcast/expansion-full-standings.png'});
   for(const corner of ['top-left','top-right','bottom-left','bottom-right']){await gallery.selectOption('#demo-layer','powerplay');await gallery.selectOption('#demo-corner',corner);assert.equal(await gallery.locator('[data-layer]').evaluate(el=>{const r=el.getBoundingClientRect(),p=document.querySelector('.demo-preview').getBoundingClientRect();return r.left>=p.left&&r.right<=p.right&&r.top>=p.top&&r.bottom<=p.bottom;}),true);}
   await gallery.setViewportSize({width:390,height:844});assert.equal(await gallery.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   assert.deepEqual(errors,[]);console.log('Expansion browser checks passed: real image upload, durable protected library, permanent OBS channel, rotation, PP opponent identity, hide/reload persistence, CZ/EN gallery, safe bounds and mobile.');

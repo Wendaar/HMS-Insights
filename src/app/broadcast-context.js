@@ -9,7 +9,7 @@ const time=v=>{const s=v instanceof Date?v.toISOString():String(v??'');return (/
 export function broadcastScope(detail){
   const group=detail.Group??detail.Phase?.Group,season=detail.Season??group?.Season,competition=detail.Competition??season?.Competition;
   const id=v=>isGameId(v)?v.toLowerCase():null;
-  return {organizationId:id(detail.organizationId),seasonId:id(detail.seasonId??season?.seasonId),competitionId:id(detail.competitionId??competition?.competitionId),season:season?.name??null,competition:competition?.name??null};
+  return {organizationId:id(detail.organizationId),seasonId:id(detail.seasonId??season?.seasonId),competitionId:id(detail.competitionId??competition?.competitionId),groupId:id(detail.groupId??group?.groupId),phaseId:id(detail.phaseId??detail.Phase?.phaseId),season:season?.name??null,competition:competition?.name??null,group:group?.name??null,phase:detail.Phase?.name??null};
 }
 export async function loadBroadcastHistory(detail,options={}){
   const scope=broadcastScope(detail);if(!scope.organizationId||!scope.seasonId||!scope.competitionId)throw new Error('Missing scope');

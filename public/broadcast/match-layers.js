@@ -15,9 +15,9 @@ export function renderMatchLayer(game,settings){
   if(layer==='lineup'){
     if(m.lineupAvailable===false)return shell(empty('Čekáme na data v HMS'));
     const selected=side==='both'?['home','away']:[side],size=side==='both'?12:20;
-    return shell(`<div class="lineup-columns">${selected.map(s=>{
+    return shell(`<div class="lineup-columns ${selected.length===1?'single-team':''}">${selected.map(s=>{
       const all=m.roster.filter(p=>p.side===s),rows=all.slice((page-1)*size,page*size);
-      return `<section>${rowTeam(s)}${rows.length?`<ol class="roster-list">${rows.map(p=>`<li><b>${esc(p.number??'—')}</b><span>${esc(p.name)}</span>${p.goalie?`<small>${t('Brankář')}</small>`:''}</li>`).join('')}</ol><p class="page-label">${t('Strana')} ${page} / ${Math.ceil(all.length/size)}</p>`:empty(all.length?'Na této stránce nejsou další hráči.':'Soupiska ještě není v HMS vyplněná.')}</section>`;
+      return `<section>${rowTeam(s)}${rows.length?`<ol class="roster-list">${rows.map(p=>`<li><b>${esc(p.number??'—')}</b>${p.imageUrl?`<img class="roster-portrait" src="${esc(p.imageUrl)}" alt="${esc(p.name)}">`:'<i class="roster-portrait missing-portrait" aria-hidden="true">●</i>'}<span>${esc(p.name)}</span>${p.goalie?`<small>${t('Brankář')}</small>`:''}</li>`).join('')}</ol><p class="page-label">${t('Strana')} ${page} / ${Math.ceil(all.length/size)}</p>`:empty(all.length?'Na této stránce nejsou další hráči.':'Soupiska ještě není v HMS vyplněná.')}</section>`;
     }).join('')}</div>`);
   }
   if(layer==='periods'){
@@ -40,7 +40,8 @@ export function renderMatchLayer(game,settings){
   if(layer==='insights'){
     const item=insight?m.insights.find(i=>i.id===insight):m.insights[0];
     if(!item)return shell(empty(m.coverage==='matches-score'?'Zatím žádný hattrick ani vícebodový výkon':'Neúplné gólové události v HMS'));
-    return shell(`<article class="insight-card"><div class="insight-title">${t(item.type==='hat-trick'?'Hattrick':'Vícebodový zápas')}</div><h2>${esc(item.name)}</h2><p>${team(item.side)}</p><div class="insight-stats">${[['Góly',item.goals],['Asistence',item.assists],['Body',item.points]].map(([label,value])=>`<span><b>${value}</b>${t(label)}</span>`).join('')}</div></article>`);
+    const photo=item.imageUrl??m.roster?.find(p=>p.id===item.id&&p.side===item.side)?.imageUrl;
+    return shell(`<article class="insight-card"><div class="insight-title">${t(item.type==='hat-trick'?'Hattrick':'Vícebodový zápas')}</div><div class="insight-person">${photo?`<img class="insight-portrait" src="${esc(photo)}" alt="${esc(item.name)}">`:'<span class="insight-portrait missing-portrait" aria-hidden="true">●</span>'}<div><h2>${esc(item.name)}</h2>${rowTeam(item.side)}</div></div><div class="insight-stats">${[['Góly',item.goals],['Asistence',item.assists],['Body',item.points]].map(([label,value])=>`<span><b>${value}</b>${t(label)}</span>`).join('')}</div></article>`);
   }
   return shell(empty('Čekáme na data v HMS'));
 }

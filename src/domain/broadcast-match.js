@@ -4,6 +4,22 @@ const same=(a,b)=>typeof a==='string'&&typeof b==='string'&&a.toLowerCase()===b.
 const text=v=>typeof v==='string'&&v.trim()?v.trim().slice(0,160):null;
 const count=v=>v!==null&&v!==undefined&&v!==''&&Number.isSafeInteger(Number(v))&&Number(v)>=0?Number(v):null;
 const name=p=>text([p?.firstName,p?.lastName].filter(v=>typeof v==='string').join(' '))||text(p?.name);
+const portrait=p=>[p?.imageUrls?.md,p?.logoUrls?.md,p?.logoUrl,p?.avatarUrl].map(sportingImage).find(Boolean)??null;
+export function enrichBroadcastLineup(detail,lineup,metadata){
+  const home=detail.homeTeamId??detail.HomeTeam?.teamId,away=detail.awayTeamId??detail.AwayTeam?.teamId;
+  if(!metadata||metadata.gameId&&!same(metadata.gameId,detail.gameId)||!same(metadata.HomeTeam?.teamId,home)||!same(metadata.AwayTeam?.teamId,away)||metadata.startDate!==detail.startDate)return lineup;
+  if(lineup?.gameId&&!same(lineup.gameId,detail.gameId))return lineup;
+  const publicRows=Array.isArray(metadata.Lineups)?metadata.Lineups.filter(r=>!r.isDeleted&&(!r.gameId||same(r.gameId,detail.gameId))&&[home,away].some(id=>same(r.teamId,id))):[];
+  const source=Array.isArray(lineup)?lineup:Array.isArray(lineup?.Lineups)?lineup.Lineups:null;
+  if(!source&&publicRows.length===0)return lineup;
+  return {gameId:detail.gameId,Lineups:(source??publicRows).map(row=>{
+    const id=row.playerId??row.Player?.playerId;
+    const matched=publicRows.find(p=>same(p.playerId??p.Player?.playerId,id)&&same(p.teamId,row.teamId)&&(!p.Player?.playerId||same(p.Player.playerId,id)));
+    const original=row.Player?.playerId&&!same(row.Player.playerId,id)?null:row.Player;
+    const image=portrait(original)??portrait(matched?.Player);
+    return {...row,playerId:id,Player:{...matched?.Player,...original,playerId:id,logoUrl:image}};
+  })};
+}
 // This public model contains sporting fields only. Never forward raw HMS objects.
 export function broadcastMatch(detail,events,lineup){
   const gameId=detail.gameId,home=detail.homeTeamId??detail.HomeTeam?.teamId,away=detail.awayTeamId??detail.AwayTeam?.teamId;
@@ -15,11 +31,11 @@ export function broadcastMatch(detail,events,lineup){
   for(const row of rows??[]){
     if(row.isDeleted||row.gameId&&!same(row.gameId,gameId)||!side(row.teamId)||!text(row.playerId))continue;
     const playerName=name(row.Player)||text(row.name);if(!playerName)continue;
-    players.set(row.playerId.toLowerCase(),{id:row.playerId,name:playerName,side:side(row.teamId),number:count(row.number),goalie:row.ListPosition?.isGoalie===true,imageUrl:sportingImage(row.Player?.imageUrls?.md??row.Player?.logoUrls?.md??row.Player?.logoUrl??row.Player?.avatarUrl)});
+    players.set(row.playerId.toLowerCase(),{id:row.playerId,name:playerName,side:side(row.teamId),number:count(row.number),goalie:row.ListPosition?.isGoalie===true,imageUrl:portrait(row.Player)});
   }
-  const person=(id,embedded,expectedSide)=>{const known=players.get(String(id??embedded?.playerId).toLowerCase());
+  const person=(id,embedded,expectedSide)=>{if(id&&embedded?.playerId&&!same(id,embedded.playerId))embedded=null;const known=players.get(String(id??embedded?.playerId).toLowerCase());
     if(known&&known.side!==expectedSide||embedded?.teamId&&side(embedded.teamId)!==expectedSide)return {id:null,name:null,imageUrl:null};
-    return {id:text(id??embedded?.playerId),name:known?.name??name(embedded),imageUrl:known?.imageUrl??sportingImage(embedded?.imageUrls?.md??embedded?.logoUrls?.md??embedded?.logoUrl)};};
+    return {id:text(id??embedded?.playerId),name:known?.name??name(embedded),imageUrl:known?.imageUrl??portrait(embedded)};};
   const group=selectEventGroup(events,detail,'GameEventGoals','goal');
   const goals=uniqueEvents(group.events,'goal').filter(e=>!e.isDeleted).map((e,index)=>({
     id:text(e.eventId??e.gameEventGoalId)??`goal-${index}`,side:side(e.scoredByTeamId??e.ScoredByTeam?.teamId),
@@ -38,7 +54,7 @@ export function broadcastMatch(detail,events,lineup){
   const stats=new Map();
   if(consistent)for(const g of goals){
     const add=(p,type)=>{if(!p.id||!p.name)return;const key=p.id.toLowerCase();const known=players.get(key);if(known&&known.side!==g.side)return;
-      const stat=stats.get(key)??{id:p.id,name:p.name,side:g.side,goals:0,assists:0};stat[type]++;stats.set(key,stat);};
+      const stat=stats.get(key)??{id:p.id,name:p.name,side:g.side,imageUrl:known?.imageUrl??p.imageUrl??null,goals:0,assists:0};stat[type]++;stats.set(key,stat);};
     add(g.scorer,'goals');const seen=new Set([g.scorer.id?.toLowerCase()]);for(const p of g.assists){const key=p.id?.toLowerCase();if(!seen.has(key)){add(p,'assists');seen.add(key);}}
   }
   const insights=[...stats.values()].map(p=>({...p,points:p.goals+p.assists})).filter(p=>p.points>=2)

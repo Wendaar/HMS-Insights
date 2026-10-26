@@ -1,6 +1,7 @@
 import {translate} from './i18n.js';
 import {teamPartners} from './partner-playlist.js';
-export const extraNames={cta:'QR výzva',sponsors:'Partner v rohu',announcement:'Velké partnerské oznámení',powerplay:'Přesilovka / oslabení',leaders:'Lídři týmu',next:'Příští zápasy',results:'Poslední výsledky'};
+import {renderLeagueLayer} from './league-layers.js';
+export const extraNames={cta:'QR výzva',sponsors:'Partner v rohu',announcement:'Velké partnerské oznámení',powerplay:'Přesilovka / oslabení',leaders:'Lídři týmu','leaders-strip':'TOP 5 týmu · sloupec',standings:'Aktuální tabulka',next:'Příští zápasy',results:'Poslední výsledky'};
 export const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export function eligibleAssets(items,{org,gameId,homeId,awayId,side='home',kind}){
   const eq=(a,b)=>String(a??'').toLowerCase()===String(b??'').toLowerCase();
@@ -8,6 +9,7 @@ export function eligibleAssets(items,{org,gameId,homeId,awayId,side='home',kind}
   return (items??[]).filter(a=>a.enabled&&a.kind===kind&&a.org===org&&(a.scope==='organization'||a.scope==='game'&&eq(a.targetId,gameId)||a.scope==='team'&&teamIds.some(id=>id&&eq(id,a.targetId))));
 }
 export function renderExtraLayer(game,settings){
+  if(['leaders-strip','standings'].includes(settings.layer)||settings.layer==='leaders'&&game.league)return renderLeagueLayer(game,settings);
   const {layer,lang='cs',side:rawSide='home',metric='goals',corner='bottom-left',assetId='',org='PHM',items=[],rotationIndex=0}=settings;
   const side=rawSide==='away'?'away':'home',opponent=side==='home'?'away':'home',t=v=>esc(translate(v,lang));
   const team=s=>`<div class="extra-team">${game[s+'Logo']?`<img src="${esc(game[s+'Logo'])}" alt="">`:''}<strong>${esc(game[s==='home'?'Home Team':'Away Team'])}</strong></div>`;

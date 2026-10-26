@@ -1,6 +1,6 @@
 import {organizationConfig} from '../app/organizations.js';
 import {fetchGameDetail,fetchGameEvents,fetchGameLineup,fetchOrganization,fetchPublicGameMetadata,hmsConfigFromEnv,HmsRequestError} from '../hms/client.js';
-import {broadcastMatch} from '../domain/broadcast-match.js';
+import {broadcastMatch,enrichBroadcastLineup} from '../domain/broadcast-match.js';
 import {browseMedia} from '../app/media-engine.js';
 import {isGameId} from '../domain/game-summary.js';
 import {sportingImage} from '../../public/game-report-media.js';
@@ -8,6 +8,7 @@ import {hmsMediaContext} from '../hms/media-context.js';
 import {createChannelHandler} from './broadcast-channel.js';
 import {broadcastContext} from '../app/broadcast-context.js';
 import {loadSponsorCatalog} from '../app/broadcast-sponsors.js';
+import {broadcastLeague} from '../app/broadcast-league.js';
 const same=(a,b)=>typeof a==='string'&&typeof b==='string'&&a.toLowerCase()===b.toLowerCase();
 const label=value=>typeof value==='string'?value.trim().slice(0,240):null;
 const image=value=>sportingImage(value?.logoUrls?.md??value?.logoUrl);
@@ -69,7 +70,7 @@ export function createBroadcastHandler(options={}){
       }
       if(!isGameId(q.gameId))throw new TypeError('Neplatné gameId.');
       if(q.live!==undefined&&q.live!=='1')throw new TypeError('Invalid live mode');
-      const key=org.code+':'+org.id.toLowerCase()+':'+q.gameId.toLowerCase()+':'+(q.live??'0')+':'+(q.context==='1'?'context':'game'),now=Date.now();
+      const key=org.code+':'+org.id.toLowerCase()+':'+q.gameId.toLowerCase()+':'+(q.live??'0')+':'+(q.context==='1'?'context':q.league==='1'?'league':'game'),now=Date.now();
       stage='game_data';
       if(cache.get(key)?.expires>now)return res.status(200).json(cache.get(key).data);
       if(!pending.has(key)){
@@ -88,8 +89,9 @@ export function createBroadcastHandler(options={}){
           const [metadata,organization,events,lineup]=optional.map(r=>r.status==='fulfilled'?r.value:null);
           const data=pregameModel(enrichPregame(detail,metadata),org,q.gameId,organization);
           if(q.context==='1')data.context=await (options.fetchContext??broadcastContext)(enrichPregame(detail,metadata),options);
+          if(q.league==='1')data.league=await (options.fetchLeague??broadcastLeague)(enrichPregame(detail,metadata),options);
           if(q.live==='1'){
-            try{data.match=broadcastMatch(detail,events,lineup);}
+            try{data.match=broadcastMatch(detail,events,enrichBroadcastLineup(detail,lineup,metadata));}
             catch{data.match=null;}
           }
           cache.set(key,{data,expires:Date.now()+(q.live==='1'?10000:30000)});if(cache.size>100)cache.delete(cache.keys().next().value);return data;
