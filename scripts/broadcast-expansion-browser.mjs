@@ -8,6 +8,7 @@ const store={async create(id,hash,state){const row={id,hash,state,revision:1};ro
 const handler=createChannelHandler({env:{HMS_EUCHL_ORGANIZATION_ID:uid(2),HMS_EUCHL_API_TOKEN:'test'},store});
 const fixture={schemaVersion:1,org:'EUCHL',gameId:uid(1),date:'2026-10-24',time:'19:00',home:{id:uid(3),name:'North Wolves'},away:{id:uid(4),name:'South Falcons'},status:'FINISHED',competition:'DEMO League',match:{roster:[],goals:[],insights:[],periods:[],coverage:'matches-score',score:{home:0,away:0}},context:{historyAvailable:true,scope:{competition:'DEMO League',season:'2026/27'},teams:{home:{games:2,wins:2,draws:0,losses:0,players:[],results:[],specialTeams:{available:false,covered:0,total:2}},away:{games:2,players:[],specialTeams:{available:false,covered:0,total:2}}},nextAvailable:true,next:{home:[],away:[]}}};
 const sponsorFixture={org:'EUCHL',items:[{id:uid(20),name:'Team partner A',claim:'Claim A',web:'https://example.com',scopeRefs:{teamIds:[uid(3)]}},{id:uid(21),name:'Team partner B',claim:'Claim B',web:'https://example.org',scopeRefs:{teamIds:[uid(3)]}},{id:uid(22),name:'Away-only partner',scopeRefs:{teamIds:[uid(4)]}}],bindings:[]};
+sponsorFixture.teams=[{id:uid(3),name:'North Wolves'},{id:uid(4),name:'South Falcons'}];sponsorFixture.teamsAvailable=true;sponsorFixture.readAt=new Date().toISOString();
 fixture.league={scope:{competition:'DEMO League',season:'2026/27',group:'Division A'},standingsAvailable:true,leadersAvailable:true,statsScope:'group',standings:Array.from({length:16},(_,i)=>({id:i===2?uid(3):i===11?uid(4):uid(100+i),name:i===2?'North Wolves':i===11?'South Falcons':`Team ${i+1}`,rank:i+1,games:8,points:30-i})),leaders:{home:[{id:uid(50),name:'Home Leader',games:8,points:20,goals:12,assists:8}],away:[{id:uid(51),name:'Away Leader',games:8,points:15,goals:5,assists:10}]}};
 await mkdir('artifacts/broadcast',{recursive:true});await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const base=`http://127.0.0.1:${server.address().port}`;let browser;
 try{
@@ -66,6 +67,9 @@ try{
   await control.selectOption('#standings-view','full');
   await obs.waitForFunction(()=>document.querySelector('#app>iframe')?.contentDocument?.querySelectorAll('[data-rank]').length===8);
   assert.equal(await control.locator('#channel-url').inputValue(),obsUrl,'New layers must retain permanent OBS URL');
+  const catalogPage=await controlContext.newPage();await catalogPage.goto(base+'/broadcast/sponsors.html?org=EUCHL');await catalogPage.locator('#catalog-body tr').first().waitFor();
+  assert.equal(new URL(catalogPage.url()).pathname,'/sponsors');assert.equal(new URL(catalogPage.url()).searchParams.get('org'),'EUCHL');assert.equal(await catalogPage.locator('#catalog-body tr').count(),3);
+  assert.equal(await catalogPage.locator('#studio-link').getAttribute('href'),'/broadcast/?org=EUCHL');assert.equal(await catalogPage.locator('h1').evaluate(el=>getComputedStyle(el).fontFamily.includes('Barlow')),true);
   const gallery=await controlContext.newPage();await gallery.goto(base+'/broadcast/demo.html');await gallery.locator('[data-layer=scoresheet]').waitFor();await gallery.evaluate(()=>document.fonts.ready);
   await gallery.selectOption('#demo-side','both');assert.equal(await gallery.locator('.goal-list li').count(),8);
   assert.equal(await gallery.locator('.goal-list li').last().evaluate(el=>el.getBoundingClientRect().bottom<=document.querySelector('.page-label').getBoundingClientRect().top),true,'Eight goals must fit above pagination');

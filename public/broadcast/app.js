@@ -315,7 +315,7 @@ function renderControl() {
   const dayGames = listed.filter((game) => (game.Date || "Bez data") === state.date);
   const game = selectedGame();
   const previewUrl = game?renderUrl(state.preview,game,state.preview==='thumbnail'):'';
-  const obsUrl = game?publicOutputUrl(renderUrl('overlay',game)):'';
+  const obsUrl = game?(sandbox?renderUrl('overlay',game):publicOutputUrl(renderUrl('overlay',game))):'';
   app.innerHTML = `
     <div class="control-shell">
       <header class="control-header">
@@ -403,7 +403,7 @@ function wireControl() {
     catch(error){state.selectedId=previous;document.querySelector('#connection-status').textContent=t(error.message);button.disabled=false;}
   }));
   document.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => { state.preview = button.dataset.view; renderControl(); }));
-  document.querySelector("#open-view")?.addEventListener("click", () => { const game = selectedGame(); window.open(publicOutputUrl(renderUrl(state.preview,game,true)), "_blank", "noopener"); });
+  document.querySelector("#open-view")?.addEventListener("click", () => { const game = selectedGame(); window.open(sandbox?renderUrl(state.preview,game,true):publicOutputUrl(renderUrl(state.preview,game,true)), "_blank", "noopener"); });
   document.querySelector("#copy-url")?.addEventListener("click", async () => { const field = document.querySelector("#current-obs-url"); const button = document.querySelector("#copy-url"); try { await navigator.clipboard.writeText(field.value); button.textContent = t("URL zkopírována"); } catch { field.focus(); field.select(); document.execCommand("copy"); button.textContent = t("URL označena"); } setTimeout(() => button.textContent = t("Kopírovat OBS URL"), 1400); });
   document.querySelector("#download-from-control")?.addEventListener("click", () => { const frame = document.querySelector("#preview"); frame.contentWindow.downloadThumbnail?.(); });
 }

@@ -5,7 +5,7 @@ const scopeLabels={competitionIds:'Soutěže',seasonIds:'Sezony',groupIds:'Skupi
 let loading=false;
 async function load(){
   if(loading)return;loading=true;button.disabled=select.disabled=true;body.replaceChildren();status.textContent='Načítám sponzory…';
-  const org=select.value;document.querySelector('#studio-link').href='index.html?org='+encodeURIComponent(org);const url=new URL(location.href);url.searchParams.set('org',org);history.replaceState(null,'',url);
+  const org=select.value;document.querySelector('#studio-link').href='/broadcast/?org='+encodeURIComponent(org);const url=new URL(location.href);url.searchParams.set('org',org);history.replaceState(null,'',url);
   try{
     const response=await fetch('/api/broadcast?'+new URLSearchParams({org,catalog:'sponsors'}),{cache:'no-store',signal:AbortSignal.timeout(16000)}),data=await response.json();
     if(!response.ok)throw new Error(data.error??'HMS nyní není dostupné.');if(data.org!==org||!Array.isArray(data.items))throw new Error('Odpověď neodpovídá organizaci.');

@@ -13,9 +13,9 @@ export function fitBroadcastCanvas(element){
   resize();addEventListener('resize',resize);
   return ()=>removeEventListener('resize',resize);
 }
-export function channelUrl(base,id){const url=new URL('/broadcast/index.html',base);url.search=new URLSearchParams({mode:'channel',channel:id});url.hash='';return publicOutputUrl(url.href);}
+export function channelUrl(base,id,{sandbox=false}={}){const url=new URL('/broadcast/index.html',base);url.search=new URLSearchParams({mode:'channel',channel:id});url.hash='';return sandbox?url.href:publicOutputUrl(url.href);}
 export function createChannelControl({api,base,getState,onChange}){
-  let binding=null,revision=0,visible=true,queued=null,sending=false,problem='',ready=false,lastState=null;
+  let binding=null,revision=0,visible=true,queued=null,sending=false,problem='',ready=false,lastState=null,sandbox=false;
   try{const saved=JSON.parse(localStorage.getItem(storageKey));if(valid(saved?.id)&&/^[a-f0-9]{64}$/.test(saved.key))binding=saved;}catch{}
   const imported=/^#control=([a-f0-9]{48})\.([a-f0-9]{64})$/.exec(location.hash);
   if(imported){binding={id:imported[1],key:imported[2]};localStorage.setItem(storageKey,JSON.stringify(binding));const url=new URL(location.href);url.hash='';history.replaceState(null,'',url);}
@@ -33,17 +33,17 @@ export function createChannelControl({api,base,getState,onChange}){
     finally{sending=false;onChange();}
   }
   return {
-    info:()=>({id:binding?.id??'',bound:!!binding,ready,visible,pending:sending,error:problem,url:binding?channelUrl(base,binding.id):''}),
+    info:()=>({id:binding?.id??'',bound:!!binding,ready,visible,pending:sending,error:problem,url:binding?channelUrl(base,binding.id,{sandbox}):''}),
     library:()=>request('GET',null,true),
     saveLibrary:(items,revision)=>request('PATCH',{items,revision},true),
     controlLink(){if(!binding)return '';const url=new URL(location.href);url.hash='control='+binding.id+'.'+binding.key;return url.href;},
     async init(){
       if(!binding)return;
-      try{const row=await request('GET');revision=row.revision;lastState=row.state;visible=row.state.visible;ready=true;problem='';}
+      try{const row=await request('GET');sandbox=row.sandbox===true;revision=row.revision;lastState=row.state;visible=row.state.visible;ready=true;problem='';}
       catch(e){problem=e.message;ready=false;}onChange();
     },
     async create(){
-      try{const row=await request('POST',{state:{...getState(),visible:true}});binding={id:row.id,key:row.controlKey};store();revision=row.revision;lastState=row.state;visible=true;ready=true;problem='';}
+      try{const row=await request('POST',{state:{...getState(),visible:true}});sandbox=row.sandbox===true;binding={id:row.id,key:row.controlKey};store();revision=row.revision;lastState=row.state;visible=true;ready=true;problem='';}
       catch(e){problem=e.message;}onChange();
     },
     publish(){if(binding&&ready){queued={...getState(),visible:queued?.visible??visible};flush();}},
