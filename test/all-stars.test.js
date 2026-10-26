@@ -25,6 +25,8 @@ test('calendar scope and lineup validation reject invalid months, IDs, duplicate
 test('monthly nominations separate player/team, preserve unknown positions, and flag incomplete or stale games',()=>{
  const data=nominateAllStars([snapshot],[fixture],scope);assert.equal(data.coverage.complete,true);assert.ok(data.candidates.F.length);assert.equal(data.candidates.F[0].positionUnverified,true);
  assert.equal(data.candidates.F.length,data.candidates.D.length);
+ const dual=structuredClone(snapshot);dual.goalies[0].player_id=dual.players[0].player_id;dual.goalies[0].team_id=dual.players[0].team_id;
+ const dualData=nominateAllStars([dual],[fixture],scope);const dualId=dual.players[0].player_id.toLowerCase()+'|'+dual.players[0].team_id.toLowerCase();assert.ok(dualData.candidates.F.some(p=>p.id===dualId));assert.ok(dualData.candidates.G.some(p=>p.id===dualId));
  assert.equal(nominateAllStars([],[fixture],scope).coverage.missing.length,1);
  assert.equal(nominateAllStars([snapshot],[{...fixture,home:{...fixture.home,score:999}}],scope).coverage.complete,false);
  const bad=structuredClone(snapshot);bad.game.event_snapshot=null;const historical=nominateAllStars([bad],[fixture],scope);assert.equal(historical.coverage.verifiedByTotals,1);assert.equal(historical.coverage.complete,true);assert.ok(historical.candidates.G.every(g=>g.sv===null));
