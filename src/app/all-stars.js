@@ -50,8 +50,7 @@ export function nominateAllStars(snapshots,fixtures,scope){
     for(const [role,rows] of [['S',summary.players],['G',summary.goalies]])for(const row of rows){
       const team=[summary.home,summary.away].find(t=>lower(t.id)===lower(row.teamId));
       if(!team||!isGameId(row.id))continue;
-      const id=lower(row.id)+'|'+lower(team.id),old=players.get(id);
-      if(old&&old.kind!==role)throw new Error('Conflicting player role');
+      const id=lower(row.id)+'|'+lower(team.id),key=id+'|'+role,old=players.get(key);
       const p=old??{id,playerId:lower(row.id),teamId:lower(team.id),name:row.name,team:team.name,imageUrl:row.imageUrl,kind:role,gp:0,goals:0,assists:0,pim:0,saves:0,ga:0,statsKnown:true,positions:new Set()};
       p.gp++;
       if(role==='S'){
@@ -65,7 +64,7 @@ export function nominateAllStars(snapshots,fixtures,scope){
         if(row.savePercentage===null||row.saves===null||row.goalsAgainst===null||teamGoalies.reduce((sum,k)=>sum+(k.goalsAgainst??0),0)!==conceded||legacy&&(currentTeam.saves==null||teamGoalies.reduce((sum,k)=>sum+(k.saves??0),0)!==currentTeam.saves))p.statsKnown=false;
         p.saves+=row.saves??0;p.ga+=row.goalsAgainst??0;
       }
-      players.set(id,p);
+      players.set(key,p);
     }
   }
   const result={F:[],D:[],G:[]};
