@@ -76,5 +76,6 @@ test('local and Vercel routes expose the same manager, public result and protect
  assert.equal((await fetch(root+'/all-stars/phm',{method:'POST'})).status,405);
  assert.equal((await fetch(root+'/api/all-stars?org=unknown')).status,404);
  const config=JSON.parse(await readFile(new URL('../vercel.json',import.meta.url),'utf8'));assert.equal(config.rewrites.find(r=>r.source==='/api/all-stars').destination,'/api/game-summary?view=all-stars');
+ const ignored=(await readFile(new URL('../.vercelignore',import.meta.url),'utf8')).split(/\r?\n/);assert.ok(!ignored.includes('all-stars/'),'An unanchored legacy directory exclusion would remove public/all-stars from Vercel');assert.ok(ignored.includes('/all-stars/'));
  }finally{await new Promise(resolve=>server.close(resolve));}
 });
