@@ -44,6 +44,12 @@ Měsíční dotaz má limit 500 importovaných zápasů; větší výběr selže
 
 Dokončený zápas chybějící v DB se ukáže v seznamu chybějících importů. Zápas
 se nesouladem událostí a výsledku nebo aktuálním rozpisem se nepoužije.
+Historické importy před zavedením event snapshotů se ověřují shodou uložených
+hráčských gólů obou týmů s aktuálním oficiálním výsledkem HMS. Tento odlišný
+základ ověření je uveden v pokrytí (`verifiedByTotals`); časová osa se nepředstírá.
+Brankářské zákroky těchto importů se navíc srovnávají s aktuálním týmovým
+součtem zákroků HMS. Při nesouladu nemá brankář pořadí. Přítomný, ale rozporný
+event snapshot nikdy nepoužije historickou výjimku.
 Publikace vyžaduje uzavřený kalendářní měsíc, úplné pokrytí zvolené divize,
 3+2+1 a výběr ověřený proti právě načteným kandidátům. Výpadek API není prázdný
 úspěšný výsledek. Chybějící importy doplní stávající nástroj Historický import;

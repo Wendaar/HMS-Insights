@@ -27,7 +27,8 @@ test('monthly nominations separate player/team, preserve unknown positions, and 
  assert.equal(data.candidates.F.length,data.candidates.D.length);
  assert.equal(nominateAllStars([],[fixture],scope).coverage.missing.length,1);
  assert.equal(nominateAllStars([snapshot],[{...fixture,home:{...fixture.home,score:999}}],scope).coverage.complete,false);
- const bad=structuredClone(snapshot);bad.game.event_snapshot=null;assert.equal(nominateAllStars([bad],[fixture],scope).coverage.unsuitable,1);
+ const bad=structuredClone(snapshot);bad.game.event_snapshot=null;const historical=nominateAllStars([bad],[fixture],scope);assert.equal(historical.coverage.verifiedByTotals,1);assert.equal(historical.coverage.complete,true);assert.ok(historical.candidates.G.every(g=>g.sv===null));
+ bad.players[0].goals+=1;assert.equal(nominateAllStars([bad],[fixture],scope).coverage.unsuitable,1);
  const other=JSON.parse(JSON.stringify(snapshot).replaceAll(snapshot.game.home_team_id,id(101)).replaceAll(snapshot.game.home_team_id.toLowerCase(),id(101)));other.game.game_id=id(100);other.game.home_team_id=id(101);other.teams.find(t=>t.side==='HOME').team_id=id(101);for(const p of other.players)if(p.team_id===snapshot.game.home_team_id)p.team_id=id(101);
  const second={...fixture,id:id(100),home:{...fixture.home,id:id(101)}};
  const multiple=nominateAllStars([snapshot,other],[fixture,second],scope);

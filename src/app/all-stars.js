@@ -32,12 +32,21 @@ export function nominateAllStars(snapshots,fixtures,scope){
   const byId=new Map(snapshots.map(s=>[lower(s.game.game_id),s]));
   const selected=expected.map(g=>byId.get(g.id)).filter(Boolean);
   const groups=[...new Map(fixtures.filter(g=>g.group.id).map(g=>[g.group.id,g.group])).values()];
-  const teamGames=new Map(),players=new Map();let unsuitable=0;
+  const teamGames=new Map(),players=new Map();let unsuitable=0,verifiedByTotals=0;
   for(const game of expected)for(const team of [game.home,game.away])teamGames.set(team.id,(teamGames.get(team.id)??0)+1);
   for(const snapshot of selected){
     const summary=buildGameSummary(snapshot),game=snapshot.game;
     const fixture=expected.find(g=>g.id===lower(game.game_id));
-    if(summary.provenance.eventCoverage!=='matches-result'||summary.home.score!==fixture.home.score||summary.away.score!==fixture.away.score||lower(summary.home.id)!==fixture.home.id||lower(summary.away.id)!==fixture.away.id||lower(game.group_id)!==fixture.group.id){unsuitable++;continue;}
+    const totalsMatch=[summary.home,summary.away].every(team=>{
+      const rows=summary.players.filter(p=>lower(p.teamId)===lower(team.id));
+      return rows.length>0&&rows.every(p=>Number.isInteger(p.goals)&&p.goals>=0&&Number.isInteger(p.assists)&&p.assists>=0&&Number.isFinite(p.penaltyMinutes)&&p.penaltyMinutes>=0)&&rows.reduce((sum,p)=>sum+p.goals,0)===team.score;
+    });
+    // Historical imports predate event snapshots but retain real per-game stats.
+    // Validate their player totals against both current official team scores.
+    // A present contradictory timeline never gets this legacy compatibility path.
+    const legacy=!game.event_snapshot&&totalsMatch;
+    if((summary.provenance.eventCoverage!=='matches-result'&&!legacy)||!totalsMatch||summary.home.score!==fixture.home.score||summary.away.score!==fixture.away.score||lower(summary.home.id)!==fixture.home.id||lower(summary.away.id)!==fixture.away.id||lower(game.group_id)!==fixture.group.id){unsuitable++;continue;}
+    if(legacy)verifiedByTotals++;
     for(const [role,rows] of [['S',summary.players],['G',summary.goalies]])for(const row of rows){
       const team=[summary.home,summary.away].find(t=>lower(t.id)===lower(row.teamId));
       if(!team||!isGameId(row.id))continue;
@@ -51,8 +60,9 @@ export function nominateAllStars(snapshots,fixtures,scope){
         if(['F','D'].includes(roster?.position))p.positions.add(roster.position);
       }else{
         const conceded=lower(team.id)===lower(summary.home.id)?summary.away.score:summary.home.score;
+        const currentTeam=lower(team.id)===fixture.home.id?fixture.home:fixture.away;
         const teamGoalies=summary.goalies.filter(k=>lower(k.teamId)===lower(team.id));
-        if(row.savePercentage===null||row.saves===null||row.goalsAgainst===null||teamGoalies.reduce((sum,k)=>sum+(k.goalsAgainst??0),0)!==conceded)p.statsKnown=false;
+        if(row.savePercentage===null||row.saves===null||row.goalsAgainst===null||teamGoalies.reduce((sum,k)=>sum+(k.goalsAgainst??0),0)!==conceded||legacy&&(currentTeam.saves==null||teamGoalies.reduce((sum,k)=>sum+(k.saves??0),0)!==currentTeam.saves))p.statsKnown=false;
         p.saves+=row.saves??0;p.ga+=row.goalsAgainst??0;
       }
       players.set(id,p);
@@ -72,7 +82,7 @@ export function nominateAllStars(snapshots,fixtures,scope){
   }
   for(const list of Object.values(result))list.sort((a,b)=>Number(b.eligible)-Number(a.eligible)||(b.score??-Infinity)-(a.score??-Infinity)||a.name.localeCompare(b.name));
   const missing=expected.filter(g=>!byId.has(g.id)).map(g=>({id:g.id,label:`${g.home.name} — ${g.away.name} · ${g.date}`}));
-  return {candidates:result,groups,coverage:{expected:expected.length,imported:selected.length,usable:selected.length-unsuitable,missing,unsuitable,complete:expected.length>0&&!missing.length&&!unsuitable},source:'HMS API / shared imported game snapshots',rules:'calendar-manual-v1'};
+  return {candidates:result,groups,coverage:{expected:expected.length,imported:selected.length,usable:selected.length-unsuitable,verifiedByTotals,missing,unsuitable,complete:expected.length>0&&!missing.length&&!unsuitable},source:'HMS API / shared imported game snapshots',rules:'calendar-manual-v1'};
 }
 export function resolvedSelection(config,data,{complete=false}={}){
   const result={};
@@ -92,7 +102,10 @@ export async function readAllStars(org,input,options={}){
   if(snapshots.length>500)throw new Error('Too many games');
   for(const s of snapshots)if(lower(s.game.organization_id)!==lower(config.id)||lower(s.game.season_id)!==scope.seasonId||String(s.game.played_on instanceof Date?s.game.played_on.toISOString():s.game.played_on).slice(0,7)!==scope.month)throw new Error('Snapshot context mismatch');
   let cursor=0;const fixtures=[];
-  await Promise.all(Array.from({length:3},async()=>{while(cursor<dates.length){const day=dates[cursor++];const raw=await(options.readDay??readPublicGameDay)(scope.seasonId,day,options);fixtures.push(...raw.map(g=>publicSeasonGame(g,scope.seasonId,day)));}}));
+  await Promise.all(Array.from({length:3},async()=>{while(cursor<dates.length){const day=dates[cursor++];const raw=await(options.readDay??readPublicGameDay)(scope.seasonId,day,options);fixtures.push(...raw.map(g=>{
+    const fixture=publicSeasonGame(g,scope.seasonId,day),count=v=>v!==null&&v!==undefined&&v!==''&&Number.isInteger(Number(v))&&Number(v)>=0?Number(v):null;
+    fixture.home.saves=count(g.HomeTeamSaves);fixture.away.saves=count(g.AwayTeamSaves);return fixture;
+  }));}}));
   const seen=new Set();for(const g of fixtures){if(seen.has(g.id))throw new Error('Duplicate game');seen.add(g.id);}
   if(scope.groupId&&!fixtures.some(g=>g.group.id===scope.groupId))throw new TypeError('group');
   const data=nominateAllStars(snapshots,fixtures,scope);
