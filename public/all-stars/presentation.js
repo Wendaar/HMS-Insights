@@ -4,12 +4,13 @@ export const formats={'16:9':[1920,1080],'16:10':[1600,1000],'1:1':[1080,1080],'
 export const templates=['rink','cards'];
 export const graphicDefaults={format:'16:9',design:'pantha',template:'rink',font:'Hitch Grotesk'};
 const designNames=['clean','crazy','artistic','technical','pantha'];
-export function graphicSettings(input={}){
+export function graphicSettings(input={},org='phm'){
   const value=input&&typeof input==='object'?input:{};
-  return {format:Object.hasOwn(formats,value.format)?value.format:graphicDefaults.format,
-    design:designNames.includes(value.design)?value.design:graphicDefaults.design,
-    template:templates.includes(value.template)?value.template:graphicDefaults.template,
-    font:fonts.includes(value.font)?value.font:graphicDefaults.font};
+  const defaults=String(org).toLowerCase()==='phm'?graphicDefaults:{...graphicDefaults,design:'clean',font:'Barlow Condensed'};
+  return {format:Object.hasOwn(formats,value.format)?value.format:defaults.format,
+    design:designNames.includes(value.design)?value.design:defaults.design,
+    template:templates.includes(value.template)?value.template:defaults.template,
+    font:fonts.includes(value.font)?value.font:defaults.font};
 }
 // Apply filters before paging; position/search/context changes reset the visible window.
 export const CANDIDATE_PAGE_SIZE=20;

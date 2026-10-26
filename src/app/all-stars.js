@@ -13,7 +13,7 @@ export function allStarsScope(input){
   if(input.groupId&&!isGameId(input.groupId))throw new TypeError('scope');
   return {seasonId:lower(input.seasonId),month:input.month,groupId:lower(input.groupId)};
 }
-export function allStarsSettings(input){
+export function allStarsSettings(input,org='phm'){
   const scope=allStarsScope(input);
   if(!isGameId(scope.groupId))throw new TypeError('group');
   if(typeof input.title!=='string'||!input.title.trim()||input.title.length>100||/[<>\x00-\x1f]/.test(input.title))throw new TypeError('title');
@@ -26,7 +26,7 @@ export function allStarsSettings(input){
       seen.add(id);return id;
     });
   }
-  return {...scope,title:input.title.trim(),selection,graphics:graphicSettings(input.graphics),rules:'calendar-manual-v1'};
+  return {...scope,title:input.title.trim(),selection,graphics:graphicSettings(input.graphics,org),rules:'calendar-manual-v1'};
 }
 // Only recorded sporting facts enter this read model. Never sum different teams.
 export function nominateAllStars(snapshots,fixtures,scope){

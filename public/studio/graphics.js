@@ -1,6 +1,6 @@
 import {t,language,insightDescription} from './i18n.js';
 import {resolveInsightSubject,insightLabel,insightStat} from './subjects.js';
-import {fonts,brandFonts,fontForText,fontSpec} from './typography.js';
+import {fonts,brandFonts,fontForText,fontSpec,designTypography} from './typography.js';
 export {fonts} from './typography.js';
 import {sportingImage} from '../game-report-media.js';
 export const formats={'1:1':[1080,1080],'9:16':[1080,1920]};
@@ -150,7 +150,7 @@ function badgePlate(c,img,label,x,y,size,font,crazy=false){
 export async function renderGraphic(canvas,game,template,settings,insight=null) {
   const [w,h]=formats[settings.format]??formats['1:1'],area=safeArea(settings.format);
   const story=h>w,pantha=settings.design==='pantha',crazy=['crazy','pantha'].includes(settings.design),artistic=settings.design==='artistic',technical=settings.design==='technical',font=fonts.includes(settings.font)?settings.font:fonts[0];
-  const palette=panelPalette(settings);
+  const palette=panelPalette(settings),titleFont=designTypography(settings.design,font).headline;
   const lang=settings.lang??language;
   const tr=(source,values={})=>t(source,values,lang);
   if(template.id?.startsWith('period-')){const period=Number(template.id.slice(7));template={...template,heading:tr(period<=3?'PO {period}. TŘETINĚ':'PO {period}. ČÁSTI',{period})};}
@@ -198,7 +198,7 @@ export async function renderGraphic(canvas,game,template,settings,insight=null) 
     c.save();panel(c,4,heroY,W-8,heroH,28);c.clip();effects(c,W,heroY+heroH,accent,crazy);
     if(technical){c.fillStyle=accent;fit(c,'/// MATCH DATA',28,heroY+28,W*.45,17,font,accent,'left');}
     if(insight){
-      const headline=insightLabel(insight.type),words=headline.split(' '),titleFont=pantha?'Pantha':crazy?'Permanent Marker':artistic?'Noto Serif':'Anton';
+      const headline=insightLabel(insight.type),words=headline.split(' ');
       const photoW=W*(crazy?.56:.53),photoH=heroH*(crazy?.84:.80),px=W-photoW-20,py=heroY+heroH-photoH;
       const portraitR=Math.min(photoW*.42,heroH*.32),portraitX=px+photoW/2,portraitY=heroY+heroH*.55;
       if(artistic){laurels(c,portraitX,portraitY,portraitR+14);}
@@ -220,7 +220,7 @@ export async function renderGraphic(canvas,game,template,settings,insight=null) 
       if(stat)statTile(c,stat.value,stat.label,30,heroY+heroH-(story?230:145),Math.min(210,W*.32),story?200:125,font,accent,crazy,palette,pantha?'Pantha':'Anton');
       if(crazy){c.fillStyle=accent+'ce';c.beginPath();c.moveTo(0,heroY+heroH-12);c.lineTo(W*.52,heroY+heroH-60);c.lineTo(W*.60,heroY+heroH);c.lineTo(0,heroY+heroH);c.fill();}
     }else{
-      fit(c,template.id==='final'?'FINAL':template.heading,W/2,heroY+(story?140:88),W-70,template.id==='final'?(story?132:92):(story?60:46),template.id==='final'?(pantha?'Pantha':crazy?'Permanent Marker':artistic?'Noto Serif':'Anton'):font,palette.text);
+      fit(c,template.id==='final'?'FINAL':template.heading,W/2,heroY+(story?140:88),W-70,template.id==='final'?(story?132:92):(story?60:46),template.id==='final'?titleFont:font,palette.text);
       const ly=heroY+heroH*(artistic?.62:.65),size=artistic?(story?190:145):(story?208:165);
       if(artistic){laurels(c,W*.27,ly,size*.74);laurels(c,W*.73,ly,size*.74);}
       badgePlate(c,im.home,game.home.name,W*.27,ly,size,font,crazy);badgePlate(c,im.away,game.away.name,W*.73,ly,size,font,crazy);
