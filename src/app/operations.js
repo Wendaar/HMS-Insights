@@ -3,6 +3,7 @@ import {fetchGames, fetchGameDetail, fetchPublicGameMetadata, fetchOrganization,
 import {gameRows} from './backfill-finished-games.js';
 import {isGameId} from '../domain/game-summary.js';
 import {periods, normalizeGame, dateValid} from '../../public/operations/model.js';
+import {readPublicGameDay} from './season-games.js';
 
 export const OPERATIONS_PAGE_SIZE = 20;
 const same = (a, b) => typeof a === 'string' && typeof b === 'string' && a.toLowerCase() === b.toLowerCase();
@@ -38,7 +39,10 @@ function assertGame(game, org, window, expectedId) {
 }
 export function enrichOperationsGame(game, metadata) {
   const homeId = game.HomeTeam?.teamId ?? game.homeTeamId, awayId = game.AwayTeam?.teamId ?? game.awayTeamId;
-  if (!metadata || metadata.startDate !== game.startDate || !same(homeId, metadata.HomeTeam?.teamId) || !same(awayId, metadata.AwayTeam?.teamId)) return game;
+  const equalSide=(a,b)=>!a&&!b||same(a,b);
+  const matchedDayRecord=metadata?.gameId&&same(game.gameId,metadata.gameId)&&equalSide(homeId,metadata.HomeTeam?.teamId)&&equalSide(awayId,metadata.AwayTeam?.teamId);
+  const matchedLegacyRecord=!metadata?.gameId&&same(homeId,metadata?.HomeTeam?.teamId)&&same(awayId,metadata?.AwayTeam?.teamId);
+  if (!metadata || metadata.startDate !== game.startDate || !(matchedDayRecord||matchedLegacyRecord)) return game;
   const result = {...game};
   for (const side of ['HomeTeam', 'AwayTeam']) result[side] = {...metadata[side], ...game[side]};
   for (const field of ['Venue', 'Phase']) result[field] = {...metadata[field], ...game[field]};
@@ -90,6 +94,29 @@ export async function readOperations(query, options = {}) {
   }
   let cursor = 0;
   const result = new Array(rows.length);
+  const requestedDays=new Map();
+  const dayFor=async(game,seasonId)=>{
+    const key=seasonId.toLowerCase()+':'+game.startDate;
+    if(!requestedDays.has(key))requestedDays.set(key,(async()=>{
+      const list=await(options.fetchSchedule??readPublicGameDay)(seasonId,game.startDate,options);
+      if(!Array.isArray(list)||list.some(row=>!isGameId(row.gameId)||row.startDate!==game.startDate||!same(row.Phase?.Group?.Season?.seasonId,seasonId)))throw new Error('Public day scope mismatch');
+      const map=new Map(list.map(row=>[row.gameId.toLowerCase(),row]));
+      if(map.size!==list.length)throw new Error('Duplicate public day record');
+      return map;
+    })());
+    return(await requestedDays.get(key)).get(game.gameId.toLowerCase());
+  };
+  const fullDetail=async(game)=>{
+    const loaded=await(options.fetchDetail??fetchGameDetail)(game.gameId,{config});
+    assertGame(loaded,org,window,game.gameId);
+    let detail={...game,...loaded};
+    for(const side of ['HomeTeam','AwayTeam'])if(game[side]||loaded[side])detail[side]={...game[side],...loaded[side]};
+    if(!detail.HomeTeam?.name||!detail.AwayTeam?.name||!detail.Venue?.name||!detail.Phase?.Group?.Season?.Competition?.name){
+      const metadata=await(options.fetchMetadata??fetchPublicGameMetadata)(game.gameId,{config});
+      detail=enrichOperationsGame(detail,metadata);
+    }
+    return detail;
+  };
   await Promise.all(Array.from({length: Math.min(3, rows.length)}, async () => {
     while (cursor < rows.length) {
       const index = cursor++, game = rows[index];
@@ -97,18 +124,17 @@ export async function readOperations(query, options = {}) {
       const key = org.id.toLowerCase() + ':' + game.gameId.toLowerCase();
       const cached = !options.fetchGames && cache.get(key);
       if (cached?.until > Date.now()) { result[index] = cached.game; continue; }
-      const needsDetail = !game.HomeTeam?.name || !game.AwayTeam?.name || !game.Venue?.name || game.referee === undefined || game.timekeeper === undefined ||
-        !['foreignId', 'foreingId', 'externalId'].some(key => Object.hasOwn(game.HomeTeam ?? {}, key));
+      const needsDetail = (game.homeTeamId&&!game.HomeTeam?.name)||(game.awayTeamId&&!game.AwayTeam?.name)||!game.Venue?.name||game.referee===undefined||game.timekeeper===undefined;
       let detail = game;
-      if (needsDetail) {
-        const loaded = await (options.fetchDetail ?? fetchGameDetail)(game.gameId, {config});
-        assertGame(loaded, org, window, game.gameId);
-        detail = {...game, ...loaded};
-        for (const side of ['HomeTeam', 'AwayTeam']) if (game[side] || loaded[side]) detail[side] = {...game[side], ...loaded[side]};
-        if (!detail.HomeTeam?.name || !detail.AwayTeam?.name || !detail.Venue?.name || !detail.Phase?.Group?.Season?.Competition?.name) {
-          const metadata = await (options.fetchMetadata ?? fetchPublicGameMetadata)(game.gameId, {config});
-          detail = enrichOperationsGame(detail, metadata);
-        }
+      const seasonId=game.seasonId??game.Phase?.Group?.Season?.seasonId??game.Season?.seasonId;
+      if(needsDetail&&isGameId(seasonId)&&!rules.detailPayments){
+        const metadata=await dayFor(game,seasonId);
+        if(metadata){
+          detail=enrichOperationsGame(game,metadata);
+          if(detail===game)throw new Error('Public fixture identity mismatch');
+        }else detail=await fullDetail(game);
+      }else if (needsDetail||rules.detailPayments) {
+        detail=await fullDetail(game);
       }
       assertGame(detail, org, window, game.gameId);
       for (const [side, idField] of [['HomeTeam', 'homeTeamId'], ['AwayTeam', 'awayTeamId']]) {

@@ -60,7 +60,7 @@ export const server = createServer(async (request, response) => {
     request.query=Object.fromEntries(url.searchParams);
     await createOperationsHandler()(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json; charset=utf-8');response.end(JSON.stringify(body));}});return;
   }
-  if(['/operations','/operations/','/operations/index.html','/operations/app.js','/operations/model.js','/operations/demo.js','/operations/styles.css'].includes(url.pathname)){
+  if(['/operations','/operations/','/operations/index.html','/operations/app.js','/operations/loading.js','/operations/model.js','/operations/demo.js','/operations/styles.css'].includes(url.pathname)){
     if(!['GET','HEAD'].includes(request.method)){response.writeHead(405,{allow:'GET, HEAD'});response.end();return;}
     const name=['/operations','/operations/'].includes(url.pathname)?'index.html':url.pathname.split('/').pop();
     response.setHeader('content-type',name.endsWith('.html')?'text/html; charset=utf-8':name.endsWith('.css')?'text/css; charset=utf-8':'text/javascript; charset=utf-8');

@@ -1,3 +1,4 @@
+import {operationsLoad, continueOperationsLoad} from './loading.js';
 import {aggregate, periods, warningLabels, csv, staffRanking, paymentLabel, paidLabel} from './model.js';
 import {demoData} from './demo.js';
 import {hmsBrand} from '../hms-brand.js';
@@ -11,7 +12,7 @@ const el = (tag, text, cls) => {
 $('brand').innerHTML = hmsBrand('OPERATIONS');
 const views = {dashboard: 'Kontrolní přehled', games: 'Zápasy', staff: 'Směny a mzdy', teams: 'Fakturace týmů', closing: 'Měsíční uzávěrka'};
 let view = 'dashboard', data = null, mode = '', credential = '', requestId = 0, issue = '', chartPeriod = 'selected', chartRole = '';
-let configured = false;
+let configured = false, loadState = 'idle', loadError = '', pendingLoad = null;
 const today = new Intl.DateTimeFormat('en-CA', {timeZone: 'Europe/Prague', year: 'numeric', month: '2-digit', day: '2-digit'}).format(new Date());
 $('from').value = today.slice(0, 7) + '-01';
 $('to').value = new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)), 0)).toISOString().slice(0, 10);
@@ -123,6 +124,16 @@ function render() {
   for (const button of $('navigation').children) button.setAttribute('aria-current', button.dataset.view === view ? 'page' : 'false');
   $('content').replaceChildren();
   if (!data) {
+    if (credential && ['loading', 'error'].includes(loadState)) {
+      const count = pendingLoad?.games.length ?? 0;
+      const section = panel(loadState === 'loading' ? 'Načítám provozní údaje HMS' : 'Načítání se přerušilo',
+        count ? `Zachováno ${count} zápasů z dokončených stránek. Součty se zobrazí po načtení celého období.` : loadState === 'loading' ? 'Načítám vybrané období a podklady ke srovnání.' : 'První stránku se nepodařilo dokončit. Načítání můžete zopakovat.');
+      section.append(el('p', loadState === 'error' ? loadError : 'Stránku můžete ponechat otevřenou. Případný krátký výpadek se automaticky zopakuje.'));
+      if (loadState === 'error') {
+        const retry = el('button', 'Pokračovat v načítání'); retry.onclick = () => load(true); section.append(retry);
+      }
+      $('content').append(section); return;
+    }
     const section = panel('Provozní přehledy HMS', 'Vyberte organizaci a načtěte její data.');
     section.append(el('div', configured ? 'Zadejte provozní kód organizace. Ukázka je k dispozici samostatně.' : 'Živý přístup této organizace čeká na nastavení. Ukázka je k dispozici samostatně.', 'empty'));
     $('content').append(section); return;
@@ -182,35 +193,47 @@ function choices() {
   $('competition').replaceChildren(new Option('Všechny soutěže', ''), ...[...options].map(([id, name]) => new Option(name, id)));
   if (options.has(value)) $('competition').value = value;
 }
-async function load() {
+async function load(resume = false) {
   try { periods(range().from, range().to); } catch (error) { $('message').textContent = error.message; return; }
-  const id = ++requestId, org = $('org').value, requestedRange = range(), all = [], ids = new Set();
-  data = null; render(); $('message').textContent = 'Načítám HMS · součty se zobrazí až po načtení celého období…';
+  if (!credential) { $('message').textContent = 'Zadejte provozní kód organizace.'; return; }
+  const id = ++requestId, org = $('org').value, requestedRange = range(), requestCredential = credential;
+  if (!resume || !pendingLoad || pendingLoad.org !== org || pendingLoad.range.from !== requestedRange.from || pendingLoad.range.to !== requestedRange.to) pendingLoad = operationsLoad(org, requestedRange);
+  const state = pendingLoad;
+  data = null; loadState = 'loading'; loadError = ''; $('lock').hidden = false; render();
+  $('source').textContent = 'HMS · načítání dat';
+  $('access-note').textContent = 'Při přerušení lze pokračovat bez opětovného zadávání kódu.';
+  $('message').textContent = 'Načítám úplný přehled HMS…';
   try {
-    let offset = 0, result;
-    do {
-      const response = await fetch('/api/operations?' + new URLSearchParams({org, ...requestedRange, offset}), {headers: {authorization: 'Bearer ' + credential}, cache: 'no-store', signal: AbortSignal.timeout(28000)});
-      result = await response.json(); if (id !== requestId) return;
-      if (!response.ok) throw Error(result.error || 'Data nejsou dostupná.');
-      if (result.organizationSlug !== org.toLowerCase() || result.offset !== offset || !Array.isArray(result.games)) throw Error('Zdroj nepotvrdil organizaci a stránkování dat.');
-      for (const game of result.games) {
-        const key = game.id.toLowerCase(); if (ids.has(key)) throw Error('HMS vrátilo duplicitní stránku. Neúplné součty se nezobrazují.');
-        ids.add(key); all.push(game);
+    const done = await continueOperationsLoad(state, {
+      current: () => id === requestId,
+      progress: (count, delay) => { if (id === requestId) $('message').textContent = delay ? 'HMS je dočasně vytížené. Opakuji stránku za ' + Math.ceil(delay / 1000) + ' s · načteno ' + count + ' zápasů.' : 'Načítám HMS · ' + count + ' zápasů včetně srovnávacích období…'; },
+      readPage: async offset => {
+        let response;
+        try { response = await fetch('/api/operations?' + new URLSearchParams({org, ...requestedRange, offset}), {headers: {authorization: 'Bearer ' + requestCredential}, cache: 'no-store', signal: AbortSignal.timeout(28000)}); }
+        catch (cause) { const error = Error('Spojení s HMS se přerušilo.'); error.retryable = true; throw error; }
+        let result;
+        try { result = await response.json(); } catch { const error = Error('HMS nevrátilo datovou odpověď.'); error.retryable = response.status >= 500; throw error; }
+        if (!response.ok) { const error = Error(result.error || 'Data nejsou dostupná.'); error.status = response.status; error.retryable = result.retryable ?? [429, 502, 503, 504].includes(response.status); error.retryAfter = Number(response.headers.get('retry-after')); throw error; }
+        return result;
       }
-      if (result.hasMore && (!Number.isSafeInteger(result.nextOffset) || result.nextOffset <= offset || result.nextOffset > 3000)) throw Error('Období je příliš velké. Zúžte rozsah.');
-      offset = result.nextOffset; $('message').textContent = `Načítám HMS · ${all.length} zápasů včetně srovnávacích období…`;
-    } while (result.hasMore);
-    if (!result.complete) throw Error('HMS nepotvrdilo úplnost období.');
-    data = {...result, games: all}; mode = 'live'; $('source').textContent = 'HMS API · živá data';
-    $('message').textContent = `Načteno ${new Date(result.readAt).toLocaleString('cs-CZ')} · ${all.length} zápasů včetně srovnávacích období.`;
-    $('lock').hidden = false; choices(); render();
+    });
+    if (!done || id !== requestId) return;
+    data = {...state.last, games: state.games}; mode = 'live'; loadState = 'ready'; pendingLoad = null;
+    $('source').textContent = 'HMS API · živá data';
+    $('message').textContent = 'Načteno ' + new Date(data.readAt).toLocaleString('cs-CZ') + ' · ' + data.games.length + ' zápasů včetně srovnávacích období.';
+    $('access-note').textContent = 'Živá data jsou odemčená pro tuto organizaci.'; choices(); render();
   } catch (error) {
-    if (id === requestId) { data = null; $('message').textContent = error.name === 'TimeoutError' ? 'Načítání trvá příliš dlouho. Zkuste užší období.' : error.message; render(); }
+    if (id !== requestId) return;
+    data = null; loadState = 'error'; loadError = error.message;
+    if (error.status === 401) { credential = ''; pendingLoad = null; loadState = 'idle'; }
+    $('message').textContent = error.message;
+    if (credential) { $('source').textContent = 'HMS · načítání přerušeno'; $('access-note').textContent = 'Kód zůstává v paměti. Načtené stránky lze zachovat a pokračovat.'; }
+    render();
   }
 }
 async function access() {
   const id = ++requestId, org = $('org').value;
-  credential = ''; $('secret').value = ''; data = null; mode = ''; configured = false;
+  credential = ''; $('secret').value = ''; data = null; mode = ''; configured = false; loadState = 'idle'; loadError = ''; pendingLoad = null;
   $('lock').hidden = true; $('competition').replaceChildren(new Option('Všechny soutěže', '')); $('payment').value = ''; $('search').value = '';
   $('map-link').href = '/control?' + new URLSearchParams({org}); history.replaceState(null, '', '?' + new URLSearchParams({org}));
   $('source').textContent = 'Přístup k provozním datům'; $('access-note').textContent = 'Živá data chrání provozní kód vaší organizace.'; $('message').textContent = ''; render();
@@ -222,15 +245,15 @@ async function access() {
     $('access-note').textContent = configured ? 'Zadejte provozní kód organizace. Kód se drží jen v paměti a nikam se neukládá.' : 'Živý přístup čeká na nastavení pro tuto organizaci. K dispozici je ukázka.'; render();
   } catch (error) { if (id === requestId) $('message').textContent = error.message; }
 }
-$('unlock').onsubmit = event => { event.preventDefault(); credential = $('secret').value; $('secret').value = ''; load(); };
+$('unlock').onsubmit = event => { event.preventDefault(); if ($('secret').value) credential = $('secret').value; $('secret').value = ''; load(!!pendingLoad); };
 $('demo').onclick = () => {
   try {
-    periods(range().from, range().to); ++requestId; credential = ''; $('secret').value = ''; data = demoData($('org').value, range()); mode = 'demo';
+    periods(range().from, range().to); ++requestId; pendingLoad = null; loadState = 'idle'; credential = ''; $('secret').value = ''; data = demoData($('org').value, range()); mode = 'demo';
     $('source').textContent = 'UKÁZKA · smyšlená data'; $('lock').hidden = false; $('message').textContent = 'Ukázkový režim · nejde o skutečné údaje HMS.'; choices(); render();
   } catch (error) { $('message').textContent = error.message; }
 };
 $('lock').onclick = access; $('org').onchange = access;
 $('filters').onsubmit = event => { event.preventDefault(); if (mode === 'demo') $('demo').click(); else if (credential) load(); else $('message').textContent = 'Nejdříve odemkněte data nebo otevřete ukázku.'; };
 $('competition').onchange = render; $('payment').onchange = render; $('search').oninput = render;
-for (const id of ['from', 'to']) $(id).onchange = () => { ++requestId; data = null; render(); $('message').textContent = 'Období změněno. Použijte období pro nové načtení.'; };
+for (const id of ['from', 'to']) $(id).onchange = () => { ++requestId; data = null; pendingLoad = null; loadState = 'idle'; render(); $('message').textContent = 'Období změněno. Použijte období pro nové načtení.'; };
 access();

@@ -1,6 +1,7 @@
 import {seasonGamesQuery,publicSeasonGame,seasonGamePage} from '../domain/season-games.js';
 import {loadAvailableGameReports} from '../infrastructure/postgres-repository.js';
 const days=new Map(),pending=new Map(),meta=new Map();
+const rawDays=new Map(),rawPending=new Map();
 let cooldownUntil=0;
 const MAX_BYTES=4*1024*1024;
 export class ScheduleSourceError extends Error{constructor(status=503,retryAfter=30){super('Schedule source unavailable');this.status=status;this.retryAfter=Math.min(300,Math.max(1,Number(retryAfter)||30));}}
@@ -15,6 +16,29 @@ async function publicRead(endpoint,params,options){
   try{while(true){const {value,done}=await reader.read();if(done)break;size+=value.byteLength;if(size>MAX_BYTES)throw new ScheduleSourceError();chunks.push(value);}}finally{await reader.cancel().catch(()=>{});}
   const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.length;}
   return JSON.parse(new TextDecoder().decode(bytes));
+}
+// Operations joins these day-sized records to already organization-verified games.
+// Reuse the same bounded transport and rate-limit cooldown as the public schedule.
+export async function readPublicGameDay(seasonId,date,options={}){
+  const query=seasonGamesQuery({seasonId,filter:'Date',date},options.now);
+  const key=query.seasonId+':'+date,cacheable=!options.fetchImpl;
+  if(cacheable&&rawDays.get(key)?.until>Date.now())return rawDays.get(key).value;
+  if(cacheable&&rawPending.has(key))return rawPending.get(key);
+  if(cacheable&&rawPending.size>=24)throw new ScheduleSourceError();
+  const task=(async()=>{
+    const raw=await publicRead('games',{seasonId:query.seasonId,startDate:date},options);
+    if(!Array.isArray(raw)||raw.length>2000)throw new ScheduleSourceError();
+    const value=raw.filter(game=>!game.isDeleted);
+    const ids=new Set();
+    for(const game of value){publicSeasonGame(game,query.seasonId,date);if(ids.has(game.gameId.toLowerCase()))throw new ScheduleSourceError();ids.add(game.gameId.toLowerCase());}
+    if(cacheable){
+      while(rawDays.size&&(rawDays.size>=160||[...rawDays.values()].reduce((sum,day)=>sum+day.value.length,0)+value.length>8000))rawDays.delete(rawDays.keys().next().value);
+      rawDays.set(key,{value,until:Date.now()+120000});
+    }
+    return value;
+  })();
+  if(cacheable){rawPending.set(key,task);task.finally(()=>rawPending.delete(key)).catch(()=>{});}
+  return task;
 }
 async function readDay(seasonId,date,options){
   const key=seasonId+':'+date,cacheable=!options.fetchImpl;

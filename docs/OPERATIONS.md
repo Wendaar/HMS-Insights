@@ -96,3 +96,23 @@ administrativní čtecí endpoint s organizačním oprávněním. Potřebný kon
 Názvy těchto polí mohou být jiné; adaptér má organizační mapování. Stejný
 kontrakt se musí použít pro ostatní organizace. Nepřebírat interní přihlašovací
 cookie HMS, neukládat jeho osobní hesla a nezpřístupňovat finanční data veřejně.
+
+## Oprava načítání měsíce
+
+Sportovní názvy, Venue a personál se doplňují hromadně z rozpisu po dnech a
+sezonách, s kontrolou přesného gameId, data, obou týmů a sezony. Více zápasů
+stejného dne sdílí jeden dotaz; omezená cache a transport zachovávají limity
+velikosti odpovědi a respektují rate limit HMS. Neveřejný zápas má individuální
+fallback. Organizační oprávnění stále ověřuje chráněný seznam zápasů.
+
+Přerušená stránka se automaticky zopakuje nejvýše dvakrát. Při delším výpadku
+zůstanou dokončené stránky a kurzor pouze v paměti; tlačítko Pokračovat naváže
+bez opakovaného zadání provozního kódu a bez dvojího započtení. Neúplné součty
+se stále nevydávají za kompletní. Změna organizace, období či zamknutí zruší
+původní běh; opožděná odpověď se nezapíše.
+
+Chybový stav už nevrací přihlášeného uživatele k výzvě na zadání kódu. API
+rozlišuje chybu zadání, rate limit, dočasné spojení a nekonzistentní zdroj;
+pro diagnostiku zapisuje pouze bezpečný kód chyby, organizaci a kurzor.
+Finanční pokrytí zůstává samostatná otázka upstream polí, nikoli důvod pádu
+načítání běžných zápasů a směn.
