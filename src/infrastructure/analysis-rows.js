@@ -1,3 +1,21 @@
+export function detectedRows(priklepy) {
+  return priklepy.map((item) => ({
+    priklep_id: item.id,
+    organization_id: item.organizationId,
+    competition_id: item.competitionId,
+    season_id: item.seasonId,
+    group_id: item.groupId,
+    game_id: item.gameId,
+    type: item.type,
+    player_id: item.playerId,
+    team_id: item.teamId,
+    importance: item.importance,
+    title: item.title,
+    body: item.text,
+    facts: item.facts,
+  }));
+}
+
 export function rowsFor(analysis) {
   const { game, priklepy } = analysis;
   const home = game.teamStats.find((item) => item.side === "HOME");
@@ -23,6 +41,7 @@ export function rowsFor(analysis) {
       away_team_name: away.teamName,
       home_score: game.homeScore,
       away_score: game.awayScore,
+      score_was_overridden: game.scoreWasOverridden,
       group_color: game.groupColor,
       group_logo_url: game.groupLogoUrl,
       venue_id: game.venueId,
@@ -67,20 +86,6 @@ export function rowsFor(analysis) {
       primary_color: item.primaryColor,
       secondary_color: item.secondaryColor,
     })),
-    detected_priklepy: priklepy.map((item) => ({
-      priklep_id: item.id,
-      organization_id: item.organizationId,
-      competition_id: item.competitionId,
-      season_id: item.seasonId,
-      group_id: item.groupId,
-      game_id: item.gameId,
-      type: item.type,
-      player_id: item.playerId,
-      team_id: item.teamId,
-      importance: item.importance,
-      title: item.title,
-      body: item.text,
-      facts: item.facts,
-    })),
+    detected_priklepy: detectedRows(priklepy),
   };
 }

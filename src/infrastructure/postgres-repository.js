@@ -1,5 +1,6 @@
 import { neon } from "@neondatabase/serverless";
-import { rowsFor } from "./analysis-rows.js";
+import { detectedRows, rowsFor } from "./analysis-rows.js";
+import { detectSeasonPriklepy, SEASON_TYPES } from "../domain/season-rules.js";
 
 const specs = {
   games: {
@@ -75,10 +76,89 @@ export async function ensurePenaltyMinutesSchema(options = {}) {
   return true;
 }
 
+const EXTENDED_INSIGHT_TYPES = [
+  "BIG_WIN", "EARLY_GOAL", "MULTIPOINT_GAME", "HATTRICK", "BIG_SAVES",
+  "TEAM_GOAL_MILESTONE", "COMEBACK_WIN",
+  ...Object.values(SEASON_TYPES),
+];
+
+export async function ensureExtendedInsightsSchema(options = {}) {
+  const sql = options.sql ?? createSql(options.databaseUrl ?? databaseUrlFromEnv(options.env));
+  await sql.query("alter table games add column if not exists score_was_overridden boolean not null default false");
+  const constraints = await sql.query(
+    "select pg_get_constraintdef(oid) as definition from pg_constraint where conrelid = 'detected_priklepy'::regclass and conname = 'detected_priklepy_type_check'",
+  );
+  if (!String(constraints[0]?.definition ?? "").includes("SEASON_GOAL_MILESTONE")) {
+    await sql.query("alter table detected_priklepy drop constraint if exists detected_priklepy_type_check");
+    const allowed = EXTENDED_INSIGHT_TYPES.map((type) => `'${type}'`).join(", ");
+    await sql.query(`alter table detected_priklepy add constraint detected_priklepy_type_check check (type in (${allowed}))`);
+  }
+  await sql.query("create index if not exists player_game_stats_history_idx on player_game_stats (player_id, game_id)");
+  await sql.query("create index if not exists team_game_stats_history_idx on team_game_stats (team_id, game_id)");
+  return true;
+}
+
+function isoTimestamp(value) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? String(value ?? "") : date.toISOString();
+}
+
+export async function refreshSeasonPriklepyPostgres(game, options = {}) {
+  const sql = options.sql ?? createSql(options.databaseUrl ?? databaseUrlFromEnv(options.env));
+  const values = [game.organizationId, game.seasonId];
+  const [playerRows, teamRows] = await Promise.all([
+    sql.query(`select g.game_id, g.organization_id, g.competition_id, g.season_id, g.group_id, g.started_at,
+      p.player_id, p.team_id, p.player_name, p.goals, p.assists
+      from games g join player_game_stats p on p.game_id = g.game_id
+      where g.organization_id = $1::uuid and g.season_id = $2::uuid
+        and not coalesce(g.score_was_overridden, false)
+      order by g.started_at, g.game_id`, values),
+    sql.query(`select g.game_id, g.organization_id, g.competition_id, g.season_id, g.group_id, g.started_at,
+      t.team_id, t.team_name, t.result
+      from games g join team_game_stats t on t.game_id = g.game_id
+      where g.organization_id = $1::uuid and g.season_id = $2::uuid
+      order by g.started_at, g.game_id`, values),
+  ]);
+  const common = (row) => ({
+    gameId: row.game_id,
+    organizationId: row.organization_id,
+    competitionId: row.competition_id,
+    seasonId: row.season_id,
+    groupId: row.group_id,
+    startedAt: isoTimestamp(row.started_at),
+  });
+  const priklepy = detectSeasonPriklepy({
+    playerRows: playerRows.map((row) => ({
+      ...common(row), playerId: row.player_id, teamId: row.team_id, playerName: row.player_name,
+      goals: Number(row.goals), assists: Number(row.assists),
+    })),
+    teamRows: teamRows.map((row) => ({
+      ...common(row), teamId: row.team_id, teamName: row.team_name, result: row.result,
+    })),
+  });
+  const rows = detectedRows(priklepy);
+  const upsert = buildUpsert("detected_priklepy", rows);
+  if (upsert) await sql.query(upsert.text, upsert.values);
+  const types = Object.values(SEASON_TYPES);
+  const ids = rows.map((row) => row.priklep_id);
+  if (ids.length) {
+    await sql.query(`delete from detected_priklepy
+      where organization_id = $1::uuid and season_id = $2::uuid and type = any($3::text[])
+        and not (priklep_id = any($4::text[]))`, [...values, types, ids]);
+  } else {
+    await sql.query(`delete from detected_priklepy
+      where organization_id = $1::uuid and season_id = $2::uuid and type = any($3::text[])`, [...values, types]);
+  }
+  return priklepy;
+}
+
 export async function persistAnalysisPostgres(analysis, options = {}) {
   const rows = rowsFor(analysis);
   const sql = options.sql ?? createSql(options.databaseUrl ?? databaseUrlFromEnv(options.env));
-  await ensureEventSnapshotSchema({ sql });
+  if (options.ensureSchema !== false) {
+    await ensureEventSnapshotSchema({ sql });
+    await ensureExtendedInsightsSchema({ ...options, sql });
+  }
   // A corrected finished game is a full snapshot. Removing the previous snapshot
   // prevents stale players or achievements from surviving a game.updated event.
   const queries = [
@@ -91,6 +171,9 @@ export async function persistAnalysisPostgres(analysis, options = {}) {
     if (query) queries.push(sql.query(query.text, query.values));
   }
   await sql.transaction(queries);
+  if (options.refreshSeasonInsights !== false) {
+    await refreshSeasonPriklepyPostgres(analysis.game, { ...options, sql });
+  }
   return rows;
 }
 

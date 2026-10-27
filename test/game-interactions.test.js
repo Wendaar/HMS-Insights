@@ -89,7 +89,7 @@ test('public metadata is optional and never receives the integration credential'
   assert.ok(calls.slice(0, 3).every((call) => call.init.headers.authorization === 'Bearer private'));
   assert.equal(await fetchPublicGameMetadata('id', { fetchImpl: async () => ({ ok: false }) }), null);
 });
-test('enriched sporting details survive normalization, storage rows and the public summary without changing Příklepy', () => {
+test('enriched sporting details survive normalization, storage rows and the public summary with the team goal milestone', () => {
   const source = structuredClone(gameEvents);
   const first = source.GameEventGoals[0];
   const metadata = { HomeTeamGoals: 5, AwayTeamGoals: 10, GameEvents: [
@@ -105,7 +105,8 @@ test('enriched sporting details survive normalization, storage rows and the publ
   assert.equal(g.details.shotType.name, 'Forehand');
   assert.equal(g.situation.source, 'hms');
   assert.equal(situationCounts(summary.timeline.events).estimated.PP, 3);
-  assert.equal(summary.priklepy.length, 4);
+  assert.equal(summary.priklepy.length, 5);
+  assert.ok(summary.priklepy.some((item) => item.type === 'TEAM_GOAL_MILESTONE'));
   assert.doesNotMatch(JSON.stringify(summary), /hidden|privateContact/);
 });
 test('team/period/type and unknown-zone filters preserve honest map coverage', () => {
@@ -127,5 +128,5 @@ test('report renders a horizontal rail, maps, dialog and safe inert summary data
   assert.match(page, /type="module" src="\/game-report.js"/);
   const data = page.match(/id="game-report-data">([\s\S]*?)<\/script>/)[1];
   assert.doesNotMatch(data, /<script/); assert.equal(JSON.parse(data).summary.home.name, summary.home.name);
-  assert.equal(summary.priklepy.length, 4);
+  assert.equal(summary.priklepy.length, 5);
 });

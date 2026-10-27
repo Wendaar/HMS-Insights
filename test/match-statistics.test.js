@@ -31,7 +31,7 @@ test('HMS faceoff totals survive storage rows and map to both teams', () => {
   assert.equal(summary.faceoffs.homeWins, 25); assert.equal(summary.faceoffs.awayWins, 19);
   assert.equal(summary.faceoffs.total, 44);
   assert.equal(summary.faceoffs.homePercentage, 56.82); assert.equal(summary.faceoffs.awayPercentage, 43.18);
-  assert.equal(summary.priklepy.length, 4);
+  assert.equal(summary.priklepy.length, 5);
   const page = renderGameReport(summary);
   assert.match(page, /56,8 %/); assert.match(page, /43,2 %/);
   assert.match(page, /73,0 %/); assert.match(page, /79,2 %/);

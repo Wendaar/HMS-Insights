@@ -20,14 +20,15 @@ function summarize(analysis) {
     players: r.player_game_stats, goalies: r.goalie_game_stats, priklepy: r.detected_priklepy });
 }
 
-test("Zbraslav–Kosti: public-log reconstruction preserves 5:10, 15 goals, 4 penalties and 4 Příklepy", () => {
+test("Zbraslav–Kosti: public-log reconstruction preserves 5:10, 15 goals, 4 penalties and the 10th-goal milestone", () => {
   const summary = summarize(analyze());
   assert.equal(summary.gameId, gameId);
   assert.deepEqual([summary.home.score, summary.away.score], [5, 10]);
   assert.equal(summary.timeline.events.filter((event) => event.type === "goal").length, 15);
   assert.equal(summary.timeline.events.filter((event) => event.type === "penalty").length, 4);
   assert.equal(summary.timeline.events.filter((event) => event.type === "save").length, 46);
-  assert.equal(summary.priklepy.length, 4);
+  assert.equal(summary.priklepy.length, 5);
+  assert.ok(summary.priklepy.some((item) => item.type === "TEAM_GOAL_MILESTONE"));
   assert.deepEqual(summary.players.slice(0, 2).map((p) => [p.name, p.goals, p.assists, p.points]), [
     ["Mansur Ischoev", 3, 5, 8], ["Adam Patočka", 4, 3, 7],
   ]);
@@ -135,7 +136,7 @@ test("reimport replaces rather than appends events; deletion and assistance corr
     },
   };
   for (let i = 0; i < 2; i++) await processFinishedGame(gameId, {
-    fetchResponses: async () => [gameEvents, lineup], persist: (a) => persistAnalysisPostgres(a, { sql }),
+    fetchResponses: async () => [gameEvents, lineup], persist: (a) => persistAnalysisPostgres(a, { sql, ensureSchema: false, refreshSeasonInsights: false }),
   });
   assert.deepEqual(replacements[0], replacements[1]);
   const corrected = structuredClone(gameEvents);
@@ -144,7 +145,7 @@ test("reimport replaces rather than appends events; deletion and assistance corr
   corrected.GameEventGoals[0].assistedBy1PlayerId = null;
   corrected.AwayTeamGoals = 9;
   await processFinishedGame(gameId, {
-    fetchResponses: async () => [corrected, lineup], persist: (a) => persistAnalysisPostgres(a, { sql }),
+    fetchResponses: async () => [corrected, lineup], persist: (a) => persistAnalysisPostgres(a, { sql, ensureSchema: false, refreshSeasonInsights: false }),
   });
   assert.equal(replacements.at(-1).events.filter((e) => e.type === "goal").length, 14);
   assert.equal(replacements.at(-1).events.filter((e) => e.type === "penalty").length, 3);

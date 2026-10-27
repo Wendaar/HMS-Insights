@@ -14,6 +14,8 @@ import { hasBearerSecret } from "../src/security/bearer-secret.js";
 import importGamePageHandler from "../api/import-game-page.js";
 import backfillPageHandler from "../api/backfill-page.js";
 import { penaltyMinutes } from "../src/hms/normalize.js";
+import { detectPriklepy } from "../src/domain/rules.js";
+import { detectSeasonPriklepy } from "../src/domain/season-rules.js";
 
 const analysis = analyzeHmsResponses(gameEventsResponse, lineupResponse);
 const nestedGroup = lineupResponse.Phase.Group;
@@ -169,6 +171,59 @@ test("detekuje přesně očekávané typy bez hattricku", () => {
   assert.equal(counts.BIG_SAVES.length, 2);
   assert.equal(counts.HATTRICK, undefined);
   assert.equal(analysis.priklepy.length, 10);
+});
+
+test("odhalí desátý gól týmu a připíše jej střelci", () => {
+  const scorerId = analysis.game.playerStats[0].playerId;
+  const team = { teamId: ids.home, teamName: "PUK PAK PIVO", goals: 10, goalsAgainst: 1 };
+  const opponent = { teamId: ids.away, teamName: "HC Kosti", goals: 1, goalsAgainst: 10 };
+  const goals = Array.from({ length: 10 }, (_, index) => ({
+    playerId: scorerId, playerName: "Marek Horáček", teamId: ids.home,
+    gameTime: `${index + 1}:00`, elapsedSeconds: (index + 1) * 60,
+  }));
+  goals.push({ playerId: analysis.game.playerStats[1].playerId, playerName: "Karel Škrdle", teamId: ids.away, gameTime: "11:00", elapsedSeconds: 660 });
+  const result = detectPriklepy({
+    gameId: ids.game, organizationId: ids.org, competitionId: ids.competition, seasonId: ids.season, groupId: ids.group,
+    teamStats: [team, opponent], goals, playerStats: [], goalieStats: [], scoreWasOverridden: false,
+  });
+  const milestone = result.find((item) => item.type === "TEAM_GOAL_MILESTONE");
+  assert.equal(milestone.playerId, scorerId);
+  assert.equal(milestone.facts.milestone, 10);
+});
+
+test("odhalí vítězný obrat po čtyřbrankové ztrátě", () => {
+  const sequence = [ids.away, ids.away, ids.away, ids.away, ids.home, ids.home, ids.home, ids.home, ids.away, ids.home, ids.home];
+  const result = detectPriklepy({
+    gameId: ids.game, organizationId: ids.org, competitionId: ids.competition, seasonId: ids.season, groupId: ids.group,
+    teamStats: [
+      { teamId: ids.home, teamName: "Comeback Team", goals: 6, goalsAgainst: 5 },
+      { teamId: ids.away, teamName: "Soupeř", goals: 5, goalsAgainst: 6 },
+    ],
+    goals: sequence.map((teamId, index) => ({ teamId, playerId: null, playerName: "", gameTime: `${index + 1}:00`, elapsedSeconds: (index + 1) * 60 })),
+    playerStats: [], goalieStats: [], scoreWasOverridden: false,
+  });
+  const comeback = result.find((item) => item.type === "COMEBACK_WIN");
+  assert.equal(comeback.teamId, ids.home);
+  assert.equal(comeback.facts.largestDeficit, 4);
+});
+
+test("sezonní pravidla vytvářejí milníky a série bez duplicitních klíčů", () => {
+  const scorerId = analysis.game.playerStats[0].playerId;
+  const common = { organizationId: ids.org, competitionId: ids.competition, seasonId: ids.season, groupId: ids.group };
+  const playerRows = [3, 3, 3, 1].map((goals, index) => ({
+    ...common, gameId: `game-${index}`, startedAt: `2026-10-${10 + index}T20:00:00.000Z`,
+    playerId: scorerId, teamId: ids.home, playerName: "Marek Horáček", goals, assists: 0,
+  }));
+  const teamRows = [0, 1, 2, 3].map((index) => ({
+    ...common, gameId: `game-${index}`, startedAt: `2026-10-${10 + index}T20:00:00.000Z`,
+    teamId: ids.home, teamName: "PUK PAK PIVO", result: "WIN",
+  }));
+  const result = detectSeasonPriklepy({ playerRows, teamRows });
+  assert.ok(result.some((item) => item.type === "SEASON_GOAL_MILESTONE" && item.facts.milestone === 10));
+  assert.ok(result.some((item) => item.type === "SEASON_POINT_MILESTONE" && item.facts.milestone === 10));
+  assert.ok(result.some((item) => item.type === "PLAYER_GOAL_STREAK" && item.facts.streak === 4));
+  assert.ok(result.some((item) => item.type === "TEAM_WIN_STREAK" && item.facts.streak === 4));
+  assert.equal(new Set(result.map((item) => item.id)).size, result.length);
 });
 
 test("databázové řádky obsahují tenant vazby a žádné kontaktní údaje", () => {
@@ -331,11 +386,12 @@ test("opravený zápas atomicky nahradí starý snapshot a zastaralé Příklepy
   await persistAnalysisPostgres(analysis, {
     sql: {
       query: (text, values) => {
-        if (text.startsWith("select data_type")) return [{ data_type: "jsonb" }];
         const query = { text, values }; queries.push(query); return query;
       },
       transaction: async (batch) => { transaction = batch; },
     },
+    ensureSchema: false,
+    refreshSeasonInsights: false,
   });
   assert.deepEqual(transaction, queries);
   assert.equal(transaction.length, 7);

@@ -22,5 +22,7 @@
 
 ## 4. Další pravidla
 
-- Nové typy momentů se budou doplňovat až po ustálení výběru, archivu a konfigurace.
-- Kandidáti: obraty zápasu, série hráče nebo týmu, sezónní milníky a další mimořádné situace.
+- Aktivní sada: 10./20. gól týmu v zápase, velký vítězný obrat ze ztráty nejméně čtyř branek, hráčské sezonní milníky po 10 gólech a bodech, čtyři a více výher týmu v řadě, pět a více zápasů bez porážky a čtyři a více hráčských zápasů s gólem.
+- Sezonní pravidla se vždy přepočítávají z uložených zápasů, aby oprava nebo opakovaný import nevytvářely duplicity.
+- Překvapení podle postavení v tabulce se zapne až s důvěryhodným zdrojem pořadí a pravidel bodování dané soutěže.
+- Každý nový typ musí mít současně český i anglický název, popis, krátký headline a filtr pro Studio (`app.phmcup.cz/studio`).

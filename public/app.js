@@ -128,6 +128,13 @@ function achievementLabel(type) {
     MULTIPOINT_GAME: t("VÍCEBODOVÝ ZÁPAS"),
     HATTRICK: "HATTRICK",
     BIG_SAVES: t("BRANKÁŘSKÝ VÝKON"),
+    TEAM_GOAL_MILESTONE: t("GÓLOVÝ MILNÍK TÝMU"),
+    COMEBACK_WIN: t("VELKÝ OBRAT"),
+    SEASON_GOAL_MILESTONE: t("GÓLOVÝ MILNÍK SEZONY"),
+    SEASON_POINT_MILESTONE: t("BODOVÝ MILNÍK SEZONY"),
+    TEAM_WIN_STREAK: t("VÍTĚZNÁ SÉRIE"),
+    TEAM_UNBEATEN_STREAK: t("SÉRIE BEZ PORÁŽKY"),
+    PLAYER_GOAL_STREAK: t("GÓLOVÁ SÉRIE HRÁČE"),
   })[type] ?? type.replaceAll("_", " ");
 }
 

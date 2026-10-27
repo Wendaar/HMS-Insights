@@ -6,6 +6,13 @@ const labels = {
   MULTIPOINT_GAME: "Vícebodový zápas",
   HATTRICK: "Hattrick",
   BIG_SAVES: "Brankářský výkon",
+  TEAM_GOAL_MILESTONE: "Gólový milník týmu",
+  COMEBACK_WIN: "Velký obrat",
+  SEASON_GOAL_MILESTONE: "Gólový milník sezony",
+  SEASON_POINT_MILESTONE: "Bodový milník sezony",
+  TEAM_WIN_STREAK: "Vítězná série",
+  TEAM_UNBEATEN_STREAK: "Série bez porážky",
+  PLAYER_GOAL_STREAK: "Gólová série hráče",
 };
 
 function escapeHtml(value) {
@@ -152,7 +159,7 @@ export function renderPriklepyPage(items, config = {}) {
   <title>${organization?escapeHtml(organization.name)+" · ":""}${lang==='en'?'Insights':'Příklepy'} · HMS Insights</title>
   <link rel="icon" type="image/png" sizes="32x32" href="${assetPrefix}hms-favicon-public-v2.png"><link rel="icon" type="image/svg+xml" sizes="any" href="${assetPrefix}hms-favicon-public-v2.svg">
   <link rel="stylesheet" href="${assetPrefix}styles.css?v=org-feeds-1">
-  <script type="module" src="${assetPrefix}app.js?v=org-feeds-2"></script>
+  <script type="module" src="${assetPrefix}app.js?v=extended-insights-1"></script>
 <link rel="stylesheet" href="${assetPrefix}hms-brand.css"></head>
 <body>
   <header class="topbar">

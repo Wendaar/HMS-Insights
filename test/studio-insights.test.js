@@ -31,6 +31,14 @@ test('Insights bypasses calendar filters, passes search/type and exposes safe co
  let params;
  const page=await browseMedia({org:'PHM',section:'insights',filter:'Future',query:'Kuracina',type:'HATTRICK'}, {env:{},now:new Date('2026-10-21T12:00Z'),loadInsights:async p=>{params=p;return {items:[{...insight,title:'Hattrick',text:'3 góly',team:'Berkut',homeTeam:'Domynos',awayTeam:'Berkut',homeScore:1,awayScore:4,facts:{goals:3,private:'hidden'},email:'hidden'}],hasMore:false};}});
  assert.equal(params.query,'Kuracina');assert.equal(params.today,'2026-10-21');assert.equal(params.from,undefined);assert.equal(page.items[0].teamId,awayId);assert.equal(page.items[0].homeTeam,'Domynos');assert.deepEqual(page.items[0].stats,{goals:3});assert.equal(page.items[0].email,undefined);
+ assert.deepEqual(page.items[0].facts,{goals:3});
+});
+test('new milestones and streaks are first-class Studio outputs',async()=>{
+ const milestone={id:`${gameId}:SEASON_GOAL_MILESTONE:${playerId}:10`,gameId,playerId,teamId:awayId,player:'Matěj Kuracina',type:'SEASON_GOAL_MILESTONE',facts:{milestone:10}};
+ const subject=resolveInsightSubject(game,milestone);assert.deepEqual(insightStat(subject),{value:10,label:'GÓLŮ'});
+ const outputs=gameOutputs({...game,status:'FINISHED',priklepy:[milestone],stars:[]});assert.equal(outputs.length,1);assert.match(outputs[0].label,/GOAL MILESTONE/);
+ const page=await browseMedia({org:'PHM',section:'insights',type:'TEAM_WIN_STREAK'},{env:{},now:new Date('2026-10-21T12:00Z'),loadInsights:async()=>({items:[],hasMore:false})});
+ assert.deepEqual(page.items,[]);
 });
 test('public media uses matching player+team IDs and separate competition/group brands',()=>{
  const url='https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/photo_[size]';

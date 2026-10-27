@@ -79,7 +79,7 @@ export async function browseMedia({org,filter='Today',offset=0,windowPage=0,sect
   const env=options.env??process.env, config=organizationConfig(org,env);
   const limit=20;
   if(section==='insights'){
-    const types=['HATTRICK','MULTIPOINT_GAME','BIG_SAVES','EARLY_GOAL','BIG_WIN'];
+    const types=['HATTRICK','MULTIPOINT_GAME','BIG_SAVES','EARLY_GOAL','BIG_WIN','TEAM_GOAL_MILESTONE','COMEBACK_WIN','SEASON_GOAL_MILESTONE','SEASON_POINT_MILESTONE','TEAM_WIN_STREAK','TEAM_UNBEATEN_STREAK','PLAYER_GOAL_STREAK'];
     if(type&&!types.includes(type))throw new TypeError('Neplatný typ Insightu.');
     const today=timeWindow('Today',options.now).from;
     const page=await (options.loadInsights??loadStudioInsights)({organizationId:config.id,today,query:String(query).slice(0,160),type,offset,limit,env});
@@ -87,6 +87,7 @@ export async function browseMedia({org,filter='Today',offset=0,windowPage=0,sect
       player:item.player,playerId:item.playerId??null,team:item.team,teamId:item.teamId??null,
       homeTeam:item.homeTeam,awayTeam:item.awayTeam,homeScore:item.homeScore,awayScore:item.awayScore,competition:item.competition,group:item.group,
       playerImageUrl:sportingImage(item.playerImageUrl),teamLogoUrl:sportingImage(item.teamLogoUrl),
+      facts:Object.fromEntries(['goals','assists','points','saves','goalsAgainst','scoreDifference','gameTime','milestone','largestDeficit','goalsFor','goalsInGame','seasonGoals','pointsInGame','seasonPoints','streak'].filter(k=>Number.isFinite(item.facts?.[k])||typeof item.facts?.[k]==='string').map(k=>[k,item.facts[k]])),
       stats:Object.fromEntries(['goals','assists','points','saves','goalsAgainst'].filter(k=>Number.isFinite(item.facts?.[k])).map(k=>[k,item.facts[k]]))}));
     return page;
   }

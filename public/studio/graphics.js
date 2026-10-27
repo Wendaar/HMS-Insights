@@ -26,12 +26,15 @@ export function gameOutputs(game,lang=language){
   const result=templates(game,lang);
   if(game?.status!=='FINISHED')return result;
   for(const p of game.priklepy??[]){
-    if(!['HATTRICK','MULTIPOINT_GAME','BIG_SAVES','EARLY_GOAL','BIG_WIN'].includes(p.type))continue;
-    const id=p.id?.split(':').at(-1),player=[...game.players??[],...game.goalies??[]].find(x=>x.id?.toLowerCase()===id?.toLowerCase());
-    const team=[game.home,game.away].find(x=>x.id?.toLowerCase()===id?.toLowerCase());
-    if(!player&&!team)continue;
-    const insight={...p,gameId:game.gameId,playerId:player?.id,player:player?.name,teamId:player?.teamId??team?.id,team:team?.name};
-    result.push({id:`moment-${p.id}`,label:`${insightLabel(p.type)} · ${player?.name??team.name}`,insight});
+    if(!['HATTRICK','MULTIPOINT_GAME','BIG_SAVES','EARLY_GOAL','BIG_WIN','TEAM_GOAL_MILESTONE','COMEBACK_WIN','SEASON_GOAL_MILESTONE','SEASON_POINT_MILESTONE','TEAM_WIN_STREAK','TEAM_UNBEATEN_STREAK','PLAYER_GOAL_STREAK'].includes(p.type))continue;
+    const legacyId=p.id?.split(':').at(-1),insight={...p,gameId:game.gameId};
+    if(!insight.playerId&&!insight.teamId){
+      const player=[...game.players??[],...game.goalies??[]].find(x=>x.id?.toLowerCase()===legacyId?.toLowerCase());
+      const team=[game.home,game.away].find(x=>x.id?.toLowerCase()===legacyId?.toLowerCase());
+      insight.playerId=player?.id;insight.player=player?.name;insight.teamId=player?.teamId??team?.id;insight.team=team?.name;
+    }
+    const subject=resolveInsightSubject(game,insight);if(!subject?.identityAvailable)continue;
+    result.push({id:`moment-${p.id}`,label:`${insightLabel(p.type)} · ${subject.playerName??subject.teamName}`,insight});
   }
   for(const star of game.stars??[]){
     if(![...game.players??[],...game.goalies??[]].some(p=>p.id?.toLowerCase()===star.id?.toLowerCase()&&p.teamId?.toLowerCase()===star.teamId?.toLowerCase()))continue;

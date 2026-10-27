@@ -81,6 +81,7 @@ test('CS/EN presentation translates periods and known achievement facts without 
  assert.equal(normalizeLanguage('de'),'cs');assert.equal(filterLabel('Today','en'),'Today');assert.equal(filterLabel('Today','cs'),'Dnes');assert.equal(t('PŘINÁŠÍ',{},'en'),'PRESENTS');
  assert.equal(insightStat({type:'HATTRICK',stats:{goals:3}},'en').label,'GOALS');assert.equal(insightDescription({type:'HATTRICK',text:'Český text',stats:{goals:3}},null,'en'),'3 goals.');assert.equal(insightDescription({type:'HATTRICK',text:'Český text'},null,'en'),'Hattrick performance.');
  assert.equal(insightDescription({type:'HATTRICK',text:'Český text'},null,'cs'),'Český text');assert.equal(insightTitle({type:'EARLY_GOAL',title:'Rychlý gól'},'en'),'Early goal');
+ assert.equal(insightStat({type:'TEAM_WIN_STREAK',facts:{streak:5}},'en').label,'GAMES');assert.equal(insightDescription({type:'COMEBACK_WIN',facts:{largestDeficit:4}},null,'en'),'4 goals down.');assert.equal(insightTitle({type:'SEASON_POINT_MILESTONE'},'en'),'Season point milestone');
  const g={status:'FINISHED',home:{score:2},away:{score:1},timeline:{coverage:'matches-result',periodScores:[{period:1,home:1,away:1}]}};
  assert.equal(templates(g,'en')[1].heading,'END OF PERIOD 1');assert.equal(templates(g,'cs')[1].heading,'PO 1. TŘETINĚ');assert.deepEqual(templates({...g,status:'NOT PLAYED'},'en'),[]);assert.deepEqual(gameOutputs({...g,status:'RUNNING'},'en'),[]);
 });
