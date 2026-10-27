@@ -12,7 +12,7 @@ export const english={
 '← Předchozí':'← Previous','Další →':'Next →','← Bližší období':'← More recent window','Dalších 30 dnů →':'Next 30 days →',
 'Knihovna Insights používá existující uložené Příklepy. Refresh pouze čte HMS a obnoví dočasnou cache.':'The Insights library uses existing saved achievements. Refresh only reads HMS and updates the temporary cache.',
 'VÁŠ VÝSTUP':'YOUR GRAPHIC','Vyberte zápas':'Choose a game','Vyberte výkon':'Choose an achievement',
-'Nastavení editoru se ukládá jen v tomto zařízení, zvlášť pro každou organizaci.':'Editor settings are saved only on this device, separately for each organization.',
+'Nastavení editoru se ukládá v tomto zařízení zvlášť pro organizaci a každý typ grafiky.':'Editor settings are saved on this device separately for each organization and graphic type.',
 'Náhled grafiky':'Graphic preview','Ochranná zóna':'Safe area','Váš další velký moment':'Your next big moment','začíná výběrem zápasu':'starts with a game',
 'Vizuální styl':'Visual style','Clean · čistý sportovní':'Clean · sports','Crazy · oslavný':'Crazy · celebration','Artistic · velkolepý oslavný':'Artistic · grand celebration','Technical · dramatický':'Technical · dramatic','Pantha · výrazný sportovní':'Pantha · bold sports',
 'Zobrazit ochranné linie':'Show safe area guides','Obsah respektuje ochrannou zónu i v PNG. Čáry se neexportují; rozhraní jednotlivých sítí se může lišit.':'PNG content stays inside the safe area. Guides are not exported; each social platform may place its controls differently.',

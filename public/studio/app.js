@@ -2,6 +2,7 @@ import {studioOrganization,studioUrl} from './routing.js';
 import {t as tr,language,setLanguage,translateDocument,filterLabel,insightDescription,insightTitle} from './i18n.js';
 import {resolveInsightSubject,brandingScope} from './subjects.js';
 import {fonts,formats,designs,gameOutputs,exportFilename,renderGraphic,publicImageUrl,safeArea} from './graphics.js';
+import {studioSettingsScope,studioSettingsKey} from './preferences.js';
 const $=id=>document.getElementById(id);
 setLanguage(new URLSearchParams(location.search).get('lang'));translateDocument();$('language').value=language;
 let organizations=[];
@@ -20,18 +21,33 @@ const gameStatuses={FINISHED:tr('Ukončeno'),RUNNING:tr('Probíhá · průběžn
 const filters=['Today','Yesterday','Tomorrow','-7 days','+7 days','Past','Future'];
 fonts.forEach(f=>{const o=document.createElement('option');o.value=f;o.textContent=f==='Pantha'?tr('Pantha · anglické titulky'):f;$('font').append(o);});
 function status(s){$('status').textContent=s;}
-function editorSettings() {
-  try{const entries=JSON.parse(localStorage.getItem(`hms-studio:brands:v1:${$('org').value}`)||'[]');brandOverrides=new Map(entries.filter(e=>Array.isArray(e)&&e.length===2&&typeof e[0]==='string'&&typeof e[1]==='string'&&/^data:image\/(png|jpeg|webp);base64,/.test(e[1])));}catch{brandOverrides=new Map();}
-  try {const s=JSON.parse(localStorage.getItem(`hms-studio:v1:${$('org').value}`)||'{}');settings={...defaults};
-    for(const k of Object.keys(defaults))if(typeof s[k]==='string')settings[k]=s[k];
-    if(!formats[settings.format])settings.format=defaults.format;if(!fonts.includes(settings.font))settings.font=defaults.font;
-    if(!designs.includes(settings.design))settings.design='clean';
-    for(const k of ['base','accent','panelColor'])if(!/^#[a-f0-9]{6}$/i.test(settings[k]))settings[k]=defaults[k];
-    settings.panelOpacity=String(Math.max(0,Math.min(100,Number.isFinite(Number(settings.panelOpacity))?Number(settings.panelOpacity):90)));
+function settingsScope(){
+  return studioSettingsScope({hasGame:!!game,choice:$('template').value,insightType:insight?.type});
+}
+function settingsKey(scope=settingsScope()){return studioSettingsKey($('org').value,scope);}
+function normalizeSettings(stored={}){
+  const next={...defaults};
+  for(const k of Object.keys(defaults))if(typeof stored[k]==='string')next[k]=stored[k];
+  if(!formats[next.format])next.format=defaults.format;if(!fonts.includes(next.font))next.font=defaults.font;
+  if(!designs.includes(next.design))next.design='clean';
+  for(const k of ['base','accent','panelColor'])if(!/^#[a-f0-9]{6}$/i.test(next[k]))next[k]=defaults[k];
+  next.panelOpacity=String(Math.max(0,Math.min(100,Number.isFinite(Number(next.panelOpacity))?Number(next.panelOpacity):90)));
+  return next;
+}
+function loadSettings(scope=settingsScope()){
+  try{
+    const legacy=localStorage.getItem(`hms-studio:v1:${$('org').value}`);
+    const orgDefault=localStorage.getItem(settingsKey('default'));
+    const profile=localStorage.getItem(settingsKey(scope));
+    settings=normalizeSettings(JSON.parse(profile??orgDefault??legacy??'{}'));
   }catch{settings={...defaults};}
   for(const k of Object.keys(defaults))$(k).value=settings[k].startsWith('data:')?'':settings[k];
 }
-function save(){try{localStorage.setItem(`hms-studio:v1:${$('org').value}`,JSON.stringify(settings));}catch{status(tr('Nastavení je použité. Úložiště zařízení je plné, nelze je uložit.'));}}
+function editorSettings() {
+  try{const entries=JSON.parse(localStorage.getItem(`hms-studio:brands:v1:${$('org').value}`)||'[]');brandOverrides=new Map(entries.filter(e=>Array.isArray(e)&&e.length===2&&typeof e[0]==='string'&&typeof e[1]==='string'&&/^data:image\/(png|jpeg|webp);base64,/.test(e[1])));}catch{brandOverrides=new Map();}
+  loadSettings('default');
+}
+function save(){try{localStorage.setItem(settingsKey(),JSON.stringify(settings));}catch{status(tr('Nastavení je použité. Úložiště zařízení je plné, nelze je uložit.'));}}
 function resetSelection(){assetVersions.background++;assetVersions.partnerLogo++;assetVersions.playerPhoto++;assetVersions.competitionLogo++;assetVersions.groupLogo++;$('subjectEditor').hidden=true;$('brandEditor').hidden=true;$('safeGuide').hidden=true;++renderId;game=null;insight=null;blob=null;$('empty').hidden=false;$('selected').textContent=section==='insights'?tr('Vyberte výkon'):tr('Vyberte zápas');$('template').replaceChildren();$('template').disabled=true;$('refresh').disabled=true;$('download').disabled=true;$('share').disabled=true;$('canvas').getContext('2d').clearRect(0,0,$('canvas').width,$('canvas').height);$('warnings').textContent='';}
 async function api(params){if(!organizations.some(o=>o.code===$('org').value))throw new Error(tr('Organizace není v tomto Studiu dostupná.'));const r=await fetch('/api/studio?'+new URLSearchParams({org:$('org').value,lang:language,...params}));const data=await r.json();if(!r.ok)throw new Error(data.error||tr('Načtení se nezdařilo.'));return data;}
 async function browse(){const id=++requestId;$('list').textContent=tr('Načítám…');$('dataSource').hidden=true;$('next').disabled=true;$('previous').disabled=true;$('windows').hidden=section==='insights'||!['Past','Future'].includes(filter);$('filters').hidden=section==='insights';$('insightTools').hidden=section!=='insights';
@@ -65,12 +81,13 @@ async function select(id,selectedInsight=null,refresh=false){const version=++req
     const subject=resolveInsightSubject(game,insight);$('subjectEditor').hidden=!subject?.playerId;
     $('brandEditor').hidden=false;$('brandInfo').textContent=tr('{competition} · {group}. Automaticky z HMS; doplnění se ukládá jen v tomto zařízení pro danou soutěž/skupinu.',{competition:game.competition||'',group:game.group||''});
     $('subjectInfo').textContent=subject?`${subject.playerName||''} · ${subject.teamName||tr('Neověřený tým')} · ${game.playedOn}`:'';
-    if(game.groupColor&&settings.accent===defaults.accent)settings.accent=game.groupColor;
-    $('accent').value=settings.accent;
     $('selected').textContent=insight?`${insightTitle(insight)} · ${subject?.playerName||subject?.teamName||insight.player||insight.team}`:`${game.home.name} × ${game.away.name}`;$('empty').hidden=true;
     const choices=gameOutputs(game);$('template').replaceChildren();
     for(const t of choices){const o=document.createElement('option');o.value=t.id;o.textContent=t.label;$('template').append(o);}
     if(insight&&game.status==='FINISHED'){const o=document.createElement('option');o.value='insight';o.textContent=insightTitle(insight);$('template').append(o);$('template').value='insight';}
+    loadSettings();
+    if(game.groupColor&&settings.accent===defaults.accent)settings.accent=game.groupColor;
+    $('accent').value=settings.accent;
     $('template').disabled=!$('template').options.length;$('refresh').disabled=false;
     $('availability').textContent=choices.length?tr('Skóre po třetině je průběžné, pouze z ověřených událostí.'):tr('Šablony výsledku čekají na dokončení zápasu nebo ověřená skóre třetin.');
     status(`${game.source==='imported-snapshot'?tr('Uložená data HMS'):game.source==='HMS-read-only'?tr('Obnoveno z HMS'):tr('Testovací data')} · ${tr('načteno')} ${new Date(game.readAt).toLocaleTimeString(language==='en'?'en-GB':'cs-CZ',{timeZone:'Europe/Prague'})}`);
@@ -94,7 +111,7 @@ for(const name of ['games','insights'])$(name).onclick=()=>{section=name;offset=
 for(const f of filters){const b=document.createElement('button');b.textContent=filterLabel(f);b.dataset.filter=f;b.setAttribute('aria-pressed',String(f===filter));b.onclick=()=>{filter=f;offset=0;windowPage=0;for(const child of $('filters').children)child.setAttribute('aria-pressed',String(child===b));browse();};$('filters').append(b);}
 $('previous').onclick=()=>{offset=Math.max(0,offset-20);browse();};$('next').onclick=()=>{offset+=20;browse();};
 $('windowPrev').onclick=()=>{windowPage=Math.max(0,windowPage-1);offset=0;browse();};$('windowNext').onclick=()=>{windowPage++;offset=0;browse();};
-$('refresh').onclick=()=>game&&select(game.gameId,insight,true);$('template').onchange=()=>{const subject=resolveInsightSubject(game,activeInsight());$('subjectEditor').hidden=!subject?.playerId;$('subjectInfo').textContent=subject?`${subject.playerName||''} · ${subject.teamName||tr('Neověřený tým')} · ${game.playedOn}`:'';draw();};
+$('refresh').onclick=()=>game&&select(game.gameId,insight,true);$('template').onchange=()=>{loadSettings();if(game?.groupColor&&settings.accent===defaults.accent){settings.accent=game.groupColor;$('accent').value=settings.accent;}const subject=resolveInsightSubject(game,activeInsight());$('subjectEditor').hidden=!subject?.playerId;$('subjectInfo').textContent=subject?`${subject.playerName||''} · ${subject.teamName||tr('Neověřený tým')} · ${game.playedOn}`:'';draw();};
 $('safeZones').onchange=guide;
 $('search').oninput=()=>{clearTimeout(searchTimer);searchTimer=setTimeout(()=>{offset=0;if(section==='insights')browse();},300);};
 $('insightType').onchange=()=>{offset=0;browse();};
