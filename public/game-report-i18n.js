@@ -72,6 +72,7 @@ export function reportText(value, lang = 'cs') {
   const text = String(value ?? '');
   if (lang !== 'en') return text;
   return text.replace(phrases, match => en[match])
+    .replace(/Výhra o (\d+) gólů/g, 'Win by $1 goals')
     .replace(/(\d+)\. (?:třetina|část)/g, 'Period $1')
     .replace(/(\d+) na (\d+)/g, '$1 on $2')
     .replace(/(\d+) událostí/g, '$1 events')

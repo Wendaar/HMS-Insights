@@ -171,6 +171,7 @@ test("detekuje přesně očekávané typy bez hattricku", () => {
   assert.equal(counts.BIG_SAVES.length, 2);
   assert.equal(counts.HATTRICK, undefined);
   assert.equal(analysis.priklepy.length, 10);
+  assert.equal(counts.BIG_WIN[0].title, "Výhra o 6 gólů");
 });
 
 test("odhalí desátý gól týmu a připíše jej střelci", () => {
@@ -224,6 +225,23 @@ test("sezonní pravidla vytvářejí milníky a série bez duplicitních klíč�
   assert.ok(result.some((item) => item.type === "PLAYER_GOAL_STREAK" && item.facts.streak === 4));
   assert.ok(result.some((item) => item.type === "TEAM_WIN_STREAK" && item.facts.streak === 4));
   assert.equal(new Set(result.map((item) => item.id)).size, result.length);
+});
+
+test("hráčské milníky a gólové série se počítají samostatně za každý tým", () => {
+  const scorerId = analysis.game.playerStats[0].playerId;
+  const common = { organizationId: ids.org, competitionId: ids.competition, seasonId: ids.season, groupId: ids.group, playerId: scorerId, playerName: "Jáchym Rezek", assists: 0 };
+  const split = [
+    { ...common, gameId: "a1", startedAt: "2026-10-01T20:00:00Z", teamId: ids.home, goals: 8 },
+    { ...common, gameId: "a2", startedAt: "2026-10-02T20:00:00Z", teamId: ids.away, goals: 2 },
+    { ...common, gameId: "a3", startedAt: "2026-10-03T20:00:00Z", teamId: ids.home, goals: 1 },
+    { ...common, gameId: "a4", startedAt: "2026-10-04T20:00:00Z", teamId: ids.away, goals: 1 },
+  ];
+  assert.equal(detectSeasonPriklepy({ playerRows: split }).some((item) => item.type === "SEASON_GOAL_MILESTONE"), false);
+  assert.equal(detectSeasonPriklepy({ playerRows: split }).some((item) => item.type === "PLAYER_GOAL_STREAK"), false);
+  const clubMilestone = detectSeasonPriklepy({ playerRows: [...split, { ...common, gameId: "a5", startedAt: "2026-10-05T20:00:00Z", teamId: ids.home, goals: 1 }] })
+    .find((item) => item.type === "SEASON_GOAL_MILESTONE");
+  assert.equal(clubMilestone.teamId, ids.home);
+  assert.match(clubMilestone.id, new RegExp(ids.home, "i"));
 });
 
 test("databázové řádky obsahují tenant vazby a žádné kontaktní údaje", () => {

@@ -29,8 +29,11 @@ function crossedMilestones(before, after, step = 10) {
 }
 
 function seasonPriklep(row, type, subject, importance, title, text, facts, key) {
+  const subjectKey = subject.playerId
+    ? `${subject.playerId}:${subject.teamId}`
+    : subject.teamId;
   return {
-    id: `${row.gameId}:${type}:${subject.playerId ?? subject.teamId}:${key}`,
+    id: `${row.gameId}:${type}:${subjectKey}:${key}`,
     organizationId: row.organizationId,
     competitionId: row.competitionId,
     seasonId: row.seasonId,
@@ -48,7 +51,9 @@ function seasonPriklep(row, type, subject, importance, title, text, facts, key) 
 
 function playerMilestones(playerRows) {
   const result = [];
-  for (const rows of groupsOf(playerRows, (row) => row.playerId)) {
+  // A player's statistics belong to the team represented in each game.
+  // Transfers and guest appearances must not create a fictional club milestone.
+  for (const rows of groupsOf(playerRows, (row) => `${row.playerId}:${row.teamId}`)) {
     let goals = 0;
     let points = 0;
     for (const row of orderRows(rows)) {
@@ -87,7 +92,7 @@ function playerMilestones(playerRows) {
 
 function playerGoalStreaks(playerRows) {
   const result = [];
-  for (const rows of groupsOf(playerRows, (row) => `${row.groupId}:${row.playerId}`)) {
+  for (const rows of groupsOf(playerRows, (row) => `${row.groupId}:${row.playerId}:${row.teamId}`)) {
     let streak = 0;
     for (const row of orderRows(rows)) {
       streak = row.goals > 0 ? streak + 1 : 0;

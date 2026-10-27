@@ -39,7 +39,7 @@ export function detectPriklepy(game) {
       TYPES.BIG_WIN,
       { teamId: winner.teamId },
       90,
-      "Výhra o šest",
+      `Výhra o ${scoreDifference} gólů`,
       `${winner.teamName} zvítězilo rozdílem ${scoreDifference} branek.`,
       { scoreDifference, goalsFor: winner.goals, goalsAgainst: winner.goalsAgainst },
     ));

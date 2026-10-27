@@ -20,7 +20,7 @@ test('EUCHL defaults to English; explicit language wins and untrusted values are
 test('English report translates server UI and achievements without changing the JSON or names',()=>{
   const before=JSON.stringify(summary),html=renderGameReport(summary,{lang:'en'}),text=visible(html);
   assert.match(html,/<html lang="en">/);
-  for(const label of ['Game timeline','Special teams','Goal origins','Player scoring','Game scoring leaders','Big win','Player profile'.toUpperCase()])assert.ok(text.includes(label),label);
+  for(const label of ['Game timeline','Special teams','Goal origins','Player scoring','Game scoring leaders','Win by 6 goals','Player profile'.toUpperCase()])assert.ok(text.includes(label),label);
   assert.doesNotMatch(text,/Časová osa|Kanadské|vstřelil|zaznamenal|zákroků|body v zápase|zvítězilo/);
   assert.equal(JSON.stringify(summary),before);
   assert.deepEqual(JSON.parse(html.match(/id="game-report-data">([\s\S]*?)<\/script>/)[1]).summary,summary);

@@ -13,11 +13,11 @@ texty a grafické názvy se mohou ladit bez přepočítání historických dat.
 | `BIG_SAVES` | Brankářský výkon | Goalie performance | BIG SAVES | nejméně 30 zákroků |
 | `TEAM_GOAL_MILESTONE` | Gólový milník týmu | Team goal milestone | DOUBLE DIGITS | 10., 20., 30. … gól týmu v zápase |
 | `COMEBACK_WIN` | Velký obrat | Big comeback | COMEBACK | vítěz otočil ztrátu nejméně 4 branek |
-| `SEASON_GOAL_MILESTONE` | Gólový milník sezony | Season goal milestone | GOAL MILESTONE | 10., 20., 30. … gól hráče v sezoně |
-| `SEASON_POINT_MILESTONE` | Bodový milník sezony | Season point milestone | POINT MILESTONE | 10., 20., 30. … bod hráče v sezoně |
+| `SEASON_GOAL_MILESTONE` | Gólový milník sezony za tým | Team season goal milestone | GOAL MILESTONE | 10., 20., 30. … gól hráče za jeden tým v sezoně |
+| `SEASON_POINT_MILESTONE` | Bodový milník sezony za tým | Team season point milestone | POINT MILESTONE | 10., 20., 30. … bod hráče za jeden tým v sezoně |
 | `TEAM_WIN_STREAK` | Vítězná série | Winning streak | WIN STREAK | nejméně 4 výhry v řadě |
 | `TEAM_UNBEATEN_STREAK` | Série bez porážky | Unbeaten streak | UNBEATEN | nejméně 5 zápasů bez porážky |
-| `PLAYER_GOAL_STREAK` | Gólová série hráče | Player goal streak | ON FIRE | nejméně 4 zápasy s gólem v řadě |
+| `PLAYER_GOAL_STREAK` | Gólová série hráče za tým | Team player goal streak | ON FIRE | nejméně 4 zápasy s gólem v řadě za stejný tým |
 | `RANK_UPSET` | Překvapení kola / Šok kola | Upset alert | UPSET ALERT | vítěz byl před zápasem nejméně o 6 příček níže; od 9 příček „Šok kola“ |
 
 ## Pravidlo pro Studio

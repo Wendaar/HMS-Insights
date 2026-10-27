@@ -40,6 +40,11 @@ test('new milestones and streaks are first-class Studio outputs',async()=>{
  const page=await browseMedia({org:'PHM',section:'insights',type:'TEAM_WIN_STREAK'},{env:{},now:new Date('2026-10-21T12:00Z'),loadInsights:async()=>({items:[],hasMore:false})});
  assert.deepEqual(page.items,[]);
 });
+test('BIG WIN exposes the real goal margin as the main Studio number',()=>{
+ const subject=resolveInsightSubject(game,{...insight,type:'BIG_WIN',playerId:null,teamId:awayId,facts:{scoreDifference:11}});
+ assert.deepEqual(insightStat(subject),{value:11,label:'GÓLŮ ROZDÍL'});
+ assert.deepEqual(insightStat(subject,'en'),{value:11,label:'GOAL MARGIN'});
+});
 test('public media uses matching player+team IDs and separate competition/group brands',()=>{
  const url='https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/photo_[size]';
  const summary={...game,playedOn:'2026-10-20',competition:'PHM Cup',group:'SUPER',phase:'Základní část',home:{...game.home,logoUrl:null},away:{...game.away,logoUrl:null},players:[{...game.players[0],imageUrl:null}]};
