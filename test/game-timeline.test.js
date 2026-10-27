@@ -136,7 +136,7 @@ test("reimport replaces rather than appends events; deletion and assistance corr
     },
   };
   for (let i = 0; i < 2; i++) await processFinishedGame(gameId, {
-    fetchResponses: async () => [gameEvents, lineup], persist: (a) => persistAnalysisPostgres(a, { sql, ensureSchema: false, refreshSeasonInsights: false }),
+    fetchResponses: async () => [gameEvents, lineup], persist: (a) => persistAnalysisPostgres(a, { sql, ensureSchema: false, refreshSeasonInsights: false, refreshRankingInsight: false }),
   });
   assert.deepEqual(replacements[0], replacements[1]);
   const corrected = structuredClone(gameEvents);
@@ -145,7 +145,7 @@ test("reimport replaces rather than appends events; deletion and assistance corr
   corrected.GameEventGoals[0].assistedBy1PlayerId = null;
   corrected.AwayTeamGoals = 9;
   await processFinishedGame(gameId, {
-    fetchResponses: async () => [corrected, lineup], persist: (a) => persistAnalysisPostgres(a, { sql, ensureSchema: false, refreshSeasonInsights: false }),
+    fetchResponses: async () => [corrected, lineup], persist: (a) => persistAnalysisPostgres(a, { sql, ensureSchema: false, refreshSeasonInsights: false, refreshRankingInsight: false }),
   });
   assert.equal(replacements.at(-1).events.filter((e) => e.type === "goal").length, 14);
   assert.equal(replacements.at(-1).events.filter((e) => e.type === "penalty").length, 3);

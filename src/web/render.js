@@ -13,6 +13,7 @@ const labels = {
   TEAM_WIN_STREAK: "Vítězná série",
   TEAM_UNBEATEN_STREAK: "Série bez porážky",
   PLAYER_GOAL_STREAK: "Gólová série hráče",
+  RANK_UPSET: "Překvapení kola",
 };
 
 function escapeHtml(value) {

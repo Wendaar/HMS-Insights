@@ -1,6 +1,7 @@
 import { neon } from "@neondatabase/serverless";
 import { detectedRows, rowsFor } from "./analysis-rows.js";
 import { detectSeasonPriklepy, SEASON_TYPES } from "../domain/season-rules.js";
+import { detectRankingUpset, RANKING_UPSET } from "../domain/ranking-rules.js";
 
 const specs = {
   games: {
@@ -79,16 +80,32 @@ export async function ensurePenaltyMinutesSchema(options = {}) {
 const EXTENDED_INSIGHT_TYPES = [
   "BIG_WIN", "EARLY_GOAL", "MULTIPOINT_GAME", "HATTRICK", "BIG_SAVES",
   "TEAM_GOAL_MILESTONE", "COMEBACK_WIN",
+  RANKING_UPSET,
   ...Object.values(SEASON_TYPES),
 ];
 
+export async function ensurePregameRankingsSchema(options = {}) {
+  const sql = options.sql ?? createSql(options.databaseUrl ?? databaseUrlFromEnv(options.env));
+  await sql.query(`create table if not exists pregame_rankings (
+    game_id uuid primary key, organization_id uuid not null, competition_id uuid not null,
+    season_id uuid not null, group_id uuid, phase_id uuid, scheduled_on date not null,
+    scheduled_time time, home_team_id uuid not null, away_team_id uuid not null,
+    home_rank smallint not null check (home_rank > 0), away_rank smallint not null check (away_rank > 0),
+    home_points numeric, away_points numeric, home_games smallint check (home_games >= 0),
+    away_games smallint check (away_games >= 0), captured_at timestamptz not null default now(),
+    source text not null default 'HMS' check (source = 'HMS'))`);
+  await sql.query("create index if not exists pregame_rankings_scope_idx on pregame_rankings (organization_id, season_id, group_id, scheduled_on)");
+  return true;
+}
+
 export async function ensureExtendedInsightsSchema(options = {}) {
   const sql = options.sql ?? createSql(options.databaseUrl ?? databaseUrlFromEnv(options.env));
+  await ensurePregameRankingsSchema({ ...options, sql });
   await sql.query("alter table games add column if not exists score_was_overridden boolean not null default false");
   const constraints = await sql.query(
     "select pg_get_constraintdef(oid) as definition from pg_constraint where conrelid = 'detected_priklepy'::regclass and conname = 'detected_priklepy_type_check'",
   );
-  if (!String(constraints[0]?.definition ?? "").includes("SEASON_GOAL_MILESTONE")) {
+  if (!String(constraints[0]?.definition ?? "").includes(RANKING_UPSET)) {
     await sql.query("alter table detected_priklepy drop constraint if exists detected_priklepy_type_check");
     const allowed = EXTENDED_INSIGHT_TYPES.map((type) => `'${type}'`).join(", ");
     await sql.query(`alter table detected_priklepy add constraint detected_priklepy_type_check check (type in (${allowed}))`);
@@ -96,6 +113,68 @@ export async function ensureExtendedInsightsSchema(options = {}) {
   await sql.query("create index if not exists player_game_stats_history_idx on player_game_stats (player_id, game_id)");
   await sql.query("create index if not exists team_game_stats_history_idx on team_game_stats (team_id, game_id)");
   return true;
+}
+
+function rankingRow(row) {
+  if (!row) return null;
+  return {
+    gameId: row.game_id,
+    organizationId: row.organization_id,
+    competitionId: row.competition_id,
+    seasonId: row.season_id,
+    groupId: row.group_id,
+    phaseId: row.phase_id,
+    scheduledOn: dateOnly(row.scheduled_on),
+    scheduledTime: row.scheduled_time == null ? null : String(row.scheduled_time).slice(0, 8),
+    homeTeamId: row.home_team_id,
+    awayTeamId: row.away_team_id,
+    homeRank: Number(row.home_rank),
+    awayRank: Number(row.away_rank),
+    homePoints: row.home_points == null ? null : Number(row.home_points),
+    awayPoints: row.away_points == null ? null : Number(row.away_points),
+    homeGames: row.home_games == null ? null : Number(row.home_games),
+    awayGames: row.away_games == null ? null : Number(row.away_games),
+    capturedAt: isoTimestamp(row.captured_at),
+    source: "HMS",
+  };
+}
+
+export async function savePregameRankings(rows, options = {}) {
+  if (!Array.isArray(rows) || rows.length > 100) throw new TypeError("Neplatná předzápasová pořadí.");
+  const sql = options.sql ?? createSql(options.databaseUrl ?? databaseUrlFromEnv(options.env));
+  if (options.ensureSchema !== false) await ensurePregameRankingsSchema({ ...options, sql });
+  let saved = 0;
+  for (const row of rows) {
+    const result = await sql.query(`insert into pregame_rankings
+      (game_id,organization_id,competition_id,season_id,group_id,phase_id,scheduled_on,scheduled_time,
+       home_team_id,away_team_id,home_rank,away_rank,home_points,away_points,home_games,away_games,captured_at,source)
+      values ($1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::uuid,$6::uuid,$7::date,$8::time,
+       $9::uuid,$10::uuid,$11,$12,$13,$14,$15,$16,$17::timestamptz,'HMS')
+      on conflict (game_id) do nothing returning game_id`, [
+      row.gameId, row.organizationId, row.competitionId, row.seasonId, row.groupId, row.phaseId,
+      row.scheduledOn, row.scheduledTime, row.homeTeamId, row.awayTeamId, row.homeRank, row.awayRank,
+      row.homePoints, row.awayPoints, row.homeGames, row.awayGames, row.capturedAt,
+    ]);
+    saved += result.length;
+  }
+  return saved;
+}
+
+export async function loadPregameRanking(gameId, options = {}) {
+  const sql = options.sql ?? createSql(options.databaseUrl ?? databaseUrlFromEnv(options.env));
+  const rows = await sql.query("select * from pregame_rankings where game_id=$1::uuid", [gameId]);
+  return rankingRow(rows[0]);
+}
+
+export async function refreshRankingUpsetPostgres(game, options = {}) {
+  const sql = options.sql ?? createSql(options.databaseUrl ?? databaseUrlFromEnv(options.env));
+  const ranking = await loadPregameRanking(game.gameId, { ...options, sql });
+  const upset = detectRankingUpset(game, ranking);
+  const remove = sql.query("delete from detected_priklepy where game_id=$1::uuid and type=$2", [game.gameId, RANKING_UPSET]);
+  if (!upset) { await remove; return null; }
+  const query = buildUpsert("detected_priklepy", detectedRows([upset]));
+  await sql.transaction([remove, sql.query(query.text, query.values)]);
+  return upset;
 }
 
 function isoTimestamp(value) {
@@ -173,6 +252,9 @@ export async function persistAnalysisPostgres(analysis, options = {}) {
   await sql.transaction(queries);
   if (options.refreshSeasonInsights !== false) {
     await refreshSeasonPriklepyPostgres(analysis.game, { ...options, sql });
+  }
+  if (options.refreshRankingInsight !== false) {
+    await refreshRankingUpsetPostgres(analysis.game, { ...options, sql });
   }
   return rows;
 }

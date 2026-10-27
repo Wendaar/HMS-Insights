@@ -12,7 +12,7 @@ export const feedEnglish={
  'Zkuste změnit hledání nebo některý z filtrů.':'Try another search or change the filters.','Zavřít':'Close','Otevřít detail zápasu v HMS':'Open the game in HMS',
  'Týmový moment':'Team highlight','VELKÁ VÝHRA':'BIG WIN','RYCHLÝ GÓL':'EARLY GOAL','VÍCEBODOVÝ ZÁPAS':'MULTI-POINT GAME','BRANKÁŘSKÝ VÝKON':'GOALTENDER PERFORMANCE',
  'GÓLOVÝ MILNÍK TÝMU':'TEAM GOAL MILESTONE','VELKÝ OBRAT':'BIG COMEBACK','GÓLOVÝ MILNÍK SEZONY':'SEASON GOAL MILESTONE','BODOVÝ MILNÍK SEZONY':'SEASON POINT MILESTONE',
- 'VÍTĚZNÁ SÉRIE':'WINNING STREAK','SÉRIE BEZ PORÁŽKY':'UNBEATEN STREAK','GÓLOVÁ SÉRIE HRÁČE':'PLAYER GOAL STREAK',
+ 'VÍTĚZNÁ SÉRIE':'WINNING STREAK','SÉRIE BEZ PORÁŽKY':'UNBEATEN STREAK','GÓLOVÁ SÉRIE HRÁČE':'PLAYER GOAL STREAK','PŘEKVAPENÍ KOLA':'UPSET ALERT',
  'Velká výhra':'Big win','Rychlý gól':'Early goal','Vícebodový zápas':'Multi-point game','Brankářský výkon':'Goaltender performance','Hattrick':'Hat trick',
  'Sdílet tento Příklep':'Share this Insight','Sdílet':'Share','✓ Odkaz zkopírován':'✓ Link copied','Otevřít Game Report →':'Open Game Report →',
  'Příklepy se nepodařilo načíst.':'Could not load Insights.','Zdroj neodpovídá organizaci této stránky.':'The source does not match this organization.',
@@ -26,7 +26,7 @@ export function feedText(value,lang='cs'){
 export function insightCopy(item,lang='cs'){
  if(lang!=='en')return item;
  const f=item.facts??{},name=item.player||item.team||'Team',number=(key)=>Number.isFinite(f[key])?f[key]:null;
- const titles={HATTRICK:'Hat trick',BIG_SAVES:'Goaltender performance',MULTIPOINT_GAME:'Multi-point game',EARLY_GOAL:'Early goal',BIG_WIN:'Big win',TEAM_GOAL_MILESTONE:'Team goal milestone',COMEBACK_WIN:'Big comeback',SEASON_GOAL_MILESTONE:'Season goal milestone',SEASON_POINT_MILESTONE:'Season point milestone',TEAM_WIN_STREAK:'Winning streak',TEAM_UNBEATEN_STREAK:'Unbeaten streak',PLAYER_GOAL_STREAK:'Player goal streak'};
+ const titles={HATTRICK:'Hat trick',BIG_SAVES:'Goaltender performance',MULTIPOINT_GAME:'Multi-point game',EARLY_GOAL:'Early goal',BIG_WIN:'Big win',TEAM_GOAL_MILESTONE:'Team goal milestone',COMEBACK_WIN:'Big comeback',SEASON_GOAL_MILESTONE:'Season goal milestone',SEASON_POINT_MILESTONE:'Season point milestone',TEAM_WIN_STREAK:'Winning streak',TEAM_UNBEATEN_STREAK:'Unbeaten streak',PLAYER_GOAL_STREAK:'Player goal streak',RANK_UPSET:'Upset alert'};
  let text=item.text;
  const counted=(value,word)=>`${value} ${word}${value===1?'':'s'}`;
  if(item.type==='HATTRICK')text=number('goals')===null?`${name} scored a hat trick.`:`${name} scored ${f.goals} goals.`;
@@ -41,6 +41,7 @@ export function insightCopy(item,lang='cs'){
  if(item.type==='TEAM_WIN_STREAK')text=number('streak')===null?`${name} extended its winning streak.`:`${name} won ${f.streak} games in a row.`;
  if(item.type==='TEAM_UNBEATEN_STREAK')text=number('streak')===null?`${name} extended its unbeaten streak.`:`${name} went ${f.streak} games unbeaten.`;
  if(item.type==='PLAYER_GOAL_STREAK')text=number('streak')===null?`${name} extended a scoring streak.`:`${name} scored in ${f.streak} consecutive games.`;
+ if(item.type==='RANK_UPSET')text=number('winnerRankBefore')===null||number('loserRankBefore')===null?`${name} defeated a higher-ranked opponent.`:`${name} (#${f.winnerRankBefore}) defeated the #${f.loserRankBefore} team.`;
  return {...item,title:titles[item.type]??item.title,text,...(item.venue==='Neuvedený stadion'?{venue:'Venue not specified'}:{})};
 }
 export function insightStat(item,lang='cs'){
@@ -56,6 +57,7 @@ export function insightStat(item,lang='cs'){
  if(item.type==='TEAM_WIN_STREAK')return `${item.facts?.streak??4} ${lang==='en'?'WINS IN A ROW':'VÝHRY V ŘADĚ'}`;
  if(item.type==='TEAM_UNBEATEN_STREAK')return `${item.facts?.streak??5}× ${lang==='en'?'UNBEATEN':'BEZ PORÁŽKY'}`;
  if(item.type==='PLAYER_GOAL_STREAK')return `${item.facts?.streak??4} ${lang==='en'?'GAMES WITH A GOAL':'ZÁPASY S GÓLEM'}`;
+ if(item.type==='RANK_UPSET')return `${lang==='en'?'UPSET +':'PŘEKVAPENÍ +'}${item.facts?.rankDifference??6}`;
  return item.type;
 }
 // Translate only trusted presentation markup. JSON/data/URLs and sporting names stay intact.

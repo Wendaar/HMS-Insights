@@ -26,7 +26,7 @@ export function gameOutputs(game,lang=language){
   const result=templates(game,lang);
   if(game?.status!=='FINISHED')return result;
   for(const p of game.priklepy??[]){
-    if(!['HATTRICK','MULTIPOINT_GAME','BIG_SAVES','EARLY_GOAL','BIG_WIN','TEAM_GOAL_MILESTONE','COMEBACK_WIN','SEASON_GOAL_MILESTONE','SEASON_POINT_MILESTONE','TEAM_WIN_STREAK','TEAM_UNBEATEN_STREAK','PLAYER_GOAL_STREAK'].includes(p.type))continue;
+    if(!['HATTRICK','MULTIPOINT_GAME','BIG_SAVES','EARLY_GOAL','BIG_WIN','TEAM_GOAL_MILESTONE','COMEBACK_WIN','SEASON_GOAL_MILESTONE','SEASON_POINT_MILESTONE','TEAM_WIN_STREAK','TEAM_UNBEATEN_STREAK','PLAYER_GOAL_STREAK','RANK_UPSET'].includes(p.type))continue;
     const legacyId=p.id?.split(':').at(-1),insight={...p,gameId:game.gameId};
     if(!insight.playerId&&!insight.teamId){
       const player=[...game.players??[],...game.goalies??[]].find(x=>x.id?.toLowerCase()===legacyId?.toLowerCase());

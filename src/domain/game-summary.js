@@ -8,12 +8,30 @@ import {jerseyColor} from '../../public/game-report-graphics.js';
 export const isGameId = (value) => typeof value === "string"
   && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 
+export function publicPregameRanking(gameId, homeTeamId, awayTeamId, pregameRanking) {
+  const captured = new Date(pregameRanking?.capturedAt);
+  return pregameRanking
+    && pregameRanking.gameId?.toLowerCase() === gameId?.toLowerCase()
+    && pregameRanking.homeTeamId?.toLowerCase() === homeTeamId?.toLowerCase()
+    && pregameRanking.awayTeamId?.toLowerCase() === awayTeamId?.toLowerCase()
+    && Number.isSafeInteger(pregameRanking.homeRank) && pregameRanking.homeRank > 0
+    && Number.isSafeInteger(pregameRanking.awayRank) && pregameRanking.awayRank > 0
+    ? {
+      homeRank: pregameRanking.homeRank, awayRank: pregameRanking.awayRank,
+      homePoints: Number.isFinite(pregameRanking.homePoints) ? pregameRanking.homePoints : null,
+      awayPoints: Number.isFinite(pregameRanking.awayPoints) ? pregameRanking.awayPoints : null,
+      homeGames: Number.isSafeInteger(pregameRanking.homeGames) && pregameRanking.homeGames >= 0 ? pregameRanking.homeGames : null,
+      awayGames: Number.isSafeInteger(pregameRanking.awayGames) && pregameRanking.awayGames >= 0 ? pregameRanking.awayGames : null,
+      capturedAt: Number.isNaN(captured.getTime()) ? null : captured.toISOString(), source: "HMS",
+    } : null;
+}
+
 function date(value) {
   if (value instanceof Date) return value.toISOString().slice(0, 10);
   return String(value ?? "").slice(0, 10) || null;
 }
 
-export function buildGameSummary({ game, teams = [], players = [], goalies = [], priklepy = [] }) {
+export function buildGameSummary({ game, teams = [], players = [], goalies = [], priklepy = [], pregameRanking = null }) {
   const timeline = buildGameTimeline(game);
   const teamShots=recordedTeamShots(timeline,game.home_team_id,game.away_team_id);
   const goalieStats=row=>{
@@ -40,6 +58,7 @@ export function buildGameSummary({ game, teams = [], players = [], goalies = [],
       secondaryColor: /^#[\da-f]{6}$/i.test(row?.secondary_color ?? '') ? row.secondary_color : null,
     };
   };
+  const ranking = publicPregameRanking(game.game_id, game.home_team_id, game.away_team_id, pregameRanking);
   return {
     schemaVersion: 1,
     timeline,
@@ -59,6 +78,7 @@ export function buildGameSummary({ game, teams = [], players = [], goalies = [],
     group: game.group_name ?? null,
     phase: game.phase_name ?? null,
     venue: game.venue_name ?? null,
+    pregameRanking: ranking,
     home: team("HOME"), away: team("AWAY"),
     players: players.map((row) => ({
       id: row.player_id, teamId: row.team_id, name: row.player_name,

@@ -392,6 +392,7 @@ test("opravený zápas atomicky nahradí starý snapshot a zastaralé Příklepy
     },
     ensureSchema: false,
     refreshSeasonInsights: false,
+    refreshRankingInsight: false,
   });
   assert.deepEqual(transaction, queries);
   assert.equal(transaction.length, 7);

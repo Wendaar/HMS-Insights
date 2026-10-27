@@ -18,6 +18,7 @@ texty a grafické názvy se mohou ladit bez přepočítání historických dat.
 | `TEAM_WIN_STREAK` | Vítězná série | Winning streak | WIN STREAK | nejméně 4 výhry v řadě |
 | `TEAM_UNBEATEN_STREAK` | Série bez porážky | Unbeaten streak | UNBEATEN | nejméně 5 zápasů bez porážky |
 | `PLAYER_GOAL_STREAK` | Gólová série hráče | Player goal streak | ON FIRE | nejméně 4 zápasy s gólem v řadě |
+| `RANK_UPSET` | Překvapení kola / Šok kola | Upset alert | UPSET ALERT | vítěz byl před zápasem nejméně o 6 příček níže; od 9 příček „Šok kola“ |
 
 ## Pravidlo pro Studio
 
@@ -31,5 +32,6 @@ má Studio současně:
 - formát hodnoty z `facts` (například číslo milníku nebo délku série),
 - ověřenou kartu ve všech používaných poměrech stran.
 
-Překvapení podle postavení v tabulce zatím v katalogu není. Nejdříve potřebuje
-oficiální pořadí před konkrétním zápasem a pravidla bodování dané soutěže.
+`RANK_UPSET` se počítá jen z oficiální tabulky HMS, kterou systém uložil před
+začátkem konkrétního zápasu. Pokud předzápasový otisk chybí, systém výsledek
+zpětně nehádá a tento typ Příklepu nevytvoří.

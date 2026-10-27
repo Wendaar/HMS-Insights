@@ -24,5 +24,5 @@
 
 - Aktivní sada: 10./20. gól týmu v zápase, velký vítězný obrat ze ztráty nejméně čtyř branek, hráčské sezonní milníky po 10 gólech a bodech, čtyři a více výher týmu v řadě, pět a více zápasů bez porážky a čtyři a více hráčských zápasů s gólem.
 - Sezonní pravidla se vždy přepočítávají z uložených zápasů, aby oprava nebo opakovaný import nevytvářely duplicity.
-- Překvapení podle postavení v tabulce se zapne až s důvěryhodným zdrojem pořadí a pravidel bodování dané soutěže.
+- Překvapení podle postavení v tabulce používá denní předzápasový otisk oficiální tabulky HMS. Ukládá se jen pořadí, body a počet zápasů obou týmů ke konkrétnímu utkání; historické pořadí se zpětně neodhaduje.
 - Každý nový typ musí mít současně český i anglický název, popis, krátký headline a filtr pro Studio (`app.phmcup.cz/studio`).

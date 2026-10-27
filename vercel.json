@@ -4,6 +4,9 @@
   "regions": [
     "fra1"
   ],
+  "crons": [
+    {"path": "/api/cron/pregame-rankings", "schedule": "0 23 * * *"}
+  ],
   "functions": {
     "api/**/*.js": {
       "maxDuration": 60
@@ -79,6 +82,7 @@
     { "source": "/game-center/", "destination": "/games/index.html" },
     { "source": "/api/games", "destination": "/api/game-summary?view=games" },
     { "source": "/api/broadcast", "destination": "/api/game-summary?view=broadcast" },
+    { "source": "/api/cron/pregame-rankings", "destination": "/api/game-summary?view=pregame-rankings" },
     { "source": "/api/tools", "destination": "/api/game-summary?view=tools" },
     { "source": "/control/apps/playoff-players", "destination": "/tools/playoff-players/index.html" },
     { "source": "/tools/playoff-players", "destination": "/tools/playoff-players/index.html" },

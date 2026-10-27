@@ -135,6 +135,7 @@ function achievementLabel(type) {
     TEAM_WIN_STREAK: t("VÍTĚZNÁ SÉRIE"),
     TEAM_UNBEATEN_STREAK: t("SÉRIE BEZ PORÁŽKY"),
     PLAYER_GOAL_STREAK: t("GÓLOVÁ SÉRIE HRÁČE"),
+    RANK_UPSET: t("PŘEKVAPENÍ KOLA"),
   })[type] ?? type.replaceAll("_", " ");
 }
 

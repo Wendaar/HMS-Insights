@@ -40,6 +40,11 @@ async function readTable(endpoint,params,options){
   try{while(true){const {value,done}=await reader.read();if(done)break;size+=value.byteLength;if(size>4000000)throw new Error('Large statistics');chunks.push(value);}}finally{await reader.cancel().catch(()=>{});}
   const buffer=new Uint8Array(size);let offset=0;for(const chunk of chunks){buffer.set(chunk,offset);offset+=chunk.length;}return JSON.parse(new TextDecoder().decode(buffer));
 }
+export async function readOfficialStandings(scope,options={}){
+  const query=scope?.phaseId?{phaseId:scope.phaseId}:scope?.groupId?{groupId:scope.groupId}:null;
+  if(!query)throw new Error('Missing phase/group');
+  return officialStandings(await readTable('standings',query,options));
+}
 const cache=new Map(),pending=new Map();
 export async function broadcastLeague(detail,options={}){
   const scope=broadcastScope(detail),key=[scope.organizationId,scope.groupId,scope.phaseId,detail.gameId].join(':'),cacheable=!options.fetchImpl;
@@ -48,10 +53,9 @@ export async function broadcastLeague(detail,options={}){
   if(pending.size>=8)throw new Error('Statistics busy');
   const task=(async()=>{
     const value={scope,source:'HMS',readAt:new Date().toISOString(),standingsAvailable:false,leadersAvailable:false,standings:[],leaders:{home:[],away:[]},statsScope:scope.groupId?'group':'phase'};
-    const standingQuery=scope.phaseId?{phaseId:scope.phaseId}:scope.groupId?{groupId:scope.groupId}:null;
     const leaderQuery=scope.groupId?{groupId:scope.groupId}:scope.phaseId?{phaseIds:scope.phaseId}:null;
-    const [standings,leaders]=await Promise.allSettled([standingQuery?readTable('standings',standingQuery,options):Promise.reject(new Error('Missing phase/group')),leaderQuery?readTable('playersStats',leaderQuery,options):Promise.reject(new Error('Missing group/phase'))]);
-    if(standings.status==='fulfilled')try{value.standings=officialStandings(standings.value);value.standingsAvailable=true;}catch{}
+    const [standings,leaders]=await Promise.allSettled([readOfficialStandings(scope,options),leaderQuery?readTable('playersStats',leaderQuery,options):Promise.reject(new Error('Missing group/phase'))]);
+    if(standings.status==='fulfilled'){value.standings=standings.value;value.standingsAvailable=true;}
     if(leaders.status==='fulfilled')try{value.leaders=officialTeamLeaders(leaders.value,detail);value.leadersAvailable=true;}catch{}
     if(cacheable){if(cache.size>=60)cache.delete(cache.keys().next().value);cache.set(key,{value,until:Date.now()+60000});}return value;
   })();

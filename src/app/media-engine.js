@@ -3,9 +3,9 @@ import {hmsMediaContext} from '../hms/media-context.js';
 // Trigger-neutral read model. No writes to HMS, imported snapshots or Příklepy.
 import { fetchGames, fetchGameDetail, fetchOrganization, fetchPublicGameMetadata, fetchGameResponses, hmsConfigFromEnv } from '../hms/client.js';
 import { normalizeHmsGame } from '../hms/normalize.js';
-import { buildGameSummary, isGameId } from '../domain/game-summary.js';
+import { buildGameSummary, isGameId, publicPregameRanking } from '../domain/game-summary.js';
 import { rowsFor } from '../infrastructure/analysis-rows.js';
-import { loadGameSnapshot, loadStudioPage, loadStudioGameLabels, loadStudioInsights } from '../infrastructure/postgres-repository.js';
+import { loadGameSnapshot, loadPregameRanking, loadStudioPage, loadStudioGameLabels, loadStudioInsights } from '../infrastructure/postgres-repository.js';
 import { gameRows } from './backfill-finished-games.js';
 import { sportingImage } from '../../public/game-report-media.js';
 
@@ -79,7 +79,7 @@ export async function browseMedia({org,filter='Today',offset=0,windowPage=0,sect
   const env=options.env??process.env, config=organizationConfig(org,env);
   const limit=20;
   if(section==='insights'){
-    const types=['HATTRICK','MULTIPOINT_GAME','BIG_SAVES','EARLY_GOAL','BIG_WIN','TEAM_GOAL_MILESTONE','COMEBACK_WIN','SEASON_GOAL_MILESTONE','SEASON_POINT_MILESTONE','TEAM_WIN_STREAK','TEAM_UNBEATEN_STREAK','PLAYER_GOAL_STREAK'];
+    const types=['HATTRICK','MULTIPOINT_GAME','BIG_SAVES','EARLY_GOAL','BIG_WIN','TEAM_GOAL_MILESTONE','COMEBACK_WIN','SEASON_GOAL_MILESTONE','SEASON_POINT_MILESTONE','TEAM_WIN_STREAK','TEAM_UNBEATEN_STREAK','PLAYER_GOAL_STREAK','RANK_UPSET'];
     if(type&&!types.includes(type))throw new TypeError('Neplatný typ Insightu.');
     const today=timeWindow('Today',options.now).from;
     const page=await (options.loadInsights??loadStudioInsights)({organizationId:config.id,today,query:String(query).slice(0,160),type,offset,limit,env});
@@ -87,7 +87,7 @@ export async function browseMedia({org,filter='Today',offset=0,windowPage=0,sect
       player:item.player,playerId:item.playerId??null,team:item.team,teamId:item.teamId??null,
       homeTeam:item.homeTeam,awayTeam:item.awayTeam,homeScore:item.homeScore,awayScore:item.awayScore,competition:item.competition,group:item.group,
       playerImageUrl:sportingImage(item.playerImageUrl),teamLogoUrl:sportingImage(item.teamLogoUrl),
-      facts:Object.fromEntries(['goals','assists','points','saves','goalsAgainst','scoreDifference','gameTime','milestone','largestDeficit','goalsFor','goalsInGame','seasonGoals','pointsInGame','seasonPoints','streak'].filter(k=>Number.isFinite(item.facts?.[k])||typeof item.facts?.[k]==='string').map(k=>[k,item.facts[k]])),
+      facts:Object.fromEntries(['goals','assists','points','saves','goalsAgainst','scoreDifference','gameTime','milestone','largestDeficit','goalsFor','goalsInGame','seasonGoals','pointsInGame','seasonPoints','streak','winnerRankBefore','loserRankBefore','rankDifference'].filter(k=>Number.isFinite(item.facts?.[k])||typeof item.facts?.[k]==='string').map(k=>[k,item.facts[k]])),
       stats:Object.fromEntries(['goals','assists','points','saves','goalsAgainst'].filter(k=>Number.isFinite(item.facts?.[k])).map(k=>[k,item.facts[k]]))}));
     return page;
   }
@@ -148,6 +148,7 @@ export async function mediaGame(org,gameId,options={}) {
       const stored=await (options.loadSnapshot??loadGameSnapshot)(gameId,{env});
       if(stored) { assertOrg(stored.game.organization_id,config.id); summary.priklepy=buildGameSummary(stored).priklepy; }
     }
+    if(env.DATABASE_URL)try{summary.pregameRanking=publicPregameRanking(gameId,summary.home.id,summary.away.id,await (options.loadRanking??loadPregameRanking)(gameId,{env}));}catch{/* Optional until the first scheduled capture creates its table. */}
     if(!publicMetadata||!summary.home.logoUrl||!summary.away.logoUrl||!summary.competitionLogoUrl||!summary.groupLogoUrl||(summary.players??[]).some(p=>!p.imageUrl))publicMetadata??=await (options.fetchMetadata??fetchPublicGameMetadata)(gameId);
     applyPublicMedia(summary,publicMetadata);
     // Use the same official-star validation as the existing Game Report.
