@@ -38,7 +38,8 @@ export function createPublicFeedHandler({mode='selection',html=false,...options}
       const organization={code:org.code,slug:org.slug,name:org.name};
       if(html){
         response.setHeader('Content-Type','text/html; charset=utf-8');
-        response.setHeader('Cache-Control','s-maxage=60, stale-while-revalidate=300');
+        // Keep refreshed portraits out of the CDN's stale HTML cache. The
+        // bounded sporting metadata cache still coalesces upstream requests.
         return response.status(200).send(renderPriklepyPage(page.items,{...page,filterOptions,mode,organization,lang,embed:query.embed==='1',teamId,teamName:teamId?page.items.find(item=>item.team)?.team:null}));
       }
       return response.status(200).json({...page,organization:org.code,html:renderFeedCards(page.items,page.offset??0,lang)});

@@ -10,7 +10,7 @@ async function metadata(gameId,options){
  if(cacheable&&pending.has(key))return pending.get(key);
  if(pending.size>=16)return null;
  const task=(async()=>{
-  const value=await(options.fetchMetadata??fetchPublicGameMetadata)(gameId,{fetchImpl:(url,init)=>fetch(url,{...init,signal:AbortSignal.timeout(2500)})});
+  const value=await(options.fetchMetadata??fetchPublicGameMetadata)(gameId);
   if(cacheable){if(cache.size>=256)cache.delete(cache.keys().next().value);cache.set(key,{value,until:Date.now()+(value?300000:15000)});}return value;
  })();
  if(cacheable){pending.set(key,task);task.finally(()=>pending.delete(key)).catch(()=>{});}return task;
