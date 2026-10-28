@@ -28,7 +28,7 @@ export function teamRosterTrend(games,teamId,{complete=true,expected=games.lengt
   if(roster){covered++;for(const p of roster)unique.add(p);}
   let overlap=null;
   if(roster?.size&&previous?.size){const common=[...roster].filter(p=>previous.has(p)).length;overlap=200*common/(roster.size+previous.size);similarity+=overlap;pairs++;}
-  series.push({id:id(game.game_id),date:date(game.played_on),opponent:String(home?game.away_team_name:game.home_team_name).slice(0,160),score:`${gf}:${ga}`,result:gf>ga?'W':gf===ga?'D':'L',skaters:roster?.size??null,overlap});previous=roster;
+  series.push({id:id(game.game_id),date:date(game.played_on),opponentId:id(home?game.away_team_id:game.home_team_id),venue:typeof game.venue_name==='string'?game.venue_name.slice(0,160):null,opponent:String(home?game.away_team_name:game.home_team_name).slice(0,160),score:`${gf}:${ga}`,result:gf>ga?'W':gf===ga?'D':'L',skaters:roster?.size??null,overlap});previous=roster;
  }
  const all=complete&&expected>0&&covered===expected;
  return {series,covered,total:expected,complete:all,unique:covered?unique.size:null,average:covered?series.reduce((s,g)=>s+(g.skaters??0),0)/covered:null,stability:pairs?similarity/pairs:null,pairs,possiblePairs:Math.max(0,expected-1),stabilityComplete:all&&pairs===expected-1&&pairs>0,basis:'dice-consecutive-skater-lineups-v1'};
