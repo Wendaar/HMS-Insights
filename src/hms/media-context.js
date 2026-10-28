@@ -4,6 +4,6 @@ const image=e=>sportingImage(e?.logoUrls?.md??e?.imageUrls?.md??e?.logoUrl??e?.a
 export function hmsMediaContext(detail={}) {
   const phase=detail.Phase,group=detail.Group??phase?.Group,season=detail.Season??group?.Season;
   const competition=detail.Competition??season?.Competition;
-  return {competitionLogoUrl:image(competition),groupLogoUrl:image(group),phaseLogoUrl:image(phase),
-    organizationLogoUrl:image(detail.Organization),competitionName:competition?.name??null,groupName:group?.name??null,phaseName:phase?.name??null};
+  return {competitionLogoUrl:image(competition),seasonLogoUrl:image(season),groupLogoUrl:image(group),phaseLogoUrl:image(phase),
+    organizationLogoUrl:image(detail.Organization??competition?.Organization),competitionName:competition?.name??null,groupName:group?.name??null,phaseName:phase?.name??null};
 }

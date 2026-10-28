@@ -297,7 +297,7 @@ export function normalizeHmsGame(gameEventsResponse, lineupResponse, gameDetailR
     teamStats,
   };
   normalized.eventSnapshot = buildEventSnapshot(normalized, groupedEvents, players, penaltyMinutes);
-  normalized.eventSnapshot.branding=hmsMediaContext({Phase:phase,Group:group,Season:season,Competition:competition});
+  normalized.eventSnapshot.branding=hmsMediaContext({Phase:phase,Group:group,Season:season,Competition:competition,Organization:gameResponse.Organization});
   normalized.eventSnapshot.faceoffs = faceoffSnapshot(gameEventsResponse, gameDetailResponse, publicMetadata, normalized, players);
   normalized.eventSnapshot.roster=[...players.values()].map(p=>({id:p.playerId,teamId:p.teamId,isGoalie:p.isGoalie,...(p.position?{position:p.position}:{})}));
   normalized.eventSnapshot.jerseyColors={home:jerseyColor(gameResponse.homeJerseyColor),away:jerseyColor(gameResponse.awayJerseyColor)};

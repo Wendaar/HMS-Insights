@@ -1,8 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {portalSettings,portalCatalog,portalDirectory,portalPartners,portalModule,validatePortalSeasons} from '../src/app/public-portal.js';
+import {portalSettings,portalCatalog,portalDirectory,portalPartners,portalModule,validatePortalSeasons,portalBranding} from '../src/app/public-portal.js';
+import {themeVariables,teamDivisions,seasonMedia} from '../public/league/presentation.js';
 import {createPublicPortalHandler,portalStorageNamespace} from '../src/web/public-portal-handler.js';
 import {toolStore} from '../src/infrastructure/tool-instances.js';
+import {gameReportNavigation} from '../public/games/navigation.js';
 const id=n=>`${String(n).padStart(8,'0')}-1111-4111-8111-111111111111`;
 const env={HMS_PHM_ORGANIZATION_ID:id(1),HMS_EUCHL_ORGANIZATION_ID:id(2),HMS_PHM_TOOLS_ADMIN_SECRET:'phm-secret',HMS_EUCHL_TOOLS_ADMIN_SECRET:'euchl-secret'};
 const seasons=[{organization_id:id(1),competition_id:id(10),competition_name:'PHM Cup',season_id:id(11),season_name:'2026–2027'},{organization_id:id(1),competition_id:id(12),competition_name:'Other PHM Cup',season_id:id(13),season_name:'2026–2027'}];
@@ -24,7 +26,7 @@ test('portal validates explicit seasons, navigation visibility and safe logos',(
  }
 });
 test('catalog and directory reject foreign rows and use bound organization/season SQL',async()=>{
- const options={env,loadPortalSeasons:async()=>seasons},catalog=await portalCatalog('phm',options);assert.equal(catalog.items.length,2);assert.equal(catalog.items[0].competitionId,id(10));
+ const options={env,loadPortalSeasons:async()=>seasons},catalog=await portalCatalog('phm',options);assert.equal(catalog.items.length,2);assert.equal(catalog.items.find(s=>s.seasonId===id(11)).competitionId,id(10));
  await assert.rejects(()=>portalCatalog('euchl',options));
  await assert.rejects(()=>validatePortalSeasons('phm',portalSettings({...settings(),seasonIds:[id(99)],defaultSeasonId:id(99)}),options),TypeError);
  const row={organization_id:id(1),season_id:id(11),home_team_id:id(20),home_team_name:'A',away_team_id:id(21),away_team_name:'B',venue_name:'Arena',group_id:id(30),group_name:'Group',phase_id:id(31),phase_name:'Regular season'};
@@ -93,4 +95,30 @@ test('local and hosting routes share the existing function, preserve protected m
   const hosting=JSON.parse(await readFile(new URL('../vercel.json',import.meta.url)));assert.ok(hosting.rewrites.some(r=>r.source==='/api/portal'&&r.destination==='/api/game-summary?view=portal'));assert.ok(hosting.rewrites.some(r=>r.source==='/control/apps/public-portal'));
   for(const h of hosting.headers.filter(h=>h.source==='/game-center'||h.source==='/games/:path*'))assert.match(h.headers.find(h=>h.key==='Content-Security-Policy').value,/frame-ancestors 'self'/);
  }finally{await new Promise(resolve=>server.close(resolve));}
+});
+test('division membership counts unique teams across matches and phases, retaining multiple real group memberships',async()=>{
+ const base={organization_id:id(1),season_id:id(11),home_team_id:id(20),home_team_name:'A',away_team_id:id(21),away_team_name:'B',group_id:id(30),group_name:'Division A',phase_id:id(31),phase_name:'Regular season',group_color:'#ff8800',group_logo_url:'https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/division.png'};
+ const rows=[base,{...base,phase_id:id(32),phase_name:'Playoffs'},{...base,group_id:id(40),group_name:'Division B',away_team_id:id(22),away_team_name:'C',group_color:'invalid'}];
+ const directory=await portalDirectory('phm',id(11),{env,loadPortalDirectory:async()=>rows});
+ assert.equal(directory.teamCount,3);assert.equal(directory.groups[0].teamCount,2);assert.equal(directory.groups[1].teamCount,2);assert.equal(directory.groups[0].phases.length,2);
+ assert.equal(directory.groups[0].color,'#ff8800');assert.equal(directory.groups[1].color,null);assert.ok(directory.groups[0].logoUrl);
+ const grouped=teamDivisions(directory.teams,directory.groups);assert.equal(grouped.teamCount,3);assert.deepEqual(grouped.divisions.map(g=>g.teamCount),[2,2]);
+ assert.deepEqual(directory.teams.find(t=>t.id===id(20)).groupIds,[id(30),id(40)]);
+});
+test('HMS branding projects only approved media, binds organization and season, and keeps manual season media distinct',async()=>{
+ const host='https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/',season={seasonId:id(11),competitionId:id(10),sampleGameId:id(100)};
+ const org={organizationId:id(1),name:'Organization',logoUrl:host+'organization.png',email:'private@example.test'};
+ const game={organizationId:id(1),Season:{seasonId:id(11),logoUrls:{md:host+'season.png'},Competition:{competitionId:id(10),logoUrl:host+'competition.png'}}};
+ const opts={env,fetchOrganization:async()=>org,fetchGameDetail:async()=>game};
+ const brand=await portalBranding('phm',season,opts);assert.equal(brand.organization.logoUrl,host+'organization.png');assert.equal(brand.season.logoUrl,host+'season.png');assert.equal(brand.competition.logoUrl,host+'competition.png');assert.equal(brand.organization.email,undefined);
+ await assert.rejects(()=>portalBranding('phm',season,{...opts,fetchOrganization:async()=>({...org,organizationId:id(2)})}));
+ await assert.rejects(()=>portalBranding('phm',season,{...opts,fetchGameDetail:async()=>({...game,Season:{...game.Season,seasonId:id(99)}})}));
+ const unsafe=await portalBranding('phm',season,{...opts,fetchOrganization:async()=>({...org,logoUrl:'https://other.example/track.png'})});assert.equal(unsafe.organization.logoUrl,null);
+ const media=seasonMedia({...season,seasonId:id(12),seasonLogoUrl:host+'other-season.png'},season,brand);assert.equal(media.seasonLogoUrl,host+'other-season.png');assert.equal(media.competitionLogoUrl,host+'competition.png');
+});
+test('selected portal colors preserve readable foregrounds and embedded reports open outside the frame on the portal host',()=>{
+ assert.equal(themeVariables('#ffff00')['--portal-on-accent'],'#13243c');assert.equal(themeVariables('#002244')['--portal-on-accent'],'#ffffff');assert.equal(themeVariables('red;display:none')['--portal-accent'],'#087b91');
+ const embedded=gameReportNavigation(id(100),'en',true);assert.equal(embedded.target,'_blank');assert.equal(new URL(embedded.href,'https://public.heromanagementsystem.com').hostname,'public.heromanagementsystem.com');
+ const standalone=gameReportNavigation(id(100),'cs');assert.equal(standalone.target,null);assert.equal(new URL(standalone.href).hostname,'app.phmcup.cz');assert.throws(()=>gameReportNavigation('invalid','cs',true));
+ assert.match(portalModule('games',{slug:'phm'},{seasonId:id(11),competitionId:id(10)}),/embed=1/);
 });
