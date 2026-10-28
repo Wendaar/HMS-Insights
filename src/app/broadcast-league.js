@@ -40,6 +40,16 @@ async function readTable(endpoint,params,options){
   try{while(true){const {value,done}=await reader.read();if(done)break;size+=value.byteLength;if(size>4000000)throw new Error('Large statistics');chunks.push(value);}}finally{await reader.cancel().catch(()=>{});}
   const buffer=new Uint8Array(size);let offset=0;for(const chunk of chunks){buffer.set(chunk,offset);offset+=chunk.length;}return JSON.parse(new TextDecoder().decode(buffer));
 }
+// Bounded, fixed-host transport shared by comparison and broadcast statistics.
+export async function readComparisonTables(scope,options={}){
+  if(!isGameId(scope?.phaseId))throw new TypeError('phase');
+  const results=await Promise.allSettled([
+    readTable('standings',{phaseId:scope.phaseId},options),
+    readTable('playersStats',{phaseIds:scope.phaseId},options),
+    readTable('goaliesStats',{phaseIds:scope.phaseId},options),
+  ]);
+  return Object.fromEntries(['standings','players','goalies'].map((key,i)=>[key,results[i].status==='fulfilled'?results[i].value:null]));
+}
 export async function readOfficialStandings(scope,options={}){
   const query=scope?.phaseId?{phaseId:scope.phaseId}:scope?.groupId?{groupId:scope.groupId}:null;
   if(!query)throw new Error('Missing phase/group');

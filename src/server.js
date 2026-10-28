@@ -1,3 +1,4 @@
+import {createTeamComparisonHandler} from './web/team-comparison-handler.js';
 import {createOperationsHandler} from './web/operations-handler.js';
 import {createAllStarsHandler} from './web/all-stars-handler.js';
 import {createOrganizationImportHandler} from './web/organization-import-handler.js';
@@ -61,6 +62,19 @@ const assets = {
 
 export const server = createServer(async (request, response) => {
   const url = new URL(request.url, `http://${request.headers.host ?? "localhost"}`);
+  if(url.pathname==='/api/team-comparison'||url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='team-comparison'){
+    request.query=Object.fromEntries(url.searchParams);
+    await createTeamComparisonHandler()(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json; charset=utf-8');response.end(JSON.stringify(body));}});return;
+  }
+  const comparisonAsset=/^\/team-comparison\/(app.js|app.css|graphics.js|index.html)$/.exec(url.pathname);
+  if(comparisonAsset||/^\/team-comparison\/[a-z0-9-]+\/?$/.test(url.pathname)||url.pathname==='/control/apps/team-comparison'){
+    if(!['GET','HEAD'].includes(request.method)){response.writeHead(405,{allow:'GET, HEAD'});response.end();return;}
+    const name=comparisonAsset?.[1]??'index.html';
+    response.setHeader('content-type',name.endsWith('.html')?'text/html; charset=utf-8':name.endsWith('.css')?'text/css; charset=utf-8':'text/javascript; charset=utf-8');
+    response.setHeader('x-content-type-options','nosniff');response.setHeader('referrer-policy','no-referrer');
+    response.setHeader('content-security-policy',"default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; connect-src 'self'; img-src 'self' blob: https://prod-hms-wootera.s3.eu-central-1.amazonaws.com https://hockeymanagementsystem.s3.amazonaws.com; base-uri 'none'; form-action 'self'; frame-ancestors "+(url.pathname.startsWith('/control')?"'none'":'*'));
+    response.end(request.method==='HEAD'?undefined:await readFile(join(publicDirectory,'team-comparison',name)));return;
+  }
   if(url.pathname==='/api/all-stars'||url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='all-stars'){
     request.query=Object.fromEntries(url.searchParams);
     if(request.method==='POST'){let body='';for await(const chunk of request){body+=chunk;if(Buffer.byteLength(body)>20000){response.writeHead(413);response.end();return;}}request.body=body;}
