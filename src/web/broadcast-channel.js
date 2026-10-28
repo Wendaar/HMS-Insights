@@ -1,3 +1,4 @@
+import {normalizeRotation} from '../../public/sponsors/rotation.js';
 import {randomBytes,createHash} from 'node:crypto';
 import {neon} from '@neondatabase/serverless';
 import {organizationConfig} from '../app/organizations.js';
@@ -15,6 +16,7 @@ export function channelState(value,env){
   for(const [key,allowed] of Object.entries({corner:['top-left','top-right','bottom-left','bottom-right'],metric:['goals','assists','points'],partnerSource:['hms','library'],partnerScope:['organization','team'],standingsView:['opponents','full']}))if(value[key]!==undefined){if(!allowed.includes(value[key]))throw new TypeError();state[key]=value[key];}
   if(value.assetId!==undefined){if(value.assetId!==''&&!isGameId(value.assetId))throw new TypeError();state.assetId=value.assetId;}
   if(value.rotateSeconds!==undefined){if(!Number.isInteger(value.rotateSeconds)||value.rotateSeconds<5||value.rotateSeconds>300)throw new TypeError();state.rotateSeconds=value.rotateSeconds;}
+  if(value.sponsorRotation!==undefined)state.sponsorRotation=normalizeRotation(value.sponsorRotation);
   return state;
 }
 export const channelTables=env=>env.VERCEL_ENV==='production'&&env.BROADCAST_SANDBOX!=='1'?{channels:'broadcast_channels',library:'broadcast_libraries'}:{channels:'broadcast_channels_preview',library:'broadcast_libraries_preview'};

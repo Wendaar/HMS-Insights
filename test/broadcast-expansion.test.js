@@ -65,7 +65,7 @@ test('context preserves partial availability and filters next matches to selecte
 test('new public layers escape labels, clearly identify imported coverage, render no management UI and keep team identity on every goal',()=>{
   const game={ID:id(1),homeId:id(3),awayId:id(4),'Home Team':'Home <script>','Away Team':'Away',homeLogo:'https://example.com/home.png',Date:'24. 10. 2026',Competition:'League',context:{historyAvailable:true,scope:{competition:'League',season:'2026/27'},teams:summarizeBroadcastHistory([row()],detail),nextAvailable:false}};
   for(const layer of ['cta','sponsors','powerplay','leaders','next','results']){
-    const html=renderExtraLayer(game,{layer,org:'EUCHL',items:[asset],lang:'en'});assert.doesNotMatch(html,/<script>|<button|<input/);assert.match(html,/data-layer=/);
+    const html=renderExtraLayer(game,{layer,org:'EUCHL',items:[asset],lang:'en'});assert.doesNotMatch(html,/<script>|<button|<input/);if(layer==='sponsors')assert.equal(html,'');else assert.match(html,/data-layer=/);
     if(layer==='leaders')assert.match(html,/Imported games before this fixture/);if(layer==='powerplay')assert.match(html,/Reliable calculation is unavailable/);
   }
   const html=renderMatchLayer({...game,match:{coverage:'matches-score',goals:[{side:'home',period:1,clock:'1:00',scorer:{name:'Player'},assists:[],scoreAfter:{home:1,away:0}}]}},{layer:'scoresheet',side:'both'});

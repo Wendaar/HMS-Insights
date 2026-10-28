@@ -1,5 +1,7 @@
 export const language=value=>value==='en'?'en':'cs';
 const en={
+'Logo (s)':'Logo duration (s)','Pauza bez loga (s)':'Blank pause (s)','Rotace partnerů':'Sponsor rotation','Zastavená · držet vybraného':'Stopped · hold selected sponsor','Spustit automatickou rotaci':'Start automatic rotation','Zaškrtněte partnery. Prázdný výběr znamená prázdný výstup. Vlastní časy přepíší společné hodnoty; prázdné pole je převezme.':'Select sponsors. An empty selection leaves the output blank. Per-sponsor times override the global defaults; empty fields inherit them.','Náhrada loga · veřejná HTTPS URL':'Logo override · public HTTPS URL','Ukládá se lokálně pro organizaci a do soukromě ovládaného kanálu. HMS se nemění.':'Saved locally for this organization and to your privately controlled channel. HMS is unchanged.','Zkontrolujte časy zobrazení a pauzy.':'Check the display and pause durations.','Použijte veřejnou HTTPS URL.':'Use a public HTTPS URL.',
+
 'Partneři':'Partners','Celá organizace':'Whole organization','Vybraný tým':'Selected team','Centrální katalog HMS':'Central HMS catalog','Partner organizace':'Organization partner','Organizace nemá v HMS žádné sponzory.':'No sponsors are available in this organization in HMS.','Výběr z celého katalogu organizace. Ukládá se pro tento zápas a kanál; týmové vazby nejsou nutné.':'Select from the full organization catalog. Saved for this game and channel; team assignments are not required.',
 'Centrální katalog partnerů':'Central partner catalog',
 'Centrální katalog HMS · vybraný tým':'Central HMS catalog · selected team',

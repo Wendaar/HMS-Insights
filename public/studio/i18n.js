@@ -5,6 +5,8 @@ export const supportedLanguages=['cs','en'];
 export function normalizeLanguage(value){return supportedLanguages.includes(value)?value:'cs';}
 export function setLanguage(value){language=normalizeLanguage(value);return language;}
 export const english={
+'Vybrat partnera z HMS':'Choose a partner from HMS','Hledat partnera…':'Find a partner…','Obnovit partnery z HMS':'Refresh HMS partners','Použít údaje partnera znovu':'Reapply partner details','Vlastní partner / vyberte z HMS':'Manual partner / choose from HMS','Používá se náhrada loga.':'Using a logo override.','Používá se původní logo z HMS.':'Using the original HMS logo.','HMS nevrátilo původní logo. Logo lze ručně nahradit URL nebo uploadem.':'HMS did not return the original logo. You can override it with a URL or upload.','Načítám partnery z HMS…':'Loading HMS partners…','Vyberte partnera; text i logo můžete dále upravit.':'Choose a partner; you can still edit its text and logo.','HMS pro tuto organizaci nemá dostupné partnery.':'HMS has no available partners for this organization.','Partnery se nepodařilo načíst. Ruční zadání zůstává dostupné.':'Could not load partners. Manual entry remains available.',
+
 'Organizace':'Organization','MVP 1.0 · interní test':'MVP 1.0 · prototype',
 'OD ZÁPASU KE GRAFICE':'FROM GAME TO GRAPHIC','Velké momenty.':'Big moments.','Za pár kliknutí.':'Just a few clicks away.',
 'Vyberte zápas nebo Příklep. Připravte grafiku a stáhněte ji rovnou na stadioně.':'Choose a game or an Insight. Create a graphic and download it right at the rink.',

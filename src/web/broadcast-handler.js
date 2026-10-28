@@ -7,7 +7,7 @@ import {sportingImage} from '../../public/game-report-media.js';
 import {hmsMediaContext} from '../hms/media-context.js';
 import {createChannelHandler} from './broadcast-channel.js';
 import {broadcastContext} from '../app/broadcast-context.js';
-import {loadSponsorCatalog} from '../app/broadcast-sponsors.js';
+import {loadSponsorCatalog} from '../app/sponsors.js';
 import {broadcastLeague} from '../app/broadcast-league.js';
 const same=(a,b)=>typeof a==='string'&&typeof b==='string'&&a.toLowerCase()===b.toLowerCase();
 const label=value=>typeof value==='string'?value.trim().slice(0,240):null;
