@@ -1,3 +1,4 @@
+import {createPublicPortalHandler} from './web/public-portal-handler.js';
 import {createTeamComparisonHandler} from './web/team-comparison-handler.js';
 import {createOperationsHandler} from './web/operations-handler.js';
 import {createAllStarsHandler} from './web/all-stars-handler.js';
@@ -33,6 +34,7 @@ const port = Number(process.env.PORT ?? 3000);
 const zbraslavAnalysis = analyzeHmsResponses(zbraslavEvents, zbraslavLineup);
 const toolsHandler = createToolsHandler();
 const broadcastHandler = createBroadcastHandler();
+const portalHandler = createPublicPortalHandler();
 
 const assets = {
   '/hms-favicon-public-v2.svg':['image/svg+xml','hms-favicon-public-v2.svg'],
@@ -62,6 +64,20 @@ const assets = {
 
 export const server = createServer(async (request, response) => {
   const url = new URL(request.url, `http://${request.headers.host ?? "localhost"}`);
+  if(url.pathname==='/api/portal'||url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='portal'){
+    request.query=Object.fromEntries(url.searchParams);
+    if(request.method==='POST'){let body='';for await(const chunk of request){body+=chunk;if(Buffer.byteLength(body)>50000){response.writeHead(413);response.end();return;}}request.body=body;}
+    await portalHandler(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json; charset=utf-8');response.end(JSON.stringify(body));},send(body){response.end(body);}});return;
+  }
+  const portalAsset=/^\/league\/(app.js|app.css|presentation.js|index.html)$/.exec(url.pathname);
+  if(portalAsset||/^\/league\/[a-z0-9-]+\/?$/.test(url.pathname)||url.pathname==='/control/apps/public-portal'||url.pathname==='/'&&url.hostname==='public.heromanagementsystem.com'){
+    if(!['GET','HEAD'].includes(request.method)){response.writeHead(405,{allow:'GET, HEAD'});response.end();return;}
+    const name=portalAsset?.[1]??'index.html';
+    response.setHeader('content-type',name.endsWith('.html')?'text/html; charset=utf-8':name.endsWith('.css')?'text/css; charset=utf-8':'text/javascript; charset=utf-8');
+    response.setHeader('content-security-policy',"default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self'; img-src 'self' https:; frame-src 'self' https://prod.hms.wootera.net; base-uri 'none'; form-action 'self'; frame-ancestors 'none'");
+    response.setHeader('x-content-type-options','nosniff');response.setHeader('referrer-policy','no-referrer');response.setHeader('cache-control','no-store');
+    response.end(request.method==='HEAD'?undefined:await readFile(join(publicDirectory,'league',name)));return;
+  }
   if(url.pathname==='/api/team-comparison'||url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='team-comparison'){
     request.query=Object.fromEntries(url.searchParams);
     await createTeamComparisonHandler()(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json; charset=utf-8');response.end(JSON.stringify(body));}});return;
@@ -106,7 +122,7 @@ export const server = createServer(async (request, response) => {
     request.query=Object.fromEntries(url.searchParams);
     await createSeasonGamesHandler()(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json; charset=utf-8');response.end(JSON.stringify(body));}});return;
   }
-  if(['/game-center','/game-center/','/games/index.html','/games/app.js','/games/styles.css'].includes(url.pathname)||/^\/games\/[a-z0-9-]+\/[a-z0-9-]+(?:\/[a-z0-9-]+)?\/?$/.test(url.pathname)){
+  if(['/game-center','/game-center/','/games/index.html','/games/app.js','/games/navigation.js','/games/styles.css'].includes(url.pathname)||/^\/games\/[a-z0-9-]+\/[a-z0-9-]+(?:\/[a-z0-9-]+)?\/?$/.test(url.pathname)){
     const path=url.pathname.startsWith('/game-center')||/^\/games\/[a-z0-9-]+\//.test(url.pathname)?'/games/index.html':url.pathname;
     response.setHeader('content-type',path.endsWith('.html')?'text/html; charset=utf-8':path.endsWith('.css')?'text/css; charset=utf-8':'text/javascript; charset=utf-8');
     response.end(await readFile(join(publicDirectory,path)));return;

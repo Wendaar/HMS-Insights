@@ -32,6 +32,10 @@ export function toolStore({env=process.env,sql,tool='playoff-players'}={}){
         where tool=$1 and organization=$2 and slug=$3 and revision=$5 returning *`,args);
       return decode(rows[0]);
     },
+    async unpublish(org,slug,revision){
+      return decode((await query(`update hms_tool_instances set published=null,published_at=null,revision=revision+1,updated_at=now()
+        where tool=$1 and organization=$2 and slug=$3 and revision=$4 returning *`,[tool,org,slug,revision]))[0]);
+    },
     async publish(org,slug,revision){
       return decode((await query(`update hms_tool_instances set published=draft,revision=revision+1,published_at=now(),updated_at=now()
         where tool=$1 and organization=$2 and slug=$3 and revision=$4 returning *`,[tool,org,slug,revision]))[0]);
