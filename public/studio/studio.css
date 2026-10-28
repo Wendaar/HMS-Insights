@@ -10,3 +10,5 @@
 
 html[lang=en]{--empty-games:"No games in this window.";--empty-insights:"No achievements match your search."}header{flex-wrap:wrap}header select{max-width:220px}header label+label{margin-left:0}@media(max-width:700px){header .brand{flex:1 0 100%}header label{margin-left:0;flex:1;min-width:0;flex-wrap:wrap}header select{max-width:100%;width:100%}}
 @media(max-width:700px){header .hms-brand{flex:1 0 100%}}
+
+#studioSections{max-width:720px;gap:10px;margin:0 0 24px}#studioSections button{flex:1;min-width:0}#teamComparePanel{min-width:0}.workspace[hidden],#teamComparePanel[hidden]{display:none!important}

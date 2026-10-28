@@ -1,3 +1,4 @@
+import {formIndex,teamSpecialTeams,teamRosterTrend,assignTeamRatings} from '../domain/team-performance.js';
 import {neon} from '@neondatabase/serverless';
 import {organizationConfig} from './organizations.js';
 import {controlContextCatalog} from './control-context.js';
@@ -15,7 +16,19 @@ export async function loadComparisonScope(config,seasonId,options={}){
 }
 export async function loadComparisonGames(config,scope,options={}){
   const sql=options.sql??neon((options.env??process.env).DATABASE_URL);
-  return sql.query(`SELECT organization_id,season_id,group_id,phase_id,game_id,status,played_on,started_at,home_team_id,away_team_id,home_team_name,away_team_name,home_score,away_score FROM games WHERE organization_id=$1::uuid AND season_id=$2::uuid AND group_id=$3::uuid AND phase_id=$4::uuid AND status='FINISHED' ORDER BY played_on DESC,started_at DESC,game_id LIMIT 5001`,[config.id,scope.seasonId,scope.groupId,scope.phaseId]);
+  return sql.query(`SELECT organization_id,season_id,group_id,phase_id,game_id,status,played_on,started_at,home_team_id,away_team_id,home_team_name,away_team_name,home_score,away_score,event_snapshot,
+    coalesce((SELECT jsonb_agg(jsonb_build_object('id',p.player_id,'teamId',p.team_id)) FROM player_game_stats p WHERE p.game_id=games.game_id),'[]'::jsonb) AS skaters FROM games WHERE organization_id=$1::uuid AND season_id=$2::uuid AND group_id=$3::uuid AND phase_id=$4::uuid AND status='FINISHED' ORDER BY played_on DESC,started_at DESC,game_id LIMIT 5001`,[config.id,scope.seasonId,scope.groupId,scope.phaseId]);
+}
+export async function loadComparisonMeetings(config,scope,teams,options={}){
+  const sql=options.sql??neon((options.env??process.env).DATABASE_URL);
+  return sql.query(`SELECT organization_id,season_id,game_id,played_on,home_team_id,away_team_id,home_team_name,away_team_name,home_score,away_score,phase_name FROM games WHERE organization_id=$1::uuid AND season_id=$2::uuid AND status='FINISHED' AND home_team_id=ANY($3::uuid[]) AND away_team_id=ANY($3::uuid[]) ORDER BY played_on DESC,started_at DESC,game_id LIMIT 5001`,[config.id,scope.seasonId,teams.map(t=>t.id)]);
+}
+export function comparisonMeetings(rows,scope,teams){
+  if(!Array.isArray(rows)||rows.length>5000)throw new Error('Large meetings');const allowed=new Set(teams.map(t=>t.id)),seen=new Set();
+  return rows.map(g=>{
+    if(id(g.organization_id)!==id(scope.organizationId)||id(g.season_id)!==id(scope.seasonId)||!id(g.game_id)||seen.has(id(g.game_id))||!allowed.has(id(g.home_team_id))||!allowed.has(id(g.away_team_id))||count(g.home_score)===null||count(g.away_score)===null)throw new Error('Foreign meetings');seen.add(id(g.game_id));
+    return {id:id(g.game_id),date:day(g.played_on),phase:label(g.phase_name),home:{id:id(g.home_team_id),name:label(g.home_team_name),score:count(g.home_score)},away:{id:id(g.away_team_id),name:label(g.away_team_name),score:count(g.away_score)}};
+  });
 }
 export async function comparisonCatalog(org,input,options={}){
   if(!id(input.seasonId))throw new TypeError('season');
@@ -58,7 +71,7 @@ export function compareTeams(tables,games,scope,{minStarts=null}={}){
       const key=team.id+playerId;if(keys.has(key))throw new Error('Duplicate player');keys.add(key);
       const p={id:playerId,name:label([r.FirstName,r.LastName].filter(Boolean).join(' ')),gp:count(r.GP),photo:sportingImage(r.PlayerLogo)};
       if(kind==='players')Object.assign(p,{goals:count(r.G),assists:count(r.A),points:count(r.G)!==null&&count(r.A)!==null?count(r.G)+count(r.A):null});
-      else Object.assign(p,{wins:count(r.W),sv:decimal(r.SvP)!==null&&decimal(r.SvP)<=100?decimal(r.SvP):null,gaa:decimal(r.GAA)});
+      else Object.assign(p,{saves:count(r.Svs),ga:count(r.GA),wins:count(r.W),sv:decimal(r.SvP)!==null&&decimal(r.SvP)<=100?decimal(r.SvP):null,gaa:decimal(r.GAA)});
       team[kind].push(p);
     }
   }
@@ -71,16 +84,25 @@ export function compareTeams(tables,games,scope,{minStarts=null}={}){
     if(team.history.complete)team.form=history.slice(0,5).reverse().map(g=>{const home=id(g.home_team_id)===team.id,a=Number(home?g.home_score:g.away_score),b=Number(home?g.away_score:g.home_score);return {id:id(g.game_id),date:day(g.played_on),opponent:label(home?g.away_team_name:g.home_team_name),score:`${a}:${b}`,result:a>b?'W':a===b?'D':'L'};});
     team.players.sort((a,b)=>(b.points??-1)-(a.points??-1)||(b.goals??-1)-(a.goals??-1)||a.name.localeCompare(b.name));
     team.goalies.sort((a,b)=>(b.wins??-1)-(a.wins??-1)||(b.sv??-1)-(a.sv??-1));
+    team.uniqueSkaters=tables.players!==null&&team.players.every(p=>p.gp!==null)?team.players.filter(p=>p.gp>0).length:null;
+    team.uniqueGoalies=tables.goalies!==null&&team.goalies.every(p=>p.gp!==null)?team.goalies.filter(p=>p.gp>0).length:null;
+    team.engagedPlayers=team.uniqueSkaters!==null&&team.uniqueGoalies!==null?new Set([...team.players,...team.goalies].filter(p=>p.gp>0).map(p=>p.id)).size:null;
     team.core=minStarts!==null&&tables.players!==null&&team.players.length>0&&team.players.every(p=>p.gp!==null&&p.gp<=team.games)?team.players.filter(p=>p.gp>=minStarts).length:null;
-    team.formRating=team.form.length?Math.round(100*team.form.reduce((s,g)=>s+(g.result==='W'?3:g.result==='D'?1:0),0)/(team.form.length*3)):null;
+    team.formRating=formIndex(team.form);
+    team.specialTeams=teamSpecialTeams(history,team.id,{complete:team.history.complete,expected:team.games});
+    team.roster=teamRosterTrend(history,team.id,{complete:team.history.complete,expected:team.games});
+    const defenders=new Set(history.flatMap(g=>g.event_snapshot?.roster??[]).filter(p=>id(p.teamId)===team.id&&p.position==='D'&&p.isGoalie===false).map(p=>id(p.id)));
+    team.defenders=team.players.filter(p=>defenders.has(p.id));
+    team.pimPerGame=team.games>0&&team.pim!==null?team.pim/team.games:null;
     team.offense=team.games>0&&team.goalsFor!==null?team.goalsFor/team.games:null;
     team.defense=team.games>0&&team.goalsAgainst!==null?team.goalsAgainst/team.games:null;
   }
   // Equal values share a rank. Never change the official HMS table order.
-  for(const [metric,dir]of [['offense',-1],['defense',1],['pim',1]]){
+  for(const [metric,dir]of [['offense',-1],['defense',1],['pimPerGame',1]]){
     const eligible=teams.filter(t=>t[metric]!==null&&t.games>0);
     for(const t of eligible)t.metrics[metric]={rank:1+eligible.filter(o=>dir*(o[metric]-t[metric])<0).length,total:eligible.length};
   }
+  assignTeamRatings(teams);
   return {teams,playersAvailable:tables.players!==null,goaliesAvailable:tables.goalies!==null,minStarts,rules:'official-phase-v1'};
 }
 const cache=new Map(),pending=new Map();
@@ -96,7 +118,9 @@ export async function readTeamComparison(org,input,options={}){
   if(pending.size>=12)throw new Error('Busy');
   const task=(async()=>{
     const [tables,history]=await Promise.all([(options.loadTables??readComparisonTables)(scope,options),(options.loadGames??loadComparisonGames)(config,scope,options).catch(()=>null)]);
-    const value={...context,group,phase,...compareTeams(tables,history??[],scope,{minStarts}),historyAvailable:history!==null,readAt:new Date().toISOString(),source:'HMS public statistics / shared imported results'};
+    const comparison=compareTeams(tables,history??[],scope,{minStarts});
+    let meetings=null;try{meetings=comparisonMeetings(await(options.loadMeetings??loadComparisonMeetings)(config,scope,comparison.teams,options),scope,comparison.teams);}catch{}
+    const value={...context,group,phase,...comparison,meetings,historyAvailable:history!==null,readAt:new Date().toISOString(),source:'HMS public statistics / shared imported results'};
     if(useCache){if(cache.size>=64)cache.delete(cache.keys().next().value);cache.set(key,{value,until:Date.now()+60000});}return value;
   })();
   if(useCache){pending.set(key,task);task.finally(()=>pending.delete(key)).catch(()=>{});}return task;

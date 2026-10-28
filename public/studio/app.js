@@ -1,3 +1,5 @@
+import {setupTeamCompare} from './team-compare.js';
+const initialStudioSection=new URLSearchParams(location.search).get('section');
 import {studioOrganization,studioUrl} from './routing.js';
 import {t as tr,language,setLanguage,translateDocument,filterLabel,insightDescription,insightTitle} from './i18n.js';
 import {resolveInsightSubject,brandingScope} from './subjects.js';
@@ -153,6 +155,7 @@ $('clearPartner').onclick=()=>{assetVersions.partnerLogo++;removeStudioAsset(set
 function exportFile(){return new File([blob],exportFilename(game,gameOutputs(game).find(t=>t.id===$('template').value),settings,activeInsight()),{type:'image/png'});}
 $('download').onclick=()=>{if(!blob)return;const f=exportFile(),url=URL.createObjectURL(f),a=document.createElement('a');a.href=url;a.download=f.name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);};
 $('share').onclick=async()=>{if(!blob)return;try{await navigator.share({files:[exportFile()],title:'HMS Media Studio'});}catch(e){if(e.name!=='AbortError')status(tr('Sdílení není dostupné. Použijte Stáhnout PNG.'));}};
+setupTeamCompare({organization:()=>organizations.find(o=>o.code===$('org').value)?.slug,language:()=>language});
 async function initialize(){
   try{
     const response=await fetch('/api/studio?'+new URLSearchParams({catalog:'1',lang:language}));
@@ -162,7 +165,7 @@ async function initialize(){
     $('org').replaceChildren();for(const org of organizations){const option=document.createElement('option');option.value=org.code;option.textContent=org.name+(org.configured?'':` · ${tr('Nepřipojeno')}`);$('org').append(option);}
     $('org').disabled=false;
     const org=studioOrganization(location.pathname,organizations);if(!org){$('org').value='';resetSelection();$('list').textContent=tr('Organizace není v tomto Studiu dostupná.');status(tr('Organizace není v tomto Studiu dostupná.'));return;}
-    $('org').value=org.code;history.replaceState(null,'',studioUrl(org,language));await editorSettings();await browse();
+    $('org').value=org.code;history.replaceState(null,'',studioUrl(org,language));await editorSettings();await browse();if(initialStudioSection==='team-compare')$('teamCompare').click();
   }catch{status(tr('Seznam organizací nelze načíst. Zkuste stránku obnovit.'));$('list').textContent=tr('Seznam organizací nelze načíst. Zkuste stránku obnovit.');}
 }
 initialize();
