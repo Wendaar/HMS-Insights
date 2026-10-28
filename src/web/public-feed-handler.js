@@ -2,6 +2,7 @@ import {feedLanguage} from '../../public/insights-i18n.js';
 import {organizationConfig} from '../app/organizations.js';
 import {loadPublicFeedOptions,loadPublicFeedPage,loadPublicSelection} from '../infrastructure/postgres-repository.js';
 import {renderPriklepyPage,renderFeedCards} from './render.js';
+import {refreshFeedMedia} from '../app/feed-media.js';
 
 // Page paths own their organization, even if a conflicting query is supplied.
 // feedOrg is the fixed/captured destination parameter of the Vercel rewrites.
@@ -32,12 +33,13 @@ export function createPublicFeedHandler({mode='selection',html=false,...options}
         load(mode==='selection'?{...common,teamId,limit:30}:{...common,season:query.season,phase:query.phase,venue:query.venue,sponsor:query.sponsor,limit:html?40:query.limit,offset:html?0:query.offset}),
         html?(options.loadOptions??loadPublicFeedOptions)({env,organizationId:org.id}):null,
       ]);
+      page.items=await(options.refreshFeedMedia??refreshFeedMedia)(page.items,options);
       // Only public registry metadata crosses the renderer/API boundary.
       const organization={code:org.code,slug:org.slug,name:org.name};
       if(html){
         response.setHeader('Content-Type','text/html; charset=utf-8');
         response.setHeader('Cache-Control','s-maxage=60, stale-while-revalidate=300');
-        return response.status(200).send(renderPriklepyPage(page.items,{...page,filterOptions,mode,organization,lang,teamId,teamName:teamId?page.items.find(item=>item.team)?.team:null}));
+        return response.status(200).send(renderPriklepyPage(page.items,{...page,filterOptions,mode,organization,lang,embed:query.embed==='1',teamId,teamName:teamId?page.items.find(item=>item.team)?.team:null}));
       }
       return response.status(200).json({...page,organization:org.code,html:renderFeedCards(page.items,page.offset??0,lang)});
     }catch(error){

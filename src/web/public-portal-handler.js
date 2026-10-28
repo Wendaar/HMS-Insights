@@ -59,7 +59,7 @@ export function createPublicPortalHandler(options={}){
    else if(['teams','venues','system'].includes(section)){
     const directory=await(options.portalDirectory??portalDirectory)(org.code,season.seasonId,options);
     data=section==='teams'?{teams:directory.teams,groups:directory.groups,teamCount:directory.teamCount??directory.teams.length,source:directory.source}:section==='venues'?{venues:directory.venues,source:directory.source}:{groups:directory.groups,source:directory.source};
-    if(section==='teams'&&data.teams.some(t=>!t.logoUrl))try{const partners=await portalPartners(org.code,season,options);data.teams=data.teams.map(t=>({...t,logoUrl:t.logoUrl??partners.teams.find(p=>p.id===t.id)?.logoUrl??null}));}catch{/* Names remain usable without optional logos. */}
+    if(section==='teams')try{const partners=await(options.portalPartners??portalPartners)(org.code,season,options);data.teams=data.teams.map(t=>({...t,logoUrl:partners.teams.find(p=>p.id===t.id)?.logoUrl??t.logoUrl??null}));}catch{/* Names remain usable without optional logos. */}
    }else if(section==='home'){
     try{data={sponsors:(await portalPartners(org.code,season,options)).items,sponsorsAvailable:true};}catch{data={sponsors:[],sponsorsAvailable:false};}
    }else data={moduleUrl:portalModule(section,org,season,q.lang==='en'?'en':config.lang)};

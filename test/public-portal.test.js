@@ -122,3 +122,12 @@ test('selected portal colors preserve readable foregrounds and embedded reports 
  const standalone=gameReportNavigation(id(100),'cs');assert.equal(standalone.target,null);assert.equal(new URL(standalone.href).hostname,'app.phmcup.cz');assert.throws(()=>gameReportNavigation('invalid','cs',true));
  assert.match(portalModule('games',{slug:'phm'},{seasonId:id(11),competitionId:id(10)}),/embed=1/);
 });
+
+test('public team directory refreshes obsolete logos from the live organization catalog without changing divisions',async()=>{
+ const host='https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/';
+ const team={id:id(20),name:'Guardians',logoUrl:host+'obsolete.png',groupIds:[id(30)]};
+ const {call}=harness({portalDirectory:async()=>({teams:[team],groups:[{id:id(30),teamIds:[id(20)]}],teamCount:1}),portalPartners:async()=>({teams:[{id:id(20),logoUrl:host+'current.png'},{id:id(99),logoUrl:host+'unrelated.png'}]})});
+ await call('save',{revision:0,config:settings()});await call('publish',{revision:1});
+ const result=await call('data',null,{section:'teams'});
+ assert.equal(result.code,200);assert.equal(result.body.teams[0].logoUrl,host+'current.png');assert.deepEqual(result.body.teams[0].groupIds,[id(30)]);assert.equal(result.body.teams.length,1);
+});
