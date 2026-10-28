@@ -66,7 +66,7 @@ export const server = createServer(async (request, response) => {
     request.query=Object.fromEntries(url.searchParams);
     await createTeamComparisonHandler()(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json; charset=utf-8');response.end(JSON.stringify(body));}});return;
   }
-  const comparisonAsset=/^\/team-comparison\/(app.js|app.css|graphics.js|analytics-view.js|index.html)$/.exec(url.pathname);
+  const comparisonAsset=/^\/team-comparison\/(app.js|app.css|graphics.js|analytics-view.js|ui.js|index.html)$/.exec(url.pathname);
   if(comparisonAsset||/^\/team-comparison\/[a-z0-9-]+\/?$/.test(url.pathname)||url.pathname==='/control/apps/team-comparison'){
     if(!['GET','HEAD'].includes(request.method)){response.writeHead(405,{allow:'GET, HEAD'});response.end();return;}
     const name=comparisonAsset?.[1]??'index.html';

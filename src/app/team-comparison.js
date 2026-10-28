@@ -16,7 +16,7 @@ export async function loadComparisonScope(config,seasonId,options={}){
 }
 export async function loadComparisonGames(config,scope,options={}){
   const sql=options.sql??neon((options.env??process.env).DATABASE_URL);
-  return sql.query(`SELECT organization_id,season_id,group_id,phase_id,game_id,status,played_on,started_at,home_team_id,away_team_id,home_team_name,away_team_name,home_score,away_score,event_snapshot,
+  return sql.query(`SELECT organization_id,season_id,group_id,phase_id,game_id,status,played_on,started_at,home_team_id,away_team_id,home_team_name,away_team_name,home_score,away_score,venue_name,event_snapshot,
     coalesce((SELECT jsonb_agg(jsonb_build_object('id',p.player_id,'teamId',p.team_id)) FROM player_game_stats p WHERE p.game_id=games.game_id),'[]'::jsonb) AS skaters FROM games WHERE organization_id=$1::uuid AND season_id=$2::uuid AND group_id=$3::uuid AND phase_id=$4::uuid AND status='FINISHED' ORDER BY played_on DESC,started_at DESC,game_id LIMIT 5001`,[config.id,scope.seasonId,scope.groupId,scope.phaseId]);
 }
 export async function loadComparisonMeetings(config,scope,teams,options={}){
@@ -27,7 +27,7 @@ export function comparisonMeetings(rows,scope,teams){
   if(!Array.isArray(rows)||rows.length>5000)throw new Error('Large meetings');const allowed=new Set(teams.map(t=>t.id)),seen=new Set();
   return rows.map(g=>{
     if(id(g.organization_id)!==id(scope.organizationId)||id(g.season_id)!==id(scope.seasonId)||!id(g.game_id)||seen.has(id(g.game_id))||!allowed.has(id(g.home_team_id))||!allowed.has(id(g.away_team_id))||count(g.home_score)===null||count(g.away_score)===null)throw new Error('Foreign meetings');seen.add(id(g.game_id));
-    return {id:id(g.game_id),date:day(g.played_on),phase:label(g.phase_name),home:{id:id(g.home_team_id),name:label(g.home_team_name),score:count(g.home_score)},away:{id:id(g.away_team_id),name:label(g.away_team_name),score:count(g.away_score)}};
+    return {id:id(g.game_id),date:day(g.played_on),phase:label(g.phase_name),home:{id:id(g.home_team_id),name:label(g.home_team_name),logoUrl:teams.find(t=>t.id===id(g.home_team_id))?.logoUrl??null,score:count(g.home_score)},away:{id:id(g.away_team_id),name:label(g.away_team_name),logoUrl:teams.find(t=>t.id===id(g.away_team_id))?.logoUrl??null,score:count(g.away_score)}};
   });
 }
 export async function comparisonCatalog(org,input,options={}){
@@ -83,7 +83,7 @@ export function compareTeams(tables,games,scope,{minStarts=null}={}){
     history.sort((a,b)=>(day(b.played_on)+String(b.started_at??'')).localeCompare(day(a.played_on)+String(a.started_at??'')));
     if(team.history.complete)team.form=history.slice(0,5).reverse().map(g=>{const home=id(g.home_team_id)===team.id,a=Number(home?g.home_score:g.away_score),b=Number(home?g.away_score:g.home_score);return {id:id(g.game_id),date:day(g.played_on),opponent:label(home?g.away_team_name:g.home_team_name),score:`${a}:${b}`,result:a>b?'W':a===b?'D':'L'};});
     team.players.sort((a,b)=>(b.points??-1)-(a.points??-1)||(b.goals??-1)-(a.goals??-1)||a.name.localeCompare(b.name));
-    team.goalies.sort((a,b)=>(b.wins??-1)-(a.wins??-1)||(b.sv??-1)-(a.sv??-1));
+    team.goalies.sort((a,b)=>(b.sv??-1)-(a.sv??-1)||(a.gaa??Infinity)-(b.gaa??Infinity)||(b.gp??-1)-(a.gp??-1)||a.name.localeCompare(b.name));
     team.uniqueSkaters=tables.players!==null&&team.players.every(p=>p.gp!==null)?team.players.filter(p=>p.gp>0).length:null;
     team.uniqueGoalies=tables.goalies!==null&&team.goalies.every(p=>p.gp!==null)?team.goalies.filter(p=>p.gp>0).length:null;
     team.engagedPlayers=team.uniqueSkaters!==null&&team.uniqueGoalies!==null?new Set([...team.players,...team.goalies].filter(p=>p.gp>0).map(p=>p.id)).size:null;
@@ -91,6 +91,7 @@ export function compareTeams(tables,games,scope,{minStarts=null}={}){
     team.formRating=formIndex(team.form);
     team.specialTeams=teamSpecialTeams(history,team.id,{complete:team.history.complete,expected:team.games});
     team.roster=teamRosterTrend(history,team.id,{complete:team.history.complete,expected:team.games});
+    team.roster.series=team.roster.series.map(g=>({...g,opponentLogoUrl:byId.get(g.opponentId)?.logoUrl??null}));
     const defenders=new Set(history.flatMap(g=>g.event_snapshot?.roster??[]).filter(p=>id(p.teamId)===team.id&&p.position==='D'&&p.isGoalie===false).map(p=>id(p.id)));
     team.defenders=team.players.filter(p=>defenders.has(p.id));
     team.pimPerGame=team.games>0&&team.pim!==null?team.pim/team.games:null;

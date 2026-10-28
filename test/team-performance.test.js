@@ -34,3 +34,9 @@ test('season meetings allow another phase but reject another organization or sea
  const teams=[{id:home},{id:away}],g=game(0,[1]);g.phase_id=id(999);assert.equal(comparisonMeetings([g],scope,teams).length,1);assert.throws(()=>comparisonMeetings([{...g,season_id:id(999)}],scope,teams));assert.throws(()=>comparisonMeetings([{...g,away_team_id:id(999)}],scope,teams));
  await loadComparisonMeetings({id:scope.organizationId},scope,teams,{sql:{query:async(query,values)=>{assert.match(query,/season_id=\$2/);assert.deepEqual(values,[scope.organizationId,scope.seasonId,[home,away]]);return [];}}});
 });
+
+test('goalies sort by save percentage before wins; roster tooltips retain opponent and venue facts',()=>{
+ const rows=[{TeamId:home,'Team Name':'Home','Total Games':1,'Total Points':2,Wins:1,Draws:0,Losses:0,Score:'1:0'}],base={TeamId:home,GP:1,GAA:0};
+ const g=game(0,[1]);g.venue_name='Test Arena';const d=compareTeams({standings:rows,players:[],goalies:[{...base,PlayerId:id(700),FirstName:'Winner',W:5,SvP:90},{...base,PlayerId:id(701),FirstName:'Higher',W:0,SvP:98},{...base,PlayerId:id(702),FirstName:'Unknown',W:10,SvP:null}]},[g],scope);
+ assert.deepEqual(d.teams[0].goalies.map(p=>p.name),['Higher','Winner','Unknown']);assert.equal(d.teams[0].roster.series[0].venue,'Test Arena');assert.equal(d.teams[0].roster.series[0].opponentId,away);
+});

@@ -88,3 +88,22 @@ unnecessary raw event data are sent to clients.
 Verification: `node --test`; `node scripts/team-comparison-browser.mjs` with
 `PLAYWRIGHT_MODULE` and `CHROMIUM_PATH` pointing to local runtimes. Browser QA
 uses explicit synthetic test data and never publishes records.
+
+## Presentation and public output
+
+Result badges and W/D/L counters share vivid green/red/orange colors; score
+differences use green for positive and red for negative. PIM boxes use subdued
+red. Recent form sits beside the club abbreviation. Goalies sort by known save
+percentage descending, with unknown values last.
+
+Long methodology and coverage copy is available beside its metric through a
+question button (native hover description plus a keyboard/touch modal). Chart
+opponent marks use verified club logos; hover, click or keyboard activation
+reveals date, venue, score and lineup count. Missing venue/logo stays explicit or
+uses a neutral fallback. Meetings also display both verified team logos.
+
+In the editor, the production public link updates automatically for the selected
+configuration. **Open public page** opens that clean output directly; **Copy public
+link** copies it, and the embed code uses the same configuration. Public links do
+not depend on a successful PNG/font/image render. These controls remain absent
+from the rendered public page and embed.
