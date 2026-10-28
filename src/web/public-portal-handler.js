@@ -14,7 +14,7 @@ export function createPublicPortalHandler(options={}){
   if(req.method!==method){res.setHeader('allow',method);return fail(405,'Nepovolená metoda.');}
   if(action==='organizations')return res.status(200).json({organizations:publicOrganizations(env)});
   let org;try{org=organizationEntry(q.org,env);}catch{return fail(404,'Neznámá organizace.');}
-  const secret=env[`HMS_${org.code}_TOOLS_ADMIN_SECRET`]||env[`HMS_${org.code}_WEBHOOK_SECRET`]||(org.code==='PHM'?env.HMS_WEBHOOK_SECRET:null);
+  const secret=env[`HMS_${org.code}_PORTAL_ADMIN_SECRET`]||env[`HMS_${org.code}_TOOLS_ADMIN_SECRET`]||env[`HMS_${org.code}_WEBHOOK_SECRET`]||(org.code==='PHM'?env.HMS_WEBHOOK_SECRET:null);
   if(['catalog','manage','save','publish','pause','preview','preview-data'].includes(action)){
    if(!secret)return fail(503,'Správa organizace zatím nemá nastavený přístup.');
    if(!hasBearerSecret(req,secret))return fail(401,'Zadejte platný přístupový kód organizace.');

@@ -42,6 +42,13 @@ test('drafts remain private; protected preview requires exact organization crede
  assert.equal((await call('preview-data',null,{section:'extras'})).body.html,settings().extras);
  assert.equal((await call('save',{revision:1,config:settings()},{},'phm-secret',{origin:'https://other.example'})).code,403);
 });
+test('dedicated portal credential overrides tools access for PHM without changing EUCHL access',async()=>{
+ const {call}=harness({env:{...env,HMS_PHM_PORTAL_ADMIN_SECRET:'dedicated-portal-test'}});
+ assert.equal((await call('manage',null,{},'dedicated-portal-test')).code,200);
+ assert.equal((await call('manage',null,{},'phm-secret')).code,401);
+ assert.equal((await call('manage',null,{org:'euchl'},'dedicated-portal-test')).code,401);
+ assert.equal((await call('manage',null,{org:'euchl'},'euchl-secret')).code,200);
+});
 test('publication freezes settings, rejects stale writers and validates current ownership',async()=>{
  const {call}=harness();await call('save',{revision:0,config:settings()});
  assert.equal((await call('publish',{revision:0})).code,409);assert.equal((await call('publish',{revision:1})).code,200);
