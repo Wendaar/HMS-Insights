@@ -1,3 +1,5 @@
+import {setupTeamCompare} from './team-compare.js';
+const initialStudioSection=new URLSearchParams(location.search).get('section');
 import {studioOrganization,studioUrl} from './routing.js';
 import {t as tr,language,setLanguage,translateDocument,filterLabel,insightDescription,insightTitle} from './i18n.js';
 import {resolveInsightSubject,brandingScope} from './subjects.js';
@@ -120,7 +122,7 @@ function draw(){const id=++renderId,selectedGame=game,selectedInsight=insight,s=
     }catch(e){if(id===renderId){$('warnings').textContent=e.message;status(tr('Export čeká na opravu obrázku.'));}}
   });return renderQueue;
 }
-$('org').onchange=async()=>{const org=organizations.find(o=>o.code===$('org').value);if(!org)return;history.pushState(null,'',studioUrl(org,language));++requestId;resetSelection();await editorSettings();offset=0;windowPage=0;browse();};
+$('org').onchange=async()=>{const org=organizations.find(o=>o.code===$('org').value);if(!org)return;history.pushState(null,'',studioUrl(org,language));++requestId;resetSelection();await editorSettings();offset=0;windowPage=0;if($('teamCompare').getAttribute('aria-pressed')!=='true')browse();};
 for(const name of ['games','insights'])$(name).onclick=()=>{section=name;offset=0;resetSelection();for(const n of ['games','insights'])$(n).setAttribute('aria-pressed',String(n===name));browse();};
 for(const f of filters){const b=document.createElement('button');b.textContent=filterLabel(f);b.dataset.filter=f;b.setAttribute('aria-pressed',String(f===filter));b.onclick=()=>{filter=f;offset=0;windowPage=0;for(const child of $('filters').children)child.setAttribute('aria-pressed',String(child===b));browse();};$('filters').append(b);}
 $('previous').onclick=()=>{offset=Math.max(0,offset-20);browse();};$('next').onclick=()=>{offset+=20;browse();};
@@ -153,6 +155,7 @@ $('clearPartner').onclick=()=>{assetVersions.partnerLogo++;removeStudioAsset(set
 function exportFile(){return new File([blob],exportFilename(game,gameOutputs(game).find(t=>t.id===$('template').value),settings,activeInsight()),{type:'image/png'});}
 $('download').onclick=()=>{if(!blob)return;const f=exportFile(),url=URL.createObjectURL(f),a=document.createElement('a');a.href=url;a.download=f.name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);};
 $('share').onclick=async()=>{if(!blob)return;try{await navigator.share({files:[exportFile()],title:'HMS Media Studio'});}catch(e){if(e.name!=='AbortError')status(tr('Sdílení není dostupné. Použijte Stáhnout PNG.'));}};
+setupTeamCompare({organization:()=>organizations.find(o=>o.code===$('org').value)?.slug,language:()=>language});
 async function initialize(){
   try{
     const response=await fetch('/api/studio?'+new URLSearchParams({catalog:'1',lang:language}));
@@ -162,7 +165,7 @@ async function initialize(){
     $('org').replaceChildren();for(const org of organizations){const option=document.createElement('option');option.value=org.code;option.textContent=org.name+(org.configured?'':` · ${tr('Nepřipojeno')}`);$('org').append(option);}
     $('org').disabled=false;
     const org=studioOrganization(location.pathname,organizations);if(!org){$('org').value='';resetSelection();$('list').textContent=tr('Organizace není v tomto Studiu dostupná.');status(tr('Organizace není v tomto Studiu dostupná.'));return;}
-    $('org').value=org.code;history.replaceState(null,'',studioUrl(org,language));await editorSettings();await browse();
+    $('org').value=org.code;history.replaceState(null,'',studioUrl(org,language));await editorSettings();if(initialStudioSection==='team-compare')$('teamCompare').click();else await browse();
   }catch{status(tr('Seznam organizací nelze načíst. Zkuste stránku obnovit.'));$('list').textContent=tr('Seznam organizací nelze načíst. Zkuste stránku obnovit.');}
 }
 initialize();

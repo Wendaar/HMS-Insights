@@ -66,7 +66,7 @@ export const server = createServer(async (request, response) => {
     request.query=Object.fromEntries(url.searchParams);
     await createTeamComparisonHandler()(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json; charset=utf-8');response.end(JSON.stringify(body));}});return;
   }
-  const comparisonAsset=/^\/team-comparison\/(app.js|app.css|graphics.js|index.html)$/.exec(url.pathname);
+  const comparisonAsset=/^\/team-comparison\/(app.js|app.css|graphics.js|analytics-view.js|index.html)$/.exec(url.pathname);
   if(comparisonAsset||/^\/team-comparison\/[a-z0-9-]+\/?$/.test(url.pathname)||url.pathname==='/control/apps/team-comparison'){
     if(!['GET','HEAD'].includes(request.method)){response.writeHead(405,{allow:'GET, HEAD'});response.end();return;}
     const name=comparisonAsset?.[1]??'index.html';
@@ -198,7 +198,7 @@ export const server = createServer(async (request, response) => {
     response.setHeader('content-type',url.pathname.endsWith('.css')?'text/css':'font/woff2');
     response.end(await readFile(join(publicDirectory,url.pathname)));return;
   }
-  if(url.pathname==='/studio' || /^\/studio\/[a-zA-Z0-9-]+\/?$/.test(url.pathname) || /^\/studio\/(index.html|app.js|graphics.js|subjects.js|typography.js|i18n.js|routing.js|studio.css)$/.test(url.pathname)) {
+  if(url.pathname==='/studio' || /^\/studio\/[a-zA-Z0-9-]+\/?$/.test(url.pathname) || /^\/studio\/(index.html|app.js|graphics.js|subjects.js|typography.js|preferences.js|team-compare.js|i18n.js|routing.js|studio.css)$/.test(url.pathname)) {
     const name=!url.pathname.split('/').pop()?.includes('.')?'index.html':url.pathname.split('/').pop();
     response.setHeader('content-type',name.endsWith('.html')?'text/html; charset=utf-8':name.endsWith('.css')?'text/css':'text/javascript');
     response.end(await readFile(join(publicDirectory,'studio',name)));return;

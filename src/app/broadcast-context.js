@@ -1,6 +1,6 @@
+import {teamSpecialTeams} from '../domain/team-performance.js';
 import {neon} from '@neondatabase/serverless';
 import {isGameId} from '../domain/game-summary.js';
-import {buildGameTimeline} from '../domain/game-timeline.js';
 import {sportingImage} from '../../public/game-report-media.js';
 import {browseSeasonGames} from './season-games.js';
 const same=(a,b)=>String(a??'').toLowerCase()===String(b??'').toLowerCase();
@@ -27,7 +27,7 @@ export function summarizeBroadcastHistory(rows,detail){
   const teams={};
   for(const [side,id] of [['home',detail.homeTeamId??detail.HomeTeam?.teamId],['away',detail.awayTeamId??detail.AwayTeam?.teamId]]){
     const games=rows.filter(r=>same(r.game.organization_id,detail.organizationId)&&same(r.game.season_id,broadcastScope(detail).seasonId)&&same(r.game.competition_id,broadcastScope(detail).competitionId)&&!same(r.game.game_id,detail.gameId)&&r.game.status==='FINISHED'&&(date(r.game.played_on)<detail.startDate||date(r.game.played_on)===detail.startDate&&time(r.game.started_at)&&time(r.game.started_at)<String(detail.startTime??'00:00').slice(0,5))&&[r.game.home_team_id,r.game.away_team_id].some(t=>same(t,id)));
-    const players=new Map();let covered=0;const totals={goals:0,opportunities:0,conceded:0,shorthanded:0};
+    const players=new Map();
     const results=[];let wins=0,draws=0,losses=0;
     for(const row of games){
       const g=row.game,home=same(g.home_team_id,id),gf=Number(home?g.home_score:g.away_score),ga=Number(home?g.away_score:g.home_score);
@@ -40,15 +40,10 @@ export function summarizeBroadcastHistory(rows,detail){
         if(!Number.isSafeInteger(Number(p.goals))||Number(p.goals)<0||!Number.isSafeInteger(Number(p.assists))||Number(p.assists)<0)continue;
         old.goals+=Number(p.goals);old.assists+=Number(p.assists);old.games++;players.set(key,old);
       }
-      const special=buildGameTimeline(g).specialTeams,stats=special?.teams?.[String(id).toLowerCase()];
-      if(special?.available&&stats&&stats.opportunities!==null&&stats.shorthanded!==null){covered++;totals.goals+=stats.PP;totals.opportunities+=stats.opportunities;totals.conceded+=stats.concededPP;totals.shorthanded+=stats.shorthanded;}
+
     }
     results.sort((a,b)=>b.date.localeCompare(a.date));
-    teams[side]={games:results.length,wins,draws,losses,results:results.slice(0,5),players:[...players.values()].map(p=>({...p,points:p.goals+p.assists})),specialTeams:{covered,total:games.length,
-      // Percentages are only available if every imported game is supported.
-      available:games.length>0&&covered===games.length,...totals,
-      ppPercentage:covered===games.length&&totals.opportunities?100*totals.goals/totals.opportunities:null,
-      pkPercentage:covered===games.length&&totals.shorthanded?100*(1-totals.conceded/totals.shorthanded):null}};
+    teams[side]={games:results.length,wins,draws,losses,results:results.slice(0,5),players:[...players.values()].map(p=>({...p,points:p.goals+p.assists})),specialTeams:teamSpecialTeams(games.map(r=>r.game),id)};
   }
   return teams;
 }
