@@ -7,7 +7,7 @@ export async function renderComparison(canvas,teams,context,settings){
  await Promise.all([document.fonts.load(fontSpec(typo.headline,32,'TEAM COMPARISON')),document.fonts.load(fontSpec(typo.body,32,teams.map(t=>t.name).join(' ')))]);await document.fonts.ready;
  const logos=await Promise.all(teams.map(t=>loadImage(t.logoUrl).catch(()=>null)));
  canvas.width=w;canvas.height=h;const c=canvas.getContext('2d'),gradient=c.createLinearGradient(0,0,w,h);gradient.addColorStop(0,'#304a63');gradient.addColorStop(1,'#07111e');c.fillStyle=gradient;c.fillRect(0,0,w,h);effects(c,w,h,accent,settings.design==='crazy');designAtmosphere(c,w,h,settings.design==='artistic',settings.design==='technical',accent);
- const pad=w*.06,top=h*(portrait?.11:.12);text(c,context.org.toUpperCase()+' / HMS',pad,top*.5,w*.9,Math.min(w*.025,26),typo.body,accent,'left');text(c,'TEAM COMPARISON',pad,top,w*.88,Math.min(w*.07,90),typo.headline,'#fff','left');
+ const pad=w*.06,top=h*(portrait?.11:.16);text(c,context.org.toUpperCase()+' / HMS',pad,h*.055,w*.9,Math.min(w*.025,26),typo.body,accent,'left');text(c,'TEAM COMPARISON',pad,top,w*.88,Math.min(w*.07,90),typo.headline,'#fff','left');
  text(c,context.subtitle,pad,top+h*.05,w*.88,Math.min(w*.025,32),typo.body,'#c7d8e7','left');
  const y0=top+h*.1,bottom=h*.91,cardW=(w-pad*2-w*.025)/2;
  for(let i=0;i<teams.length;i++){
