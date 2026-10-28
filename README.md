@@ -1,5 +1,7 @@
 # HMS Insights / Příklepy — MVP 0.1
 
+Shared sponsors for Social/Broadcast: [source verification, picker and rotation](docs/SPONSOR-LAYER.md).
+
 Interní HMS Control Center V1: `/control`. [Registr aplikací a ověření](docs/CONTROL-CENTER.md).
 
 První konfigurovatelná aplikace: [Hráči do playoff](docs/PLAYOFF-PLAYERS.md) — pracovní verze, centrální nastavení, náhled a publikace pro web.

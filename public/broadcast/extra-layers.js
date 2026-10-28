@@ -1,3 +1,4 @@
+import {sponsorFrame} from '../sponsors/rotation.js';
 import {translate} from './i18n.js';
 import {teamPartners} from './partner-playlist.js';
 import {renderLeagueLayer} from './league-layers.js';
@@ -7,6 +8,13 @@ export function eligibleAssets(items,{org,gameId,homeId,awayId,side='home',kind}
   const eq=(a,b)=>String(a??'').toLowerCase()===String(b??'').toLowerCase();
   const teamIds=side==='both'?[homeId,awayId]:[side==='away'?awayId:homeId];
   return (items??[]).filter(a=>a.enabled&&a.kind===kind&&a.org===org&&(a.scope==='organization'||a.scope==='game'&&eq(a.targetId,gameId)||a.scope==='team'&&teamIds.some(id=>id&&eq(id,a.targetId))));
+}
+export function resolvePartnerFrame(game,settings,now=Date.now()){
+  const {layer,org='PHM',side='home',items=[],assetId='',rotationIndex=0}=settings;
+  const hms=settings.partnerSource==='hms';
+  const available=hms?(settings.sponsorCatalog?.org===org?teamPartners(settings.sponsorCatalog,game,side,items,settings.partnerScope,{requireSelection:!!settings.sponsorRotation&&!assetId}):[]):eligibleAssets(items,{org,gameId:game.ID,homeId:game.homeId,awayId:game.awayId,side,kind:'sponsor'});
+  const list=assetId?available.filter(a=>a.id===assetId):available;
+  return settings.sponsorRotation?sponsorFrame(list,settings.sponsorRotation,now):{item:list[rotationIndex%list.length]??null,phase:list.length?'show':'blank',opacity:list.length?1:0};
 }
 export function renderExtraLayer(game,settings){
   if(['leaders-strip','standings'].includes(settings.layer)||settings.layer==='leaders'&&game.league)return renderLeagueLayer(game,settings);
@@ -18,11 +26,13 @@ export function renderExtraLayer(game,settings){
   const shell=(content,footer='')=>`<main class="extra-layer ${compact?'corner-layer '+esc(corner):''}" data-layer="${esc(layer)}"><div class="extra-kicker">${t(['sponsors','announcement'].includes(layer)?'Partner přenosu':extraNames[layer])}</div>${content}${footer?`<footer>${footer}</footer>`:''}</main>`;
   if(layer==='cta'||layer==='sponsors'||layer==='announcement'){
     const hms=layer!=='cta'&&settings.partnerSource==='hms';
-    const available=hms?(settings.sponsorCatalog?.org===org?teamPartners(settings.sponsorCatalog,game,rawSide,items,settings.partnerScope):[]):eligibleAssets(items,{org,gameId:game.ID,homeId:game.homeId,awayId:game.awayId,side:rawSide,kind:layer==='cta'?'cta':'sponsor'});
-    const list=assetId?available.filter(a=>a.id===assetId):available,item=list[rotationIndex%list.length];
-    if(!item)return hms?'':shell(empty('Pro tento výběr není nastavená žádná položka.'));
+    const available=layer==='cta'?eligibleAssets(items,{org,gameId:game.ID,homeId:game.homeId,awayId:game.awayId,side:rawSide,kind:'cta'}):[];
+    const frame=layer==='cta'?null:settings.partnerFrame??resolvePartnerFrame(game,settings);
+    const list=assetId?available.filter(a=>a.id===assetId):available,item=layer==='cta'?list[rotationIndex%list.length]:frame.item;
+    if(!item)return layer==='cta'?shell(empty('Pro tento výběr není nastavená žádná položka.')):'';
     let host='';try{host=new URL(item.url).hostname;}catch{}
-    return shell(`<article class="asset-card">${item.image?`<img class="${layer==='cta'?'qr-image':'sponsor-image'}" src="${esc(item.image)}" alt="${esc(item.title)}">`:''}<div><h2>${esc(item.title)}</h2>${item.claim?`<p>${esc(item.claim)}</p>`:''}${host?`<small>${esc(host)}</small>`:''}</div></article>`,layer==='cta'?t('Načtěte QR kód fotoaparátem'):hms&&settings.partnerScope==='organization'?`${t('Partner organizace')} · ${esc(org)}`:hms?`${t('Partner týmu')} · ${esc(game[side==='away'?'Away Team':'Home Team'])}`:t('Partner přenosu'));
+    const content=`<article class="asset-card">${item.image?`<img class="${layer==='cta'?'qr-image':'sponsor-image'}" src="${esc(item.image)}" alt="${esc(item.title)}">`:''}<div><h2>${esc(item.title)}</h2>${item.claim?`<p>${esc(item.claim)}</p>`:''}${host?`<small>${esc(host)}</small>`:''}</div></article>`;
+    return layer==='cta'?shell(content,t('Načtěte QR kód fotoaparátem')):`<main class="extra-layer ${layer==='sponsors'?'corner-layer '+esc(corner):''} sponsor-overlay" data-layer="${esc(layer)}" data-sponsor-layer="true" data-sponsor-id="${esc(item.id)}" aria-label="${t('Partner přenosu')}">${content}<span class="sponsor-context">${hms&&(settings.partnerScope??'team')==='team'?esc(game[side==='away'?'Away Team':'Home Team']):''}</span></main>`;
   }
   const context=game.context;
   if(!context)return shell(empty('Načítám kontext týmu…'));

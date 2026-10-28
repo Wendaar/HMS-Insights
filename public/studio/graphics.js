@@ -1,3 +1,5 @@
+import {publicImageUrl,localSponsorAsset} from '../sponsors/model.js';
+export {publicImageUrl} from '../sponsors/model.js';
 import {t,language,insightDescription} from './i18n.js';
 import {resolveInsightSubject,insightLabel,insightStat} from './subjects.js';
 import {fonts,brandFonts,fontForText,fontSpec,designTypography} from './typography.js';
@@ -48,20 +50,14 @@ export function exportFilename(game,template,settings,insight=null){
   const clean=v=>String(v??'').normalize('NFC').replace(/[<>:"/\\|?*\u0000-\u001f]/g,' ').replace(/\s+/g,' ').trim();
   return [game.org,game.playedOn,label,subject,game.home.name,game.away.name,settings.format?.replace(':','x'),({clean:'Clean',crazy:'Crazy',artistic:'Artistic',technical:'Technical',pantha:'Pantha'}[settings.design]??settings.design)].filter(Boolean).map(clean).join(' ').slice(0,220).trim()+'.png';
 }
-export function publicImageUrl(value) {
-  try {const u=new URL(value);const h=u.hostname.toLowerCase();
-    if(u.protocol!=='https:'||u.username||u.password||u.port||h==='localhost'||!h.includes('.')||h.endsWith('.local')||h.endsWith('.internal')||h.endsWith('.localhost')||h.includes(':')||/^\d/.test(h)||h.endsWith('.test'))return null;
-    return u.href;
-  }catch{return null;}
-}
 export async function loadImage(url,{required=false,lang=language}={}) {
   if(!url)return null;
-  if(!url.startsWith('data:image/')&&!publicImageUrl(url)) {if(required)throw new Error(t('Použijte veřejnou HTTPS adresu obrázku.',{},lang));return null;}
+  if(!url.startsWith('data:image/')&&!localSponsorAsset(url)&&!publicImageUrl(url)) {if(required)throw new Error(t('Použijte veřejnou HTTPS adresu obrázku.',{},lang));return null;}
   try {
     // Same-origin HMS bridge keeps preview authentication; external hosts get no credentials.
     const source=sportingImage(url);
     const fetchUrl=source?'/api/studio-image?'+new URLSearchParams({url:source}):url;
-    const r=await fetch(fetchUrl,{mode:'cors',credentials:source?'same-origin':'omit',signal:AbortSignal.timeout(10000)});
+    const r=await fetch(fetchUrl,{mode:'cors',credentials:source||localSponsorAsset(url)?'same-origin':'omit',signal:AbortSignal.timeout(10000)});
     if(!r.ok)throw new Error();
     const blob=await r.blob();
     if(blob.size>8*1024*1024||!['image/png','image/jpeg','image/webp'].includes(blob.type))throw new Error();

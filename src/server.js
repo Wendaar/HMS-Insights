@@ -128,8 +128,9 @@ export const server = createServer(async (request, response) => {
     response.setHeader('content-type',path.endsWith('.html')?'text/html; charset=utf-8':path.endsWith('.css')?'text/css; charset=utf-8':'text/javascript; charset=utf-8');
     response.end(await readFile(join(publicDirectory,path)));return;
   }
+  if(url.pathname==='/sponsors/logos/restaurace-cerny-orel.png'){response.setHeader('content-type','image/png');response.end(await readFile(join(publicDirectory,'sponsors/logos/restaurace-cerny-orel.png')));return;}
   if(url.pathname==='/api/sponsors'){request.query=Object.fromEntries(url.searchParams);await createSponsorsHandler()(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json');response.end(JSON.stringify(body));}});return;}
-  if(/^\/sponsors\/(model|picker)\.js$/.test(url.pathname)){response.setHeader('content-type','text/javascript');response.end(await readFile(join(publicDirectory,url.pathname)));return;}
+  if(/^\/sponsors\/(model|picker|rotation)\.js$/.test(url.pathname)){response.setHeader('content-type','text/javascript');response.end(await readFile(join(publicDirectory,url.pathname)));return;}
   if(url.pathname==='/api/broadcast'||url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='broadcast'){
     if(['POST','PATCH'].includes(request.method)){
       let body='';for await(const chunk of request){body+=chunk;if(Buffer.byteLength(body)>(url.searchParams.get('library')==='1'?1800100:4096)){response.statusCode=413;response.end();return;}}request.body=body;

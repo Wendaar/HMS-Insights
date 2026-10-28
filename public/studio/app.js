@@ -1,3 +1,4 @@
+import {mountSponsorPicker} from '../sponsors/picker.js';
 import {setupTeamCompare} from './team-compare.js';
 const initialStudioSection=new URLSearchParams(location.search).get('section');
 import {studioOrganization,studioUrl} from './routing.js';
@@ -10,9 +11,14 @@ setLanguage(new URLSearchParams(location.search).get('lang'));translateDocument(
 let organizations=[];
 $('language').onchange=()=>{const url=new URL(location.href);url.searchParams.set('lang',$('language').value);location.assign(url.pathname+url.search);};
 window.addEventListener('popstate',()=>location.reload());
-const defaults={design:'clean',format:'1:1',font:fonts[0],base:'#0b1c32',accent:'#78e5b8',panelColor:'#10243b',panelOpacity:'90',shade:'30',partner:'',partnerLogo:'',background:''};
+const defaults={design:'clean',format:'1:1',font:fonts[0],base:'#0b1c32',accent:'#78e5b8',panelColor:'#10243b',panelOpacity:'90',shade:'30',sponsorId:'',partner:'',partnerLogo:'',background:''};
 let settings={...defaults}, section='games',filter='Today',offset=0,windowPage=0,game=null,insight=null,requestId=0,renderId=0,settingsLoadId=0,blob=null,renderQueue=Promise.resolve();
 const assetVersions={background:0,partnerLogo:0,playerPhoto:0,competitionLogo:0,groupLogo:0};
+const sponsorPicker=mountSponsorPicker($('sponsorPicker'),{t:tr,onSelect:item=>{
+  if(item&&item.organization!==$('org').value)return;settings.sponsorId=item?.id??'';
+  if(item){assetVersions.partnerLogo++;removeStudioAsset(settingsAssetKey('partnerLogo')).catch(()=>{});settings.partner=item.name.slice(0,70);settings.partnerLogo=item.selectedLogo??'';$('partner').value=settings.partner;$('partnerLogo').value=settings.partnerLogo;$('partnerUpload').value='';}
+  save();draw();
+}});
 const playerPhotos=new Map();let brandOverrides=new Map(),searchTimer;
 function brandKey(kind){return brandingScope($('org').value,game,kind);}
 function saveBrands(){try{localStorage.setItem(`hms-studio:brands:v1:${$('org').value}`,JSON.stringify([...brandOverrides]));}catch{status(tr('Logo je použité, ale úložiště zařízení je plné.'));}}
@@ -56,12 +62,13 @@ async function loadSettings(scope=settingsScope()){
   if(loadId!==settingsLoadId)return false;
   if(stored[0])settings.background=stored[0];if(stored[1])settings.partnerLogo=stored[1];
   for(const k of Object.keys(defaults))$(k).value=settings[k].startsWith('data:')?'':settings[k];
+  sponsorPicker.setSelected(settings.sponsorId);
   if(Object.keys(migrated).length)save();
   return true;
 }
 async function editorSettings() {
   try{const entries=JSON.parse(localStorage.getItem(`hms-studio:brands:v1:${$('org').value}`)||'[]');brandOverrides=new Map(entries.filter(e=>Array.isArray(e)&&e.length===2&&typeof e[0]==='string'&&typeof e[1]==='string'&&/^data:image\/(png|jpeg|webp);base64,/.test(e[1])));}catch{brandOverrides=new Map();}
-  await loadSettings('default');
+  const org=$('org').value;const catalog=sponsorPicker.load(org);await loadSettings('default');catalog.then(()=>{if($('org').value===org)sponsorPicker.setSelected(settings.sponsorId);});
 }
 function save(){try{const light={...settings};for(const kind of ['background','partnerLogo'])if(light[kind].startsWith('data:'))light[kind]='';localStorage.setItem(settingsKey(),JSON.stringify(light));}catch{status(tr('Nastavení je použité. Úložiště zařízení je plné, nelze je uložit.'));}}
 function resetSelection(){settingsLoadId++;assetVersions.background++;assetVersions.partnerLogo++;assetVersions.playerPhoto++;assetVersions.competitionLogo++;assetVersions.groupLogo++;$('subjectEditor').hidden=true;$('brandEditor').hidden=true;$('safeGuide').hidden=true;++renderId;game=null;insight=null;blob=null;$('empty').hidden=false;$('selected').textContent=section==='insights'?tr('Vyberte výkon'):tr('Vyberte zápas');$('template').replaceChildren();$('template').disabled=true;$('refresh').disabled=true;$('download').disabled=true;$('share').disabled=true;$('canvas').getContext('2d').clearRect(0,0,$('canvas').width,$('canvas').height);$('warnings').textContent='';}
@@ -132,7 +139,7 @@ $('safeZones').onchange=guide;
 $('search').oninput=()=>{clearTimeout(searchTimer);searchTimer=setTimeout(()=>{offset=0;if(section==='insights')browse();},300);};
 $('insightType').onchange=()=>{offset=0;browse();};
 $('settings').onsubmit=e=>e.preventDefault();
-for(const key of Object.keys(defaults))$(key).onchange=()=>{const v=$(key).value;
+for(const key of Object.keys(defaults).filter(k=>k!=='sponsorId'))$(key).onchange=()=>{const v=$(key).value;
   if(['background','partnerLogo'].includes(key)&&v&&!publicImageUrl(v)){blob=null;$('download').disabled=true;$('share').disabled=true;status(tr('Použijte veřejnou HTTPS URL bez přihlašovacích údajů.'));return;}
   if(settings[key]===v){if(game&&!blob)draw();return;}
   if(key in assetVersions)assetVersions[key]++;

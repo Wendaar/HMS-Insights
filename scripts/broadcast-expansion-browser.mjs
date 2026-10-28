@@ -12,10 +12,11 @@ sponsorFixture.teams=[{id:uid(3),name:'North Wolves'},{id:uid(4),name:'South Fal
 fixture.league={scope:{competition:'DEMO League',season:'2026/27',group:'Division A'},standingsAvailable:true,leadersAvailable:true,statsScope:'group',standings:Array.from({length:16},(_,i)=>({id:i===2?uid(3):i===11?uid(4):uid(100+i),name:i===2?'North Wolves':i===11?'South Falcons':`Team ${i+1}`,rank:i+1,games:8,points:30-i})),leaders:{home:[{id:uid(50),name:'Home Leader',games:8,points:20,goals:12,assists:8}],away:[{id:uid(51),name:'Away Leader',games:8,points:15,goals:5,assists:10}]}};
 await mkdir('artifacts/broadcast',{recursive:true});await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const base=`http://127.0.0.1:${server.address().port}`;let browser;
 try{
-  browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_PATH?{executablePath:process.env.CHROMIUM_PATH}:{})});
+  browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_PATH?{executablePath:process.env.CHROMIUM_PATH,args:['--no-sandbox','--disable-dev-shm-usage','--disable-gpu','--no-zygote','--single-process']}:{})});
   const controlContext=await browser.newContext({viewport:{width:1440,height:1080}}),obsContext=await browser.newContext({viewport:{width:1920,height:1080}}),errors=[];
   for(const context of [controlContext,obsContext]){
     context.on('page',page=>page.on('pageerror',error=>errors.push(error.message)));
+    await context.route('**/api/sponsors?*',route=>route.fulfill({json:sponsorFixture}));
     await context.route('https://cdn.jsdelivr.net/**',route=>route.abort());
     await context.route('**/api/broadcast?*',async route=>{
       const r=route.request(),q=Object.fromEntries(new URL(r.url()).searchParams);
@@ -35,15 +36,15 @@ try{
   }
   await addItem('CTA Test');await addItem('Sponsor A','sponsor');await addItem('Sponsor B','sponsor');
   await control.selectOption('#layer','cta');await obs.waitForFunction(()=>document.querySelector('#app>iframe')?.contentDocument?.querySelector('[data-layer=cta] .qr-image'));assert.match(await obs.evaluate(()=>document.querySelector('#app>iframe')?.contentDocument?.body?.textContent),/CTA Test/);
-  await control.selectOption('#layer','sponsors');await control.selectOption('#partner-source','library');await control.selectOption('#layer-rotation','5');await obs.waitForFunction(()=>document.querySelector('#app>iframe')?.contentDocument?.querySelector('[data-layer=sponsors]'));
-  const frame=obs.frames().find(f=>f.url().includes('mode=overlay'));await frame.getByText('Sponsor A',{exact:true}).waitFor();await frame.getByText('Sponsor B',{exact:true}).waitFor({timeout:8000});
+  await control.selectOption('#layer','sponsors');await control.selectOption('#partner-source','library');await control.fill('#sponsor-show','5');await control.locator('#sponsor-show').dispatchEvent('change');await control.fill('#sponsor-pause','0');await control.locator('#sponsor-pause').dispatchEvent('change');await control.selectOption('#sponsor-rotation','1');await obs.waitForFunction(()=>document.querySelector('#app>iframe')?.contentDocument?.querySelector('[data-layer=sponsors]'));
+  await obs.waitForFunction(()=>document.querySelector('#app>iframe')?.contentDocument?.body?.textContent.includes('Sponsor A'));await obs.waitForFunction(()=>document.querySelector('#app>iframe')?.contentDocument?.body?.textContent.includes('Sponsor B'),null,{timeout:10000});
   await control.selectOption('#layer','powerplay');await control.selectOption('#layer-side','away');await control.selectOption('#layer-corner','top-right');await obs.waitForFunction(()=>document.querySelector('#app>iframe')?.contentDocument?.querySelector('[data-layer=powerplay].top-right'));
   await obs.waitForFunction(()=>document.querySelector('#app>iframe')?.contentDocument?.body?.textContent.includes('Spolehlivý výpočet'));
   assert.equal(new URL(await obs.locator('#app>iframe').getAttribute('src')).searchParams.get('side'),'away');assert.equal(await control.locator('#channel-url').inputValue(),obsUrl);
   await control.locator('#toggle-channel').click();await obs.waitForFunction(()=>!document.querySelector('#app>iframe'));await control.reload();await control.getByText('V OBS je grafika skrytá.',{exact:true}).waitFor();
   await control.locator('.library-panel summary').click();await control.getByText('CTA Test',{exact:true}).waitFor();assert.equal(await control.locator('.library-list li').count(),3);
   await control.selectOption('#layer','sponsors');await control.selectOption('#partner-source','hms');await control.selectOption('#partner-scope','team');await control.selectOption('#layer-side','home');await control.locator('.partner-choices li').first().waitFor();assert.equal(await control.locator('.partner-choices li').count(),2);
-  await control.locator('[data-down="0"]').click();await Promise.all([control.waitForResponse(r=>r.request().method()==='PATCH'&&r.url().includes('library=1')),control.locator('#save-partners').click()]);await control.locator('#save-partners').waitFor();
+  await control.selectOption('#sponsor-rotation','0');await control.locator('[data-down="0"]').click();await control.locator('[data-index="0"]').check();await control.locator('[data-index="1"]').check();await Promise.all([control.waitForResponse(r=>r.request().method()==='PATCH'&&r.url().includes('library=1')),control.locator('#save-partners').click()]);await control.locator('#save-partners').waitFor();
   const library=[...libraries.values()][0];assert.deepEqual(library.items.filter(a=>a.kind==='hms-sponsor').map(a=>a.sponsorId),[uid(21),uid(20)]);assert.equal(await obs.locator('#app>iframe').count(),0,'Editing playlist must preserve hidden state');
   await control.locator('#partner-slot').getByText('Claim B',{exact:true}).waitFor();
   await control.locator('#partner-slot').screenshot({path:'artifacts/broadcast/central-partner-selection.png'});
@@ -51,7 +52,7 @@ try{
   await control.selectOption('#layer','announcement');await obs.waitForFunction(()=>document.querySelector('#app>iframe')?.contentDocument?.querySelector('[data-layer=announcement]'));assert.equal(await control.locator('#channel-url').inputValue(),obsUrl);
   const announce=obs.frames().find(f=>f.url().includes('mode=overlay'));assert.equal(await announce.locator('[data-layer=announcement]').evaluate(el=>el.scrollHeight<=el.clientHeight),true);
   await control.selectOption('#layer-side','away');await control.locator('.partner-choices li').first().waitFor();assert.equal(await control.locator('.partner-choices li').count(),1);assert.match(await control.locator('.partner-choices').textContent(),/Away-only partner/);
-  await control.selectOption('#partner-scope','organization');await control.locator('.partner-choices li').first().waitFor();assert.equal(await control.locator('.partner-choices li').count(),3);assert.equal(await control.locator('#layer-side').count(),0);
+  await control.selectOption('#partner-scope','organization');await control.locator('.partner-choices li').first().waitFor();assert.equal(await control.locator('.partner-choices li').count(),3);assert.equal(await control.locator('#layer-side').count(),0);await control.locator('[data-index="2"]').check();
   await control.locator('[data-index="0"]').uncheck();await control.locator('[data-index="1"]').uncheck();
   await Promise.all([control.waitForResponse(r=>r.request().method()==='PATCH'&&r.url().includes('library=1')),control.locator('#save-partners').click()]);await control.locator('#save-partners').waitFor();
   await control.selectOption('#layer-asset',uid(22));await obs.waitForFunction(()=>document.querySelector('#app>iframe')?.contentDocument?.body?.textContent.includes('Away-only partner'));
@@ -60,7 +61,7 @@ try{
   await control.reload();await control.locator('#partner-source').waitFor();assert.equal(await control.locator('#partner-source').inputValue(),'hms');assert.equal(await control.locator('#layer').inputValue(),'announcement');
   await control.selectOption('#layer','leaders-strip');await control.selectOption('#layer-side','away');await control.selectOption('#layer-metric','assists');
   await obs.waitForFunction(()=>document.querySelector('#app>iframe')?.contentDocument?.querySelector('[data-layer=leaders-strip]')?.textContent.includes('Away Leader'));
-  assert.equal(new URL(await obs.locator('#app>iframe').getAttribute('src')).searchParams.get('metric'),'assists');
+  await obs.waitForFunction(()=>new URL(document.querySelector('#app>iframe').src).searchParams.get('metric')==='assists');assert.equal(new URL(await obs.locator('#app>iframe').getAttribute('src')).searchParams.get('metric'),'assists');
   await control.selectOption('#layer','standings');
   await obs.waitForFunction(()=>document.querySelector('#app>iframe')?.contentDocument?.querySelectorAll('[data-rank]').length===2);
   assert.deepEqual(await obs.evaluate(()=>[...document.querySelector('#app>iframe').contentDocument.querySelectorAll('[data-rank]')].map(e=>Number(e.dataset.rank))),[3,12]);

@@ -1,3 +1,6 @@
+import {fetchSponsorCatalog,withSponsorOverrides} from '../sponsors/model.js';
+import {rotationDefaults,readSponsorPreferences,saveSponsorPreferences} from '../sponsors/rotation.js';
+import {resolvePartnerFrame} from './extra-layers.js';
 import {hmsBrand} from '/hms-brand.js';
 import {apiGame,parseGameInput,viewUrl,organizations} from './hms-source.js';
 import {language,translate,localize} from './i18n.js';
@@ -31,12 +34,17 @@ const state = { games: [], teams: [], selectedId: params.get("game"), date: null
 state.partnerScope=['organization','team'].includes(params.get('partnerScope'))?params.get('partnerScope'):mode==='control'?'organization':'team';
 state.browseIds=null;state.controlError='';state.standingsView=params.get('standingsView')==='full'?'full':'opponents';
 Object.assign(state,{corner:['top-left','top-right','bottom-left','bottom-right'].includes(params.get('corner'))?params.get('corner'):'bottom-left',metric:['goals','assists','points'].includes(params.get('metric'))?params.get('metric'):'goals',assetId:params.get('assetId')??'',rotateSeconds:Math.min(300,Math.max(5,Number(params.get('rotateSeconds'))||15)),items:[],rotationIndex:0,partnerSource:params.get('partnerSource')==='hms'||mode==='control'&&params.get('partnerSource')!=='library'?'hms':'library',sponsorCatalog:null});
+const savedSponsorDefaults=readSponsorPreferences(org)?.rotation;
+state.sponsorRotation={...rotationDefaults,showSeconds:Math.min(300,Math.max(1,Number(params.get('sponsorShow'))||savedSponsorDefaults?.showSeconds||15)),pauseSeconds:Math.min(3600,Math.max(0,params.has('sponsorPause')?Number(params.get('sponsorPause'))||0:savedSponsorDefaults?.pauseSeconds??30)),enabled:params.get('sponsorRotation')==='1',startedAt:Math.max(0,Number(params.get('sponsorStart'))||0)};
+// Old permanent channels keep their legacy selection until an operator publishes
+// the new explicit playlist. Newly controlled outputs carry this rotation object.
+if(mode!=='control'&&!params.has('sponsorRotation'))state.sponsorRotation=null;
 let sandbox=false,rotationTimer,contextLoading=false,contextLoaded=false,lastPartnerRead=0,leagueLoading=false,lastLeagueRead=0;
 Object.assign(state,{layer:layers.includes(params.get('layer'))?params.get('layer'):'opening',side:['home','away','both'].includes(params.get('side'))?params.get('side'):'home',period:['1','2','3'].includes(params.get('period'))?params.get('period'):'current',page:Math.min(50,Math.max(1,Number.parseInt(params.get('page'),10)||1)),insight:params.get('insight')??''});
 let refreshing=false,lastSuccess=0,lastVisual='',pollTimer;
 let previewObserver;
 const channel=mode==='control'&&source==='hms'?createChannelControl({api:API_BASE,base:location.href,
-  getState:()=>({org,gameId:state.selectedId,lang,layer:state.layer,side:state.side,period:state.period,page:state.page,insight:state.insight,corner:state.corner,metric:state.metric,assetId:state.assetId,rotateSeconds:state.rotateSeconds,partnerSource:state.partnerSource,partnerScope:state.partnerScope,standingsView:state.standingsView}),
+  getState:()=>({org,gameId:state.selectedId,lang,layer:state.layer,side:state.side,period:state.period,page:state.page,insight:state.insight,corner:state.corner,metric:state.metric,assetId:state.assetId,rotateSeconds:state.rotateSeconds,partnerSource:state.partnerSource,partnerScope:state.partnerScope,standingsView:state.standingsView,sponsorRotation:state.sponsorRotation}),
   onChange:()=>updateChannelPanel()}):null;
 function channelMarkup(){
   if(!channel)return '';
@@ -56,12 +64,13 @@ function updateChannelPanel(){
   const sync=document.querySelector('#sync-channel');if(sync){sync.disabled=!selectedGame();sync.addEventListener('click',async()=>{await channel.init();channel.publish();});}
   const libraryId=channel.info().id;
   const partnerSlot=document.getElementById('partner-slot'),partnerKey=libraryId+':'+channel.info().ready;
-  if(partnerSlot&&selectedGame()&&partnerSlot.dataset.binding!==partnerKey){partnerSlot.dataset.binding=partnerKey;mountPartnerPlaylist(partnerSlot,{catalog:state.sponsorCatalog,game:selectedGame(),side:state.side,partnerScope:state.partnerScope,channel,lang,onSaved:()=>{state.libraryLoaded='';renderControl();}});}
+  if(partnerSlot&&selectedGame()&&partnerSlot.dataset.binding!==partnerKey){partnerSlot.dataset.binding=partnerKey;mountPartnerPlaylist(partnerSlot,{catalog:state.sponsorCatalog,game:selectedGame(),side:state.side,partnerScope:state.partnerScope,channel,lang,rotation:state.sponsorRotation,onSaved:()=>{state.libraryLoaded='';if(state.sponsorRotation)state.sponsorRotation.startedAt=Date.now();renderControl();channel?.publish();}});}
   if(libraryId&&state.libraryLoaded!==libraryId){
     state.libraryLoaded=libraryId;
     channel.library().then(data=>{state.items=data.items??[];if(['cta','sponsors','announcement'].includes(state.layer))renderControl();}).catch(()=>{state.libraryLoaded='';});
   }
 }
+document.addEventListener('error',event=>{if(event.target instanceof HTMLImageElement&&event.target.classList.contains('sponsor-image'))event.target.remove();},true);
 document.body.dataset.org=org;
 if(mode==='overlay'||mode==='thumbnail')document.body.className='render-mode';
 if(mode==='overlay'&&state.layer!=='opening')fitBroadcastCanvas(app);
@@ -95,7 +104,7 @@ async function loadLeague(game){
 }
 async function loadPartners(){
   lastPartnerRead=Date.now();
-  try{const data=await apiRequest({catalog:'sponsors'});if(!Array.isArray(data.items)||!Array.isArray(data.bindings))throw new Error();state.sponsorCatalog=data;}catch{state.sponsorCatalog=null;}
+  try{const data=withSponsorOverrides(await fetchSponsorCatalog(org));if(!Array.isArray(data.items)||!Array.isArray(data.bindings))throw new Error();state.sponsorCatalog=data;}catch{state.sponsorCatalog=null;}
 }
 async function loadDay(){
   const data=await apiRequest({filter:state.filter});
@@ -126,7 +135,8 @@ function layerControls(game){
     ${['leaders','leaders-strip'].includes(state.layer)?`<label>${t('Statistika')}<select id="layer-metric">${[['points','Body'],['goals','Góly'],['assists','Asistence']].map(([v,l])=>option(v,l,state.metric)).join('')}</select></label>`:''}
     ${state.layer==='standings'?`<label>${t('Rozsah tabulky')}<select id="standings-view">${[['opponents','Oba soupeři · skutečné pořadí'],['full','Celá tabulka · po stránkách']].map(([v,l])=>option(v,l,state.standingsView)).join('')}</select></label>${state.standingsView==='full'?`<label>${t('Strana')}<select id="layer-page">${Array.from({length:pages},(_,i)=>option(String(i+1),String(i+1),String(state.page))).join('')}</select></label>`:''}`:''}
     ${['cta','sponsors','powerplay','leaders-strip','standings'].includes(state.layer)?`<label>${t('Umístění')}<select id="layer-corner">${[['top-left','Vlevo nahoře'],['top-right','Vpravo nahoře'],['bottom-left','Vlevo dole'],['bottom-right','Vpravo dole']].map(([v,l])=>option(v,l,state.corner)).join('')}</select></label>`:''}
-    ${['cta','sponsors','announcement'].includes(state.layer)?`<label>${t('Položka')}<select id="layer-asset">${option('','Střídat všechny odpovídající',state.assetId)}${partnerOptions.map(a=>option(a.id,a.title,state.assetId)).join('')}</select></label><label>${t('Střídat každých (sekund)')}<select id="layer-rotation">${[5,10,15,30,60,120,300].map(v=>option(String(v),String(v),String(state.rotateSeconds))).join('')}</select></label>`:''}
+    ${['cta','sponsors','announcement'].includes(state.layer)?`<label>${t('Položka')}<select id="layer-asset">${option('','Střídat všechny odpovídající',state.assetId)}${partnerOptions.map(a=>option(a.id,a.title,state.assetId)).join('')}</select></label>${state.layer==='cta'?`<label>${t('Střídat každých (sekund)')}<select id="layer-rotation">${[5,10,15,30,60,120,300].map(v=>option(String(v),String(v),String(state.rotateSeconds))).join('')}</select></label>`:''}`:''}
+    ${partnerLayer?`<label>${t('Logo (s)')}<input id="sponsor-show" type="number" min="1" max="300" value="${state.sponsorRotation.showSeconds}"></label><label>${t('Pauza bez loga (s)')}<input id="sponsor-pause" type="number" min="0" max="3600" value="${state.sponsorRotation.pauseSeconds}"></label><label>${t('Rotace partnerů')}<select id="sponsor-rotation">${option('0','Zastavená · držet vybraného',state.sponsorRotation.enabled?'1':'0')}${option('1','Spustit automatickou rotaci',state.sponsorRotation.enabled?'1':'0')}</select></label>`:''}
     ${state.layer==='powerplay'?`<p>${t('Vyberte tým, který hraje přesilovku. PP patří tomuto týmu, PK soupeři. Zapnutí vrstvy je ruční, bez živé časomíry.')}</p>`:''}
     ${partnerLayer&&state.partnerSource==='hms'?`<label>${t('Partneři')}<select id="partner-scope">${[['organization','Celá organizace'],['team','Vybraný tým']].map(([v,l])=>option(v,l,state.partnerScope)).join('')}</select></label>`:''}
     ${partnerLayer?`<label>${t('Zdroj partnerů')}<select id="partner-source">${[['hms','Centrální katalog HMS'],['library','Doplňky pouze pro tento kanál']].map(([v,l])=>option(v,l,state.partnerSource)).join('')}</select></label>`:''}
@@ -237,7 +247,11 @@ function renderOverlay(game) {
     app.innerHTML=renderMatchLayer(game,{...state,org,lang});if(sameLayer)app.querySelector('.slide-panel')?.classList.add('is-update');
     if(['leaders','leaders-strip','standings'].includes(state.layer)&&!leagueLoading&&(!game.league||Date.now()-lastLeagueRead>=60000))loadLeague(game);
     if(['powerplay','next','results'].includes(state.layer)&&!contextLoading&&!contextLoaded)loadContext(game);
-    if(['cta','sponsors','announcement'].includes(state.layer)&&!rotationTimer)rotationTimer=setInterval(()=>{state.rotationIndex++;app.innerHTML=renderMatchLayer(selectedGame()??game,{...state,org,lang});},state.rotateSeconds*1000);
+    if(['sponsors','announcement'].includes(state.layer)&&state.sponsorRotation){
+      clearInterval(rotationTimer);let last='';
+      const paint=()=>{const current=selectedGame()??game,settings={...state,org,lang},frame=resolvePartnerFrame(current,settings);const html=renderMatchLayer(current,{...settings,partnerFrame:frame});if(html!==last||!app.firstElementChild&&html){app.innerHTML=html;last=html;}const el=app.querySelector('[data-sponsor-layer]');if(el)el.style.opacity=String(frame.opacity);};
+      paint();rotationTimer=setInterval(paint,100);
+    }else if(['cta','sponsors','announcement'].includes(state.layer)&&!rotationTimer)rotationTimer=setInterval(()=>{state.rotationIndex++;app.innerHTML=renderMatchLayer(selectedGame()??game,{...state,org,lang});},state.rotateSeconds*1000);
     return;
   }
   const homeName = game["Home Team"] || "Bude doplněno";
@@ -359,6 +373,14 @@ function wireControl() {
   localize(app,lang);
   if(state.controlError)document.querySelector('#connection-status').textContent=t(state.controlError);
   document.querySelector('#language')?.addEventListener('change',event=>{lang=language(event.target.value);document.documentElement.lang=lang;const url=new URL(location.href);url.searchParams.set('lang',lang);history.replaceState(null,'',url);renderControl();if(selectedGame())channel?.publish();});
+  for(const id of ['sponsor-show','sponsor-pause','sponsor-rotation'])document.getElementById(id)?.addEventListener('change',event=>{
+    const input=event.target;if(!input.checkValidity())return;
+    const r=state.sponsorRotation;
+    if(id==='sponsor-show')r.showSeconds=Number(input.value);else if(id==='sponsor-pause')r.pauseSeconds=Number(input.value);else r.enabled=input.value==='1';
+    r.startedAt=Date.now();const saved=readSponsorPreferences(org)??{choices:[]};
+    saveSponsorPreferences(org,'organization','',{...saved,rotation:{...r,enabled:false,startedAt:0}});
+    const url=new URL(location.href);for(const [key,value] of Object.entries({sponsorRotation:r.enabled?'1':'0',sponsorShow:r.showSeconds,sponsorPause:r.pauseSeconds,sponsorStart:r.startedAt}))url.searchParams.set(key,String(value));history.replaceState(null,'',url);renderControl();channel?.publish();
+  });
   const settings={layer:'layer','layer-side':'side','layer-period':'period','layer-page':'page','layer-insight':'insight','layer-corner':'corner','layer-metric':'metric','layer-asset':'assetId','layer-rotation':'rotateSeconds','partner-source':'partnerSource','partner-scope':'partnerScope','standings-view':'standingsView'};
   for(const [id,key] of Object.entries(settings))document.getElementById(id)?.addEventListener('change',event=>{
     state[key]=['page','rotateSeconds'].includes(key)?Number(event.target.value):event.target.value;

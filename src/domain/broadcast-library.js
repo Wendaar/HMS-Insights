@@ -1,3 +1,4 @@
+import {publicImageUrl} from '../../public/sponsors/model.js';
 import {isGameId} from './game-summary.js';
 export const LIBRARY_BYTES=1800000;
 const text=(v,n)=>typeof v==='string'?v.trim().slice(0,n):'';
@@ -8,9 +9,11 @@ export function broadcastLibrary(value){
     if(!isGameId(item?.id)||ids.has(item.id.toLowerCase())||!['cta','sponsor','hms-sponsor'].includes(item.kind)||!['PHM','EUCHL'].includes(item.org)
       ||!['organization','team','game'].includes(item.scope)||item.scope!=='organization'&&!isGameId(item.targetId)||typeof item.enabled!=='boolean')throw new TypeError('Library item');
     ids.add(item.id.toLowerCase());
+    const timing={};for(const [key,max,min] of [['showSeconds',300,1],['pauseSeconds',3600,0]])if(item[key]!==undefined){if(!Number.isInteger(item[key])||item[key]<min||item[key]>max)throw new TypeError('Sponsor timing');timing[key]=item[key];}
     if(item.kind==='hms-sponsor'){
       if(!['team','game'].includes(item.scope)||!isGameId(item.sponsorId))throw new TypeError('Sponsor reference');
-      return {id:item.id.toLowerCase(),kind:item.kind,org:item.org,scope:item.scope,targetId:item.targetId.toLowerCase(),sponsorId:item.sponsorId.toLowerCase(),enabled:item.enabled};
+      const override={};if(item.overrideUrl!==undefined&&item.overrideUrl!==null&&item.overrideUrl!==''){const url=publicImageUrl(item.overrideUrl);if(!url)throw new TypeError('Sponsor override URL');override.overrideUrl=url;}
+      return {id:item.id.toLowerCase(),kind:item.kind,org:item.org,scope:item.scope,targetId:item.targetId.toLowerCase(),sponsorId:item.sponsorId.toLowerCase(),enabled:item.enabled,...timing,...override};
     }
     const match=/^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/]+={0,2})$/.exec(item.image??'');
     if(!match||match[2].length>350000)throw new TypeError('Image size');
@@ -20,6 +23,6 @@ export function broadcastLibrary(value){
       ||match[1]==='webp'&&bytes.toString('ascii',0,4)==='RIFF'&&bytes.toString('ascii',8,12)==='WEBP'))throw new TypeError('Image type');
     let url='';if(item.url){const u=new URL(item.url);if(u.protocol!=='https:'||u.username||u.password||u.href.length>1000)throw new TypeError('Link');url=u.href;}
     const title=text(item.title,100);if(!title)throw new TypeError('Title');
-    return {id:item.id.toLowerCase(),kind:item.kind,org:item.org,scope:item.scope,targetId:item.scope==='organization'?'':item.targetId.toLowerCase(),enabled:item.enabled,title,claim:text(item.claim,180),url,image:item.image};
+    return {id:item.id.toLowerCase(),kind:item.kind,org:item.org,scope:item.scope,targetId:item.scope==='organization'?'':item.targetId.toLowerCase(),enabled:item.enabled,title,claim:text(item.claim,180),url,image:item.image,...timing};
   });
 }

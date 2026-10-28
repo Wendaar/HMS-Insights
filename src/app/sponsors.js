@@ -1,3 +1,4 @@
+import {verifiedSponsorLogo} from './sponsor-logo-overrides.js';
 import {sponsorLogo} from '../../public/sponsors/model.js';
 import {isGameId} from '../domain/game-summary.js';
 import {sportingImage} from '../../public/game-report-media.js';
@@ -11,7 +12,7 @@ function link(value){try{const u=new URL(value);return ['https:','http:'].includ
 export function sponsorCatalog(sponsorResponse,teamResponse,org){
   const sponsors=rows(sponsorResponse),teams=teamResponse===null?null:rows(teamResponse);
   for(const row of [...sponsors,...(teams??[])])if(row.organizationId&&!same(row.organizationId,org.id))throw new Error('Catalog organization mismatch');
-  const items=sponsors.filter(s=>s.active!==false&&s.isActive!==false&&!['INACTIVE','DISABLED','DELETED','ARCHIVED'].includes(String(s.status??'').toUpperCase())).map(s=>{const id=uuid(s.sponsorId),logo=sponsorLogo(s);if(!id||!text(s.name))throw new Error('Missing sponsor identity');return {id,name:text(s.name),nick:text(s.nick),short:text(s.short),claim:text(s.claim,500),web:link(s.web),website:link(s.web??s.website),description:text(s.description,1200),logo,logoUrl:logo.displayUrl,active:true,activeSource:typeof s.active==='boolean'||typeof s.isActive==='boolean'||s.status?'HMS':'not-disabled',teams:(s.teamIds??[]).filter(isGameId).map(uuid),competitions:(s.competitionIds??[]).filter(isGameId).map(uuid),
+  const items=sponsors.filter(s=>s.active!==false&&s.isActive!==false&&!['INACTIVE','DISABLED','DELETED','ARCHIVED'].includes(String(s.status??'').toUpperCase())).map(s=>{const id=uuid(s.sponsorId),website=link(s.web??s.website),logo=verifiedSponsorLogo(org,{id,website},sponsorLogo(s));if(!id||!text(s.name))throw new Error('Missing sponsor identity');return {id,name:text(s.name),nick:text(s.nick),short:text(s.short),claim:text(s.claim,500),web:link(s.web),website,description:text(s.description,1200),logo,logoUrl:logo.overrideUrl??logo.displayUrl,active:true,activeSource:typeof s.active==='boolean'||typeof s.isActive==='boolean'||s.status?'HMS':'not-disabled',teams:(s.teamIds??[]).filter(isGameId).map(uuid),competitions:(s.competitionIds??[]).filter(isGameId).map(uuid),
     scopeRefs:Object.fromEntries(['teamIds','competitionIds','seasonIds','groupIds','phaseIds','venueIds'].filter(k=>Array.isArray(s[k])).map(k=>[k,[...new Set(s[k].map(uuid).filter(Boolean))]]))};});
   const teamItems=(teams??[]).map(t=>{const id=uuid(t.teamId);if(!id||!text(t.name))throw new Error('Missing team identity');return {id,name:text(t.name),logoUrl:image(t)};});
   const sponsorIds=new Set(items.map(s=>s.id)),teamIds=new Set(teamItems.map(t=>t.id)),bindings=new Map();
@@ -20,7 +21,7 @@ export function sponsorCatalog(sponsorResponse,teamResponse,org){
   for(const t of teams??[])for(const s of fields(t,['Sponsors','sponsors','TeamSponsors','sponsorIds']))bind(typeof s==='string'?s:s.sponsorId??s.Sponsor?.sponsorId,t.teamId);
   for(const s of sponsors)for(const t of fields(s,['Teams','teams','TeamSponsors','teamIds']))bind(s.sponsorId,typeof t==='string'?t:t.teamId??t.Team?.teamId);
   const observed=values=>[...new Set(values.flatMap(v=>Object.keys(v)))].sort();
-  return {schemaVersion:2,org:org.code,source:'HMS API',readAt:new Date().toISOString(),items,teams:teamItems,bindings:[...bindings.values()],
+  return {schemaVersion:1,org:org.code,source:'HMS API',readAt:new Date().toISOString(),items,teams:teamItems,bindings:[...bindings.values()],
     teamsAvailable:teams!==null,relationshipStatus:bindings.size?'returned-links':teams===null?'teams-unavailable':'no-links-returned',
     // Field names only: enough to verify API capabilities without exposing raw records/contact fields.
     fields:{sponsors:observed(sponsors),teams:observed(teams??[])}};

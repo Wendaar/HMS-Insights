@@ -1,5 +1,7 @@
 # Sponzoři HMS a konfigurace vysílání
 
+Aktuální společná vrstva, picker, původ obrázků a rotace s prázdnými intervaly (28. 10. 2026): [Sponsor Layer](SPONSOR-LAYER.md). Níže je historické ověření a návrh.
+
 ## Ověřený stav 25. 10. 2026
 
 Čtecí integrační endpoint `GET /api/v1/sponsors` funguje s existujícími organizačními klíči. V testovacím nasazení jsme skutečně načetli:
