@@ -313,6 +313,8 @@ function publicFeedItem(row) {
     text: row.body,
     facts: row.facts ?? {},
     gameId: row.game_id,
+    playerId: row.player_id ?? null,
+    teamId: row.team_id ?? null,
     date: dateOnly(row.played_on),
     competition: row.competition_name,
     season: row.season_name,

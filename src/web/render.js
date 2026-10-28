@@ -162,7 +162,7 @@ export function renderPriklepyPage(items, config = {}) {
   <link rel="stylesheet" href="${assetPrefix}styles.css?v=org-feeds-1">
   <script type="module" src="${assetPrefix}app.js?v=extended-insights-1"></script>
 <link rel="stylesheet" href="${assetPrefix}hms-brand.css"></head>
-<body>
+<body${config.embed?' class="embedded-feed"':''}>
   <header class="topbar">
     ${hmsBrand('PŘÍKLEPY',assetPrefix)}
     <nav class="view-nav" aria-label="Pohled Příklepů">

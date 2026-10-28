@@ -103,7 +103,7 @@ export function portalModule(section,org,season,lang='cs'){
  const q=new URLSearchParams({lang}),embed=new URL('https://prod.hms.wootera.net/embed/');
  if(section==='games')return '/game-center?'+new URLSearchParams({seasonId:season.seasonId,lang,embed:'1'});
  if(section==='comparison')return '/team-comparison/'+org.slug+'?'+new URLSearchParams({seasonId:season.seasonId,lang,embed:'1'});
- if(section==='insights')return '/priklepy/'+org.slug+'?'+q;
+ if(section==='insights')return '/priklepy/'+org.slug+'?'+new URLSearchParams({lang,embed:'1'});
  const endpoints={rules:'season_terms',standings:'standings',statistics:'players_stats',goalies:'goalies_stats',disciplinaries:'disciplinaries'};
  if(!endpoints[section])return null;
  embed.pathname+=endpoints[section];

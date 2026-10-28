@@ -64,13 +64,13 @@ export function applyPublicMedia(summary,metadata) {
   // Optional media must be for this exact sporting fixture. Never overwrite
   // result, names, statistics or Příklepy with a public endpoint response.
   if(!metadata||!same(metadata.HomeTeam?.teamId,summary.home.id)||!same(metadata.AwayTeam?.teamId,summary.away.id)||metadata.startDate!==summary.playedOn)return summary;
-  summary.home.logoUrl ||=teamImage(metadata.HomeTeam);summary.away.logoUrl ||=teamImage(metadata.AwayTeam);
+  summary.home.logoUrl=teamImage(metadata.HomeTeam)??summary.home.logoUrl;summary.away.logoUrl=teamImage(metadata.AwayTeam)??summary.away.logoUrl;
   const group=metadata.Phase?.Group;
   const branding=hmsMediaContext(metadata);
   if(group?.name===summary.group)summary.groupLogoUrl ||=branding.groupLogoUrl;
   if(branding.competitionName===summary.competition)summary.competitionLogoUrl ||=branding.competitionLogoUrl;
   for(const row of metadata.Lineups??[]){const person=row.Player;const player=[...summary.players??[],...summary.goalies??[]].find(p=>same(p.id,person?.playerId)&&same(p.teamId,row.teamId));
-    if(player&&!player.imageUrl)player.imageUrl=teamImage(person);
+    if(player)player.imageUrl=teamImage(person)??player.imageUrl;
   }
   if(metadata.Phase?.name===summary.phase)summary.phaseLogoUrl ||=teamImage(metadata.Phase);
   return summary;
