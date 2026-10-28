@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {resolveInsightSubject,insightStat,brandingScope} from '../public/studio/subjects.js';
 import {safeArea,imageSources,gameOutputs,exportFilename,designs} from '../public/studio/graphics.js';
-import {studioSettingsScope,studioSettingsKey} from '../public/studio/preferences.js';
+import {studioSettingsScope,studioSettingsKey,studioAssetKey} from '../public/studio/preferences.js';
 import {loadStudioInsights} from '../src/infrastructure/postgres-repository.js';
 import {browseMedia,applyPublicMedia} from '../src/app/media-engine.js';
 const gameId='f6293ef1-98ca-11f1-8bdf-ef2495d048f3',playerId='da0ba510-648c-11ef-8a7f-3b932af99033',homeId='8c035c24-5703-4628-9f71-e0b6280196db',awayId='baed154a-5e0f-4c57-bd3e-9a4d02fe7072';
@@ -65,6 +65,7 @@ test('Studio preferences separate organizations and every insight type',()=>{
  const milestone=studioSettingsScope({hasGame:true,choice:'insight',insightType:'SEASON_GOAL_MILESTONE'});
  assert.equal(hattrick,'insight:HATTRICK');assert.notEqual(hattrick,milestone);
  assert.notEqual(studioSettingsKey('phm',hattrick),studioSettingsKey('euchl',hattrick));
+ assert.notEqual(studioAssetKey(studioSettingsKey('phm',hattrick),'background'),studioAssetKey(studioSettingsKey('phm',hattrick),'partnerLogo'));
  assert.equal(studioSettingsScope({hasGame:true,choice:'final'}),'template:final');
  assert.equal(studioSettingsScope({hasGame:false,choice:'final'}),'default');
 });
