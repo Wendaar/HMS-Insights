@@ -19,6 +19,7 @@
     { "source": "/sponsors/", "destination": "/sponsors", "permanent": false }
   ],
   "headers": [
+    {"source":"/league/:path*","headers":[{"key":"Cache-Control","value":"no-store"},{"key":"X-Content-Type-Options","value":"nosniff"},{"key":"Referrer-Policy","value":"no-referrer"},{"key":"Content-Security-Policy","value":"default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self'; img-src 'self' https:; frame-src 'self' https://prod.hms.wootera.net; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"}]},
     {"source":"/team-comparison/:path*","headers":[{"key":"X-Content-Type-Options","value":"nosniff"},{"key":"Referrer-Policy","value":"no-referrer"},{"key":"Content-Security-Policy","value":"default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; connect-src 'self'; img-src 'self' blob: https://prod-hms-wootera.s3.eu-central-1.amazonaws.com https://hockeymanagementsystem.s3.amazonaws.com; base-uri 'none'; form-action 'self'; frame-ancestors *"}]},
     {"source":"/sponsors","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"},{"key":"X-Content-Type-Options","value":"nosniff"},{"key":"Referrer-Policy","value":"no-referrer"},{"key":"Cache-Control","value":"no-cache"}]},
     {"source":"/all-stars/:path*","headers":[{"key":"X-Content-Type-Options","value":"nosniff"},{"key":"Referrer-Policy","value":"no-referrer"},{"key":"Content-Security-Policy","value":"default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; connect-src 'self'; img-src 'self' blob:; base-uri 'none'; form-action 'self'; frame-ancestors *"}]},
@@ -28,7 +29,7 @@
       "headers": [
         {"key":"X-Content-Type-Options","value":"nosniff"},
         {"key":"Referrer-Policy","value":"no-referrer"},
-        {"key":"Content-Security-Policy","value":"default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' https://prod-hms-wootera.s3.eu-central-1.amazonaws.com https://hockeymanagementsystem.s3.amazonaws.com; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"}
+        {"key":"Content-Security-Policy","value":"default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' https://prod-hms-wootera.s3.eu-central-1.amazonaws.com https://hockeymanagementsystem.s3.amazonaws.com; base-uri 'none'; frame-ancestors 'self'; form-action 'self'"}
       ]
     },
     {
@@ -36,7 +37,7 @@
       "headers": [
         {"key":"X-Content-Type-Options","value":"nosniff"},
         {"key":"Referrer-Policy","value":"no-referrer"},
-        {"key":"Content-Security-Policy","value":"default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' https://prod-hms-wootera.s3.eu-central-1.amazonaws.com https://hockeymanagementsystem.s3.amazonaws.com; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"}
+        {"key":"Content-Security-Policy","value":"default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' https://prod-hms-wootera.s3.eu-central-1.amazonaws.com https://hockeymanagementsystem.s3.amazonaws.com; base-uri 'none'; frame-ancestors 'self'; form-action 'self'"}
       ]
     },
     {
@@ -66,9 +67,13 @@
         { "key": "Cache-Control", "value": "no-cache" },
         { "key": "Content-Security-Policy", "value": "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' https:; base-uri 'none'; form-action 'self'; frame-ancestors *" }
       ]
-    }
+    },
+    {"source":"/control/apps/public-portal","headers":[{"key":"Cache-Control","value":"no-store"},{"key":"X-Content-Type-Options","value":"nosniff"},{"key":"Referrer-Policy","value":"no-referrer"},{"key":"Content-Security-Policy","value":"default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self'; img-src 'self' https:; frame-src 'self' https://prod.hms.wootera.net; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"}]}
   ],
   "rewrites": [
+    {"source":"/api/portal","destination":"/api/game-summary?view=portal"},
+    {"source":"/control/apps/public-portal","destination":"/league/index.html"},
+    {"source":"/league/:org([a-z0-9-]+)","destination":"/league/index.html"},
     {"source":"/api/team-comparison","destination":"/api/game-summary?view=team-comparison"},
     {"source":"/control/apps/team-comparison","destination":"/team-comparison/index.html"},
     {"source":"/team-comparison/:org([a-z0-9-]+)","destination":"/team-comparison/index.html"},
