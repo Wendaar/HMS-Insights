@@ -1,4 +1,5 @@
 import {themeVariables,seasonMedia,teamDivisions} from './presentation.js';
+import {mountInsightsCarousel} from '../insights-carousel.js';
 const root=document.querySelector('#app'),manager=location.pathname.startsWith('/control'),query=new URLSearchParams(location.search);
 document.addEventListener('error',event=>{if(event.target instanceof HTMLImageElement)event.target.hidden=true;},true);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -11,9 +12,10 @@ async function request(org,action,extra={},secret='',body){
 function errorBox(container,error,retry){container.innerHTML=`<div class="notice error" role="alert">${esc(error.message)} <button class="retry">Zkusit znovu</button></div>`;container.querySelector('.retry').onclick=retry;}
 function mark(name,logo){return logo?`<img src="${esc(logo)}" alt="" loading="lazy">`:`<div class="initial" aria-hidden="true">${esc(name.slice(0,2).toUpperCase())}</div>`;}
 async function mountPortal(container,org,secret='',preview=false){
- let generation=0,section=preview?'home':query.get('section')??'home',seasonId=preview?'':query.get('seasonId')??'',lang=preview?'':query.get('lang')??'';
+ let generation=0,carouselLifecycle,section=preview?'home':query.get('section')??'home',seasonId=preview?'':query.get('seasonId')??'',lang=preview?'':query.get('lang')??'';
  const action=preview?'preview':'public';
  async function draw(){
+  carouselLifecycle?.abort();carouselLifecycle=new AbortController();
   const version=++generation;container.setAttribute('aria-busy','true');
   try{
    const d=await request(org,action,{section,...(seasonId?{seasonId}:{})},secret);if(version!==generation)return;
@@ -40,6 +42,7 @@ async function mountPortal(container,org,secret='',preview=false){
     const data=await request(org,preview?'preview-data':'data',{section,seasonId,lang},secret);if(version!==generation)return;
     if(section==='home'){
      target.innerHTML=`${d.config.sections.includes('games')?`<div class="quick"><div><h3>${t('welcome')}</h3><p>${t('quick')}</p></div><a class="button" data-go="games" href="${href('games')}">${t('open')} →</a></div>`:''}<h3 class="section-title">${t('seasons')}</h3><div class="cards">${d.seasons.map(s=>`<a class="tile season-tile tile-link" data-season="${s.seasonId}" href="${href('home',s.seasonId)}"><span class="eyebrow">${esc(s.competition)}</span><h3>${esc(s.season)}</h3><span class="muted">${t('open').replace('Game Center','')} →</span></a>`).join('')}</div><h3 class="section-title">${t('partners')}</h3><div class="cards">${data.sponsors.map(s=>`<article class="tile partner">${s.logoUrl?`<img src="${esc(s.logoUrl)}" alt="${esc(s.name)}" loading="lazy">`:''}<h3>${esc(s.name)}</h3>${s.claim?`<p>${esc(s.claim)}</p>`:''}${s.web?`<a href="${esc(s.web)}" target="_blank" rel="noopener noreferrer">${esc(new URL(s.web).hostname)} ↗</a>`:''}</article>`).join('')}</div>${!data.sponsors.length?`<p class="muted">${data.sponsorsAvailable?t('noPartners'):t('partnersError')}</p>`:''}`;
+     if(d.config.sections.includes('insights'))mountInsightsCarousel(target,{org:d.org.slug,lang,allHref:href('insights'),signal:carouselLifecycle.signal});
      target.querySelector('[data-go]')?.addEventListener('click',e=>{e.preventDefault();move('games');});
      target.querySelectorAll('[data-season]').forEach(card=>{const season=d.seasons.find(s=>s.seasonId===card.dataset.season),logos=seasonMedia(season,d.season,d.branding);if(logos.seasonLogoUrl||logos.competitionLogoUrl){const marks=document.createElement('div');marks.className='season-card-marks';for(const [src,label]of [[logos.seasonLogoUrl,season.season],[logos.competitionLogoUrl,season.competition]])if(src){const img=document.createElement('img');img.src=src;img.alt=label;marks.append(img);}card.prepend(marks);}});
      target.querySelectorAll('[data-season]').forEach(a=>a.onclick=e=>{e.preventDefault();move('home',a.dataset.season);});
