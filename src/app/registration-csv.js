@@ -37,25 +37,42 @@ function playerId(row){
   fail('Neplatný odkaz hráče na řádku '+row.line+'.');
 }
 function flag(value,yes,no,line,label){if(!value)return null;const norm=v=>v.toUpperCase().replaceAll('_',' ');if(yes.map(norm).includes(norm(value)))return true;if(no.map(norm).includes(norm(value)))return false;fail('Neznámá hodnota '+label+' na řádku '+line+'.');}
-export function buildRegistrationImport(csv,catalog,{previous=null,mappings={},filename=''}={}){
-  const table=parseRegistrationCsv(csv),teams=new Map(),names=new Map();
+const teamKey=value=>clean(value).toLocaleLowerCase('cs').replace(/\s+/g,'');
+// HMS concatenates its Teams relation without separators. Match complete known
+// names left-to-right, taking the longest at a position so Wolves B is not Wolves.
+function teamMatcher(catalog,knownTeams=[]){
+  const dictionary=new Map(),currentIds=new Set(catalog.map(t=>t.id.toLowerCase()));
+  for(const team of [...knownTeams,...catalog]){const key=teamKey(team.name);if(!key)continue;const entry=dictionary.get(key)??{key,ids:new Set()};
+    if(currentIds.has(team.id.toLowerCase()))entry.ids.add(team.id.toLowerCase());dictionary.set(key,entry);}
+  const names=[...dictionary.values()].sort((a,b)=>b.key.length-a.key.length);
+  return value=>{const text=teamKey(value),ids=new Set();let ambiguous=false,unknown=false,matched=0;
+  for(let at=0;at<text.length;){const match=names.find(name=>text.startsWith(name.key,at));
+    if(!match){if(!/[,;|]/.test(text[at]))unknown=true;at++;continue;}matched++;if(match.ids.size>1)ambiguous=true;else for(const id of match.ids)ids.add(id);at+=match.key.length;}
+  return {complete:!ambiguous&&!unknown&&matched>0,teamIds:ambiguous||unknown?[]:[...ids]};
+  };
+}
+export const registrationTeamMatches=(value,catalog,knownTeams=[])=>teamMatcher(catalog,knownTeams)(value).teamIds;
+export function buildRegistrationImport(csv,catalog,{previous=null,mappings={},filename='',knownTeams=[]}={}){
+  const table=parseRegistrationCsv(csv),teams=new Map();
   if(!Array.isArray(catalog)||!catalog.length)fail('Není dostupný ověřený seznam týmů této sezony.');
   for(const t of catalog){if(!uuid(t.id)||!clean(t.name)||teams.has(t.id.toLowerCase()))fail('Seznam týmů není jednoznačný.');
-    const id=t.id.toLowerCase(),name=clean(t.name);teams.set(id,{teamId:id,name,players:[]});names.set(name,[...(names.get(name)??[]),id]);}
+    const id=t.id.toLowerCase(),name=clean(t.name);teams.set(id,{teamId:id,name,players:[]});}
+  const matchTeams=teamMatcher(catalog,knownTeams);
   const seen=new Set(),playersByTeam=new Set(),pending=[],assignments=[],registrationIds=[];
   const prior=new Map((previous?.assignments??[]).map(a=>[a.registrationId,a]));
-  let scopeRows=0,excludedScope=0,unknownPaid=0,unknownMethod=0,unknownConfirmed=0;
+  let scopeRows=0,excludedScope=0,unknownPaid=0,unknownMethod=0,unknownConfirmed=0,multiTeamPlayers=0,teamMemberships=0,withoutTeam=0,outsideTeamScope=0;
   for(const row of table.rows){
     const id=row.get('ID').toLowerCase();if(!uuid(id)||seen.has(id))fail('Neplatné nebo duplicitní ID registrace na řádku '+row.line+'.');seen.add(id);
     if(row.get('Competition')!=='PHM Cup'||row.get('Season')!=='2026-2027'){excludedScope++;continue;}
     scopeRows++;registrationIds.push(id);
     const pid=playerId(row),name=row.get('Player');if(!name||name.length>160)fail('Chybějící nebo příliš dlouhé jméno na řádku '+row.line+'.');
-    const teamText=row.get('Teams'),binding=hash(pid+'\n'+teamText),automatic=names.get(teamText);
+    const teamText=row.get('Teams'),binding=hash(pid+'\n'+teamText),recognition=matchTeams(teamText),automatic=recognition.teamIds;
     const supplied=Object.hasOwn(mappings,id)?mappings[id]:undefined;
     const saved=prior.get(id),reusable=saved?.binding===binding&&teams.has(saved.teamId);
-    let target=supplied!==undefined?supplied:reusable?saved.teamId:automatic?.length===1?automatic[0]:null;
-    if(target!==null&&(!uuid(target)||!teams.has(target.toLowerCase())))fail('Ruční přiřazení obsahuje tým mimo tuto sezonu.');
-    target=target?.toLowerCase()??null;
+    // Complete automatic Teams membership supersedes former single-team overrides.
+    const targets=supplied!==undefined?(Array.isArray(supplied)?supplied:[supplied]):automatic.length?automatic:reusable?[saved.teamId]:[];
+    if(targets.some(target=>!uuid(target)||!teams.has(target.toLowerCase())))fail('Ruční přiřazení obsahuje tým mimo tuto sezonu.');
+    const targetIds=[...new Set(targets.map(target=>target.toLowerCase()))];
     const accepted=flag(row.get('Accepted by Player'),['YES'],['NO'],row.line,'souhlasu');
     const paid=flag(row.get('Payment Status'),['PAID','YES'],['UNPAID','NOT PAID','NOT_PAID','NO'],row.line,'úhrady');
     const method=row.get('Payment Method').toUpperCase()||null,status=row.get('Registration Status');
@@ -72,9 +89,12 @@ export function buildRegistrationImport(csv,catalog,{previous=null,mappings={},f
     if(confirmed===null)actions.push('Stav potvrzení v exportu chybí.');
     const player={registrationId:id,playerId:pid,name,photoUrl:null,memberStatus:null,invited:null,latestInvite:null,accepted,
       paymentMethod:method,paid,confirmed,ok:confirmed===true&&accepted===true&&paid===true&&!!method,actions};
-    if(target){const key=target+':'+pid;if(playersByTeam.has(key))fail('Hráč má více registrací pro stejný tým a sezonu. Zkontrolujte export.');playersByTeam.add(key);teams.get(target).players.push(player);
-      if(supplied!==undefined||reusable)assignments.push({registrationId:id,binding,teamId:target});
-    }else pending.push({registrationId:id,name,teams:teamText});
+    if(targetIds.length){for(const target of targetIds){const key=target+':'+pid;if(playersByTeam.has(key))fail('Hráč má více registrací pro stejný tým a sezonu. Zkontrolujte export.');playersByTeam.add(key);teams.get(target).players.push({...player});teamMemberships++;}
+      if(targetIds.length>1)multiTeamPlayers++;
+      if(supplied!==undefined||reusable&&!automatic.length)assignments.push({registrationId:id,binding,teamId:targetIds[0]});
+    }else if(!teamText||/^[-–—]$/.test(teamText))withoutTeam++;
+    else if(recognition.complete)outsideTeamScope++;
+    else pending.push({registrationId:id,name,teams:teamText});
   }
   for(const key of Object.keys(mappings))if(!registrationIds.includes(key))fail('Ruční přiřazení nepatří do tohoto exportu.');
   if(!scopeRows)fail('CSV neobsahuje registrace PHM Cup 2026-2027. Dosavadní data zůstala zachována.');
@@ -83,8 +103,8 @@ export function buildRegistrationImport(csv,catalog,{previous=null,mappings={},f
   const removed=(previous?.registrationIds??[]).filter(id=>!registrationIds.includes(id)).length;
   return {scope:REGISTRATION_SCOPE,source:'csv',sourceHash:hash(csv),filename:clean(filename).replace(/[\\/]/g,'_').slice(0,160),
     teams:result,pending,assignments,registrationIds,
-    summary:{totalRows:table.rows.length,seasonRows:scopeRows,excludedScope,assigned:scopeRows-pending.length,unassigned:pending.length,
-      unknownPaid,unknownMethod,unknownConfirmed,removed,teamCount:result.filter(t=>t.players.length).length},
+    summary:{totalRows:table.rows.length,seasonRows:scopeRows,excludedScope,assigned:scopeRows-pending.length-withoutTeam-outsideTeamScope,unassigned:pending.length,
+      unknownPaid,unknownMethod,unknownConfirmed,removed,multiTeamPlayers,teamMemberships,withoutTeam,outsideTeamScope,teamCount:result.filter(t=>t.players.length).length},
     limitations:['Export registrací není úplná soupiska ACTIVE/INVITED. Stav členství ani skutečné sezonní pozvánky nejsou v tomto souboru dostupné.',
-      'E-mail se v tomto přehledu nezpracovává. Prázdná úhrada neznamená nezaplaceno. Nejednoznační hráči nejsou v týmových pohledech, dokud je správce nepřiřadí.']};
+      'Hráč se automaticky zobrazí ve všech rozpoznaných týmech uvedených v exportu. Úhrada a souhlas jsou společné pro jeho sezonní registraci. E-mail nezpracováváme; prázdná úhrada neznamená nezaplaceno.']};
 }

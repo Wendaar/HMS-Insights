@@ -108,9 +108,9 @@ $('preview-import').onclick=async()=>{
   try{
     const text=await file.text();if(generation!==sessionGeneration||$('csv-file').files[0]!==file)return;
     importFile={filename:file.name,csv:text};const result=await api('preview-import',{post:true,body:importFile});if(generation!==sessionGeneration||$('csv-file').files[0]!==file)return;importPreview=result;mappings={};
-    const s=importPreview.summary;$('import-summary').textContent=s.totalRows+' řádků celkem · '+s.seasonRows+' PHM Cup 2026/27 · '+s.assigned+' přiřazeno · '+s.unassigned+' ke kontrole · '+s.excludedScope+' jiná sezona/soutěž · '+s.removed+' registrací z předchozího exportu zmizí.';
+    const s=importPreview.summary;$('import-summary').textContent=s.totalRows+' řádků celkem · '+s.seasonRows+' PHM Cup 2026/27 · '+s.assigned+' registrací rozpoznáno · '+s.multiTeamPlayers+' hráčů ve více týmech · '+s.teamMemberships+' týmových členství · '+s.withoutTeam+' bez uvedeného týmu · '+s.outsideTeamScope+' jen mimo letošní týmy · '+s.excludedScope+' jiná sezona/soutěž · '+s.removed+' registrací z předchozího exportu zmizí.';
     $('import-warnings').replaceChildren(...importPreview.limitations.map(t=>el('p',t)),el('p','Chybí úhrada: '+s.unknownPaid+' · platební metoda: '+s.unknownMethod+' · stav potvrzení: '+s.unknownConfirmed));
-    $('import-preview').hidden=false;$('complete-export').checked=false;$('accept-excluded').checked=false;renderPending();message('Náhled je připraven. Dosavadní data zatím zůstala zachována.');
+    $('import-preview').hidden=false;$('complete-export').checked=false;$('accept-excluded').checked=false;$('assignments-panel').hidden=!s.unassigned;$('excluded-label').hidden=!s.unassigned;renderPending();message(s.unassigned?'Náhled je připraven; '+s.unassigned+' záznamů má nerozpoznaný název týmu.':'Náhled je připraven. Všechny uvedené týmy jsou automaticky rozpoznané; ruční přiřazení není potřeba.');
   }catch(error){importFile=null;importPreview=null;message(error.message);}finally{$('preview-import').disabled=false;}
 };
 $('commit-import').onclick=async()=>{
@@ -118,7 +118,7 @@ $('commit-import').onclick=async()=>{
   if(!importFile||!importPreview)return;
   $('commit-import').disabled=true;
   try{const data=await api('import',{post:true,body:{...importFile,sourceHash:importPreview.sourceHash,revision:importPreview.revision,mappings,
-    completeExport:$('complete-export').checked,acceptExcluded:$('accept-excluded').checked}});if(generation!==sessionGeneration)return;resetImport();await loadCatalog();if(generation!==sessionGeneration)return;message('Nový export uložen: '+data.summary.assigned+' hráčů přiřazeno, '+data.summary.unassigned+' vynecháno ke kontrole. Týmové odkazy zůstaly stejné.');}
+    completeExport:$('complete-export').checked,acceptExcluded:$('accept-excluded').checked}});if(generation!==sessionGeneration)return;resetImport();await loadCatalog();if(generation!==sessionGeneration)return;message('Nový export uložen: '+data.summary.assigned+' registrací ve všech uvedených týmech ('+data.summary.teamMemberships+' členství). Bez uvedeného týmu: '+data.summary.withoutTeam+'. Týmové odkazy zůstaly stejné.');}
   catch(error){message(error.message);}finally{$('commit-import').disabled=false;}
 };
 $('create-link').onclick=async()=>{
