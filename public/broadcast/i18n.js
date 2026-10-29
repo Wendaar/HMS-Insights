@@ -43,7 +43,7 @@ const en={
   'Vybraný zápas nebyl nalezen.':'The selected game was not found.','V OBS URL chybí Game ID.':'The OBS URL is missing a Game ID.',
   'HMS data nejsou dostupná.':'HMS data is unavailable.','HMS vrátilo jinou organizaci.':'HMS returned a different organization.',
   'Neplatná organizace nebo zdroj dat.':'Invalid organization or data source.','Data se nepodařilo načíst.':'Could not load data.',
-  'Vložte HMS odkaz na zápas nebo Game ID.':'Enter an HMS game link or Game ID.','Vyberte PHM nebo EUCHL a vložte platné Game ID.':'Select PHM or EUCHL and enter a valid Game ID.',
+  'Vložte HMS odkaz na zápas nebo Game ID.':'Enter an HMS game link or Game ID.','Vyberte připojenou organizaci a vložte platné Game ID.':'Select a connected organization and enter a valid Game ID.',
   'Odpověď neodpovídá vybranému zápasu a organizaci.':'The response does not match the selected game and organization.',
   'V HMS chybí názvy týmů.':'Team names are missing in HMS.',
   'Předzápasová data nejsou dostupná. Ověřte zápas a připojení vybrané organizace.':'Game data is unavailable. Check the game and the selected organization connection.',

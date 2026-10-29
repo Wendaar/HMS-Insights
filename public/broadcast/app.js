@@ -2,7 +2,8 @@ import {fetchSponsorCatalog,withSponsorOverrides} from '../sponsors/model.js';
 import {rotationDefaults,readSponsorPreferences,saveSponsorPreferences} from '../sponsors/rotation.js';
 import {resolvePartnerFrame} from './extra-layers.js';
 import {hmsBrand} from '/hms-brand.js';
-import {apiGame,parseGameInput,viewUrl,organizations} from './hms-source.js';
+import {loadOrganizationCatalog,organizationFromCatalog} from '../organization-catalog.js';
+import {apiGame,parseGameInput,viewUrl,organizations,organizationCatalog,setBroadcastOrganizations} from './hms-source.js';
 import {language,translate,localize} from './i18n.js';
 import {layers,layerNames,renderMatchLayer} from './match-layers.js';
 import {createChannelControl,runChannelView,fitBroadcastCanvas} from './channel.js';
@@ -28,7 +29,7 @@ document.documentElement.lang=lang;
 const mode = params.get("mode") || "control";
 broadcastIdentity(mode);
 const source=params.get('source')??'hms';
-const org=(params.get('org')??'PHM').toUpperCase();
+let org=(params.get('org')??'PHM').toUpperCase();
 const API_BASE=location.pathname.startsWith('/broadcast/')?'/api/broadcast':'https://hms-insights-five.vercel.app/api/broadcast';
 const state = { games: [], teams: [], selectedId: params.get("game"), date: null, preview: "overlay", filter:params.get('filter')??'Today', readAt:null };
 state.partnerScope=['organization','team'].includes(params.get('partnerScope'))?params.get('partnerScope'):mode==='control'?'organization':'team';
@@ -143,7 +144,7 @@ function layerControls(game){
     ${state.layer==='cta'?`<p>${t('Centrální QR soubory zatím HMS API neposkytuje. Zde vybíráte hotové QR z doplňků tohoto kanálu; logo partnera se za QR nezaměňuje.')}</p>`:''}
     <p id="layer-help">${t(channel?.info().bound?'Přepínání níže automaticky mění obsah stálého OBS kanálu.':'Výběr vrstvy mění náhled a kopírovanou adresu. V OBS použijte adresu dané vrstvy.')}</p></section>${partnerLayer&&state.partnerSource==='hms'?'<section class="partner-panel" id="partner-slot"></section>':''}`;
 }
-function connectionMarkup(){return `<section class="connection-bar"><form id="game-form"><label>Organizace<select id="org">${organizations.map(o=>`<option ${o===org?'selected':''}>${o}</option>`).join('')}</select></label><label class="game-input-label">Odkaz na zápas v HMS nebo Game ID<input id="game-input" value="${escapeHtml(state.selectedId??'')}" placeholder="https://prod.hms.wootera.net/org/euchl/games/…" required></label><button class="button primary">Načíst zápas</button></form><div class="browse-dates">${[['Today','Dnes'],['Tomorrow','Zítra'],['+7 days','Příštích 7 dnů'],['Past','Minulé zápasy']].map(([id,label])=>`<button class="button ${state.filter===id?'primary':''}" data-filter="${id}">${label}</button>`).join('')}<button class="button" id="refresh-data">Obnovit z HMS</button></div><p id="connection-status" role="status">${source==='sheet'?'Původní PHM Sheet · kompatibilní režim':`HMS API · ${org} · ${state.readAt?'načteno '+escapeHtml(new Date(state.readAt).toLocaleTimeString('cs-CZ')):'vyberte zápas'}${state.hasMore?' · zobrazeno prvních 20 zápasů, další otevřete odkazem':''}`}</p></section>`;}
+function connectionMarkup(){return `<section class="connection-bar"><form id="game-form"><label>Organizace<select id="org">${organizations.includes(org)?'':'<option value="">—</option>'}${organizationCatalog.map(o=>`<option value="${escapeHtml(o.code)}" ${o.code===org?'selected':''}>${escapeHtml(o.name)}${o.configured?'':' · '+(lang==='en'?'Not connected':'Nepřipojeno')}</option>`).join('')}</select></label><label class="game-input-label">Odkaz na zápas v HMS nebo Game ID<input id="game-input" value="${escapeHtml(state.selectedId??'')}" placeholder="https://prod.hms.wootera.net/org/euchl/games/…" required></label><button class="button primary">Načíst zápas</button></form><div class="browse-dates">${[['Today','Dnes'],['Tomorrow','Zítra'],['+7 days','Příštích 7 dnů'],['Past','Minulé zápasy']].map(([id,label])=>`<button class="button ${state.filter===id?'primary':''}" data-filter="${id}">${label}</button>`).join('')}<button class="button" id="refresh-data">Obnovit z HMS</button></div><p id="connection-status" role="status">${source==='sheet'?'Původní PHM Sheet · kompatibilní režim':`HMS API · ${org} · ${state.readAt?'načteno '+escapeHtml(new Date(state.readAt).toLocaleTimeString('cs-CZ')):'vyberte zápas'}${state.hasMore?' · zobrazeno prvních 20 zápasů, další otevřete odkazem':''}`}</p></section>`;}
 
 function escapeHtml(value = "") {
   return String(value).replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char]);
@@ -452,8 +453,12 @@ async function start() {
   renderStatus("Načítám zápasy…");
   if(mode==='control')try{const response=await fetch(apiUrl({capabilities:'1'}));sandbox=(await response.json()).sandbox===true;}catch{}
   try {
+    setBroadcastOrganizations(await loadOrganizationCatalog());
+    org=organizationFromCatalog(organizationCatalog,params.get('org')??'PHM')?.code??'';
+    document.body.dataset.org=org;
     if(!organizations.includes(org)||!['hms','sheet'].includes(source)||source==='sheet'&&org!=='PHM')throw new Error('Neplatná organizace nebo zdroj dat.');
     if(source==='hms'){
+      if(!organizationFromCatalog(organizationCatalog,org)?.configured)throw new Error(lang==='en'?'This organization has no data connection yet.':'Organizace zatím nemá nastavené datové připojení.');
       if(state.selectedId){parseGameInput(state.selectedId,org);await loadGame(state.selectedId);}
       else if(mode==='overlay'||mode==='thumbnail')throw new Error('V OBS URL chybí Game ID.');
       else{await loadDay();const first=state.games.find(g=>g._labelsAvailable);if(first)await loadGame(first.ID);}
@@ -478,7 +483,7 @@ async function start() {
     console.error(error);
     if(mode==='control'){
       state.controlError=error.message||'Data se nepodařilo načíst.';renderControl();if(channel)await channel.init();
-      if(source==='hms'&&state.browseIds===null)loadDay().then(()=>renderControl()).catch(()=>{});
+      if(source==='hms'&&organizationFromCatalog(organizationCatalog,org)?.configured&&state.browseIds===null)loadDay().then(()=>renderControl()).catch(()=>{});
     }else renderStatus(error.message || "Data se nepodařilo načíst.", true);
     if(mode==='overlay')pollTimer=setTimeout(refreshRenderMode,15000);
   }

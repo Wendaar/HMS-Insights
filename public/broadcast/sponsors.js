@@ -1,6 +1,7 @@
 import {fetchSponsorCatalog,withSponsorOverrides,sponsorDisplayLogo,saveSponsorOverride} from '../sponsors/model.js';
+import {loadOrganizationCatalog,organizationFromCatalog} from '../organization-catalog.js';
 const select=document.querySelector('#catalog-org'),body=document.querySelector('#catalog-body'),status=document.querySelector('#catalog-status'),button=document.querySelector('#catalog-refresh');
-const query=new URLSearchParams(location.search);select.value=['PHM','EUCHL'].includes(query.get('org'))?query.get('org'):'PHM';
+const query=new URLSearchParams(location.search);select.disabled=true;
 const cell=(row,text)=>{const td=document.createElement('td');td.textContent=text??'—';row.append(td);return td;};
 const scopeLabels={competitionIds:'Soutěže',seasonIds:'Sezony',groupIds:'Skupiny',phaseIds:'Fáze',venueIds:'Stadiony'};
 let loading=false;
@@ -26,4 +27,6 @@ async function load(){
   }catch(error){status.textContent=error.name==='TimeoutError'?'HMS neodpovědělo včas. Zkuste obnovení.':error.message;}
   finally{loading=false;button.disabled=select.disabled=false;}
 }
-button.onclick=load;select.onchange=load;load();
+button.onclick=load;select.onchange=load;
+async function initialize(){try{const entries=await loadOrganizationCatalog();const org=organizationFromCatalog(entries,query.get('org')??'PHM');select.replaceChildren(...entries.map(o=>new Option(o.name+(o.configured?'':' · Nepřipojeno'),o.code)));select.disabled=false;if(!org){select.value='';status.textContent='Neznámá organizace. Vyberte organizaci z nabídky.';return;}select.value=org.code;await load();}catch(e){status.textContent=e.message;}}
+initialize();

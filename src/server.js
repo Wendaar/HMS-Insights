@@ -38,6 +38,7 @@ const broadcastHandler = createBroadcastHandler();
 const portalHandler = createPublicPortalHandler();
 
 const assets = {
+  '/organization-catalog.js':['text/javascript; charset=utf-8','organization-catalog.js'],
   '/hms-favicon-public-v2.svg':['image/svg+xml','hms-favicon-public-v2.svg'],
   '/hms-favicon-control-v2.svg':['image/svg+xml','hms-favicon-control-v2.svg'],
   '/hms-favicon-public-v2.png':['image/png','hms-favicon-public-v2.png'],

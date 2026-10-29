@@ -1,3 +1,4 @@
+import {loadOrganizationCatalog,organizationFromCatalog} from '../organization-catalog.js';
 import {operationsLoad, continueOperationsLoad} from './loading.js';
 import {aggregate, periods, warningLabels, csv, staffRanking, paymentLabel, paidLabel, personAssignments} from './model.js';
 import {saveSnapshot,readSnapshot,clearSnapshot} from './snapshot.js';
@@ -24,8 +25,7 @@ const today = new Intl.DateTimeFormat('en-CA', {timeZone: 'Europe/Prague', year:
 $('from').value = today.slice(0, 7) + '-01';
 $('to').value = new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)), 0)).toISOString().slice(0, 10);
 const initialOrg = new URLSearchParams(location.search).get('org') ?? 'phm';
-if (![...$('org').options].some(option => option.value === initialOrg)) $('org').append(new Option(initialOrg.toUpperCase(), initialOrg));
-$('org').value = initialOrg;
+$('org').disabled=true;
 const range = () => ({from: $('from').value, to: $('to').value});
 for (const [id, label] of Object.entries(views)) {
   const button = el('button', label);
@@ -311,4 +311,5 @@ $('lock').onclick = lock; $('org').onchange = access;
 $('filters').onsubmit = event => { event.preventDefault(); if (mode === 'demo') $('demo').click(); else if (credential||authenticated) load(); else $('message').textContent = 'Nejdříve odemkněte data nebo otevřete ukázku.'; };
 $('competition').onchange = render; $('payment').onchange = render; $('search').oninput = render;
 for (const id of ['from', 'to']) $(id).onchange = () => { ++requestId; data = null; pendingLoad = null; loadState = 'idle'; render(); $('message').textContent = 'Období změněno. Použijte období pro nové načtení.'; };
-access();
+async function initializeOrganizations(){try{const entries=await loadOrganizationCatalog(),org=organizationFromCatalog(entries,initialOrg);$('org').replaceChildren(...entries.map(o=>new Option(o.name,o.slug)));$('org').disabled=false;if(!org){$('org').value='';$('message').textContent='Neznámá organizace. Vyberte organizaci z nabídky.';return;}$('org').value=org.slug;await access();}catch(e){$('message').textContent=e.message;}}
+initializeOrganizations();
