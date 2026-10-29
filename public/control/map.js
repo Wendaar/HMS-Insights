@@ -3,7 +3,7 @@ import {publicOutputUrl} from '../public-output.js';
 export const validId = value => /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(value??'');
 const stage=(id,label,app,kind='open',extra={})=>({id,label,app,kind,...extra});
 export const branches=[
-  {id:'website',name:'League & Tournament Navigation',color:'blue',nodes:[stage('portal-definition','Portál · nastavení','public-portal','manage'),stage('portal-preview','Portál · náhled a publikace','public-portal'),stage('portal-public','Veřejný portál','public-portal','public')]},
+  {id:'website',name:'Site Builder · web ligy / turnaje',color:'blue',nodes:[stage('portal-definition','Site Builder · nastavení','public-portal','manage'),stage('portal-preview','Náhled a publikace','public-portal'),stage('portal-public','League Page · veřejný web','public-portal','public')]},
   {id:'operations',name:'Operations · provoz a uzávěrky',color:'cyan',nodes:[stage('operations','HMS Operations','operations')]},
   {id:'games',name:'Zápasy & reporty',color:'blue',nodes:[stage('games-view','Games View','games-view'),stage('game-report','Game Report','game-center')]},
   {id:'broadcast',name:'OBS Broadcast',color:'violet',nodes:[stage('obs-definition','Broadcast Definition','broadcast','manage',{note:'Nastavení je součástí Broadcast Studia.'}),stage('obs-studio','Broadcast Studio','broadcast'),stage('obs-output','OBS Output','broadcast','output')]},
