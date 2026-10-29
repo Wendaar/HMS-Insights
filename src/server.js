@@ -72,7 +72,7 @@ export const server = createServer(async (request, response) => {
   const url = new URL(request.url, `http://${request.headers.host ?? "localhost"}`);
   if(url.pathname==='/api/registrations'||url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='registrations'){
     request.query=Object.fromEntries(url.searchParams);
-    if(request.method==='POST'){let size=0;for await(const chunk of request){size+=chunk.length;if(size>2048){response.writeHead(413);response.end();return;}}}
+    if(request.method==='POST'){let size=0,body='';for await(const chunk of request){size+=chunk.length;if(size>4000000){response.writeHead(413);response.end();return;}body+=chunk;}request.body=body;}
     await registrationsHandler(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json; charset=utf-8');response.end(JSON.stringify(body));}});return;
   }
   const registrationAsset=/^\/registrations\/(app.js|app.css|index.html)$/.exec(url.pathname);

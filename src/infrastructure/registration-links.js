@@ -16,10 +16,12 @@ export const validTeamToken = token => typeof token === 'string' && /^[A-Za-z0-9
 const columns = 'team_id, revision, created_at, expires_at, revoked_at';
 const params = s => [s.organizationId, s.competitionId, s.seasonId];
 export function registrationLinkStore({env = process.env, sql} = {}) {
+  const production=env.VERCEL_ENV==='production';
   let ready;
   const query = async (text, values = []) => {
     if (!sql && !env.DATABASE_URL) throw Error('Registration storage unavailable');
-    return (sql ?? neon(env.DATABASE_URL)).query(text, values);
+    const isolated=production?text:text.replaceAll('hms_registration_links','hms_registration_links_preview').replaceAll('hms_registration_rate','hms_registration_rate_preview');
+    return (sql ?? neon(env.DATABASE_URL)).query(isolated, values);
   };
   const init = async () => {
     if (!ready) ready = (async () => { for (const statement of registrationSchema.split(';').filter(s => s.trim())) await query(statement); })().catch(error => {ready = null; throw error;});
