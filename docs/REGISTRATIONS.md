@@ -116,6 +116,11 @@ CAS SQL, scoped portraits and original auth/CSRF/IDOR/link lifecycle behavior.
 The provided file was validated read-only against the 61-team public directory.
 Browser QA uses fictional data and exercised login, upload, preview, manual
 assignment, replacement and the resulting unknown-payment view.
+All 402 tests pass. A preview-build smoke test additionally verified the actual
+61-team directory, private snapshot/link table access, authorized import preview
+(HTTP 200, one synthetic row assigned) and the scoped portrait SQL. It did not
+publish a snapshot or create any team links. The temporary build check is removed
+from the delivered source.
 
 Earlier live API check: existing HMS integration token returned HTTP 200 from
 public-api.prod.hms.wootera.net/api/v1/organization but HTTP 403 from the exact
