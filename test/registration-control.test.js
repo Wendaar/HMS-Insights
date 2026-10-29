@@ -143,6 +143,7 @@ test('map contains internal management only; Vercel dispatch uses existing funct
   assert.ok(vercel.rewrites.some(r=>r.source==='/api/registrations'&&r.destination==='/api/game-summary?view=registrations'));
   const dispatch=await readFile(new URL('../api/game-summary.js',import.meta.url),'utf8');assert.match(dispatch,/view==='registrations'\?registrations/);
   assert.ok(vercel.headers.some(r=>r.source==='/control/apps/registrations'&&r.headers.some(h=>h.key==='Content-Security-Policy'&&h.value.includes("frame-ancestors 'none'"))));
+  assert.ok(vercel.headers.findIndex(r=>r.source==='/control/apps/registrations')>vercel.headers.findIndex(r=>r.source==='/control/:path*'),'registration privacy headers must override generic control headers');
 });
 
 test('real local HTTP routes serve private shells and refuse anonymous data and parameter override',async()=>{
