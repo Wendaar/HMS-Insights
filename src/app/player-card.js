@@ -1,3 +1,4 @@
+import {pointRanks} from '../domain/player-rankings.js';
 import { isGameId } from '../domain/game-summary.js';
 import { loadGameSnapshot,loadPlayerSeasonRecords } from '../infrastructure/postgres-repository.js';
 const cache=new Map();
@@ -19,12 +20,8 @@ export function playerCard(rows,playerId,scope,{role='skater',source='hms',asOf=
   const players=[...grouped.values()];
   if(role==='skater')for(const player of players)if(player.stats.G!=null&&player.stats.A!=null)player.stats.P=player.stats.G+player.stats.A;
   players.sort((a,b)=>(b.stats.P??-1)-(a.stats.P??-1)||(b.stats.G??-1)-(a.stats.G??-1));
-  let rank=0,last=null;
-  for(let i=0;i<players.length;i++){
-    const player=players[i],key=`${player.stats.P}:${player.stats.G}`;
-    if(key!==last)rank=i+1;
-    player.rank=role==='skater'&&player.stats.P!=null?rank:null;last=key;
-  }
+  const ranks=pointRanks(players.map(p=>({id:p.id,points:p.stats.P,goals:p.stats.G})));
+  for(const player of players)player.rank=role==='skater'?ranks.get(player.id)??null:null;
   const player=players.find(p=>same(p.id,playerId));
   if(!player)return null;
   if(role==='goalie'){
