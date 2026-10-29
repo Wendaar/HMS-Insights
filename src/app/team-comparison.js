@@ -1,3 +1,4 @@
+import {assignComparisonBadges} from '../domain/player-rankings.js';
 import {formIndex,teamSpecialTeams,teamRosterTrend,assignTeamRatings} from '../domain/team-performance.js';
 import {neon} from '@neondatabase/serverless';
 import {organizationConfig} from './organizations.js';
@@ -104,7 +105,8 @@ export function compareTeams(tables,games,scope,{minStarts=null}={}){
     for(const t of eligible)t.metrics[metric]={rank:1+eligible.filter(o=>dir*(o[metric]-t[metric])<0).length,total:eligible.length};
   }
   assignTeamRatings(teams);
-  return {teams,playersAvailable:tables.players!==null,goaliesAvailable:tables.goalies!==null,minStarts,rules:'official-phase-v1'};
+  const rankings=assignComparisonBadges(teams,scope,{playersAvailable:tables.players!==null,goaliesAvailable:tables.goalies!==null});
+  return {teams,rankings,playersAvailable:tables.players!==null,goaliesAvailable:tables.goalies!==null,minStarts,rules:'official-phase-v1'};
 }
 const cache=new Map(),pending=new Map();
 export async function readTeamComparison(org,input,options={}){

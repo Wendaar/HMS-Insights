@@ -4,14 +4,16 @@ Management / graphic output: `/studio/phm?lang=cs&section=team-compare`.
 Team Compare is an integral third Studio source beside Games and Insights, mounting
 the same reusable editor module in a scoped component (not another iframe/app).
 The old `/control/apps/team-comparison?org=phm&lang=cs` definition URL also works.
-The public page hides organization/scope controls, all export/share/embed controls
-and the Control link; its two team selectors remain interactive. Embed also hides
-the page header.
+The public page keeps the organization fixed in its route and exposes competition/season,
+division, phase and both team selectors. Export/share/embed controls and the Control
+link remain hidden. Embed also hides the page header but retains all public selectors.
 
 Public interactive view: `/team-comparison/phm?lang=cs` (also `euchl`).
-The Share button produces a production-domain link retaining the season, division,
-phase, two teams, language, optional starts threshold and graphic settings. Embed
-adds `embed=1`. No organization code is needed: this is read-only public sporting
+Open public page and Copy public link use the stable production-domain organization
+entry, with language only: `/team-comparison/phm?lang=cs`. Administrators do not
+prepare pairs or generate a link for every game. Visitors select their own scope
+and teams. Optional deep links and reload retain the selected scope/teams in the
+address bar; existing selection URLs remain supported. Embed adds `embed=1`. No organization code is needed: this is read-only public sporting
 data and this app cannot save, publish or change HMS records.
 
 The original reference is https://www.phmcup.cz/porovnani-tymu/ . Its inline app
@@ -102,8 +104,32 @@ opponent marks use verified club logos; hover, click or keyboard activation
 reveals date, venue, score and lineup count. Missing venue/logo stays explicit or
 uses a neutral fallback. Meetings also display both verified team logos.
 
-In the editor, the production public link updates automatically for the selected
-configuration. **Open public page** opens that clean output directly; **Copy public
+In the editor, the production public link is the stable organization entry. **Open public page** opens that clean output directly; **Copy public
 link** copies it, and the embed code uses the same configuration. Public links do
 not depend on a successful PNG/font/image render. These controls remain absent
 from the rendered public page and embed.
+
+## Public selection, aligned sections and badges (2026-10-29)
+
+The deferred feedback from 2026-10-28 is implemented:
+
+- `/team-comparison/phm` and `/team-comparison/euchl` work without season/team IDs.
+  Public visitors choose named seasons, divisions, phases and two teams. The
+  verified shared catalogue still contains imported HMS seasons and phases;
+  unconnected organizations never fall back to PHM. Parent-scope changes clear
+  dependent choices, controls wait for current requests, and stale responses
+  cannot replace a newer selection. Old deep links still work.
+- Both cards share seven desktop rows using CSS subgrid: overview, offense,
+  defense, goalies, PP/PK, roster and rating. Different list lengths cannot offset
+  PP/PK or subsequent section starts. Mobile cards flow naturally in one column.
+- Game Report and comparison now share `pointRanks` (points, then goals; tied
+  values share rank and subsequent places are skipped). Comparison point badges
+  aggregate the player's team stints inside the selected division/phase. Missing
+  offensive values suppress that table's badges. Top ten points and nonzero
+  scoring/goal/assist leaders are shown for players with at least one start.
+- Goalie top-five GAA and save-percentage badges rank the HMS player/team records
+  with at least one start and a known metric. GAA sorts ascending, save percentage
+  descending; ties share rank. GAA is not pooled across transfers without ice
+  time. Badge details identify the season/division/phase, the record population,
+  and qualification. These are calculated sporting badges, not official awards
+  or cross-division/cross-season rankings.
