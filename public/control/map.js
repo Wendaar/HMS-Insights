@@ -14,7 +14,7 @@ export const branches=[
   {id:'sponsors',name:'Sponsors · napříč nástroji',color:'amber',nodes:[stage('sponsor-definition','Sponzoři z HMS','sponsors-catalog','open',{note:'Čtecí katalog z nové vrstvy HMS API. Evidence se spravuje v HMS; sjednocení všech nástrojů je další krok.'}),stage('sponsor-broadcast','Partneři v Broadcastu',null,'open',{note:'Rozšíření sponzorů je v samostatném rozpracovaném náhledu.'}),stage('sponsor-output','Broadcast / Social / Web',null)]},
   {id:'players',name:'Hráči & porovnání',color:'cyan',nodes:[stage('player-cards','Player Cards','player-cards'),stage('team-comparison','Team Comparison','team-comparison'),stage('playoff-players','Playoff Players','playoff-players')]},
   {id:'competition',name:'Soutěže & fanoušci',color:'violet',nodes:[stage('betting','Betting · Sázkovka','betting'),stage('playoff-bracket','Playoff pavouk','playoff-bracket'),stage('calendar','Kalendář','calendar')]},
-  {id:'data',name:'Data & infrastruktura',color:'blue',nodes:[stage('api','HMS API','connections','github'),stage('engine','Data Engine','data-engine','github'),stage('database','Databáze','database','github')]},
+  {id:'data',name:'Data & infrastruktura',color:'blue',nodes:[stage('registrations','Registrace 2026/27','registrations'),stage('api','HMS API','connections','github'),stage('engine','Data Engine','data-engine','github'),stage('database','Databáze','database','github')]},
   {id:'development',name:'Vývoj & provoz',color:'slate',nodes:[stage('code','Code · GitHub','repository'),stage('deploy','Deploy','deploy'),stage('security','Security','security','github')]},
 ];
 branches.unshift(branches.splice(branches.findIndex(b=>b.id==='sponsors'),1)[0]);

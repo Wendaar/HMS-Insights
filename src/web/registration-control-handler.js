@@ -1,0 +1,91 @@
+import {createHmac} from 'node:crypto';
+import {REGISTRATION_SCOPE, readRegistrationTeams, RegistrationSourceError, uuid} from '../app/registration-control.js';
+import {registrationLinkStore, validTeamToken} from '../infrastructure/registration-links.js';
+import {hasBearerSecret} from '../security/bearer-secret.js';
+import {hasOperationsSession, sessionCookie, clearSessionCookie} from '../security/operations-session.js';
+
+const adminOrg = {code: 'PHM_REGISTRATIONS'};
+const teamCookie = 'hms_registration_team';
+const readCookie = req => (req.headers?.cookie ?? '').split(';').map(s => s.trim()).find(s => s.startsWith(teamCookie + '='))?.slice(teamCookie.length + 1);
+const teamCookieValue = (token, seconds) => `${teamCookie}=${token}; Path=/api; Secure; HttpOnly; SameSite=Strict; Max-Age=${seconds}`;
+const adminSecret = env => env.HMS_PHM_REGISTRATIONS_ADMIN_SECRET || env.HMS_PHM_TOOLS_ADMIN_SECRET || env.HMS_PHM_OPERATIONS_SECRET || env.HMS_PHM_WEBHOOK_SECRET || env.HMS_WEBHOOK_SECRET;
+const safeLink = row => ({teamId:row.team_id, revision:row.revision, createdAt:row.created_at, expiresAt:row.expires_at, revoked:!!row.revoked_at});
+
+export function createRegistrationControlHandler(options = {}) {
+  const env = options.env ?? process.env, store = options.store ?? registrationLinkStore({env});
+  const scope = REGISTRATION_SCOPE, read = options.read ?? readRegistrationTeams;
+  return async (req, res) => {
+    for (const [k,v] of Object.entries({'cache-control':'private, no-store',vary:'Authorization, Cookie','referrer-policy':'no-referrer',
+      'x-content-type-options':'nosniff','x-robots-tag':'noindex, nofollow, noarchive'})) res.setHeader(k,v);
+    const fail = (status, error, code) => res.status(status).json({error, code});
+    const action = req.query?.action ?? 'team', secret = adminSecret(env);
+    const post = ['login','logout','exchange','rotate','revoke','team-logout'].includes(action);
+    if (!['access','login','logout','catalog','admin-team','rotate','revoke','exchange','team','team-logout'].includes(action)) return fail(400,'Neznámá operace.','action');
+    if (req.method !== (post ? 'POST' : 'GET')) {res.setHeader('allow', post ? 'POST' : 'GET'); return fail(405,'Nepovolená metoda.','method');}
+    // Fixed organization/competition/season; clients cannot choose authorization scope.
+    if (['org','seasonId','competitionId','organizationId','token'].some(k => req.query?.[k] !== undefined) ||
+      ['team','exchange'].includes(action) && req.query?.teamId !== undefined) return fail(400,'Rozsah odkazu nelze změnit.','scope');
+    if (post) {
+      // Browser mutations require an exact same-origin request, including login/logout.
+      try { const origin = new URL(req.headers?.origin); if (origin.host !== req.headers?.host || !['https:','http:'].includes(origin.protocol)) throw Error(); }
+      catch { return fail(403,'Požadavek musí pocházet z této aplikace.','origin'); }
+    }
+    if (req.body && Buffer.byteLength(typeof req.body === 'string' ? req.body : JSON.stringify(req.body)) > 2048) return fail(413,'Příliš velký požadavek.','body');
+    if (action === 'access') return res.status(200).json({configured:!!secret && !!env.DATABASE_URL,
+      authorized:hasOperationsSession(req,adminOrg,secret), sourceVerified:env.HMS_PHM_REGISTRATIONS_VERIFIED === 'true', label:scope.label});
+    if (action === 'logout') {res.setHeader('set-cookie',clearSessionCookie(adminOrg)); return res.status(200).json({authorized:false});}
+    if (action === 'team-logout') {res.setHeader('set-cookie',teamCookieValue('',0)); return res.status(200).json({authorized:false});}
+    if (!secret) return fail(503,'Správa registrací čeká na serverové nastavení přístupu.','configuration');
+    try {
+      if (['login','exchange','team'].includes(action)) {
+        // Vercel supplies x-real-ip; never trust a client-controlled forwarding chain.
+        const ip = env.VERCEL ? req.headers?.['x-real-ip'] ?? 'unknown' : req.socket?.remoteAddress ?? 'local';
+        const bucket = createHmac('sha256',secret).update(`${action}:${String(ip).slice(0,128)}:${Math.floor(Date.now()/600000)}`).digest('hex');
+        if (!await store.rate(bucket, action === 'team' ? 120 : 15)) {res.setHeader('retry-after','600'); return fail(429,'Příliš mnoho pokusů. Zkuste to za 10 minut.','rate_limit');}
+      }
+      const bearer = hasBearerSecret({headers:{authorization:req.headers?.authorization}},secret);
+      if (action === 'login') {
+        if (!bearer) return fail(401,'Zadejte platný interní přístupový kód.','access');
+        res.setHeader('set-cookie',sessionCookie(adminOrg,secret)); return res.status(200).json({authorized:true});
+      }
+      if (['team','exchange'].includes(action)) {
+        const authorization = req.headers?.authorization;
+        const token = typeof authorization === 'string' && authorization.startsWith('Bearer ') ? authorization.slice(7) : readCookie(req);
+        const link = validTeamToken(token) ? await store.resolve(token,scope) : null;
+        if (!link) return fail(404,'Odkaz není platný, byl zrušen nebo vypršel. Vyžádejte si nový od správce PHM.','link_unavailable');
+        if (action === 'exchange') {res.setHeader('set-cookie',teamCookieValue(token,8*60*60)); return res.status(200).json({authorized:true});}
+        const teams = await read({env});
+        const team = teams.find(t => t.teamId === link.team_id.toLowerCase());
+        if (!team) return fail(503,'Tým není v úplném zdroji této sezony. Kontaktujte správce PHM.','team_unavailable');
+        return res.status(200).json({label:scope.label,team,readAt:new Date().toISOString()});
+      }
+      if (!bearer && !hasOperationsSession(req,adminOrg,secret)) return fail(401,'Přihlaste se interním přístupovým kódem.','access');
+      if (action === 'catalog') {
+        const links = await store.list(scope);
+        try {
+          const teams = await read({env});
+          return res.status(200).json({label:scope.label,sourceReady:true,teams:teams.map(t => ({teamId:t.teamId,name:t.name,players:t.players.length})),links:links.map(safeLink)});
+        } catch {
+          // Revocation must remain usable during an HMS outage.
+          return res.status(200).json({label:scope.label,sourceReady:false,
+            sourceError:'Ověřený zdroj registrací není dostupný. Lze rušit stávající odkazy; hráčská data ani nové odkazy nejsou dostupné.',
+            teams:links.map(l=>({teamId:l.team_id,name:l.team_id,players:null})),links:links.map(safeLink)});
+        }
+      }
+      const teamId = req.query?.teamId;
+      if (!uuid(teamId)) return fail(400,'Vyberte platný tým.','team');
+      if (action === 'revoke') {await store.revoke(scope,teamId.toLowerCase()); return res.status(200).json({revoked:true});}
+      const teams = await read({env}), team = teams.find(t => t.teamId === teamId.toLowerCase());
+      if (!team) return fail(404,'Tým není v této soutěži a sezoně.','team');
+      if (action === 'admin-team') return res.status(200).json({label:scope.label,team,readAt:new Date().toISOString()});
+      if (Date.now() >= Date.parse('2027-09-01T00:00:00Z')) return fail(409,'Sezona je uzavřená.','season_closed');
+      const result = await store.rotate(scope,team.teamId);
+      return res.status(201).json({path:'/registrations/team#'+result.token,link:safeLink(result.link)});
+    } catch (error) {
+      if (error instanceof RegistrationSourceError && error.code === 'source_not_verified') return fail(503,
+        'Registrace zatím nejsou připojené k ověřenému HMS API. Nejde o informaci o dluhu hráčů.','source_not_verified');
+      // Never log upstream payloads, SQL, cookies, URLs, player data or credentials.
+      return fail(503,'Registrace nelze bezpečně načíst. Ověřte datové připojení a databázi. Údaje o úhradách nejsou ověřené.','source_unavailable');
+    }
+  };
+}

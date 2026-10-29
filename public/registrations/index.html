@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow,noarchive"><meta name="referrer" content="no-referrer">
+  <title>Registrace 2026/27 · PHM Cup</title>
+  <link rel="icon" href="/hms-favicon-control-v2.svg"><link rel="stylesheet" href="/registrations/app.css">
+  <script src="/registrations/app.js" type="module"></script>
+</head>
+<body>
+  <header><a id="map" href="/control" hidden>← Mapa aplikací</a><span class="brand">PHM CUP <span>TEAM CONTROL</span></span><button id="lock" hidden>Zamknout</button></header>
+  <main>
+    <p class="eyebrow">REGISTRACE HRÁČŮ / 2026–2027</p>
+    <h1 id="title">Přehled registrací</h1>
+    <p id="subtitle">Pozvánky, souhlasy a úhrady na jednom místě.</p>
+    <p id="message" role="status" aria-live="polite"></p>
+    <form id="login" hidden><label for="code">Interní přístupový kód</label><div class="inline"><input id="code" type="password" autocomplete="current-password" required maxlength="256"><button>Odemknout správu</button></div></form>
+    <section id="admin" hidden aria-label="Správa týmových odkazů">
+      <label for="team">Tým</label><select id="team"><option value="">Vyberte tým</option></select>
+      <div id="link-controls" hidden>
+        <p id="link-status"></p>
+        <div class="inline"><button id="create-link">Vytvořit / nahradit odkaz</button><button id="revoke-link" class="danger">Zrušit odkaz</button></div>
+        <p class="muted">Nahrazení okamžitě zruší předchozí odkaz i jeho otevřené relace. Nový odkaz se zobrazí pouze jednou.</p>
+        <div id="new-link" hidden><label for="share-link">Odkaz pro vedoucího vybraného týmu</label><div class="inline"><input id="share-link" readonly><button id="copy-link">Kopírovat</button></div></div>
+      </div>
+    </section>
+    <section id="overview" hidden aria-label="Registrace vybraného týmu">
+      <div id="totals" class="totals"></div>
+      <div class="filters"><label>Hledat hráče<input id="search" type="search" placeholder="Jméno nebo e-mail" autocomplete="off"></label><label>Zobrazit<select id="filter"><option value="all">Všechny hráče</option><option value="attention">Vyžaduje kontrolu</option><option value="unpaid">Neuhrazeno</option><option value="not-accepted">Nepřijaté podmínky</option><option value="unknown">Chybějící údaje</option></select></label><button id="refresh">Obnovit z HMS</button></div>
+      <p id="updated" class="muted"></p><div id="players"></div><p id="empty" hidden>Tomuto výběru neodpovídají žádní hráči.</p>
+    </section>
+    <footer>Soukromý přehled pro vedoucí týmu. Odkaz umožňuje číst jména, fotografie, e-maily a stav registrace celého týmu. Sdílejte jej jen s oprávněným vedoucím. Při přeposlání nebo úniku požádejte PHM o zrušení a nový odkaz. Údaje opravujte v HMS. CASH znamená „platí manažer“; samo o sobě nepotvrzuje úhradu.</footer>
+  </main>
+</body>
+</html>
