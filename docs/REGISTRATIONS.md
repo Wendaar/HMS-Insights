@@ -8,19 +8,41 @@ handled by `/api/registrations`, dispatched through the existing Vercel function
 ## Current integration status — 29 October 2026
 
 The UI, authorization, link lifecycle, normalization and tests are implemented.
-**Live season player registrations API has NOT been verified.** Do not describe
-this feature as production-ready or enable the verification flag until the
-upstream contract has been checked against authorized real data.
+**The existing integration token cannot access the administrative registration
+endpoint (HTTP 403).** Do not describe this feature as production-ready or enable
+the verification flag until an authorized registration reader is available.
 
 The existing integration is `https://public-api.prod.hms.wootera.net/api/v1` and
 uses an organization-scoped server token. The administrative page
 `https://prod.hms.wootera.net/org/phm/seasonplayerregistrations` does not establish
-that the public API token can read registrations. Access to hosting configuration
-returned HTTP 403 before any authenticated HMS request was made. Browser
-inspection was unavailable because the computer-use provider could not determine
-the active browser URL safely. Attempts to read public Swagger documents with the
-web tool did not return accessible content. There is no verified endpoint name,
-field mapping, pagination behavior or current-season invitation coverage yet.
+that the public API token can read registrations. The initial hosting HTTP 403
+was caused by an expired Vercel OAuth login; its normal refresh succeeded.
+The HMS token is a Vercel sensitive environment variable and cannot be retrieved
+through the configuration API. It was tested inside an isolated preview build,
+without extracting it or logging any raw payload, credentials or contacts.
+
+Verified server-side results on 29 October 2026:
+
+- Existing token -> `GET https://public-api.prod.hms.wootera.net/api/v1/organization`:
+  **HTTP 200**, organization metadata returned. The token itself is working.
+- The same token -> `GET https://api.prod.hms.wootera.net/admin/entities` with
+  `entity=SeasonPlayerRegistration` and the exact organization/relations/attribute
+  selection supplied from the HMS browser request: **HTTP 403**.
+- The same administrative request without a token: **HTTP 403**.
+
+User-supplied browser evidence confirms the signed-in administrative endpoint
+returns `Player.email` when explicitly requested, plus `isAccepted`, `isPaid`,
+`isConfirmed`, `paymentMethod`, Player/Teams and Season/Competition. No real
+contacts from screenshots are copied into this repository. This does not grant
+the integration token the administrator's browser permissions. Do not copy HMS
+browser cookies or personal login credentials into the service. The next upstream
+requirement is an organization-scoped read permission for registrations, or an
+equivalent official integration endpoint that exposes the required fields.
+
+The administrative response also includes older seasons and other competitions;
+organizationId alone is not the required PHM Cup/2026–27 filter. Pagination,
+current team membership status and exact season invitation coverage remain
+unverified. `createdAt` is not yet verified as a season invitation timestamp.
 
 The implementation deliberately has no guessed live endpoint and no synthetic
 production data. Without a verified reader it displays an explicit unavailable
