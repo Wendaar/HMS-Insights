@@ -1,6 +1,7 @@
 import {isGameId} from '../domain/game-summary.js';
+import {defaultOrganizations} from '../../public/organization-catalog.js';
 
-const defaults=[{code:'PHM',slug:'phm',name:'PHM'},{code:'EUCHL',slug:'euchl',name:'EUCHL'},{code:'YHG',slug:'yhg',name:'YHG'},{code:'BNHLH',slug:'bnhlh',name:'BNHLH'}];
+const defaults=defaultOrganizations;
 export const PHM_ORGANIZATION_ID='BB669217-41EB-4162-8040-A73F49A43570';
 // Server-owned registry: public labels only. Tokens and UUIDs are separate env vars.
 // Unknown paths/codes never fall back to PHM or become environment variable names.

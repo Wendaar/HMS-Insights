@@ -1,12 +1,14 @@
+import {organizationRegistry} from '../app/organizations.js';
 import {publicImageUrl} from '../../public/sponsors/model.js';
 import {isGameId} from './game-summary.js';
 export const LIBRARY_BYTES=1800000;
 const text=(v,n)=>typeof v==='string'?v.trim().slice(0,n):'';
-export function broadcastLibrary(value){
+export function broadcastLibrary(value,env=process.env){
+  const allowed=new Set(organizationRegistry(env).map(o=>o.code));
   if(!Array.isArray(value)||value.length>128||value.filter(item=>item?.kind!=='hms-sponsor').length>16||Buffer.byteLength(JSON.stringify(value))>LIBRARY_BYTES)throw new TypeError('Library size');
   const ids=new Set();
   return value.map(item=>{
-    if(!isGameId(item?.id)||ids.has(item.id.toLowerCase())||!['cta','sponsor','hms-sponsor'].includes(item.kind)||!['PHM','EUCHL'].includes(item.org)
+    if(!isGameId(item?.id)||ids.has(item.id.toLowerCase())||!['cta','sponsor','hms-sponsor'].includes(item.kind)||!allowed.has(item.org)
       ||!['organization','team','game'].includes(item.scope)||item.scope!=='organization'&&!isGameId(item.targetId)||typeof item.enabled!=='boolean')throw new TypeError('Library item');
     ids.add(item.id.toLowerCase());
     const timing={};for(const [key,max,min] of [['showSeconds',300,1],['pauseSeconds',3600,0]])if(item[key]!==undefined){if(!Number.isInteger(item[key])||item[key]<min||item[key]>max)throw new TypeError('Sponsor timing');timing[key]=item[key];}

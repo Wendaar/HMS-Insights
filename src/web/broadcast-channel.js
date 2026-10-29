@@ -1,13 +1,13 @@
 import {normalizeRotation} from '../../public/sponsors/rotation.js';
 import {randomBytes,createHash} from 'node:crypto';
 import {neon} from '@neondatabase/serverless';
-import {organizationConfig} from '../app/organizations.js';
+import {organizationConfig,organizationEntry} from '../app/organizations.js';
 import {isGameId} from '../domain/game-summary.js';
 import {broadcastLibrary,LIBRARY_BYTES} from '../domain/broadcast-library.js';
 export const channelId=v=>typeof v==='string'&&/^[a-f0-9]{48}$/.test(v);
 const digest=v=>createHash('sha256').update(v).digest('hex');
 export function channelState(value,env){
-  if(!value||!['PHM','EUCHL'].includes(value.org)||!isGameId(value.gameId)||!organizationConfig(value.org,env).token
+  if(!value||value.org!==organizationEntry(value.org,env).code||!isGameId(value.gameId)||!organizationConfig(value.org,env).token
     ||!['cs','en'].includes(value.lang)||!['opening','periods','lineup','scoresheet','insights','cta','sponsors','announcement','powerplay','leaders','leaders-strip','standings','next','results'].includes(value.layer)
     ||!['home','away','both'].includes(value.side)||!['current','1','2','3'].includes(value.period)
     ||!Number.isInteger(value.page)||value.page<1||value.page>50||typeof value.visible!=='boolean'
@@ -60,7 +60,7 @@ export function createChannelHandler(options={}){
         if(req.method!=='PATCH'||!channelId(id)||!Number.isSafeInteger(body?.revision)||body.revision<0)throw new TypeError();
         if(Buffer.byteLength(JSON.stringify(body))>LIBRARY_BYTES+100)return res.status(413).json({error:'Knihovna je příliš velká. Maximum je 1,8 MB a 16 položek.'});
         const token=/^Bearer ([a-f0-9]{64})$/.exec(req.headers?.authorization??'')?.[1];if(!token)return res.status(403).json({error:'Chybí oprávnění ovládat kanál.'});
-        const items=broadcastLibrary(body.items),saved=await store.saveLibrary(id,digest(token),body.revision,items);
+        const items=broadcastLibrary(body.items,env),saved=await store.saveLibrary(id,digest(token),body.revision,items);
         return saved?res.status(200).json(saved):res.status(409).json({error:'Knihovna nebyla uložena. Obnovte ovládání a zkuste to znovu.'});
       }
       if(JSON.stringify(body??{}).length>4096)throw new TypeError();

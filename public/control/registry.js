@@ -1,5 +1,6 @@
 // Public navigation metadata only. Never put credentials or private source exports here.
 import {publicOutputUrl} from '../public-output.js';
+import {defaultOrganizations,normalizeOrganizationCatalog} from '../organization-catalog.js';
 export const repository = 'https://github.com/Wendaar/HMS-Insights';
 const code = path => `${repository}/blob/main/${path}`;
 export const categories = [
@@ -14,12 +15,11 @@ export const statuses = {
   available:'Dostupné', partial:'Částečně', missing:'Nenastaveno', prepared:'Připraveno',
 };
 export const linkLabels = {open:'Open', public:'Public', manage:'Manage', source:'Source', github:'GitHub'};
-export const organizations = [
-  {id:'phm', name:'PHM', ready:true, description:'Ověřené cesty v HMS Insights a známé externí aplikace.'},
-  {id:'euchl', name:'EUCHL', ready:true, description:'HMS Studio a předzápasová grafika pro OBS napojená na HMS API.'},
-  {id:'yhg', name:'YHG', ready:false, description:'Připraveno k doplnění vlastních aplikací a datových zdrojů.'},
-  {id:'fllh', name:'FLLH', ready:false, description:'Připraveno k doplnění vlastních aplikací a datových zdrojů.'},
-];
+export const organizations=defaultOrganizations.map(org=>({...org,id:org.slug,ready:['PHM','EUCHL'].includes(org.code)}));
+export function setOrganizationCatalog(rows){
+ const catalog=normalizeOrganizationCatalog(rows);
+ organizations.splice(0,organizations.length,...catalog.map(org=>({...org,id:org.slug,ready:org.configured})));
+}
 // Verified against the current repository routes / files. A route is not a live health check.
 // Null links are intentional: do not infer an app URL or reuse PHM for another organization.
 const missing = (id, category, name, description) => ({id,category,name,description,
@@ -54,7 +54,7 @@ const applications = [
   {id:'documentation',category:'development',name:'Dokumentace',description:'Zapojení Studia, Game Center a organizačních zdrojů.',status:'available',dataSource:'Dokumentace v repozitáři',links:{open:code('docs/MEDIA-STUDIO.md'),github:`${repository}/tree/main/docs`}},
 ];
 applications.push(
-  {id:'sponsors-catalog',category:'data',name:'Sponzoři z HMS · náhled API',description:'Čtecí katalog sponzorů a jejich vazeb z nové HMS API vrstvy. Otevírá samostatný existující náhled.',status:'partial',dataSource:'HMS API · sponzoři a vazby',note:'Beta v samostatném náhledu. Sjednocení Media Studia a dalších nástrojů nad touto vrstvou je plánované.',links:{open:'https://hms-insights-git-codex-broadcast-expansion-preview-wendaar.vercel.app/broadcast/sponsors.html?org=PHM'}},
+  {id:'sponsors-catalog',category:'data',name:'Sponzoři z HMS · náhled API',description:'Čtecí katalog sponzorů a jejich vazeb z HMS API.',status:'partial',dataSource:'HMS API · sponzoři a vazby',note:'Čtecí katalog vlastní organizace. Dostupnost polí a vazeb závisí na HMS API.',links:{open:'/broadcast/sponsors.html?org=PHM'}},
   {id:'games-view',category:'stats',name:'Games View',description:'Přehled zápasů vybrané ligy a sezony.',status:'available',dataSource:'HMS API · sezona podle názvu',links:{open:'/game-center',github:code('public/games/app.js')}},
   {id:'data-engine',category:'data',name:'Data Engine',description:'Společná datová vrstva HMS. Odkaz otevře kód.',status:'available',dataSource:'HMS → importy a snapshoty',links:{github:`${repository}/tree/main/src/app`}},
   {id:'database',category:'data',name:'DB · PostgreSQL',description:'Schéma databáze v kódu; přístup do konzole není nakonfigurovaný.',status:'partial',dataSource:'PostgreSQL',links:{github:`${repository}/tree/main/db`}},
@@ -62,25 +62,28 @@ applications.push(
   {id:'security',category:'development',name:'Security',description:'Organizační připojení, serverové tokeny a webhooky. Odkaz otevře dokumentaci.',status:'partial',dataSource:'Serverová konfigurace',links:{github:code('docs/STUDIO-ORGANIZATIONS.md')}}
 );
 export function organizationById(id) {
-  return organizations.find(org => org.id === String(id).toLowerCase()) ?? null;
+  return organizations.find(org => org.id === String(id).toLowerCase()||org.code===String(id).toUpperCase()) ?? null;
 }
 export function appsForOrganization(id) {
   const org = organizationById(id);
   if (!org) return [];
   if (org.id === 'phm') return applications.map(publicLinks);
-  if (org.id === 'euchl') return applications.map(app=>{
-    if(app.id==='public-portal')return {...app,links:{...app.links,open:'https://public.heromanagementsystem.com/control/apps/public-portal?org=euchl',manage:'https://public.heromanagementsystem.com/control/apps/public-portal?org=euchl',public:'https://public.heromanagementsystem.com/league/euchl'}};
-    if(app.id==='team-comparison')return {...app,links:{...app.links,open:'/studio/euchl?lang=cs&section=team-compare',manage:'/studio/euchl?lang=cs&section=team-compare',public:'/team-comparison/euchl'}};
-    if(app.id==='all-stars')return {...app,links:{...app.links,open:'/control/apps/all-stars?org=euchl',manage:'/control/apps/all-stars?org=euchl',public:'/all-stars/euchl',source:'/api/all-stars?action=catalog&org=euchl'}};
-    if(app.id==='operations')return {...app,links:{...app.links,open:'/operations?org=euchl',manage:'/operations?org=euchl'}};
+  if (org.ready) return applications.map(app=>{
+    const slug=org.slug,code=org.code;
     if(['games-view','game-center','data-engine','database','security'].includes(app.id))return app;
-    if(app.id==='sponsors-catalog')return {...app,links:{open:'https://hms-insights-git-codex-broadcast-expansion-preview-wendaar.vercel.app/broadcast/sponsors.html?org=EUCHL'}};
-    if(app.id==='broadcast')return {...app,links:{...app.links,open:'/broadcast/index.html?org=EUCHL',manage:'/broadcast/index.html?org=EUCHL',source:'/api/broadcast?org=EUCHL'}};
-    if(app.id==='studio')return {...app,links:{...app.links,open:'/studio/euchl?lang=cs',manage:'/studio/euchl?lang=cs'}};
-    if(app.id==='insights-public')return {...app,note:'Výběr EUCHL z importovaných zápasů.',links:{...app.links,open:'/priklepy/euchl',public:'/priklepy/euchl',source:'/api/selection?org=EUCHL'}};
-    if(app.id==='insights-archive')return {...app,links:{...app.links,open:'/archiv/euchl',public:'/archiv/euchl',source:'/api/feed?org=EUCHL'}};
+    let links;
+    if(app.id==='public-portal')links={...app.links,open:'https://public.heromanagementsystem.com/control/apps/public-portal?org='+slug,manage:'https://public.heromanagementsystem.com/control/apps/public-portal?org='+slug,public:'https://public.heromanagementsystem.com/league/'+slug};
+    if(app.id==='team-comparison')links={...app.links,open:'/studio/'+slug+'?lang=cs&section=team-compare',manage:'/studio/'+slug+'?lang=cs&section=team-compare',public:'/team-comparison/'+slug};
+    if(app.id==='all-stars')links={...app.links,open:'/control/apps/all-stars?org='+slug,manage:'/control/apps/all-stars?org='+slug,public:'/all-stars/'+slug,source:'/api/all-stars?action=catalog&org='+slug};
+    if(app.id==='operations')links={...app.links,open:'/operations?org='+slug,manage:'/operations?org='+slug};
+    if(app.id==='sponsors-catalog')links={open:'/broadcast/sponsors.html?org='+code};
+    if(app.id==='broadcast')links={...app.links,open:'/broadcast/index.html?org='+code,manage:'/broadcast/index.html?org='+code,source:'/api/broadcast?org='+code};
+    if(app.id==='studio')links={...app.links,open:'/studio/'+slug+'?lang=cs',manage:'/studio/'+slug+'?lang=cs'};
+    if(app.id==='insights-public')links={...app.links,open:'/priklepy/'+slug,public:'/priklepy/'+slug,source:'/api/selection?org='+code};
+    if(app.id==='insights-archive')links={...app.links,open:'/archiv/'+slug,public:'/archiv/'+slug,source:'/api/feed?org='+code};
+    if(links)return {...app,links,note:'Vlastní organizační kontext. Dostupnost dat a případné publikace závisí na nastavení organizace.'};
     if(app.category==='development')return app;
-    return {...app,status:'prepared',dataSource:'Nenastaveno',gamePath:undefined,links:{},note:'Pro EUCHL zatím není tento nástroj nastavený.'};
+    return {...app,status:'prepared',dataSource:'Nenastaveno',gamePath:undefined,links:{},note:'Pro '+org.name+' zatím není tento nástroj nastavený.'};
   }).map(publicLinks);
   return applications.map(app => ({id:app.id,category:app.category,name:app.id==='phm-tv'?`${org.name} TV`:app.name,
     description:app.description,status:'prepared',dataSource:'Nenastaveno',links:{},

@@ -1,5 +1,51 @@
 # Studio: další organizace a čeština/angličtina
 
+## FLLH, YHG a POLICE — společná nabídka organizací
+
+Ověřené organizační profily uživatele:
+
+- `https://prod.hms.wootera.net/org/fllh/games` → code `FLLH`, slug `fllh`.
+- `https://prod.hms.wootera.net/org/yhg/games` → code `YHG`, slug `yhg`.
+- `https://prod.hms.wootera.net/org/police/dashboard` → code `POLICE`, slug `police`.
+
+Nezaměňovat FLLH s dřívějším ilustračním kódem FLLLH ani s BNHLH. Původní
+BNHLH zůstává samostatná organizace. Názvy/slugy výše neobsahují organization UUID
+a samy o sobě nepřipojují skutečná data.
+
+Ve Vercelu v existujícím projektu, Settings → Environment Variables, nastavit
+pro Production (a samostatně požadovaný Preview) následující vlastní hodnoty:
+
+| Organizace | UUID organizace v HMS | Vlastní API token |
+| --- | --- | --- |
+| FLLH | `HMS_FLLH_ORGANIZATION_ID` | `HMS_FLLH_API_TOKEN` |
+| YHG | `HMS_YHG_ORGANIZATION_ID` | `HMS_YHG_API_TOKEN` |
+| POLICE | `HMS_POLICE_ORGANIZATION_ID` | `HMS_POLICE_API_TOKEN` |
+
+Potom provést nové nasazení. Ověřit identitu a známý zápas; přítomnost tokenu
+není test úspěšného spojení. Žádné klíče neposílat do chatu, veřejných URL ani GitHubu.
+Pro automatické Insights přidat vlastní `HMS_<ORG>_WEBHOOK_SECRET` a příslušnou
+webhook URL `/api/webhooks/hms/org/fllh`, `/yhg` nebo `/police`. Pro publikování
+All Stars / webu lze nastavit vlastní `HMS_<ORG>_TOOLS_ADMIN_SECRET`; stávající
+fallback na vlastní webhook secret zůstává. Operations potřebuje vlastní
+`HMS_<ORG>_OPERATIONS_SECRET` a tímto se automaticky neodemyká.
+
+Jeden zdroj veřejných popisů je `public/organization-catalog.js`, který používá
+i serverový registr `src/app/organizations.js`. Doplňující organizace a přejmenování
+se dál registrují přes `HMS_STUDIO_ORGANIZATIONS` bez přidávání tokenů do JSON.
+`/api/studio?catalog=1` vrací pouze code/slug/name/configured. Map, Media Studio,
+Broadcast, katalog sponzorů a Operations jej používají pro nabídku organizací;
+All Stars, Team Comparison a Site Builder mají discovery nad týmž serverovým registrem.
+Site Builder nabízí připojené organizace; veřejný web navíc vyžaduje publikaci.
+
+Nepřipojené organizace v mapě nemají aktivované nástroje. Po připojení dostanou
+vlastní generické cesty pro podporované aplikace, ne kopie PHM odkazů. Starší
+sheetové aplikace zůstávají pro nové organizace nepřipravené. OBS kanály a knihovna
+přijímají registrované organizace; kanál stále vyžaduje vlastní datové připojení.
+Žádné nové přihlašovací údaje, historie ani webhooky tato úprava sama nevytváří.
+
+Následující původní příklady Yellow/FLLLH jsou pouze ukázkou rozšíření registru,
+nikoli nastavením výše uvedených tří subjektů.
+
 Jedna aplikace, jeden GitHub repozitář a jeden projekt Vercel. Organizace se
 neklonují. Kód připravuje veřejný prototyp; připojení skutečných dalších organizací
 vyžaduje jejich serverové nastavení. Žádné nové produkční klíče nejsou součástí PR.

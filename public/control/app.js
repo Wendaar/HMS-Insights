@@ -1,7 +1,9 @@
-import {organizations,organizationById,appsForOrganization,categories,linkLabels,filterApps} from './registry.js';
+import {loadOrganizationCatalog} from '../organization-catalog.js';
+import {setOrganizationCatalog,organizations,organizationById,appsForOrganization,categories,linkLabels,filterApps} from './registry.js';
 import {mapForOrganization,nodeUrl,validId,readContext,writeContext} from './map.js';
 import {workChats,workChatFor,workChatHref} from './work-chats.js';
 const $=id=>document.getElementById(id),el=(tag,text,cls)=>{const n=document.createElement(tag);if(text)n.textContent=text;if(cls)n.className=cls;return n;};
+const currentOrgCode=()=>organizationById(orgId)?.code??'';
 let orgId='',context={},view='map',zoom=1,category='all',gamesRequest=0,availableGames=[],catalogRequest=0,gameLists=new Map(),catalogMessage='';
 const workBranches={broadcast:['broadcast','sponsors','gameshow'],social:['social','awards','sponsors','players'],games:['games','insights','players','competition','operations'],data:['data','development','operations']};
 function anchor(href,label,cls){const a=el('a',label,cls);a.href=href;a.target='_blank';a.rel='noopener noreferrer';return a;}
@@ -55,15 +57,15 @@ function populateContext(){
  fillLeagueMenu($('league'));$('league').value=context.league??'';
  fillGameMenu($('game'),context.league,context.gameId??'');$('work').value=context.work??'all';$('hub-org').textContent=org?.name??'Vyberte organizaci';
  $('organization-note').textContent=org?org.name+' · '+(context.league||'Sezona zatím nevybraná')+' · '+(context.gameId?gameLabel():'Bez zápasu')+' · '+(org.ready?'Vlastní organizační kontext':'Připojení nástrojů zatím není nastavené'):'Neznámá organizace. Vyberte jednu z nabídky.';
- $('settings').disabled=!org;$('load-games').disabled=!['phm','euchl'].includes(orgId);
+ $('settings').disabled=!org?.ready;$('load-games').disabled=!org?.ready;
 }
 async function loadSeasonGames(name){
  const league=usableLeagues().find(l=>l.name===name);if(!league||gameLists.has(league.seasonId))return;
  const selectedOrg=orgId,version=catalogRequest;
  try{
-  const res=await fetch('/api/studio?'+new URLSearchParams({catalog:'games',org:orgId.toUpperCase(),seasonId:league.seasonId}),{signal:AbortSignal.timeout(12000)});
+  const res=await fetch('/api/studio?'+new URLSearchParams({catalog:'games',org:currentOrgCode(),seasonId:league.seasonId}),{signal:AbortSignal.timeout(12000)});
   if(!res.ok)throw Error();const data=await res.json();if(selectedOrg!==orgId||version!==catalogRequest)return;
-  if(data.org!==orgId.toUpperCase()||data.seasonId!==league.seasonId||!Array.isArray(data.items))throw Error();
+  if(data.org!==currentOrgCode()||data.seasonId!==league.seasonId||!Array.isArray(data.items))throw Error();
   gameLists.set(league.seasonId,data.items.filter(g=>validId(g.gameId)&&g.seasonId.toLowerCase()===league.seasonId.toLowerCase()));
   if(context.league===name)fillGameMenu($('game'),name,context.gameId??'');
   if($('context-league').value===name)fillGameMenu($('context-game'),name,$('context-game').value);
@@ -71,11 +73,12 @@ async function loadSeasonGames(name){
 }
 async function loadLeagueCatalog(){
  const selectedOrg=orgId,version=++catalogRequest;if(!selectedOrg)return;
+ if(!organizationById(orgId)?.ready){catalogMessage='Organizace zatím není připojená k HMS API. Nastavte její vlastní připojení ve Vercelu.';$('catalog-note').textContent=catalogMessage;return;}
  catalogMessage='Načítám názvy soutěží a sezon z HMS…';$('catalog-note').textContent=catalogMessage;
  try{
-  const res=await fetch('/api/studio?'+new URLSearchParams({catalog:'leagues',org:orgId.toUpperCase()}),{signal:AbortSignal.timeout(12000)});
+  const res=await fetch('/api/studio?'+new URLSearchParams({catalog:'leagues',org:currentOrgCode()}),{signal:AbortSignal.timeout(12000)});
   if(!res.ok)throw Error();const data=await res.json();if(selectedOrg!==orgId||version!==catalogRequest)return;
-  if(data.org!==orgId.toUpperCase()||!Array.isArray(data.items))throw Error();
+  if(data.org!==currentOrgCode()||!Array.isArray(data.items))throw Error();
   const incoming=data.items.filter(l=>validId(l.seasonId)&&typeof l.name==='string');
   const merged=new Map(usableLeagues().map(l=>[l.seasonId,l]));for(const l of incoming)merged.set(l.seasonId,l);
   context.leagues=[...merged.values()];
@@ -89,7 +92,11 @@ async function loadLeagueCatalog(){
  }
 }
 function selectOrg(){gamesRequest++;catalogRequest++;availableGames=[];gameLists.clear();const requested=new URLSearchParams(location.search).get('org')??'phm';orgId=organizationById(requested)?.id??'';context=orgId?readContext(localStorage,orgId):{};$('organization').value=orgId;populateContext();render();loadLeagueCatalog();}
-for(const org of organizations)$('organization').append(new Option(org.name+(org.ready?'':' · Planned'),org.id));
+async function initializeOrganizations(){
+ $('organization').disabled=true;
+ try{setOrganizationCatalog(await loadOrganizationCatalog());$('organization').replaceChildren(...organizations.map(org=>new Option(org.name+(org.ready?'':' · Nepřipojeno'),org.id)));$('organization').disabled=false;selectOrg();}
+ catch{$('organization-note').textContent='Seznam organizací nelze načíst. Obnovte stránku; jiné organizace se nepoužijí jako náhrada.';}
+}
 $('organization').onchange=()=>{const url=new URL(location.href);url.searchParams.set('org',$('organization').value);history.pushState(null,'',url);selectOrg();};addEventListener('popstate',selectOrg);
 $('settings').onclick=showSettings;$('league').onchange=()=>{gamesRequest++;context.league=$('league').value;availableGames=[];context.gameId='';context.gameLabel='';persist();populateContext();render();loadSeasonGames(context.league);};$('game').onchange=()=>{context.gameId=$('game').value;context.gameLabel=context.gameId?$('game').selectedOptions[0].textContent:'';persist();populateContext();render();};$('work').onchange=()=>{context.work=$('work').value;persist();render();};
 $('context-form').onsubmit=e=>{e.preventDefault();gamesRequest++;availableGames=[];context.league=$('context-league').value;context.gameId=$('context-game').value;context.gameLabel=context.gameId?$('context-game').selectedOptions[0].textContent:'';persist();$('context-dialog').close();populateContext();render();};
@@ -99,10 +106,10 @@ $('clear-context').onclick=()=>{context={};persist();$('context-dialog').close()
 $('load-games').onclick=async()=>{
  const requestedOrg=orgId,seasonId=activeContext().seasonId,version=++gamesRequest;$('organization-note').textContent='Načítám dnešní zápasy z HMS…';
  try{
-  const path=validId(seasonId)?'/api/game-summary?'+new URLSearchParams({view:'games',seasonId,filter:'Today'}):'/api/broadcast?'+new URLSearchParams({org:orgId.toUpperCase(),filter:'Today'});
+  const path=validId(seasonId)?'/api/game-summary?'+new URLSearchParams({view:'games',seasonId,filter:'Today'}):'/api/broadcast?'+new URLSearchParams({org:currentOrgCode(),filter:'Today'});
   const res=await fetch(path,{signal:AbortSignal.timeout(15000)});if(!res.ok)throw Error();const data=await res.json();
   if(version!==gamesRequest||requestedOrg!==orgId||seasonId!==activeContext().seasonId)return;
-  if(!Array.isArray(data.items)||(validId(seasonId)?data.seasonId!==seasonId.toLowerCase():data.org!==orgId.toUpperCase()))throw Error();
+  if(!Array.isArray(data.items)||(validId(seasonId)?data.seasonId!==seasonId.toLowerCase():data.org!==currentOrgCode()))throw Error();
   availableGames=data.items.filter(g=>validId(g.gameId??g.id)).map(g=>({gameId:g.gameId??g.id,label:(g.home?.name??'Domácí')+' — '+(g.away?.name??'Hosté')+' · '+(g.startTime??g.time??'')}));
   populateContext();$('organization-note').textContent=data.items.length?data.items.length+' dnešních zápasů · '+(context.league||requestedOrg.toUpperCase())+' · vyberte zápas nahoře.':'HMS dnes nevrátilo žádné zápasy. Starší zápas vyberte podle názvu v nabídce sezony.';
  }catch{if(version===gamesRequest&&requestedOrg===orgId)$('organization-note').textContent='Zápasy se nepodařilo načíst. Zkuste načtení znovu nebo vyberte načtený zápas své sezony.';}
@@ -114,4 +121,4 @@ $('work-chats').onclick=showWorkChats;
 $('help').onclick=()=>{$('detail-title').textContent='Jak se v mapě orientovat';$('detail-phase').textContent='HMS → NASTAVENÍ → OVLÁDÁNÍ → VÝSTUP';$('detail-note').textContent='Vyberte organizaci, ligu a případně zápas. Kliknutím na velký název nodu otevřete nástroj. Odkaz Řešit v chatu otevře související pracovní chat. Přehled Chaty a Worky obsahuje celé názvy pro dohledání. Podrobnosti ukazují zdroje, GitHub a omezení. Větve jsou pracovní postupy, Sponsors má navíc přerušované vazby do Broadcast a Social Studia. Ostatní vztahy mezi hráčskými nástroji nejsou výrobní postup. Mapu posouvejte tažením pozadí nebo pomocí posuvníků; tlačítko Celá mapa ji oddálí. Všechny původní odkazy najdete v druhém pohledu.';$('detail-links').replaceChildren();$('detail-dialog').showModal();};
 for(const b of document.querySelectorAll('[data-close]'))b.onclick=()=>b.closest('dialog').close();
 let drag=null;$('viewport').onpointerdown=e=>{if(e.target.closest('button,a,input,select,.node'))return;drag={x:e.clientX,y:e.clientY,left:$('viewport').scrollLeft,top:$('viewport').scrollTop};$('viewport').setPointerCapture(e.pointerId);};$('viewport').onpointermove=e=>{if(drag){$('viewport').scrollLeft=drag.left-(e.clientX-drag.x);$('viewport').scrollTop=drag.top-(e.clientY-drag.y);}};$('viewport').onpointerup=$('viewport').onpointercancel=()=>drag=null;$('viewport').addEventListener('scroll',()=>requestAnimationFrame(drawConnections));addEventListener('resize',()=>requestAnimationFrame(drawConnections));
-selectOrg();
+initializeOrganizations();

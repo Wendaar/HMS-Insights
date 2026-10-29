@@ -1,4 +1,4 @@
-import {appsForOrganization, repository, gameReportUrl} from './registry.js';
+import {appsForOrganization, repository, gameReportUrl,organizationById} from './registry.js';
 import {publicOutputUrl} from '../public-output.js';
 export const validId = value => /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(value??'');
 const stage=(id,label,app,kind='open',extra={})=>({id,label,app,kind,...extra});
@@ -33,7 +33,7 @@ export function nodeUrl(node,org,context={}){
   if(node.id==='game-report')return validId(context.gameId)?gameReportUrl(org,context.gameId):null;
   if(node.id==='games-view'&&/^\/games\/[a-z0-9-]+\/[a-z0-9-]+(?:\/[a-z0-9-]+)?$/.test(context.gamesPath??''))return publicOutputUrl(context.gamesPath);
   if(node.id==='games-view')return validId(context.seasonId)?publicOutputUrl('/game-center?'+new URLSearchParams({seasonId:context.seasonId,lang:'cs'})):null;
-  if(node.kind==='output')return validId(context.gameId)?publicOutputUrl('/broadcast/index.html?'+new URLSearchParams({org:org.toUpperCase(),game:context.gameId,mode:'overlay',source:'hms',lang:'cs'})):null;
+  if(node.kind==='output')return validId(context.gameId)?publicOutputUrl('/broadcast/index.html?'+new URLSearchParams({org:organizationById(org)?.code??org.toUpperCase(),game:context.gameId,mode:'overlay',source:'hms',lang:'cs'})):null;
   if(node.kind==='export')return node.application?.links.open??null;
   if(!node.href)return null;
   if(node.href.startsWith('/broadcast/')&&validId(context.gameId)){

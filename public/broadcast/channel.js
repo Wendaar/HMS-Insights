@@ -61,7 +61,7 @@ export async function runChannelView({id,api,root,base}){
       const response=await fetch(url,{cache:'no-store',credentials:'same-origin',signal:AbortSignal.timeout(4000)});
       if(!response.ok)throw new Error('Channel unavailable');
       const row=await response.json(),s=row.state;
-      if(row.id!==id||!s||typeof s.visible!=='boolean'||!['PHM','EUCHL'].includes(s.org))throw new Error('Invalid state');
+      if(row.id!==id||!s||typeof s.visible!=='boolean'||!/^([A-Z][A-Z0-9_]{1,23})$/.test(s.org))throw new Error('Invalid state');
       lastSuccess=Date.now();document.body.dataset.connection='ok';
       const next=JSON.stringify([s,row.libraryRevision??0]);
       if(next!==signature){

@@ -1,16 +1,19 @@
-export const organizations=['PHM','EUCHL'];
+import {defaultOrganizations,normalizeOrganizationCatalog,organizationFromCatalog} from '../organization-catalog.js';
+export const organizations=defaultOrganizations.map(o=>o.code);
+export let organizationCatalog=defaultOrganizations.map(o=>({...o,configured:false}));
+export function setBroadcastOrganizations(rows){organizationCatalog=normalizeOrganizationCatalog(rows);organizations.splice(0,organizations.length,...organizationCatalog.map(o=>o.code));}
 export const isGameId=value=>typeof value==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 const image=value=>{
   try{const u=new URL(value);return u.protocol==='https:'&&!u.port&&!u.username&&!u.password&&['prod-hms-wootera.s3.eu-central-1.amazonaws.com','hockeymanagementsystem.s3.amazonaws.com'].includes(u.hostname)&&!u.search&&!u.hash?u.href:null;}catch{return null;}
 };
 export function parseGameInput(value,currentOrg='PHM'){
-  let id=String(value??'').trim(),org=currentOrg.toUpperCase();
+  let id=String(value??'').trim(),org=organizationFromCatalog(organizationCatalog,currentOrg)?.code??'';
   if(id.startsWith('https://')){
     const url=new URL(id),match=/^\/org\/([^/]+)\/games\/([^/]+)\/?$/.exec(url.pathname);
     if(url.hostname!=='prod.hms.wootera.net'||url.port||url.username||url.password||!match)throw new Error('Vložte HMS odkaz na zápas nebo Game ID.');
-    org=match[1].toUpperCase();id=match[2];
+    org=organizationFromCatalog(organizationCatalog,match[1])?.code??'';id=match[2];
   }
-  if(!organizations.includes(org)||!isGameId(id))throw new Error('Vyberte PHM nebo EUCHL a vložte platné Game ID.');
+  if(!organizations.includes(org)||!isGameId(id))throw new Error('Vyberte připojenou organizaci a vložte platné Game ID.');
   return {org,gameId:id};
 }
 export function apiGame(data,org,id){
