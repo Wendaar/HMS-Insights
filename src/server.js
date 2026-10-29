@@ -1,4 +1,5 @@
 import {createSponsorsHandler} from './web/sponsors-handler.js';
+import {createRegistrationControlHandler} from './web/registration-control-handler.js';
 import {createPublicPortalHandler} from './web/public-portal-handler.js';
 import {createTeamComparisonHandler} from './web/team-comparison-handler.js';
 import {createOperationsHandler} from './web/operations-handler.js';
@@ -31,6 +32,7 @@ import { gameEvents as zbraslavEvents, lineup as zbraslavLineup } from "./fixtur
 
 const directory = dirname(fileURLToPath(import.meta.url));
 const publicDirectory = join(directory, "..", "public");
+const registrationsHandler = createRegistrationControlHandler();
 const port = Number(process.env.PORT ?? 3000);
 const zbraslavAnalysis = analyzeHmsResponses(zbraslavEvents, zbraslavLineup);
 const toolsHandler = createToolsHandler();
@@ -68,6 +70,21 @@ const assets = {
 
 export const server = createServer(async (request, response) => {
   const url = new URL(request.url, `http://${request.headers.host ?? "localhost"}`);
+  if(url.pathname==='/api/registrations'||url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='registrations'){
+    request.query=Object.fromEntries(url.searchParams);
+    if(request.method==='POST'){let size=0,body='';for await(const chunk of request){size+=chunk.length;if(size>4000000){response.writeHead(413);response.end();return;}body+=chunk;}request.body=body;}
+    await registrationsHandler(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json; charset=utf-8');response.end(JSON.stringify(body));}});return;
+  }
+  const registrationAsset=/^\/registrations\/(app.js|app.css|index.html)$/.exec(url.pathname);
+  if(registrationAsset||['/registrations/team','/registrations/admin','/control/apps/registrations'].includes(url.pathname)){
+    if(!['GET','HEAD'].includes(request.method)){response.writeHead(405,{allow:'GET, HEAD'});response.end();return;}
+    const name=registrationAsset?.[1]??'index.html';
+    response.setHeader('content-type',name.endsWith('.html')?'text/html; charset=utf-8':name.endsWith('.css')?'text/css; charset=utf-8':'text/javascript; charset=utf-8');
+    response.setHeader('cache-control','private, no-store');response.setHeader('x-robots-tag','noindex, nofollow, noarchive');
+    response.setHeader('referrer-policy','no-referrer');response.setHeader('x-content-type-options','nosniff');
+    response.setHeader('content-security-policy',"default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' https://prod-hms-wootera.s3.eu-central-1.amazonaws.com https://hockeymanagementsystem.s3.amazonaws.com; base-uri 'none'; form-action 'self'; frame-ancestors 'none'");
+    response.end(request.method==='HEAD'?undefined:await readFile(join(publicDirectory,'registrations',name)));return;
+  }
   if(url.pathname==='/api/portal'||url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='portal'){
     request.query=Object.fromEntries(url.searchParams);
     if(request.method==='POST'){let body='';for await(const chunk of request){body+=chunk;if(Buffer.byteLength(body)>50000){response.writeHead(413);response.end();return;}}request.body=body;}

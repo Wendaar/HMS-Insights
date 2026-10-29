@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow,noarchive"><meta name="referrer" content="no-referrer">
+  <title>Registrace 2026/27 · PHM Cup</title>
+  <link rel="icon" href="/hms-favicon-control-v2.svg"><link rel="stylesheet" href="/registrations/app.css">
+  <script src="/registrations/app.js" type="module"></script>
+</head>
+<body>
+  <header><a id="map" href="/control" hidden>← Mapa aplikací</a><span class="brand">PHM CUP <span>TEAM CONTROL</span></span><button id="lock" hidden>Zamknout</button></header>
+  <main>
+    <p class="eyebrow">REGISTRACE HRÁČŮ / 2026–2027</p>
+    <h1 id="title">Přehled registrací</h1>
+    <p id="subtitle">Přehled z posledního ručně nahraného exportu HMS.</p>
+    <p id="message" role="status" aria-live="polite"></p>
+    <form id="login" hidden><label for="code">Interní přístupový kód</label><div class="inline"><input id="code" type="password" autocomplete="current-password" required maxlength="256"><button>Odemknout správu</button></div></form>
+    <section id="admin" hidden aria-label="Správa týmových odkazů">
+      <h2>Aktualizovat z CSV</h2>
+      <p>V HMS stáhněte úplný export <strong>Season Player Registrations · All</strong> bez filtrů. Zde zkontrolujte náhled a nahraďte předchozí data. Odkazy týmů zůstanou stejné.</p>
+      <div class="inline"><label for="csv-file">CSV export<input id="csv-file" type="file" accept=".csv,text/csv"></label><button id="preview-import">Zkontrolovat soubor</button></div>
+      <p id="source-status" class="muted"></p>
+      <div id="import-preview" hidden>
+        <p id="import-summary"></p><div id="import-warnings" class="muted"></div>
+        <details id="assignments-panel"><summary>Ruční přiřazení nejednoznačných hráčů</summary><p>Export někdy slepí několik týmů do jednoho textu. Vyberte jen správný tým hráče pro tuto sezonu. Bez výběru se hráč do týmových pohledů nedostane.</p><label>Hledat nepřiřazeného hráče<input id="pending-search" type="search" autocomplete="off"></label><div id="pending-rows"></div><p id="pending-count" class="muted"></p></details>
+        <label class="check"><input id="complete-export" type="checkbox"> Jde o úplný export All bez filtrů; nová data mají nahradit předchozí.</label>
+        <label class="check"><input id="accept-excluded" type="checkbox"> Zbývající nepřiřazené hráče zatím vynechat z týmových pohledů.</label>
+        <button id="commit-import">Nahradit uložená data</button>
+      </div>
+      <hr>
+      <label for="team">Tým</label><select id="team"><option value="">Vyberte tým</option></select>
+      <div id="link-controls" hidden>
+        <p id="link-status"></p>
+        <div class="inline"><button id="create-link">Vytvořit / nahradit odkaz</button><button id="revoke-link" class="danger">Zrušit odkaz</button></div>
+        <p class="muted">Nahrazení okamžitě zruší předchozí odkaz i jeho otevřené relace. Nový odkaz se zobrazí pouze jednou.</p>
+        <div id="new-link" hidden><label for="share-link">Odkaz pro vedoucího vybraného týmu</label><div class="inline"><input id="share-link" readonly><button id="copy-link">Kopírovat</button></div></div>
+      </div>
+    </section>
+    <section id="overview" hidden aria-label="Registrace vybraného týmu">
+      <div id="totals" class="totals"></div>
+      <div class="filters"><label>Hledat hráče<input id="search" type="search" placeholder="Jméno hráče" autocomplete="off"></label><label>Zobrazit<select id="filter"><option value="all">Všechny hráče</option><option value="attention">Vyžaduje kontrolu</option><option value="unpaid">Neuhrazeno</option><option value="not-accepted">Nepřijaté podmínky</option><option value="unknown">Chybějící údaje</option></select></label><button id="refresh">Načíst poslední export</button></div>
+      <p id="updated" class="muted"></p><div id="players"></div><p id="empty" hidden>Tomuto výběru neodpovídají žádní hráči.</p>
+    </section>
+    <footer>Soukromý přehled pro vedoucí týmu z posledního CSV exportu. Odkaz umožňuje číst jména, fotografie a stav registrace týmu. E-maily nezpracováváme. Sdílejte jej jen s oprávněným vedoucím. Při přeposlání nebo úniku požádejte PHM o zrušení a nový odkaz. Údaje opravujte v HMS a poté nahrajte nový export. CASH znamená „platí manažer“; samo o sobě nepotvrzuje úhradu.</footer>
+  </main>
+</body>
+</html>
