@@ -12,11 +12,12 @@ E-mail is deliberately ignored, even if present in a later file.
 3. Select CSV and click Zkontrolovat soubor. Review counts, missing values,
    excluded seasons and registrations that would disappear compared with the
    existing snapshot. The preview does not save anything.
-4. Review unmatched players: HMS sometimes glues several team names together.
-   Assign the correct current-season team per player or leave the row excluded.
-   Search is available; at most 100 matching review rows render at a time.
-5. Confirm the file is a complete All export. If unresolved players remain,
-   explicitly acknowledge excluding them. Click Nahradit uložená data.
+4. Multiple teams are automatic: one registration appears in every recognized
+   current-season team from its Teams cell. The preview counts registrations,
+   multi-team players and memberships separately. Blank/dash team rows require no
+   manual action. Only genuinely unknown names open the optional exception review.
+5. Confirm the file is a complete All export and click Nahradit uložená data.
+   The supplied file requires no manual assignments or exclusion checkbox.
 
 Successful import atomically replaces the current snapshot. Invalid CSV, empty
 scope, no assigned players or a concurrent admin update preserves existing data.
@@ -35,10 +36,20 @@ Read-only inspection of the supplied 29 October 2026 file found 2,231 rows:
 E-mail is absent. Payment Status, Payment Method and Registration Status are empty
 in every row; Accepted by Player is populated. No real contact data is committed.
 
-The independently checked public season directory returned 61 teams. Exact full
-team-name matches assign 660 registrations to 58 teams; 560 registrations have
-unmatched/ambiguous team text and need review. The importer never uses substring
-splitting or shares a player's details with every mentioned team automatically.
+The independently checked season directory returned 61 current teams and the
+organization's HMS catalog returned 197 known team names. All 1,214 registrations
+with named teams resolve automatically: 442 have multiple current teams, yielding
+1,937 memberships across all 61 teams. Six registrations have only a dash as their
+team and are excluded from team views without requiring manual action. The earlier
+660/560 split incorrectly assumed one team per player; it is superseded.
+
+The user explicitly confirmed that each player belongs to ALL teams in Teams.
+The parser consumes complete known names, longest first, including the historical
+dictionary to prevent an embedded current name from matching an unrelated longer
+team name. Whitespace/case differences are normalized, duplicate memberships are
+collapsed, and only current-season team UUIDs are output targets. Unknown fragments
+never authorize a guessed membership. Former single-team saved mappings do not
+suppress newly recognized automatic multi-team membership.
 
 This is a registration list, not an authoritative ACTIVE/INVITED roster. Current
 membership and actual season invitation/date are unavailable in this export.
@@ -116,7 +127,7 @@ CAS SQL, scoped portraits and original auth/CSRF/IDOR/link lifecycle behavior.
 The provided file was validated read-only against the 61-team public directory.
 Browser QA uses fictional data and exercised login, upload, preview, manual
 assignment, replacement and the resulting unknown-payment view.
-All 402 tests pass. A preview-build smoke test additionally verified the actual
+The original 402 tests passed. A preview-build smoke test additionally verified the actual
 61-team directory, private snapshot/link table access, authorized import preview
 (HTTP 200, one synthetic row assigned) and the scoped portrait SQL. It did not
 publish a snapshot or create any team links. The temporary build check is removed

@@ -76,8 +76,8 @@ export function createRegistrationControlHandler(options = {}) {
         try{body=typeof req.body==='string'?JSON.parse(req.body):req.body;if(!body||typeof body.csv!=='string'||typeof body.filename!=='string'||!body.filename.toLowerCase().endsWith('.csv')||body.mappings&&(!Object.getPrototypeOf(body.mappings)||typeof body.mappings!=='object'||Array.isArray(body.mappings)))throw Error();}
         catch{return fail(400,'Vyberte platný CSV soubor.','csv');}
         const previous=await snapshots.get(scope),revision=previous?.revision??0;
-        const catalog=await(options.teamCatalog??registrationTeamCatalog)({env});
-        const parsed=buildRegistrationImport(body.csv,catalog,{previous:previous?.payload,mappings:body.mappings??{},filename:body.filename});
+        const directory=await(options.teamCatalog??registrationTeamCatalog)({env}),catalog=Array.isArray(directory)?directory:directory.teams;
+        const parsed=buildRegistrationImport(body.csv,catalog,{previous:previous?.payload,mappings:body.mappings??{},filename:body.filename,knownTeams:directory.knownTeams??catalog});
         if(action==='preview-import')return res.status(200).json({revision,sourceHash:parsed.sourceHash,summary:parsed.summary,limitations:parsed.limitations,
           pending:parsed.pending,teams:catalog.map(t=>({teamId:t.id,name:t.name})),filename:parsed.filename});
         if(body.completeExport!==true)return fail(400,'Potvrďte, že jde o úplný export All bez filtrů.','coverage');

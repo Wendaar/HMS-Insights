@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {buildRegistrationImport,parseRegistrationCsv} from '../src/app/registration-csv.js';
+import {buildRegistrationImport,parseRegistrationCsv,registrationTeamMatches} from '../src/app/registration-csv.js';
 import {registrationSnapshotStore,registrationPortraits} from '../src/infrastructure/registration-snapshots.js';
 import {createRegistrationControlHandler} from '../src/web/registration-control-handler.js';
 import {REGISTRATION_SCOPE as scope} from '../src/app/registration-control.js';
@@ -22,14 +22,30 @@ test('only exact PHM Cup 2026-2027 rows; no email storage or inferred invite, me
  assert.doesNotMatch(JSON.stringify(data),/PRIVATE-EMAIL|email/);
  assert.throws(()=>buildRegistrationImport(csv([fixture({Season:'2025-2026'})]),catalog),/neobsahuje registrace/);
 });
-test('team matching never splits concatenated names or assigns by substring; explicit scoped mapping is retained only for the same identity and team text',()=>{
+test('one seasonal registration appears in every listed team; former single-team overrides do not suppress other memberships',()=>{
  const source=csv([fixture({Teams:'Tým ATým B'})]);
- const pending=buildRegistrationImport(source,catalog);assert.equal(pending.summary.assigned,0);assert.equal(pending.pending.length,1);
+ const automatic=buildRegistrationImport(source,catalog);assert.equal(automatic.summary.assigned,1);assert.equal(automatic.pending.length,0);assert.equal(automatic.summary.teamMemberships,2);assert.equal(automatic.summary.multiTeamPlayers,1);
+ assert.equal(automatic.teams[0].players[0].playerId,player);assert.equal(automatic.teams[1].players[0].playerId,player);
  const mapped=buildRegistrationImport(source,catalog,{mappings:{[reg]:b}});assert.equal(mapped.teams[1].players[0].playerId,player);
- const repeated=buildRegistrationImport(source,catalog,{previous:mapped});assert.equal(repeated.summary.assigned,1);
- const changed=buildRegistrationImport(csv([fixture({Teams:'Tým BTým A'})]),catalog,{previous:mapped});assert.equal(changed.summary.unassigned,1);
+ const repeated=buildRegistrationImport(source,catalog,{previous:mapped});assert.equal(repeated.summary.assigned,1);assert.equal(repeated.summary.teamMemberships,2);
+ const changed=buildRegistrationImport(csv([fixture({Teams:'Tým BTým A'})]),catalog,{previous:mapped});assert.equal(changed.summary.unassigned,0);assert.equal(changed.summary.teamMemberships,2);
  assert.throws(()=>buildRegistrationImport(source,catalog,{mappings:{[reg]:reg}}),/mimo tuto sezonu/);
  assert.throws(()=>buildRegistrationImport(source,catalog,{mappings:{[a]:b}}),/nepatří/);
+});
+test('longest complete names prevent main/B and historic team substring matches; unknown fragments do not become memberships',()=>{
+ const current=[{id:a,name:'HC Wolves'},{id:b,name:'HC Wolves B'}],historic={id:reg,name:'Super HC Wolves'};
+ assert.deepEqual(registrationTeamMatches('HC Wolves B',current),[b]);
+ assert.deepEqual(registrationTeamMatches('HC WolvesHC Wolves BHC Wolves B',current),[a,b]);
+ assert.deepEqual(registrationTeamMatches('Super HC Wolves',current,[historic]),[]);
+ assert.deepEqual(registrationTeamMatches('Super HC WolvesHC Wolves B',current,[historic]),[b]);
+ assert.deepEqual(registrationTeamMatches('UNRELATED HC Wolves EXTRA',current),[]);
+ assert.deepEqual(registrationTeamMatches(' Tým A  Tým B ',catalog),[a,b]);
+});
+test('blank or dash team is not a manual exception; known outside-season teams are excluded without blocking import',()=>{
+ const old={id:reg,name:'Old Team'};
+ const rows=[fixture(),fixture({ID:b,Teams:'-','Player Link':'https://prod.hms.wootera.net/org/phm/players/'+b}),fixture({ID:a,Teams:'Old Team','Player Link':'https://prod.hms.wootera.net/org/phm/players/'+a})];
+ const result=buildRegistrationImport(csv(rows),catalog,{knownTeams:[...catalog,old]});
+ assert.equal(result.summary.withoutTeam,1);assert.equal(result.summary.outsideTeamScope,1);assert.equal(result.summary.assigned,1);assert.equal(result.pending.length,0);
 });
 test('registration and player identities are mandatory, duplicate players per team rejected, malformed CSV never partially imports',()=>{
  assert.throws(()=>buildRegistrationImport(csv([fixture(),fixture()]),catalog),/duplicitní/);
@@ -49,7 +65,7 @@ const headersAuth={host:'example.invalid',origin:'https://example.invalid',autho
 function harness(){let snapshot=null,reads=0;
  const snapshots={async get(){return snapshot;},async save(_scope,payload,revision){if((snapshot?.revision??0)!==revision)return null;snapshot={payload,revision:revision+1,uploadedAt:'2026-10-29T15:10:00Z'};return {revision:snapshot.revision,uploaded_at:snapshot.uploadedAt};}};
  const handler=createRegistrationControlHandler({env,snapshots,teamCatalog:async()=>{reads++;return catalog;},portraits:async t=>t,
-  store:{list:async()=>[],rate:async()=>true,resolve:async token=>token==='a'.repeat(43)?{team_id:a}:null}});
+  store:{list:async()=>[],rate:async()=>true,resolve:async token=>token==='a'.repeat(43)?{team_id:a}:token==='b'.repeat(43)?{team_id:b}:null}});
  const call=async(action,body,patch={})=>{const r=response();await handler({method:['preview-import','import'].includes(action)?'POST':'GET',query:{action},headers:headersAuth,body,...patch},r);return r;};
  return {call,get snapshot(){return snapshot;},get reads(){return reads;}};
 }
@@ -66,13 +82,21 @@ test('preview is read-only, upload is authorized, same-origin, validates full ex
  const newPreview=await h.call('preview-import',body);const next=await h.call('import',{...request,revision:1,sourceHash:newPreview.body.sourceHash});assert.equal(next.code,200);assert.equal(h.snapshot.revision,2);
 });
 test('pending players require explicit exclusion, never leak to manager route, and fully unassigned data cannot replace good data',async()=>{
- const h=harness(),body={csv:csv([fixture(),fixture({ID:b,Player:'UNASSIGNED-PRIVATE',Teams:'Tým ATým B','Player Link':'https://prod.hms.wootera.net/org/phm/players/'+a})]),filename:'All.csv'};
+ const h=harness(),body={csv:csv([fixture(),fixture({ID:b,Player:'UNASSIGNED-PRIVATE',Teams:'Unknown Team','Player Link':'https://prod.hms.wootera.net/org/phm/players/'+a})]),filename:'All.csv'};
  const preview=await h.call('preview-import',body);assert.equal(preview.body.pending.length,1);
  const request={...body,sourceHash:preview.body.sourceHash,revision:0,completeExport:true};
  assert.equal((await h.call('import',request)).code,400);
  assert.equal((await h.call('import',{...request,acceptExcluded:true})).code,200);
  const team=await h.call('team',undefined,{headers:{authorization:'Bearer '+'a'.repeat(43)}});assert.equal(team.code,200);
  assert.equal(team.body.source.type,'csv');assert.doesNotMatch(JSON.stringify(team.body),/UNASSIGNED-PRIVATE|PRIVATE-EMAIL|sourceHash|assignments/);
+});
+test('multi-team import needs no exclusion acknowledgement and each manager gets the same registration only in their own team response',async()=>{
+ const h=harness(),body={csv:csv([fixture({Teams:'Tým ATým B','Payment Status':'PAID','Payment Method':'CASH','Registration Status':'CONFIRMED'})]),filename:'All.csv'};
+ const preview=await h.call('preview-import',body);assert.equal(preview.body.summary.unassigned,0);assert.equal(preview.body.summary.teamMemberships,2);
+ const saved=await h.call('import',{...body,sourceHash:preview.body.sourceHash,revision:0,completeExport:true});assert.equal(saved.code,200);
+ const home=await h.call('team',undefined,{headers:{authorization:'Bearer '+'a'.repeat(43)}}),away=await h.call('team',undefined,{headers:{authorization:'Bearer '+'b'.repeat(43)}});
+ assert.equal(home.body.team.teamId,a);assert.equal(away.body.team.teamId,b);assert.equal(home.body.team.players.length,1);assert.equal(away.body.team.players.length,1);
+ assert.deepEqual(home.body.team.players[0],away.body.team.players[0]);assert.equal(home.body.team.players[0].paid,true);assert.ok(!Object.hasOwn(home.body,'teams'));
 });
 test('snapshot SQL uses scoped CAS, stores no pending rows, and separates previews from production',async()=>{
  const calls=[],sql={async query(text,values=[]){calls.push({text,values});return [];}};

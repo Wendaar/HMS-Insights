@@ -2,6 +2,8 @@ import {neon} from '@neondatabase/serverless';
 import {portalCatalog,portalDirectory} from '../app/public-portal.js';
 import {REGISTRATION_SCOPE,sameId} from '../app/registration-control.js';
 import {sportingImage} from '../../public/game-report-media.js';
+import {organizationConfig} from '../app/organizations.js';
+import {loadSponsorCatalog} from '../app/sponsors.js';
 export const snapshotSchema=`create table if not exists hms_registration_snapshots (
  organization_id uuid not null,competition_id uuid not null,season_id uuid not null,
  revision integer not null,payload jsonb not null,uploaded_at timestamptz not null default now(),
@@ -28,7 +30,12 @@ export function registrationSnapshotStore({env=process.env,sql}={}){
 export async function registrationTeamCatalog(options={}){
  const catalog=await portalCatalog('PHM',options);
  if(!catalog.items.some(s=>sameId(s.seasonId,REGISTRATION_SCOPE.seasonId)&&sameId(s.competitionId,REGISTRATION_SCOPE.competitionId)))throw Error('Season identity mismatch');
- return (await portalDirectory('PHM',REGISTRATION_SCOPE.seasonId,options)).teams;
+ const directory=await portalDirectory('PHM',REGISTRATION_SCOPE.seasonId,options);
+ // The full organization dictionary prevents a historic longer name from being
+ // mistaken for an embedded current team. Only current-season IDs are targets.
+ const all=await loadSponsorCatalog(organizationConfig('PHM',options.env??process.env),options);
+ if(!all.teamsAvailable)throw Error('Team name dictionary unavailable');
+ return {teams:directory.teams,knownTeams:all.teams};
 }
 export async function registrationPortraits(team,options={}){
  const env=options.env??process.env;if(!env.DATABASE_URL&&!options.sql)return team;

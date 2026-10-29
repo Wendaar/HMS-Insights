@@ -17,14 +17,14 @@
     <form id="login" hidden><label for="code">Interní přístupový kód</label><div class="inline"><input id="code" type="password" autocomplete="current-password" required maxlength="256"><button>Odemknout správu</button></div></form>
     <section id="admin" hidden aria-label="Správa týmových odkazů">
       <h2>Aktualizovat z CSV</h2>
-      <p>V HMS stáhněte úplný export <strong>Season Player Registrations · All</strong> bez filtrů. Zde zkontrolujte náhled a nahraďte předchozí data. Odkazy týmů zůstanou stejné.</p>
+      <p>V HMS stáhněte úplný export <strong>Season Player Registrations · All</strong> bez filtrů. Hráč se automaticky zobrazí ve všech svých týmech uvedených v exportu. Odkazy týmů zůstanou stejné.</p>
       <div class="inline"><label for="csv-file">CSV export<input id="csv-file" type="file" accept=".csv,text/csv"></label><button id="preview-import">Zkontrolovat soubor</button></div>
       <p id="source-status" class="muted"></p>
       <div id="import-preview" hidden>
         <p id="import-summary"></p><div id="import-warnings" class="muted"></div>
-        <details id="assignments-panel"><summary>Ruční přiřazení nejednoznačných hráčů</summary><p>Export někdy slepí několik týmů do jednoho textu. Vyberte jen správný tým hráče pro tuto sezonu. Bez výběru se hráč do týmových pohledů nedostane.</p><label>Hledat nepřiřazeného hráče<input id="pending-search" type="search" autocomplete="off"></label><div id="pending-rows"></div><p id="pending-count" class="muted"></p></details>
+        <details id="assignments-panel" hidden><summary>Výjimky: nerozpoznaný název týmu</summary><p>Více týmů se přiřazuje automaticky. Zde jsou jen názvy, které katalog HMS vůbec nerozpoznal. Prázdný tým ani pomlčka ruční přiřazení nevyžadují.</p><label>Hledat nepřiřazeného hráče<input id="pending-search" type="search" autocomplete="off"></label><div id="pending-rows"></div><p id="pending-count" class="muted"></p></details>
         <label class="check"><input id="complete-export" type="checkbox"> Jde o úplný export All bez filtrů; nová data mají nahradit předchozí.</label>
-        <label class="check"><input id="accept-excluded" type="checkbox"> Zbývající nepřiřazené hráče zatím vynechat z týmových pohledů.</label>
+        <label class="check" id="excluded-label" hidden><input id="accept-excluded" type="checkbox"> Vynechat výjimečné záznamy s nerozpoznaným názvem týmu.</label>
         <button id="commit-import">Nahradit uložená data</button>
       </div>
       <hr>
