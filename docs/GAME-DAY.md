@@ -7,10 +7,13 @@ bridge, and appears in the Control Center registry and application map.
 
 ## Outputs
 
-- Game Day: exact Prague calendar date; 20 fixtures per page; competition and
-  venue filters explicitly apply to that page. Previous/next pages remain available.
+- Game Day: exact Prague calendar date; the browser assembles bounded 20-fixture
+  API pages before enabling export, up to 100 fixtures plus an optional empty
+  lookahead page. Competition/venue filters include the complete loaded day.
+  Overflow, duplicate, foreign or mixed-source pages disable export instead of
+  silently showing an incomplete schedule. Today/Tomorrow and day navigation.
   Stories 1080×1920, one column or two venue columns, six games per column;
-  slide numbers start at zero. All filtered fixtures have a slide, including venues
+  a numbered slide selector and previous/next Story buttons. All filtered fixtures have a slide, including venues
   with more than six games. Empty slides cannot be downloaded.
 - Match Preview: selected fixture, source jerseys with optional local overrides,
   official standing, form, attack/defense per game, phase rating, average roster
@@ -109,8 +112,17 @@ Playwright and Chromium; supports PLAYWRIGHT_MODULE / CHROMIUM_PATH),
 `node scripts/build-static.js`. Browser checks use synthetic sporting data and
 never establish live HMS, DB, Ecomail or WhatsApp delivery.
 
-Local verification on 30 October 2026: all 425 Node tests passed, including 15 new
+Local verification on 30 October 2026: all 430 Node tests passed, including 20 new
 Game Day/reminder tests; static demo build passed (unrelated generated demo files
 excluded). Headless Chrome passed PNG signature/dimensions, complete Story page
 partitioning, match stats/jersey override, private center, test queue, CS/EN,
 WhatsApp text fallback, 390px layout and navigation/capability reset checks.
+
+Preview deployment: https://hms-insights-git-codex-game-day-preview-reminder-wendaar.vercel.app/studio/phm?section=game-day
+
+Read-only HTTP checks confirm Vercel Authentication protects this preview (302
+to Vercel SSO for the page and APIs). A signed-in authorized Vercel user can view
+it. No protection was changed and no credentialed source/DB verification is claimed.
+Whole-day UI checks additionally cover a 24-fixture, two-page response, stadium
+filtering across pages and previous/next Story controls. Source `imported-snapshot`
+remains an imported-only view and does not establish a complete live HMS schedule.

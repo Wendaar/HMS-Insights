@@ -13,7 +13,7 @@ try{
  let queued=0;
  await page.route('**/api/studio?*',r=>r.fulfill({json:new URL(r.request().url()).searchParams.has('catalog')?{organizations:[{code:'PHM',slug:'phm',name:'PHM',configured:true},{code:'EUCHL',slug:'euchl',name:'EUCHL',configured:false}]}:{items:[],source:'browser-test-fixture',from:'2026-10-31',to:'2026-10-31'}}));
  await page.route('**/api/game-day?*',async route=>{const q=new URL(route.request().url()).searchParams,action=q.get('action');
-  if(action==='day')return route.fulfill({json:{items:Array.from({length:14},(_,i)=>({...fixture,gameId:String(i),venue:i<8?'Praha':'Brno',home:{...fixture.home,name:fixture.home.name+' '+i}})),hasMore:false,source:'browser-test-fixture'}});
+  if(action==='day'){const offset=Number(q.get('offset'));return route.fulfill({json:{items:Array.from({length:offset===0?20:4},(_,i)=>({...fixture,org:q.get('org'),date:q.get('date'),gameId:String(offset+i),venue:offset+i<20?'Praha':'Brno',home:{...fixture.home,name:fixture.home.name+' '+(offset+i)}})),hasMore:offset===0,source:'browser-test-fixture'}});}
   if(action==='preview')return route.fulfill({json:fixture});
   if(!route.request().headers().authorization)return route.fulfill({status:401,json:{error:'Access key required'}});
   if(action==='center')return route.fulfill({json:{config,contacts:[],jobs:[]}});
@@ -23,6 +23,10 @@ try{
  await page.goto(origin+'/studio/phm?section=game-day');await page.locator('#gameDayPanel canvas').waitFor();await page.waitForFunction(()=>document.querySelector('#gameDayPanel textarea')?.value.includes('HC Kosti'));
  assert.equal(await page.locator('.workspace').isVisible(),false);
  const panel=page.locator('#gameDayPanel');
+ assert.match(await panel.getByRole('status').textContent(),/24/);
+ const venue=panel.locator('label').filter({hasText:/^Stadion/}).locator('select');await venue.selectOption('Brno');assert.equal(await panel.locator('.filters').nth(1).getByRole('button').count(),4);await page.waitForFunction(()=>document.querySelector('#gameDayPanel textarea').value.includes('Zbraslav 20'));
+ await venue.selectOption('');await page.waitForFunction(()=>document.querySelector('#gameDayPanel textarea').value.includes('Zbraslav 0'));await panel.getByRole('button',{name:'Další Story →',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#gameDayPanel textarea').value.includes('Zbraslav 6'));
+ await panel.getByRole('button',{name:'← Předchozí Story',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#gameDayPanel textarea').value.includes('Zbraslav 0'));
  const pages=await page.evaluate(async()=>{const {storyPages}=await import('/studio/game-day-graphics.js');const rows=Array.from({length:27},(_,i)=>({gameId:i,venue:i<14?'A':i<20?'B':'C'}));for(const cols of [1,2]){const pages=storyPages(rows,cols);if(pages.flat().length!==rows.length||new Set(pages.flat().map(p=>p.gameId)).size!==rows.length)throw Error('Dropped games');}return true;});assert.equal(pages,true);
  const downloadEvent=page.waitForEvent('download');await panel.getByRole('button',{name:'Stáhnout Stories PNG',exact:true}).click();const download=await downloadEvent;await download.saveAs(out+'/story.png');const png=await readFile(out+'/story.png');assert.equal(png.readUInt32BE(16),1080);assert.equal(png.readUInt32BE(20),1920);
  await panel.getByRole('button',{name:/20:15 · Hc Slavoj Zbraslav 0/}).click();await page.waitForFunction(()=>document.querySelector('#gameDayPanel textarea').value.includes('73 / 100'));
