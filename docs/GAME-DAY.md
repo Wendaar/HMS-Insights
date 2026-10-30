@@ -108,6 +108,35 @@ It did not expose the venue logo or background. Rendering support is verified wi
 synthetic media; the actual SPM photo still depends on the authenticated HMS detail
 providing that source field. No venue API endpoint or image URL is guessed.
 
+The subsequently supplied **Průvodce HMS API**, reference pages 9–10, confirms
+`GET /api/v1/venues` with optional comma-separated `ids` (maximum 500); no filter
+returns the organization's venue catalog. Images use `logoUrls.sm` (64px) and
+`logoUrls.md` (300px), with null for no uploaded image. The guide does not define
+the infographic-background field, so its presence remains a live response check.
+
+The Studio now reads this documented venue catalog server-side using the existing
+organization token. It verifies `/organization` before reading Venues, validates
+row ownership when supplied, bounds the catalog, and filters enrichment by exact
+venue UUID. Catalog media fills missing match media only; it never replaces the
+creator background or guesses a stadium from a similar name. Reads cache for one
+minute and coalesce per organization/requested venue IDs. A venue-catalog failure
+does not hide the fixture or its already available media.
+
+In Game Day, expand **Údaje stadionu z HMS → Ověřit Venues**. The safe read-only
+catalog lists venues and reports logo/background as available, empty, not exposed
+or unsupported. Select SPM Aréna and use **Kopírovat výsledek ověření** if a source
+field needs inspection. Only projected sporting media and field names are copied;
+tokens and unrelated raw-record values are not exposed. No new key is needed.
+The diagnostic GET is `/api/studio?catalog=venues&org=PHM`, reusing the existing
+serverless function. Actual authorized production responses still need verification
+from the signed-in preview; the local fixture tests do not establish that HMS
+returns an SPM background field.
+
+Verification after the catalog integration: 449 Node tests pass, including six
+venue transport/projection/ownership/ID-join/read-model/API tests. The browser
+check verifies venue selection, media-availability states and safe-copy behavior
+with synthetic catalog responses, alongside the existing PNG/share checks.
+
 Verification after this addition: 443 Node tests pass; browser checks cover the
 pregame page, old HTML fallback, analysis redirect and actual preselected Team
 Compare selectors, logo/photo rendering and green/red form pixels. Public links

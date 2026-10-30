@@ -1,5 +1,6 @@
 import {displayExtras} from './game-extras.js';
 import {resolveVenueBackground} from './venue-media.js';
+import {loadVenueCatalog,applyVenueCatalog} from './venues.js';
 import {hmsMediaContext} from '../hms/media-context.js';
 // Trigger-neutral read model. No writes to HMS, imported snapshots or Příklepy.
 import { fetchGames, fetchGameDetail, fetchOrganization, fetchPublicGameMetadata, fetchGameResponses, hmsConfigFromEnv } from '../hms/client.js';
@@ -167,6 +168,9 @@ export async function mediaGame(org,gameId,options={}) {
       }catch{/* Optional branding never changes verified scores. */}
     }
     summary.organizationLogoUrl ||=await organizationImage(config,env,options);
+    if(config.token&&isGameId(summary.venueId))try{
+      applyVenueCatalog(Object.assign(summary,{org:config.code}),await(options.loadVenues??loadVenueCatalog)(config,{...options,ids:[summary.venueId],env}));
+    }catch{/* Optional catalog failures never hide a fixture or existing match media. */}
     summary.venueBackgroundUrl=await(options.resolveVenueBackground??resolveVenueBackground)(summary.venueBackgroundUrl);
     const value={...summary,org:config.code,readAt:new Date().toISOString(),source:snapshot?'imported-snapshot':'HMS-read-only'};
     cache.set(key,{expires:now+30000,refreshedAt:snapshot?0:now,value});

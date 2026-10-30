@@ -78,6 +78,10 @@ export function fetchSponsors(options = {}) {return request('sponsors',{},option
 export function fetchTeams(options = {}) {
   return request('teams', {}, options);
 }
+// HMS API guide, p. 9: optional comma-separated ids, at most 500.
+export function fetchVenues(params = {}, options = {}) {
+  return request('venues', params, options);
+}
 
 export async function fetchGameResponses(gameId, options = {}) {
   return Promise.all([
