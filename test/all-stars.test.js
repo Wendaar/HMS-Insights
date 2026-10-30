@@ -81,3 +81,10 @@ test('local and Vercel routes expose the same manager, public result and protect
  const ignored=(await readFile(new URL('../.vercelignore',import.meta.url),'utf8')).split(/\r?\n/);assert.ok(!ignored.includes('all-stars/'),'An unanchored legacy directory exclusion would remove public/all-stars from Vercel');assert.ok(ignored.includes('/all-stars/'));
  }finally{await new Promise(resolve=>server.close(resolve));}
 });
+
+test('monthly reader enriches missing portraits from current HMS while keeping monthly statistics unchanged',async()=>{
+ const baseline=nominateAllStars([snapshot],[fixture],scope),candidate=baseline.candidates.F[0],photo='https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/current_portrait';
+ const raw={gameId:fixture.id,startDate:fixture.date,status:'FINISHED',HomeTeam:{teamId:fixture.home.id,name:fixture.home.name},AwayTeam:{teamId:fixture.away.id,name:fixture.away.name},HomeTeamGoals:fixture.home.score,AwayTeamGoals:fixture.away.score,Phase:{phaseId:id(200),Group:{groupId:scope.groupId,name:'Test division',Season:{seasonId:scope.seasonId}}}};
+ const result=await readAllStars('phm',scope,{env:{HMS_PHM_ORGANIZATION_ID:snapshot.game.organization_id},loadLeagues:async()=>[{organization_id:snapshot.game.organization_id,season_id:scope.seasonId,competition_name:"Test",season_name:"Test season"}],loadAllStarsGames:async()=>[snapshot],readDay:async(_,date)=>date===fixture.date?[raw]:[],readPlayerPortraits:async()=>({players:[{PlayerId:candidate.playerId,TeamId:candidate.teamId,PlayerLogo:photo,P:999,GP:99}],goalies:[]})});
+ const enriched=result.candidates.F.find(p=>p.id===candidate.id);assert.equal(enriched.imageUrl,photo);assert.equal(enriched.gp,candidate.gp);assert.equal(enriched.points,candidate.points);assert.equal(enriched.score,candidate.score);assert.equal(result.portraits.complete,true);
+});

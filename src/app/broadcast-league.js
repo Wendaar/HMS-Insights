@@ -33,12 +33,18 @@ export function officialTeamLeaders(rows,detail){
 }
 async function readTable(endpoint,params,options){
   const url=new URL('https://api.prod.hms.wootera.net/public/'+endpoint);for(const [k,v]of Object.entries(params))url.searchParams.set(k,v);
-  const response=await(options.fetchImpl??fetch)(url,{headers:{accept:'application/json'},signal:AbortSignal.timeout(5000)});
+  const response=await(options.fetchImpl??fetch)(url,{...(options.freshPortraits?{cache:'no-store'}:{}),headers:{accept:'application/json',...(options.freshPortraits?{'cache-control':'no-cache'}:{})},signal:AbortSignal.timeout(5000)});
   if(!response.ok||Number(response.headers?.get('content-length'))>4000000)throw new Error('Public statistics unavailable');
   if(!response.body?.getReader)return response.json();
   const reader=response.body.getReader(),chunks=[];let size=0;
   try{while(true){const {value,done}=await reader.read();if(done)break;size+=value.byteLength;if(size>4000000)throw new Error('Large statistics');chunks.push(value);}}finally{await reader.cancel().catch(()=>{});}
   const buffer=new Uint8Array(size);let offset=0;for(const chunk of chunks){buffer.set(chunk,offset);offset+=chunk.length;}return JSON.parse(new TextDecoder().decode(buffer));
+}
+// Current public portraits only. Callers retain their own historical statistics.
+export async function readPlayerPortraits(groupId,options={}){
+  if(!isGameId(groupId))throw new TypeError('group');
+  const results=await Promise.allSettled(['playersStats','goaliesStats'].map(endpoint=>readTable(endpoint,{groupId},{...options,freshPortraits:true})));
+  return Object.fromEntries(['players','goalies'].map((key,i)=>[key,results[i].status==='fulfilled'?results[i].value:null]));
 }
 // Bounded, fixed-host transport shared by comparison and broadcast statistics.
 export async function readComparisonTables(scope,options={}){

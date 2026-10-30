@@ -6,6 +6,7 @@ import {loadAllStarsGames} from '../infrastructure/postgres-repository.js';
 import {readPublicGameDay} from './season-games.js';
 import {graphicSettings} from '../../public/all-stars/presentation.js';
 import {sportingImage} from '../../public/game-report-media.js';
+import {refreshAllStarsPortraits} from './all-stars-portraits.js';
 export const limits={F:3,D:2,G:1};
 const lower=v=>String(v??'').toLowerCase();
 export function allStarsScope(input){
@@ -111,5 +112,6 @@ export async function readAllStars(org,input,options={}){
   const seen=new Set();for(const g of fixtures){if(seen.has(g.id))throw new Error('Duplicate game');seen.add(g.id);}
   if(scope.groupId&&!fixtures.some(g=>g.group.id===scope.groupId))throw new TypeError('group');
   const data=nominateAllStars(snapshots,fixtures,scope);
+  data.portraits=await refreshAllStarsPortraits(data,fixtures,scope,options);
   return {...data,org:config.code,scope,season,readAt:new Date().toISOString(),monthClosed:scope.month<new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Prague',year:'numeric',month:'2-digit'}).format(options.now??new Date()).slice(0,7)};
 }
