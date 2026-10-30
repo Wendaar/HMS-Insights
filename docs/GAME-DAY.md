@@ -249,3 +249,20 @@ it. No protection was changed and no credentialed source/DB verification is clai
 Whole-day UI checks additionally cover a 24-fixture, two-page response, stadium
 filtering across pages and previous/next Story controls. Source `imported-snapshot`
 remains an imported-only view and does not establish a complete live HMS schedule.
+
+## Confirmed editor field and Flickr photo context
+
+The user supplied the actual HMS input element with id `igBgImageUrl` and the
+photo URL `https://www.flickr.com/photos/153512269@N03/54170419316/in/dateposted/`.
+The reader now recognizes `igBgImageUrl` in Venue records and normalizes that
+Flickr dateposted context to its canonical photo URL. A real read-only request
+resolved the supplied photo successfully to the Flickr raster CDN. No venue-to-photo
+association is guessed or hardcoded.
+
+The actual Venues diagnostic previously pasted for Kateřinky listed only location,
+logoUrls, name, nick, short, venueId and web: no background field. An editor input
+id is evidence of the editor's field, not proof that public API v1 exports it. If
+that field remains absent, HMS must add it to the API projection; client support
+alone cannot recover the stored value. Verification: all 450 Node tests passed,
+including the supplied URL and field mapping, plus the successful live photo
+resolution.

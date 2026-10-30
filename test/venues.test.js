@@ -17,6 +17,7 @@ test('venue catalog projects media availability and ignores raw private metadata
  const result=venueCatalog(rows(),org);assert.equal(result.items[0].logoUrl,logo);assert.equal(result.items[0].backgroundSourceUrl,background);assert.deepEqual(result.items[0].availability,{logo:'available',background:'available'});assert.doesNotMatch(JSON.stringify(result),/PRIVATE_VALUE_SENTINEL/);
  const empty=venueCatalog([{venueId,name:'Empty',logoUrls:{md:null}}],org).items[0];assert.equal(empty.availability.logo,'empty');assert.equal(empty.availability.background,'not-exposed');
  const blank=venueCatalog([{venueId,name:'Blank',backgroundImageUrl:null}],org).items[0];assert.equal(blank.availability.background,'empty');
+ const editor=venueCatalog([{venueId,name:'Editor field',igBgImageUrl:'https://www.flickr.com/photos/153512269@N03/54170419316/in/dateposted/'}],org).items[0];assert.equal(editor.backgroundField,'igBgImageUrl');assert.equal(editor.availability.background,'available');assert.equal(editor.backgroundSourceUrl,'https://www.flickr.com/photos/153512269@N03/54170419316/');
  const unknown=venueCatalog([{venueId,name:'Unknown schema',customBackgroundField:background}],org).items[0];assert.equal(unknown.availability.background,'unsupported');assert.equal(unknown.backgroundSourceUrl,null);
  for(const bad of [[...rows(),...rows()],[{...rows()[0],organizationId:otherId}],[{...rows()[0],venueId:'invalid'}]])assert.throws(()=>venueCatalog(bad,org));
  assert.throws(()=>venueCatalog(rows(),org,{ids:[otherId]}));

@@ -3,7 +3,7 @@ import {isGameId} from '../domain/game-summary.js';
 import {hmsMediaContext} from '../hms/media-context.js';
 const same=(a,b)=>typeof a==='string'&&typeof b==='string'&&a.toLowerCase()===b.toLowerCase();
 const label=v=>typeof v==='string'?v.trim().slice(0,160):null;
-const backgroundFields=['backgroundImageUrl','backgroundImageUrlForInfographics','infographicsBackgroundImageUrl'];
+const backgroundFields=['igBgImageUrl','backgroundImageUrl','backgroundImageUrlForInfographics','infographicsBackgroundImageUrl'];
 export function venueCatalog(rows,org,{ids=[]}={}){
  if(!Array.isArray(rows)||rows.length>500)throw new Error('Invalid venue catalog');
  const seen=new Set(),allowed=new Set(ids.map(id=>id.toLowerCase()));
