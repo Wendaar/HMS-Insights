@@ -18,3 +18,9 @@ test('image bridge copies bounded raster bytes without source CORS or credential
     const r=response();await createStudioImageHandler({fetchImpl:async()=>upstream})({method:'GET',query:{url:host+'/logo'}},r);assert.equal(r.code,502);
   }
 });
+
+test('explicit portrait refresh bypasses downstream and upstream image caches without weakening URL rules',async()=>{
+  const bytes=Buffer.from([137,80,78,71,13,10,26,10,1]);let options;
+  const result=response();await createStudioImageHandler({fetchImpl:async(url,o)=>{options=o;assert.equal(url.href,host+'/photo');return new Response(bytes);}})({method:'GET',query:{url:host+'/photo',refresh:'1',v:'123'}},result);
+  assert.equal(result.code,200);assert.equal(result.headers['Cache-Control'],'no-store');assert.equal(options.cache,'no-store');assert.equal(options.headers['cache-control'],'no-cache');assert.equal(options.credentials,'omit');
+});

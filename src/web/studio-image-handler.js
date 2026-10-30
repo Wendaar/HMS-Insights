@@ -25,14 +25,15 @@ export function createStudioImageHandler(options={}) {
     try {
       const url=studioAssetUrl(req.query?.url);
       if(active>=16)throw new Error('Busy');active++;counted=true;
-      const r=await (options.fetchImpl??fetch)(url,{redirect:'manual',credentials:'omit',signal:AbortSignal.timeout(8000),headers:{accept:'image/png,image/jpeg,image/webp'}});
+      const refresh=req.query?.refresh==='1';
+      const r=await (options.fetchImpl??fetch)(url,{...(refresh?{cache:'no-store'}:{}),redirect:'manual',credentials:'omit',signal:AbortSignal.timeout(8000),headers:{accept:'image/png,image/jpeg,image/webp',...(refresh?{'cache-control':'no-cache'}:{})}});
       if(!r.ok||r.status>=300||Number(r.headers.get('content-length'))>MAX_BYTES){await r.body?.cancel();throw new Error('Unavailable');}
       const reader=r.body?.getReader();if(!reader)throw new Error('Unavailable');
       const chunks=[];let size=0;
       try {while(true){const {done,value}=await reader.read();if(done)break;size+=value.length;if(size>MAX_BYTES)throw new Error('Too large');chunks.push(Buffer.from(value));}}
       catch(e){await reader.cancel();throw e;}finally{reader.releaseLock();}
       const bytes=Buffer.concat(chunks),type=imageType(bytes);if(!type)throw new Error('Not a raster image');
-      res.setHeader('Content-Type',type);res.setHeader('Cache-Control','public, max-age=3600, s-maxage=86400');
+      res.setHeader('Content-Type',type);res.setHeader('Cache-Control',refresh?'no-store':'public, max-age=3600, s-maxage=86400');
       return res.status(200).send(bytes);
     }catch(e){return res.status(e instanceof TypeError?400:502).json({error:'HMS obrázek není dostupný.'});}
     finally{if(counted)active--;}

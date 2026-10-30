@@ -5,6 +5,18 @@ Veřejný seznam: `https://app.phmcup.cz/all-stars/phm`.
 Publikovaná sestava: `https://app.phmcup.cz/all-stars/<organizace>/<pojmenovana-sestava>`.
 Odkaz a iframe se zobrazí po publikaci. Nevytváříme smyšlenou první sestavu.
 
+## Aktuální portréty
+
+„Načíst z HMS“ obnoví měsíční podklady a aktuální portréty z veřejných HMS
+hráčských a brankářských tabulek ověřené divize. Fotky se párují podle hráče
+a týmu; sezonní součty z těchto tabulek do měsíčních statistik nevstupují.
+Vybraná šestice se při obnovení zachová. Náhled i nový PNG použijí nové fotky,
+včetně nahrazení obsahu na stejné adrese (obnova obejde obrázkovou cache).
+Při výpadku zdroje zůstane dostupný importovaný portrét a zobrazí se upozornění.
+Fotka dosud nezveřejněná veřejným HMS API se objeví při dalším obnovení poté,
+co ji API zpřístupní. Publikované sestavy zůstávají uloženým výstupem; změny
+pracovní verze se veřejně projeví až novou publikací.
+
 ## Pravidla a původní aplikace
 
 Původní [generátor](https://wendaar.github.io/PHM-All-Stars-generator/)

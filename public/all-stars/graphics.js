@@ -4,13 +4,14 @@ import {sportingImage} from '../game-report-media.js';
 import {formats,graphicSettings} from './presentation.js';
 export {designs};
 const media=new Map();
-async function picture(url,local=false){
+async function picture(url,local=false,revision=''){
   if(!url)return null;
-  if(!media.has(url)){
+  const key=revision?url+'|'+revision:url;
+  if(!media.has(key)){
     if(media.size>=100)media.delete(media.keys().next().value);
-    media.set(url,local?fetch(url).then(r=>{if(!r.ok)throw Error();return r.blob();}).then(createImageBitmap).catch(()=>null):loadImage(url));
+    media.set(key,local?fetch(url).then(r=>{if(!r.ok)throw Error();return r.blob();}).then(createImageBitmap).catch(()=>null):loadImage(url,{refresh:!!revision}));
   }
-  return media.get(url);
+  return media.get(key);
 }
 function text(c,value,x,y,width,size,font,color='#ffffff',align='center'){
   const label=String(value??'').normalize('NFC');let pixels=size;c.textAlign=align;c.fillStyle=color;
@@ -32,7 +33,7 @@ export async function renderAllStarsGraphic(canvas,lineup,context,preferences){
   await document.fonts.ready;
   const bgPath=context.org?.toLowerCase()==='phm'&&settings.design==='pantha'?'/all-stars/assets/'+(portrait?'portrait':'landscape')+'.webp':null;
   const groupImage=sportingImage(context.groupLogoUrl);
-  const [background,groupLogo,images]=await Promise.all([picture(bgPath,true),picture(groupImage),Promise.all(players.map(async p=>({id:p.id,photo:await picture(sportingImage(p.imageUrl)),logo:await picture(sportingImage(p.teamLogoUrl))})))]);
+  const [background,groupLogo,images]=await Promise.all([picture(bgPath,true),picture(groupImage),Promise.all(players.map(async p=>({id:p.id,photo:await picture(sportingImage(p.imageUrl),false,context.portraitRevision),logo:await picture(sportingImage(p.teamLogoUrl))})))]);
   canvas.width=w;canvas.height=h;c.fillStyle='#081420';c.fillRect(0,0,w,h);
   if(background)cover(c,background,0,0,w,h);
   if(bgPath&&!background)missing.push(lang==='en'?'PHM background':'PHM pozadí');

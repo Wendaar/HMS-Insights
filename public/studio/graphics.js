@@ -51,14 +51,14 @@ export function exportFilename(game,template,settings,insight=null){
   const clean=v=>String(v??'').normalize('NFC').replace(/[<>:"/\\|?*\u0000-\u001f]/g,' ').replace(/\s+/g,' ').trim();
   return [game.org,game.playedOn,label,subject,game.home.name,game.away.name,settings.format?.replace(':','x'),({clean:'Clean',crazy:'Crazy',artistic:'Artistic',technical:'Technical',pantha:'Pantha'}[settings.design]??settings.design)].filter(Boolean).map(clean).join(' ').slice(0,220).trim()+'.png';
 }
-export async function loadImage(url,{required=false,lang=language}={}) {
+export async function loadImage(url,{required=false,lang=language,refresh=false}={}) {
   if(!url)return null;
   if(!url.startsWith('data:image/')&&!localSponsorAsset(url)&&!publicImageUrl(url)) {if(required)throw new Error(t('Použijte veřejnou HTTPS adresu obrázku.',{},lang));return null;}
   try {
     // Same-origin HMS bridge keeps preview authentication; external hosts get no credentials.
     const source=sportingImage(url)??flickrImage(url);
-    const fetchUrl=source?'/api/studio-image?'+new URLSearchParams({url:source}):url;
-    const r=await fetch(fetchUrl,{mode:'cors',credentials:source||localSponsorAsset(url)?'same-origin':'omit',signal:AbortSignal.timeout(10000)});
+    const fetchUrl=source?'/api/studio-image?'+new URLSearchParams({url:source,...(refresh?{refresh:'1',v:String(Date.now())}:{})}):url;
+    const r=await fetch(fetchUrl,{...(refresh?{cache:'no-store'}:{}),mode:'cors',credentials:source||localSponsorAsset(url)?'same-origin':'omit',signal:AbortSignal.timeout(10000)});
     if(!r.ok)throw new Error();
     const blob=await r.blob();
     if(blob.size>8*1024*1024||!['image/png','image/jpeg','image/webp'].includes(blob.type))throw new Error();
