@@ -16,7 +16,7 @@ const en = {
   'Zdroj: HMS · Aktualizace dat:':'Source: HMS · Data updated:', 'neuvedena':'not available',
   'Výsledek vychází z uloženého výsledku HMS. Statistiky a průběh vycházejí z evidovaných událostí a mohou být neúplné.':'The score is the recorded HMS result. Statistics and play by play are based on recorded events and may be incomplete.',
   'Data zápasu (JSON)':'Game data (JSON)', 'HRÁČSKÁ KARTA':'PLAYER PROFILE', 'Zavřít kartu hráče':'Close player profile',
-  'Logo skupiny soutěže':'Competition group logo', 'Logo stadionu':'Venue logo', 'DOMÁCÍ':'HOME', 'HOSTÉ':'AWAY', 'KONEČNÝ VÝSLEDEK':'FINAL',
+  'Logo skupiny soutěže':'Competition group logo', 'Logo stadionu':'Venue logo', 'DOMÁCÍ':'HOME', 'HOSTÉ':'AWAY', 'KONEČNÝ VÝSLEDEK':'FINAL', 'NAPLÁNOVANÝ ZÁPAS':'SCHEDULED GAME', 'Začátek zápasu':'Game starts',
   'střel ze zápisu':'recorded shots', 'Sekce zápasu':'Game sections', 'Přehled':'Summary', 'Průběh zápasu':'Play by play', 'Mapa gólů':'Goal maps', 'Sestavy a body':'Rosters and scoring',
   'GÓLY':'GOALS', 'ASISTENCE':'ASSISTS', 'BODY':'POINTS', 'Statistiky v soutěži':'League statistics',
   'Přehled týmových statistik':'Team statistics overview', 'Záznam zápasu':'Game broadcast', 'Otevřít na YouTube':'Watch on YouTube',

@@ -5,6 +5,7 @@ import {resolveInsightSubject,insightLabel,insightStat} from './subjects.js';
 import {fonts,brandFonts,fontForText,fontSpec,designTypography} from './typography.js';
 export {fonts} from './typography.js';
 import {sportingImage} from '../game-report-media.js';
+import {flickrImage} from '../venue-media.js';
 export const formats={'1:1':[1080,1080],'9:16':[1080,1920]};
 export const designs=['clean','crazy','artistic','technical','pantha'];
 export function safeArea(format){return format==='9:16'?{x:96,y:220,w:864,h:1360}:{x:64,y:64,w:952,h:952};}
@@ -55,7 +56,7 @@ export async function loadImage(url,{required=false,lang=language,refresh=false}
   if(!url.startsWith('data:image/')&&!localSponsorAsset(url)&&!publicImageUrl(url)) {if(required)throw new Error(t('Použijte veřejnou HTTPS adresu obrázku.',{},lang));return null;}
   try {
     // Same-origin HMS bridge keeps preview authentication; external hosts get no credentials.
-    const source=sportingImage(url);
+    const source=sportingImage(url)??flickrImage(url);
     const fetchUrl=source?'/api/studio-image?'+new URLSearchParams({url:source,...(refresh?{refresh:'1',v:String(Date.now())}:{})}):url;
     const r=await fetch(fetchUrl,{...(refresh?{cache:'no-store'}:{}),mode:'cors',credentials:source||localSponsorAsset(url)?'same-origin':'omit',signal:AbortSignal.timeout(10000)});
     if(!r.ok)throw new Error();

@@ -1,10 +1,11 @@
 import { reportLanguage, reportText } from '../../public/game-report-i18n.js';
 import { getGameSummary } from "../app/game-summary.js";
 import { isGameId } from "../domain/game-summary.js";
-import { renderGameReport } from "./game-report.js";
+import { renderGameReport,renderPregameReport } from "./game-report.js";
 import { mediaHosts } from '../../public/game-report-media.js';
+import {publicPregame} from '../app/public-pregame.js';
 
-export function createGameReportHandler({ json = false, loadSummary = getGameSummary, preview = false } = {}) {
+export function createGameReportHandler({ json = false, loadSummary = getGameSummary, preview = false, loadPregame=publicPregame } = {}) {
   return async (request, response) => {
     response.setHeader("cache-control", "no-store");
     response.setHeader("x-content-type-options", "nosniff");
@@ -20,7 +21,14 @@ export function createGameReportHandler({ json = false, loadSummary = getGameSum
     if (!isGameId(gameId)) return fail(400, "Neplatné gameId.");
     try {
       const summary = await loadSummary(gameId);
-      if (!summary) return fail(404, "Zápas zatím není importován.");
+      if (!summary) {
+        if(!json){const pregame=await loadPregame(gameId);if(pregame){
+          response.setHeader('content-type','text/html; charset=utf-8');
+          response.setHeader('content-security-policy',`default-src 'none'; style-src 'self'; font-src 'self'; img-src 'self' ${mediaHosts.map(h=>'https://'+h).join(' ')}; base-uri 'none'; frame-ancestors 'none'; form-action 'none'`);
+          return response.status(200).send(renderPregameReport(pregame,{lang}));
+        }}
+        return fail(404, "Zápas zatím není importován.");
+      }
       response.setHeader("cache-control", "public, s-maxage=60, stale-while-revalidate=300");
       if (json) return response.status(200).json(summary);
       response.setHeader("content-type", "text/html; charset=utf-8");

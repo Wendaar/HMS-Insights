@@ -1,3 +1,4 @@
+import {setupGameDay} from './game-day.js';
 import {mountSponsorPicker} from '../sponsors/picker.js';
 import {setupTeamCompare} from './team-compare.js';
 const initialStudioSection=new URLSearchParams(location.search).get('section');
@@ -162,6 +163,7 @@ $('clearPartner').onclick=()=>{assetVersions.partnerLogo++;removeStudioAsset(set
 function exportFile(){return new File([blob],exportFilename(game,gameOutputs(game).find(t=>t.id===$('template').value),settings,activeInsight()),{type:'image/png'});}
 $('download').onclick=()=>{if(!blob)return;const f=exportFile(),url=URL.createObjectURL(f),a=document.createElement('a');a.href=url;a.download=f.name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);};
 $('share').onclick=async()=>{if(!blob)return;try{await navigator.share({files:[exportFile()],title:'HMS Media Studio'});}catch(e){if(e.name!=='AbortError')status(tr('Sdílení není dostupné. Použijte Stáhnout PNG.'));}};
+setupGameDay({organization:()=>$('org').value,language:()=>language});
 setupTeamCompare({organization:()=>organizations.find(o=>o.code===$('org').value)?.slug,language:()=>language});
 async function initialize(){
   try{
@@ -172,7 +174,7 @@ async function initialize(){
     $('org').replaceChildren();for(const org of organizations){const option=document.createElement('option');option.value=org.code;option.textContent=org.name+(org.configured?'':` · ${tr('Nepřipojeno')}`);$('org').append(option);}
     $('org').disabled=false;
     const org=studioOrganization(location.pathname,organizations);if(!org){$('org').value='';resetSelection();$('list').textContent=tr('Organizace není v tomto Studiu dostupná.');status(tr('Organizace není v tomto Studiu dostupná.'));return;}
-    $('org').value=org.code;history.replaceState(null,'',studioUrl(org,language));await editorSettings();if(initialStudioSection==='team-compare')$('teamCompare').click();else await browse();
+    $('org').value=org.code;history.replaceState(null,'',studioUrl(org,language));await editorSettings();if(initialStudioSection==='game-day')$('gameDay').click();else if(initialStudioSection==='team-compare')$('teamCompare').click();else await browse();
   }catch{status(tr('Seznam organizací nelze načíst. Zkuste stránku obnovit.'));$('list').textContent=tr('Seznam organizací nelze načíst. Zkuste stránku obnovit.');}
 }
 initialize();

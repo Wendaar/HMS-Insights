@@ -42,6 +42,15 @@ test('live engine reuses normalizer without relaxing finished-only importer or g
   assert.equal(result.status,'RUNNING');assert.deepEqual(result.priklepy,[]);assert.equal(result.org,'PHM');assert.equal(result.currentPeriod,2);assert.equal(result.organizationId,undefined);
   await assert.rejects(mediaGame('EUCHL',gameId,{env:{...env,HMS_EUCHL_ORGANIZATION_ID:'11111111-1111-1111-1111-111111111111'},refresh:true,fetchResponses:async()=>[detail,detail,lineupResponse,null]}));
 });
+test('live preview preserves normalized phase and organization logos from HMS logoUrls.md',async()=>{
+ const gameId='abcdef12-2222-4222-8222-222222222222';
+ const logo='https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/phase-zakladni-md';
+ const orgLogo='https://prod-hms-wootera.s3.eu-central-1.amazonaws.com/phm-md';
+ const detail={...gameEventsResponse,gameId,status:'NOT PLAYED',Phase:{...lineupResponse.Phase,logoUrls:{md:logo}},Organization:{logoUrls:{md:orgLogo}}};
+ const result=await mediaGame('PHM',gameId,{env,refresh:true,fetchResponses:async()=>[detail,detail,{...lineupResponse,gameId},null],loadVenues:async()=>({org:'PHM',items:[]})});
+ assert.equal(result.phaseLogoUrl,logo);assert.equal(result.organizationLogoUrl,orgLogo);
+});
+
 test('templates suppress unknown/incorrect periods, use cumulative scores, require finished final',()=>{
   const game={status:'FINISHED',home:{score:9},away:{score:3},timeline:{coverage:'matches-result',periodScores:[{period:1,home:2,away:1},{period:2,home:3,away:0},{period:3,home:4,away:2}]}};
   assert.deepEqual(templates(game).map(t=>[t.id,t.home,t.away]),[['final',9,3],['period-1',2,1],['period-2',5,1],['period-3',9,3]]);

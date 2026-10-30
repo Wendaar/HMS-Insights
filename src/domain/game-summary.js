@@ -2,6 +2,7 @@ import { buildGameTimeline } from "./game-timeline.js";
 import { buildFaceoffs, goalieStatistics, recordedTeamShots } from './recorded-statistics.js';
 import { sportingImage,flickrAlbum } from '../../public/game-report-media.js';
 import {jerseyColor} from '../../public/game-report-graphics.js';
+import {venueBackground} from '../../public/venue-media.js';
 
 // Public, versioned read model shared by Game Center and future media consumers.
 // Accepts stored normalized rows, never raw HMS responses or environment values.
@@ -67,10 +68,16 @@ export function buildGameSummary({ game, teams = [], players = [], goalies = [],
     phaseLogoUrl:sportingImage(game.event_snapshot?.branding?.phaseLogoUrl),
     organizationLogoUrl:sportingImage(game.event_snapshot?.branding?.organizationLogoUrl),
     groupColor: /^#[\da-f]{6}$/i.test(game.group_color ?? '') ? game.group_color : null,
-    groupLogoUrl:sportingImage(game.group_logo_url),venueLogoUrl:sportingImage(game.venue_logo_url),
+    groupLogoUrl:sportingImage(game.group_logo_url),venueLogoUrl:sportingImage(game.venue_logo_url)??sportingImage(game.event_snapshot?.branding?.venueLogoUrl),
+    venueBackgroundUrl:venueBackground(game.event_snapshot?.branding?.venueBackgroundUrl),
+    venueId:isGameId(game.venue_id)?game.venue_id.toLowerCase():null,
     faceoffs: buildFaceoffs(game.event_snapshot),
     gameId: game.game_id,
     seasonId: isGameId(game.season_id)?game.season_id.toLowerCase():null,
+    competitionId: isGameId(game.competition_id)?game.competition_id.toLowerCase():null,
+    groupId: isGameId(game.group_id)?game.group_id.toLowerCase():null,
+    phaseId: isGameId(game.phase_id)?game.phase_id.toLowerCase():null,
+    startTime: /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/.test(game.started_at instanceof Date?game.started_at.toISOString():String(game.started_at??''))?(game.started_at instanceof Date?game.started_at.toISOString():String(game.started_at)).slice(11,16):null,
     status: game.status,
     playedOn: date(game.played_on),
     competition: game.competition_name ?? null,

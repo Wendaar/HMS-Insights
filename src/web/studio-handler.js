@@ -1,6 +1,8 @@
 import {publicOrganizations} from '../app/organizations.js';
 import {controlContextCatalog,controlGameCatalog,controlSeasonLink} from '../app/control-context.js';
 import { browseMedia, mediaGame } from '../app/media-engine.js';
+import {organizationConfig} from '../app/organizations.js';
+import {loadVenueCatalog} from '../app/venues.js';
 export function createStudioHandler(options={}) {
   return async (req,res)=>{
     res.setHeader('Cache-Control','no-store');
@@ -10,6 +12,7 @@ export function createStudioHandler(options={}) {
     try {
       const integer=(value,max)=>{const n=Number(value??0);if(!Number.isSafeInteger(n)||n<0||n>max)throw new TypeError('Neplatná stránka.');return n;};
       if(q.catalog==='1')return res.status(200).json({organizations:publicOrganizations(options.env??process.env)});
+      if(q.catalog==='venues')return res.status(200).json(await(options.loadVenues??loadVenueCatalog)(organizationConfig(q.org,options.env??process.env),options));
       if(q.catalog==='leagues')return res.status(200).json(await controlContextCatalog(q.org,options));
       if(q.catalog==='games')return res.status(200).json(await controlGameCatalog(q.org,q.seasonId,options));
       if(q.catalog==='season-link')return res.status(200).json(await controlSeasonLink(q.seasonId,options));

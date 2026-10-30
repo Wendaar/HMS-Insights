@@ -16,6 +16,11 @@ const snapshot = { game: rows.games[0], teams: rows.team_game_stats,
   players: rows.player_game_stats, goalies: rows.goalie_game_stats, priklepy: rows.detected_priklepy };
 const id = snapshot.game.game_id;
 
+test('invitation kickoff is retained for SQL timestamp strings and Date objects',()=>{
+  for(const started_at of ['2026-11-01T20:00:00','2026-11-01 20:00:00',new Date('2026-11-01T20:00:00Z')])assert.equal(buildGameSummary({...snapshot,game:{...snapshot.game,started_at}}).startTime,'20:00');
+  assert.equal(buildGameSummary({...snapshot,game:{...snapshot.game,started_at:null}}).startTime,null);
+});
+
 test("GameSummary preserves 9:3, all ten Příklepy and ranked public stats", () => {
   const summary = buildGameSummary(snapshot);
   assert.equal(summary.schemaVersion, 1);
@@ -85,7 +90,7 @@ for (const json of [true, false]) {
       ["GET", id, async () => { throw new Error("postgres://SECRET_SENTINEL"); }, 503],
     ]) {
       const res = response();
-      await createGameReportHandler({ json, loadSummary: load })({ method, query: { gameId } }, res);
+      await createGameReportHandler({ json, loadSummary: load, loadPregame:async()=>null })({ method, query: { gameId } }, res);
       assert.equal(res.code, expected);
       assert.doesNotMatch(JSON.stringify(res.body), /SECRET_SENTINEL/);
       assert.equal(res.headers["cache-control"], expected === 200 ? "public, s-maxage=60, stale-while-revalidate=300" : "no-store");

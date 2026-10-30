@@ -10,6 +10,8 @@ První konfigurovatelná aplikace: [Hráči do playoff](docs/PLAYOFF-PLAYERS.md)
 
 Media Studio MVP 1.0, Sprint 1: `/studio`. [Implementation and verification](docs/MEDIA-STUDIO.md).
 
+Game Day Preview & Reminder ve Studiu: [Stories, pozvánky a testovací Reminder Center](docs/GAME-DAY.md).
+
 Studio pro více organizací a CS/EN: [nastavení HMS a Vercelu](docs/STUDIO-ORGANIZATIONS.md).
 
 Game Center MVP: veřejný `/game-center/:gameId`, sdílený JSON GameSummary v1

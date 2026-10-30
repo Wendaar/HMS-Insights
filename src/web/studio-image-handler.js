@@ -1,4 +1,5 @@
 import { mediaHosts } from '../../public/game-report-media.js';
+import {flickrImage} from '../../public/venue-media.js';
 const MAX_BYTES=8*1024*1024;
 let active=0;
 export function studioAssetUrl(value) {
@@ -6,7 +7,7 @@ export function studioAssetUrl(value) {
   const u=new URL(value.replace('[size]','cropped_md'));
   // Fixed, Amazon-owned DNS names only. No arbitrary hosts, ports, auth, query
   // strings, redirects or forwarding of HMS credentials to object storage.
-  if(u.protocol!=='https:'||!mediaHosts.includes(u.hostname)||u.port||u.username||u.password||u.search||u.hash)throw new TypeError('Nepovolený zdroj obrázku.');
+  if(u.protocol!=='https:'||(!mediaHosts.includes(u.hostname)&&!flickrImage(value))||u.port||u.username||u.password||u.search||u.hash)throw new TypeError('Nepovolený zdroj obrázku.');
   return u;
 }
 function imageType(b) {

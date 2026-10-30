@@ -1,4 +1,6 @@
 import {displayExtras} from './game-extras.js';
+import {resolveVenueBackground} from './venue-media.js';
+import {loadVenueCatalog,applyVenueCatalog} from './venues.js';
 import {hmsMediaContext} from '../hms/media-context.js';
 // Trigger-neutral read model. No writes to HMS, imported snapshots or Příklepy.
 import { fetchGames, fetchGameDetail, fetchOrganization, fetchPublicGameMetadata, fetchGameResponses, hmsConfigFromEnv } from '../hms/client.js';
@@ -73,9 +75,10 @@ export function applyPublicMedia(summary,metadata) {
     if(player)player.imageUrl=teamImage(person)??player.imageUrl;
   }
   if(metadata.Phase?.name===summary.phase)summary.phaseLogoUrl ||=teamImage(metadata.Phase);
+  if(metadata.Venue?.name===summary.venue){summary.venueLogoUrl ||=branding.venueLogoUrl;summary.venueBackgroundUrl ||=branding.venueBackgroundUrl;}
   return summary;
 }
-export async function browseMedia({org,filter='Today',offset=0,windowPage=0,section='games',query='',type=''}, options={}) {
+export async function browseMedia({org,date,filter='Today',offset=0,windowPage=0,section='games',query='',type=''}, options={}) {
   const env=options.env??process.env, config=organizationConfig(org,env);
   const limit=20;
   if(section==='insights'){
@@ -91,7 +94,8 @@ export async function browseMedia({org,filter='Today',offset=0,windowPage=0,sect
       stats:Object.fromEntries(['goals','assists','points','saves','goalsAgainst'].filter(k=>Number.isFinite(item.facts?.[k])).map(k=>[k,item.facts[k]]))}));
     return page;
   }
-  const range=timeWindow(filter,options.now,windowPage);
+  if(date&&(!/^\d{4}-\d{2}-\d{2}$/.test(date)||new Date(date+'T12:00:00Z').toISOString().slice(0,10)!==date))throw new TypeError('Invalid date');
+  const range=date?{from:date,to:date}:timeWindow(filter,options.now,windowPage);
   if(!config.token)return (options.loadPage??loadStudioPage)({organizationId:config.id,...range,offset,limit,section,env});
   const hmsConfig={...hmsConfigFromEnv({...env,HMS_API_TOKEN:config.token}),token:config.token,timeoutMs:5000,retries:0};
   // HMS API v1 defaults to FINISHED. Studio browsing explicitly includes all
@@ -140,8 +144,9 @@ export async function mediaGame(org,gameId,options={}) {
       summary.provenance={...summary.provenance,score:'hms-result-or-recorded-goals'};
       summary.currentPeriod=Number.isInteger(detail.currentPeriod)&&detail.currentPeriod>0&&detail.currentPeriod<=9?detail.currentPeriod:null;
       summary.groupColor=game.groupColor;
-      summary.phaseLogoUrl=sportingImage(detail.Phase?.logoUrl);
-      summary.organizationLogoUrl=sportingImage(detail.Organization?.logoUrl);
+      const branding=hmsMediaContext(detail);
+      summary.phaseLogoUrl ||=branding.phaseLogoUrl;
+      summary.organizationLogoUrl ||=branding.organizationLogoUrl;
     }
     // Existing Příklepy are read from storage, never regenerated on refresh.
     if(options.refresh && env.DATABASE_URL) {
@@ -153,16 +158,21 @@ export async function mediaGame(org,gameId,options={}) {
     applyPublicMedia(summary,publicMetadata);
     // Use the same official-star validation as the existing Game Report.
     if(publicMetadata){const source=snapshot??{game:normalizedRows.games[0],teams:normalizedRows.team_game_stats,players:normalizedRows.player_game_stats,goalies:normalizedRows.goalie_game_stats};summary.stars=displayExtras(source,publicMetadata,null,null).stars;}
-    if((!summary.competitionLogoUrl||!summary.groupLogoUrl)&&config.token){
+    if((!summary.competitionLogoUrl||!summary.groupLogoUrl||snapshot&&(!summary.venueLogoUrl||!summary.venueBackgroundUrl||!summary.phaseLogoUrl))&&config.token){
       try {const detail=await (options.fetchBrandingDetail??fetchGameDetail)(gameId,{config:{...hmsConfigFromEnv({...env,HMS_API_TOKEN:config.token}),timeoutMs:4000,retries:0}});
         assertOrg(detail.organizationId,config.id);if(!same(detail.gameId,gameId))throw new Error('Jiný zápas');
         const brand=hmsMediaContext(detail);
         if(brand.competitionName===summary.competition)summary.competitionLogoUrl ||=brand.competitionLogoUrl;
         if(brand.groupName===summary.group)summary.groupLogoUrl ||=brand.groupLogoUrl;
         if(brand.phaseName===summary.phase)summary.phaseLogoUrl ||=brand.phaseLogoUrl;
+        if(detail.Venue?.name===summary.venue){summary.venueLogoUrl ||=brand.venueLogoUrl;summary.venueBackgroundUrl ||=brand.venueBackgroundUrl;}
       }catch{/* Optional branding never changes verified scores. */}
     }
     summary.organizationLogoUrl ||=await organizationImage(config,env,options);
+    if(config.token&&isGameId(summary.venueId))try{
+      applyVenueCatalog(Object.assign(summary,{org:config.code}),await(options.loadVenues??loadVenueCatalog)(config,{...options,ids:[summary.venueId],env}));
+    }catch{/* Optional catalog failures never hide a fixture or existing match media. */}
+    summary.venueBackgroundUrl=await(options.resolveVenueBackground??resolveVenueBackground)(summary.venueBackgroundUrl);
     const value={...summary,org:config.code,readAt:new Date().toISOString(),source:snapshot?'imported-snapshot':'HMS-read-only'};
     cache.set(key,{expires:now+30000,refreshedAt:snapshot?0:now,value});
     if(cache.size>200) cache.delete(cache.keys().next().value);

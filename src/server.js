@@ -1,3 +1,7 @@
+import {createMatchPreviewHandler} from './web/match-preview-handler.js';
+const matchPreviewHandler=createMatchPreviewHandler();
+import {createGameDayHandler} from './web/game-day-handler.js';
+const gameDayHandler=createGameDayHandler();
 import {createSponsorsHandler} from './web/sponsors-handler.js';
 import {createRegistrationControlHandler} from './web/registration-control-handler.js';
 import {createPublicPortalHandler} from './web/public-portal-handler.js';
@@ -40,6 +44,8 @@ const broadcastHandler = createBroadcastHandler();
 const portalHandler = createPublicPortalHandler();
 
 const assets = {
+  '/venue-media.js':['text/javascript; charset=utf-8','venue-media.js'],
+  '/match-preview.css':['text/css; charset=utf-8','match-preview.css'],
   '/organization-catalog.js':['text/javascript; charset=utf-8','organization-catalog.js'],
   '/hms-favicon-public-v2.svg':['image/svg+xml','hms-favicon-public-v2.svg'],
   '/hms-favicon-control-v2.svg':['image/svg+xml','hms-favicon-control-v2.svg'],
@@ -70,6 +76,16 @@ const assets = {
 
 export const server = createServer(async (request, response) => {
   const url = new URL(request.url, `http://${request.headers.host ?? "localhost"}`);
+  const pregameMatch=/^\/m\/([a-z0-9-]+)\/([a-fA-F0-9-]+)(?:\/(analysis))?\/?$/.exec(url.pathname);
+  if(pregameMatch||url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='match-preview'){
+    request.query={...Object.fromEntries(url.searchParams),...(pregameMatch?{org:pregameMatch[1],gameId:pregameMatch[2],action:pregameMatch[3]}:{})};
+    await matchPreviewHandler(request,{setHeader:(k,v)=>response.setHeader(k,v),status(code){response.statusCode=code;return this;},send(body){response.end(body);}});return;
+  }
+  if(url.pathname==='/api/game-day'||url.pathname==='/api/cron/reminders'||url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='game-day'){
+    request.query=Object.fromEntries(url.searchParams);if(url.pathname==='/api/cron/reminders')request.query.action='cron';
+    if(request.method==='POST'){let body='';for await(const chunk of request){body+=chunk;if(Buffer.byteLength(body)>250000){response.writeHead(413);response.end();return;}}request.body=body;}
+    await gameDayHandler(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json; charset=utf-8');response.end(JSON.stringify(body));}});return;
+  }
   if(url.pathname==='/api/registrations'||url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='registrations'){
     request.query=Object.fromEntries(url.searchParams);
     if(request.method==='POST'){let size=0,body='';for await(const chunk of request){size+=chunk.length;if(size>4000000){response.writeHead(413);response.end();return;}body+=chunk;}request.body=body;}
@@ -238,7 +254,7 @@ export const server = createServer(async (request, response) => {
     response.setHeader('content-type',url.pathname.endsWith('.css')?'text/css':'font/woff2');
     response.end(await readFile(join(publicDirectory,url.pathname)));return;
   }
-  if(url.pathname==='/studio' || /^\/studio\/[a-zA-Z0-9-]+\/?$/.test(url.pathname) || /^\/studio\/(index.html|app.js|graphics.js|subjects.js|typography.js|preferences.js|team-compare.js|i18n.js|routing.js|studio.css)$/.test(url.pathname)) {
+  if(url.pathname==='/studio' || /^\/studio\/[a-zA-Z0-9-]+\/?$/.test(url.pathname) || /^\/studio\/(index.html|app.js|graphics.js|subjects.js|typography.js|preferences.js|game-day.js|game-day-data.js|game-day-invitation.js|game-day-graphics.js|team-compare.js|i18n.js|routing.js|studio.css)$/.test(url.pathname)) {
     const name=!url.pathname.split('/').pop()?.includes('.')?'index.html':url.pathname.split('/').pop();
     response.setHeader('content-type',name.endsWith('.html')?'text/html; charset=utf-8':name.endsWith('.css')?'text/css':'text/javascript');
     response.end(await readFile(join(publicDirectory,'studio',name)));return;
