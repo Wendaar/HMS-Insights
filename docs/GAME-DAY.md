@@ -25,13 +25,57 @@ bridge, and appears in the Control Center registry and application map.
   manual group selection and send confirmation. Copy text and download PNG are
   explicit fallbacks. No group enumeration or automatic WhatsApp delivery.
 
-## Private Reminder Center
+## Invitation design and WhatsApp editor
+
+The current creator screen prioritizes Game Day graphics, match invitations and
+WhatsApp; email contact/queue controls are deferred from this screen. The private
+backend/test-only queue remains available for later integration.
+
+The match invitation calls the **same `drawComparisonTeam` renderer** as Team
+Compare. Official rank, points/games, score and goals per game are projected from
+the existing comparison service, never recalculated in the editor. Date plus
+localized weekday, face-off time and venue have a separate prominent masthead.
+Source jerseys appear as illustrated shirts, with color-picker overrides scoped
+to the currently selected match; missing source colors use an explicit unknown
+shirt. Overrides never replace HMS values or carry into another fixture.
+
+Clean, Crazy, Artistic, Technical and PHM Pantha reuse Studio typography, effects,
+and atmospheres, with all five shared export ratios. Custom base/accent, background
+URL and PNG/JPEG/WebP upload use the existing bounded image loader. A required
+background failure disables export. Uploaded backgrounds are bounded to 8 MB /
+40 million decoded pixels and resized to 1920px. Settings and CS/EN invitation
+templates persist under `hms-studio:settings:v2:<ORG>:game-day` in localStorage;
+uploaded backgrounds use Studio's existing IndexedDB asset store. Persistence is
+per organization and browser, not a shared server configuration. Loading the
+screen restores that saved style. Empty custom headings select MATCH DAY or
+GAME DAY automatically. Story capacity adapts to the chosen aspect ratio.
+
+The organization/language invitation template includes greeting, fixture, date,
+weekday, time, venue, roster instructions, source link and organization sign-off.
+Creators can edit the template, insert field tokens using labeled buttons, reset
+it, and edit the final message separately. Only the final message accompanies
+the current PNG. Sensitive contacts and access keys are not part of preferences.
+
+The primary Share to WhatsApp button is enabled only after the current PNG has
+finished rendering. It passes the prepared image and current editable text in one
+native share payload, preserving the user click. Cancelling native sharing does
+nothing else. When combined file/text sharing is unavailable, it downloads that
+PNG and opens wa.me with text; the user selects their group and attaches the PNG.
+wa.me never claims to have attached an image. Actual mobile target behavior still
+needs device testing; mocked browser share APIs are not delivery verification.
+
+HMS's shared brand stylesheet now defines one blue refresh/load action with a
+refresh icon for the major editors. Game Day places it in its own top load bar;
+Team Compare (including its Studio shadow root), All Stars, Studio and Broadcast
+use the shared visual rule rather than burying loading among design options.
+
+## Prepared private reminder backend (email UI deferred)
 
 Apply `db/migrations/008_game_day_reminders.sql` explicitly in the preview DB;
 set `DATABASE_URL` and `HMS_<CODE>_REMINDER_SECRET` (at least 24 random characters)
 server-side for each organization. This capability is independent of HMS API and
-cron secrets. Enter it in Reminder Center's password field. It remains in memory
-and clears on organization changes or leaving the module. No secret in URLs,
+cron secrets. The prepared reminder API requires this capability as a Bearer header; the current
+creator screen does not display email management or accept this key. No secret in URLs,
 browser storage, public catalogs or logs. Settings, contacts, queue and attempts
 are private; public day/match endpoints contain sporting data only.
 
@@ -57,8 +101,9 @@ teams). Configuration is scoped by organization UUID. Imports/settings never wri
 to HMS. Manual jersey overrides are frozen in each queued invitation and do not
 modify shared HMS data.
 
-Manual flow: load center, enable configuration, import contacts, select a fixture,
-review graphic/text, queue reminder, simulate delivery. Jobs deduplicate by
+Prepared API flow for later email integration: authorize center/config/contacts,
+queue a reviewed fixture, then process the test queue. Current creator UI focuses
+on image/text exports and WhatsApp. Jobs deduplicate by
 organization/game/recipient/kind/mode. New recipients can be queued separately;
 repeating a request cannot resend an existing job. Existing queued payloads are
 frozen. Atomic `FOR UPDATE SKIP LOCKED` claims protect concurrent workers. Expired
@@ -112,11 +157,15 @@ Playwright and Chromium; supports PLAYWRIGHT_MODULE / CHROMIUM_PATH),
 `node scripts/build-static.js`. Browser checks use synthetic sporting data and
 never establish live HMS, DB, Ecomail or WhatsApp delivery.
 
-Local verification on 30 October 2026: all 430 Node tests passed, including 20 new
-Game Day/reminder tests; static demo build passed (unrelated generated demo files
-excluded). Headless Chrome passed PNG signature/dimensions, complete Story page
-partitioning, match stats/jersey override, private center, test queue, CS/EN,
-WhatsApp text fallback, 390px layout and navigation/capability reset checks.
+Local verification on 30 October 2026: all 435 Node tests passed, including 25
+new Game Day/reminder/invitation checks. The static demo build passed in the first
+increment; unrelated generated demo assets were excluded. The revised browser
+check passes 15 match PNG style/ratio combinations plus final match/Game Day PNGs,
+shared Team Compare cards, prominent date/time/venue, color-picker shirts,
+organization-isolated design/template/background persistence, full-day filtering,
+CS/EN, native image+text share payload and fallback, and 390px layout. The existing
+Team Compare browser regression also passes after sharing its card renderer.
+Browser data and share APIs are synthetic; actual devices/delivery remain unverified.
 
 Preview deployment: https://hms-insights-git-codex-game-day-preview-reminder-wendaar.vercel.app/studio/phm?section=game-day
 

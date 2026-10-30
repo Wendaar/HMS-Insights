@@ -245,7 +245,7 @@ export const server = createServer(async (request, response) => {
     response.setHeader('content-type',url.pathname.endsWith('.css')?'text/css':'font/woff2');
     response.end(await readFile(join(publicDirectory,url.pathname)));return;
   }
-  if(url.pathname==='/studio' || /^\/studio\/[a-zA-Z0-9-]+\/?$/.test(url.pathname) || /^\/studio\/(index.html|app.js|graphics.js|subjects.js|typography.js|preferences.js|game-day.js|game-day-data.js|game-day-graphics.js|team-compare.js|i18n.js|routing.js|studio.css)$/.test(url.pathname)) {
+  if(url.pathname==='/studio' || /^\/studio\/[a-zA-Z0-9-]+\/?$/.test(url.pathname) || /^\/studio\/(index.html|app.js|graphics.js|subjects.js|typography.js|preferences.js|game-day.js|game-day-data.js|game-day-invitation.js|game-day-graphics.js|team-compare.js|i18n.js|routing.js|studio.css)$/.test(url.pathname)) {
     const name=!url.pathname.split('/').pop()?.includes('.')?'index.html':url.pathname.split('/').pop();
     response.setHeader('content-type',name.endsWith('.html')?'text/html; charset=utf-8':name.endsWith('.css')?'text/css':'text/javascript');
     response.end(await readFile(join(publicDirectory,'studio',name)));return;

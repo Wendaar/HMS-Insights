@@ -11,3 +11,5 @@ sources/
 
 test-output/
 test-results.txt
+
+artifacts/

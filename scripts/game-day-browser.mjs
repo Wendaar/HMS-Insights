@@ -1,44 +1,55 @@
-// Synthetic fixture UI/export verification; no HMS, DB or email credentials.
+// UI and PNG checks use synthetic sporting data, never live contacts/delivery.
 import assert from 'node:assert/strict';
 import {mkdir,readFile} from 'node:fs/promises';
 import {server} from '../src/server.js';
 const {chromium}=await import(process.env.PLAYWRIGHT_MODULE||'playwright');
 const out=process.env.STUDIO_TEST_OUTPUT||'test-output/game-day';await mkdir(out,{recursive:true});
 const browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_PATH?{executablePath:process.env.CHROMIUM_PATH}:{})});
-await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const origin=`http://127.0.0.1:${server.address().port}`;
+await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const origin='http://127.0.0.1:'+server.address().port;
 try{
- const page=await browser.newPage({viewport:{width:1400,height:1000},acceptDownloads:true}),errors=[];page.on('pageerror',e=>errors.push(e.message));
- const fixture={gameId:'11111111-1111-1111-1111-111111111111',org:'PHM',date:'2026-10-31',time:'20:15',venue:'Praha',competition:'PHM Cup',eligible:true,home:{id:'h',name:'Hc Slavoj Zbraslav',jerseyColor:'#ffffff',preview:{rank:2,form:[{result:'W'}],offense:4.5,defense:2.5,rating:{score:73},attendance:12,players:[{name:'Adam Patočka',points:8}]}},away:{id:'a',name:'HC Kosti',jerseyColor:'#304bb2',preview:null},links:{game:'/game-center/example',compare:'/team-comparison/phm'}};
- const config={enabled:true,automatic:false,language:'cs',branding:{title:'PHM GAME DAY',accent:'#78e5b8'},schedule:{league:24,tournament:3},competitionTypes:{},recipientTeamIds:[]};
- let queued=0;
- await page.route('**/api/studio?*',r=>r.fulfill({json:new URL(r.request().url()).searchParams.has('catalog')?{organizations:[{code:'PHM',slug:'phm',name:'PHM',configured:true},{code:'EUCHL',slug:'euchl',name:'EUCHL',configured:false}]}:{items:[],source:'browser-test-fixture',from:'2026-10-31',to:'2026-10-31'}}));
- await page.route('**/api/game-day?*',async route=>{const q=new URL(route.request().url()).searchParams,action=q.get('action');
-  if(action==='day'){const offset=Number(q.get('offset'));return route.fulfill({json:{items:Array.from({length:offset===0?20:4},(_,i)=>({...fixture,org:q.get('org'),date:q.get('date'),gameId:String(offset+i),venue:offset+i<20?'Praha':'Brno',home:{...fixture.home,name:fixture.home.name+' '+(offset+i)}})),hasMore:offset===0,source:'browser-test-fixture'}});}
-  if(action==='preview')return route.fulfill({json:fixture});
-  if(!route.request().headers().authorization)return route.fulfill({status:401,json:{error:'Access key required'}});
-  if(action==='center')return route.fulfill({json:{config,contacts:[],jobs:[]}});
-  if(action==='queue'){queued++;assert.equal(route.request().postDataJSON().mode,'test');}
-  return route.fulfill({json:{mode:'test',queued:1}});
+ const page=await browser.newPage({viewport:{width:1440,height:1050},acceptDownloads:true}),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ const fixture={gameId:'11111111-1111-1111-1111-111111111111',org:'PHM',date:'2026-11-01',time:'20:00',venue:'SPM Aréna',competition:'PHM Cup · HOBBY FIRE',eligible:true,
+ home:{id:'h',name:'HC Soldiers B',logoUrl:'https://example.com/home.png',jerseyColor:'#ffffff',preview:{rank:1,points:14,games:8,score:'49:27',goalsFor:49,goalsAgainst:27,form:[{result:'W'},{result:'W'},{result:'L'},{result:'W'},{result:'W'}],offense:6.13,defense:3.38,rating:{score:73},attendance:12,players:[{name:'Adam Patočka',points:8}]}},
+ away:{id:'a',name:'HC Ducks Stars B',logoUrl:'https://example.com/away.png',jerseyColor:'#304bb2',preview:{rank:2,points:9,games:7,score:'35:26',goalsFor:35,goalsAgainst:26,form:[{result:'L'},{result:'W'},{result:'W'},{result:'L'},{result:'W'}],offense:5,defense:3.71,rating:{score:62},players:[]}},links:{game:'https://app.phmcup.cz/game-center/example',compare:'https://app.phmcup.cz/team-comparison/phm'}};
+ await page.goto(origin+'/studio/fonts/fonts.css');
+ const badges=await page.evaluate(()=>{return ['#df413d','#347ce6'].map((color,i)=>{const c=document.createElement('canvas');c.width=c.height=120;const x=c.getContext('2d');x.fillStyle=color;x.beginPath();x.moveTo(8,8);x.lineTo(112,8);x.lineTo(100,85);x.lineTo(60,116);x.lineTo(20,85);x.closePath();x.fill();x.fillStyle='#fff';x.font='bold 48px Arial';x.textAlign='center';x.fillText(i?'DS':'SC',60,72);return c.toDataURL();});});
+ await page.route('https://example.com/*.png',route=>route.fulfill({contentType:'image/png',headers:{'access-control-allow-origin':'*'},body:Buffer.from(badges[route.request().url().includes('home')?0:1].split(',')[1],'base64')}));
+ await page.route('**/api/studio?*',r=>r.fulfill({json:new URL(r.request().url()).searchParams.has('catalog')?{organizations:[{code:'PHM',slug:'phm',name:'PHM',configured:true},{code:'EUCHL',slug:'euchl',name:'EUCHL',configured:false}]}:{items:[],source:'browser-test-fixture',from:'2026-11-01',to:'2026-11-01'}}));
+ await page.route('**/api/game-day?*',async route=>{const q=new URL(route.request().url()).searchParams;
+  if(q.get('action')==='day'){const offset=Number(q.get('offset'));return route.fulfill({json:{items:Array.from({length:offset===0?20:4},(_,i)=>({...fixture,org:q.get('org'),date:q.get('date'),gameId:String(offset+i),venue:offset+i<20?'SPM Aréna':'Brno',home:{...fixture.home,name:fixture.home.name+' '+(offset+i)}})),hasMore:offset===0,source:'browser-test-fixture'}});}
+  if(q.get('action')==='preview')return route.fulfill({json:fixture});
+  throw Error('Email API must not be called by this UI');
  });
- await page.goto(origin+'/studio/phm?section=game-day');await page.locator('#gameDayPanel canvas').waitFor();await page.waitForFunction(()=>document.querySelector('#gameDayPanel textarea')?.value.includes('HC Kosti'));
- assert.equal(await page.locator('.workspace').isVisible(),false);
- const panel=page.locator('#gameDayPanel');
- assert.match(await panel.getByRole('status').textContent(),/24/);
- const venue=panel.locator('label').filter({hasText:/^Stadion/}).locator('select');await venue.selectOption('Brno');assert.equal(await panel.locator('.filters').nth(1).getByRole('button').count(),4);await page.waitForFunction(()=>document.querySelector('#gameDayPanel textarea').value.includes('Zbraslav 20'));
- await venue.selectOption('');await page.waitForFunction(()=>document.querySelector('#gameDayPanel textarea').value.includes('Zbraslav 0'));await panel.getByRole('button',{name:'Další Story →',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#gameDayPanel textarea').value.includes('Zbraslav 6'));
- await panel.getByRole('button',{name:'← Předchozí Story',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#gameDayPanel textarea').value.includes('Zbraslav 0'));
- const pages=await page.evaluate(async()=>{const {storyPages}=await import('/studio/game-day-graphics.js');const rows=Array.from({length:27},(_,i)=>({gameId:i,venue:i<14?'A':i<20?'B':'C'}));for(const cols of [1,2]){const pages=storyPages(rows,cols);if(pages.flat().length!==rows.length||new Set(pages.flat().map(p=>p.gameId)).size!==rows.length)throw Error('Dropped games');}return true;});assert.equal(pages,true);
- const downloadEvent=page.waitForEvent('download');await panel.getByRole('button',{name:'Stáhnout Stories PNG',exact:true}).click();const download=await downloadEvent;await download.saveAs(out+'/story.png');const png=await readFile(out+'/story.png');assert.equal(png.readUInt32BE(16),1080);assert.equal(png.readUInt32BE(20),1920);
- await panel.getByRole('button',{name:/20:15 · Hc Slavoj Zbraslav 0/}).click();await page.waitForFunction(()=>document.querySelector('#gameDayPanel textarea').value.includes('73 / 100'));
- const home=panel.locator('input[placeholder*="Domácí"]');await home.fill('#abcdef');await page.waitForFunction(()=>document.querySelector('#gameDayPanel textarea').value.includes('#abcdef'));
- await panel.locator('summary').filter({hasText:'Reminder Center'}).click();await panel.getByRole('button',{name:'Otevřít centrum'}).click();await panel.getByRole('status').filter({hasText:'Access key required'}).waitFor();
- await panel.locator('input[type=password]').fill('synthetic-test-key');await panel.getByRole('button',{name:'Otevřít centrum'}).click();await panel.getByText('0 kontaktů · TEST MODE',{exact:true}).waitFor();
- const queueResponse=page.waitForResponse(r=>r.url().includes('action=queue'));await panel.getByRole('button',{name:'Připravit připomínku vybraného zápasu'}).click();await queueResponse;assert.equal(queued,1);
- await page.screenshot({path:out+'/desktop.png',fullPage:true});
- await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await page.screenshot({path:out+'/mobile.png',fullPage:true});
+ await page.goto(origin+'/studio/phm?section=game-day');const panel=page.locator('#gameDayPanel');
+ const downloadButton=panel.getByRole('button',{name:'Stáhnout PNG',exact:true});await page.waitForFunction(()=>document.querySelector('.gd-exports button:last-child')&&!document.querySelector('.gd-exports button:last-child').disabled);
+ assert.equal(await page.locator('.workspace').isVisible(),false);assert.match(await panel.getByRole('status').textContent(),/24/);
+ assert.equal(await page.locator('#gd-refresh').evaluate(e=>getComputedStyle(e).backgroundImage.includes('gradient')),true);
+ await page.selectOption('#gd-venue','Brno');assert.equal(await panel.locator('.gd-list button').count(),4);await page.waitForFunction(()=>document.getElementById('gd-message').value.includes('Soldiers B 20'));
+ await page.selectOption('#gd-venue','');await panel.getByRole('button',{name:'Další Story →',exact:true}).click();await page.waitForFunction(()=>document.getElementById('gd-message').value.includes('Soldiers B 6'));
+ await panel.locator('.gd-list button').first().click();await page.waitForFunction(()=>document.getElementById('gd-message').value.includes('vyplňte'));
+ await page.waitForFunction(()=>!document.querySelector('.gd-exports button:last-child').disabled);assert.match(await page.locator('#gd-message').inputValue(),/neděle/);
+ await page.locator('#gd-home').fill('#abcdef');await page.locator('#gd-home').dispatchEvent('input');
+ const png=async(name,w,h)=>{await page.waitForFunction(()=>!document.querySelector('.gd-exports button:last-child').disabled);const ready=page.waitForEvent('download');await downloadButton.click();const file=await ready;await file.saveAs(out+'/'+name+'.png');const bytes=await readFile(out+'/'+name+'.png');assert.equal(bytes.subarray(1,4).toString(),'PNG');assert.equal(bytes.readUInt32BE(16),w);assert.equal(bytes.readUInt32BE(20),h);};
+ for(const style of ['clean','crazy','artistic','technical','pantha']){await page.selectOption('#gd-design',style);for(const [format,w,h]of [['9:16',1080,1920],['1:1',1080,1080],['16:9',1920,1080]]){await page.selectOption('#gd-format',format);await png('match-'+style+'-'+format.replace(':','x'),w,h);}}
+ await page.selectOption('#gd-format','9:16');await page.selectOption('#gd-design','pantha');
+ // Persisted organization design, custom template, uploaded background, and isolation.
+ await page.locator('.gd-template summary').click();await page.fill('#gd-text-template','Ahoj! {home} × {away} · {day}, {date}, {time} · {venue}');
+ await page.selectOption('#gd-design','technical');await page.locator('#gd-accent').fill('#feaa44');await page.locator('#gd-accent').dispatchEvent('input');
+ await page.locator('#gd-upload').setInputFiles({name:'background.png',mimeType:'image/png',buffer:Buffer.from(badges[0].split(',')[1],'base64')});await page.waitForFunction(()=>!document.querySelector('.gd-exports button:last-child').disabled);
+ await page.reload();await page.waitForFunction(()=>document.getElementById('gd-design')?.value==='technical');assert.equal(await page.locator('#gd-accent').inputValue(),'#feaa44');assert.match(await page.locator('#gd-text-template').inputValue(),/Ahoj!/);
+ assert.equal(await page.evaluate(async()=>{const {loadStudioAsset}=await import('/studio/preferences.js');return !!await loadStudioAsset('hms-studio:settings:v2:PHM:game-day:asset:background');}),true);
+ await page.selectOption('#org','EUCHL');await page.waitForFunction(()=>document.getElementById('gd-design')?.value==='clean');assert.notEqual(await page.locator('#gd-accent').inputValue(),'#feaa44');
+ await page.selectOption('#org','PHM');await page.waitForFunction(()=>document.getElementById('gd-design')?.value==='technical');await page.waitForFunction(()=>document.querySelector('.gd-list button'));
+ await panel.getByRole('button',{name:'Odebrat vlastní pozadí'}).click();await page.fill('#gd-date','2026-11-01');await page.locator('#gd-date').dispatchEvent('change');await page.waitForFunction(()=>document.querySelector('.gd-list button'));await panel.locator('.gd-list button').first().click();await page.waitForFunction(()=>!document.querySelector('.gd-exports button:last-child').disabled);
+ // Capture a clean, real canvas export for visual inspection of the final design.
+ await page.selectOption('#gd-design','pantha');await page.locator('#gd-accent').fill('#dfff3f');await page.locator('#gd-accent').dispatchEvent('input');await png('final-match',1080,1920);
+ await page.selectOption('#gd-mode','day');await page.selectOption('#gd-columns','2');await png('final-game-day',1080,1920);await page.selectOption('#gd-mode','match');await page.waitForFunction(()=>!document.querySelector('.gd-exports button:last-child').disabled);await page.screenshot({path:out+'/desktop.png',fullPage:true});await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await page.screenshot({path:out+'/mobile.png',fullPage:true});
+ // Native image+text share is one payload; fallback's popup and download are mocked.
+ await page.evaluate(()=>{window.__shared=null;navigator.canShare=()=>true;navigator.share=async payload=>{window.__shared={text:payload.text,files:payload.files.map(f=>({name:f.name,type:f.type}))};};});
+ await page.fill('#gd-message','Vlastní zpráva k tomuto obrázku');await panel.getByRole('button',{name:'Share to WhatsApp',exact:true}).click();assert.equal(await page.evaluate(()=>window.__shared.text),'Vlastní zpráva k tomuto obrázku');assert.equal(await page.evaluate(()=>window.__shared.files[0].type),'image/png');
+ await page.evaluate(()=>{navigator.canShare=()=>false;window.open=url=>{window.__sharedUrl=url;return null;};});const fallbackDownload=page.waitForEvent('download');await panel.getByRole('button',{name:'Share to WhatsApp',exact:true}).click();await fallbackDownload;assert.match(await page.evaluate(()=>window.__sharedUrl),/^https:\/\/wa.me\/\?text=/);
  await page.locator('#games').click();assert.equal(await panel.isVisible(),false);assert.equal(await page.locator('.workspace').isVisible(),true);
- await page.locator('#gameDay').click();assert.equal(await panel.locator('input[type=password]').inputValue(),'');
- await page.evaluate(()=>{window.open=(url)=>{window.__sharedUrl=url;return null;};navigator.canShare=()=>false;});await panel.getByRole('button',{name:'WhatsApp',exact:true}).click();assert.match(await page.evaluate(()=>window.__sharedUrl),/^https:\/\/wa.me\/\?text=/);
- await page.goto(origin+'/studio/phm?section=game-day&lang=en');await page.getByText('Stories and invitations from shared data. Email is test mode only.',{exact:true}).waitFor();assert.equal(await page.locator('#gameDayPanel label').filter({hasText:'Home jersey'}).count(),1);
- assert.deepEqual(errors,[]);console.log('Game Day browser checks passed: PNG 1080x1920, pagination, match stats, jersey override, private center, test queue, mobile, navigation. Synthetic fixtures only.');
+ await page.goto(origin+'/studio/phm?section=game-day&lang=en');await page.waitForFunction(()=>document.querySelector('.gd-list button'));await panel.locator('.gd-list button').first().click();await page.waitForFunction(()=>document.getElementById('gd-message').value.includes('Sunday'));
+ assert.equal(await panel.getByRole('button',{name:/Load fixtures/}).count(),1);assert.deepEqual(errors,[]);
+ console.log('Game Day browser checks passed: shared Team Compare cards, 15 PNG variants, date/time/venue, jersey UI, org design/template/background persistence, CS/EN, full-day filters, image+text native share and fallback, mobile. Synthetic data only.');
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}

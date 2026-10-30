@@ -16,6 +16,11 @@ const snapshot = { game: rows.games[0], teams: rows.team_game_stats,
   players: rows.player_game_stats, goalies: rows.goalie_game_stats, priklepy: rows.detected_priklepy };
 const id = snapshot.game.game_id;
 
+test('invitation kickoff is retained for SQL timestamp strings and Date objects',()=>{
+  for(const started_at of ['2026-11-01T20:00:00','2026-11-01 20:00:00',new Date('2026-11-01T20:00:00Z')])assert.equal(buildGameSummary({...snapshot,game:{...snapshot.game,started_at}}).startTime,'20:00');
+  assert.equal(buildGameSummary({...snapshot,game:{...snapshot.game,started_at:null}}).startTime,null);
+});
+
 test("GameSummary preserves 9:3, all ten Příklepy and ranked public stats", () => {
   const summary = buildGameSummary(snapshot);
   assert.equal(summary.schemaVersion, 1);
