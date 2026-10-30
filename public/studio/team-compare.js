@@ -15,4 +15,5 @@ export function setupTeamCompare({organization,language}){
  button.onclick=()=>{active=true;workspace.hidden=true;intro.hidden=true;panel.hidden=false;for(const id of ['games','insights','teamCompare'])document.getElementById(id).setAttribute('aria-pressed',String(id==='teamCompare'));querySection(true);mount();};
  for(const id of ['games','insights'])document.getElementById(id).addEventListener('click',()=>{active=false;++version;dispose?.();dispose=null;panel.replaceChildren();panel.hidden=true;workspace.hidden=false;intro.hidden=false;button.setAttribute('aria-pressed','false');querySection(false);});
  document.getElementById('org').addEventListener('change',()=>{if(active){querySection(true);mount();}});
+ document.getElementById('gameDay').addEventListener('click',()=>{active=false;++version;dispose?.();dispose=null;panel.replaceChildren();panel.hidden=true;});
 }

@@ -8,3 +8,6 @@ AGENTS.md
 sources/
 
 .vercel
+
+test-output/
+test-results.txt

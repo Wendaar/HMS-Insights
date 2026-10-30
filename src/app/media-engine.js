@@ -75,7 +75,7 @@ export function applyPublicMedia(summary,metadata) {
   if(metadata.Phase?.name===summary.phase)summary.phaseLogoUrl ||=teamImage(metadata.Phase);
   return summary;
 }
-export async function browseMedia({org,filter='Today',offset=0,windowPage=0,section='games',query='',type=''}, options={}) {
+export async function browseMedia({org,date,filter='Today',offset=0,windowPage=0,section='games',query='',type=''}, options={}) {
   const env=options.env??process.env, config=organizationConfig(org,env);
   const limit=20;
   if(section==='insights'){
@@ -91,7 +91,8 @@ export async function browseMedia({org,filter='Today',offset=0,windowPage=0,sect
       stats:Object.fromEntries(['goals','assists','points','saves','goalsAgainst'].filter(k=>Number.isFinite(item.facts?.[k])).map(k=>[k,item.facts[k]]))}));
     return page;
   }
-  const range=timeWindow(filter,options.now,windowPage);
+  if(date&&(!/^\d{4}-\d{2}-\d{2}$/.test(date)||new Date(date+'T12:00:00Z').toISOString().slice(0,10)!==date))throw new TypeError('Invalid date');
+  const range=date?{from:date,to:date}:timeWindow(filter,options.now,windowPage);
   if(!config.token)return (options.loadPage??loadStudioPage)({organizationId:config.id,...range,offset,limit,section,env});
   const hmsConfig={...hmsConfigFromEnv({...env,HMS_API_TOKEN:config.token}),token:config.token,timeoutMs:5000,retries:0};
   // HMS API v1 defaults to FINISHED. Studio browsing explicitly includes all

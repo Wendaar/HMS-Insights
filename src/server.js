@@ -1,3 +1,5 @@
+import {createGameDayHandler} from './web/game-day-handler.js';
+const gameDayHandler=createGameDayHandler();
 import {createSponsorsHandler} from './web/sponsors-handler.js';
 import {createRegistrationControlHandler} from './web/registration-control-handler.js';
 import {createPublicPortalHandler} from './web/public-portal-handler.js';
@@ -70,6 +72,11 @@ const assets = {
 
 export const server = createServer(async (request, response) => {
   const url = new URL(request.url, `http://${request.headers.host ?? "localhost"}`);
+  if(url.pathname==='/api/game-day'||url.pathname==='/api/cron/reminders'||url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='game-day'){
+    request.query=Object.fromEntries(url.searchParams);if(url.pathname==='/api/cron/reminders')request.query.action='cron';
+    if(request.method==='POST'){let body='';for await(const chunk of request){body+=chunk;if(Buffer.byteLength(body)>250000){response.writeHead(413);response.end();return;}}request.body=body;}
+    await gameDayHandler(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json; charset=utf-8');response.end(JSON.stringify(body));}});return;
+  }
   if(url.pathname==='/api/registrations'||url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='registrations'){
     request.query=Object.fromEntries(url.searchParams);
     if(request.method==='POST'){let size=0,body='';for await(const chunk of request){size+=chunk.length;if(size>4000000){response.writeHead(413);response.end();return;}body+=chunk;}request.body=body;}
@@ -238,7 +245,7 @@ export const server = createServer(async (request, response) => {
     response.setHeader('content-type',url.pathname.endsWith('.css')?'text/css':'font/woff2');
     response.end(await readFile(join(publicDirectory,url.pathname)));return;
   }
-  if(url.pathname==='/studio' || /^\/studio\/[a-zA-Z0-9-]+\/?$/.test(url.pathname) || /^\/studio\/(index.html|app.js|graphics.js|subjects.js|typography.js|preferences.js|team-compare.js|i18n.js|routing.js|studio.css)$/.test(url.pathname)) {
+  if(url.pathname==='/studio' || /^\/studio\/[a-zA-Z0-9-]+\/?$/.test(url.pathname) || /^\/studio\/(index.html|app.js|graphics.js|subjects.js|typography.js|preferences.js|game-day.js|game-day-graphics.js|team-compare.js|i18n.js|routing.js|studio.css)$/.test(url.pathname)) {
     const name=!url.pathname.split('/').pop()?.includes('.')?'index.html':url.pathname.split('/').pop();
     response.setHeader('content-type',name.endsWith('.html')?'text/html; charset=utf-8':name.endsWith('.css')?'text/css':'text/javascript');
     response.end(await readFile(join(publicDirectory,'studio',name)));return;
