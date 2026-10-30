@@ -69,16 +69,23 @@ refresh icon for the major editors. Game Day places it in its own top load bar;
 Team Compare (including its Studio shadow root), All Stars, Studio and Broadcast
 use the shared visual rule rather than burying loading among design options.
 
-## Public pregame details, short analysis links and venue media
+## Public pregame details, direct analysis links and venue media
 
-Invitations now use `/m/<org>/<gameId>` for a read-only pregame page and
-`/m/<org>/<gameId>/analysis` for a short, fixture-specific analysis link. The latter
-resolves the organization-owned fixture and redirects to the existing public Team
-Compare URL with season, group, phase, left team, right team and CS/EN already
-selected. There is no external URL shortener or mutable link mapping. Missing
+Invitations use `/m/<org>/<gameId>` for a read-only pregame page and the existing
+production `/team-comparison/<org>` URL with season, group, phase, left team, right
+team and CS/EN already selected. The older `/m/<org>/<gameId>/analysis` redirect
+remains supported. There is no external URL shortener or mutable link mapping. Missing
 comparison scope suppresses the invitation's analysis link. Previously saved text
-templates also receive the new short link; manually edited final messages remain
+templates also receive the direct analysis link; manually edited final messages remain
 under the creator's control.
+
+In Vercel preview, the new pregame detail uses the server-owned VERCEL_BRANCH_URL
+(or VERCEL_URL) host, since production may not have the new route yet. Only a
+validated `*.vercel.app` host in preview mode is accepted; production stays on
+app.phmcup.cz. Preview authentication still applies to shared detail links until
+production rollout. Team Compare continues to use its existing production route.
+HMS phase/organization `logoUrls.md` must not be overwritten by missing legacy
+`logoUrl` fields after normalization.
 
 Old `/game-center/<gameId>` HTML links can display public sporting pregame basics
 before the result is imported. The established JSON GameSummary API still returns

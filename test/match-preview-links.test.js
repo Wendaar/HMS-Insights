@@ -9,9 +9,16 @@ import {invitationText} from '../public/studio/game-day-invitation.js';
 const id=n=>`${String(n).padStart(8,'0')}-1111-4111-8111-111111111111`;
 const game={org:'PHM',gameId:id(1),seasonId:id(2),groupId:id(3),phaseId:id(4),date:'2026-11-01',time:'20:00',status:'NOT PLAYED',venue:'SPM Aréna',home:{id:id(5),name:'Home'},away:{id:id(6),name:'Away'}};
 const response=()=>({headers:{},setHeader(k,v){this.headers[k]=v;},status(code){this.code=code;return this;},send(body){this.body=body;},json(body){this.body=body;}});
-test('short match links retain fixture identity without embedding the comparison query',()=>{
- const links=matchLinks('phm',game);assert.equal(new URL(links.game).pathname,`/m/phm/${id(1)}`);assert.equal(new URL(links.compare).pathname,`/m/phm/${id(1)}/analysis`);assert.equal(new URL(links.compare).search,'');assert.equal(matchLinks('phm',{...game,phaseId:null}).compare,null);
+test('comparison invitations use the existing direct route with the exact teams and competition scope',()=>{
+ const links=matchLinks('phm',game,{env:{}});assert.equal(new URL(links.game).pathname,`/m/phm/${id(1)}`);assert.equal(links.compare,new URL(comparisonDestination('phm',game),'https://app.phmcup.cz').href);assert.equal(matchLinks('phm',{...game,phaseId:null}).compare,null);assert.equal(matchLinks('phm',{...game,home:game.away}).compare,null);
  const target=new URL(comparisonDestination('phm',game,'en'),'https://app.phmcup.cz');assert.equal(target.searchParams.get('left'),id(5));assert.equal(target.searchParams.get('right'),id(6));assert.equal(target.searchParams.get('phaseId'),id(4));assert.equal(target.searchParams.get('lang'),'en');assert.throws(()=>comparisonDestination('phm',{...game,home:game.away}));
+});
+test('preview match details stay on the deployment containing the pregame page; production stays canonical',()=>{
+ const env={VERCEL_ENV:'preview',VERCEL_BRANCH_URL:'hms-insights-git-feature-wendaar.vercel.app',VERCEL_URL:'hms-insights-unique-wendaar.vercel.app'};
+ const links=matchLinks('phm',game,{env});assert.equal(new URL(links.game).hostname,env.VERCEL_BRANCH_URL);assert.equal(new URL(links.compare).hostname,'app.phmcup.cz');
+ assert.equal(new URL(matchLinks('phm',game,{env:{...env,VERCEL_BRANCH_URL:'',VERCEL_URL:env.VERCEL_URL}}).game).hostname,env.VERCEL_URL);
+ for(const host of ['evil.test','app.vercel.app.evil.test','user@evil.vercel.app','ok.vercel.app/path'])assert.equal(new URL(matchLinks('phm',game,{env:{...env,VERCEL_BRANCH_URL:host}}).game).hostname,'app.phmcup.cz');
+ assert.equal(new URL(matchLinks('phm',game,{env:{...env,VERCEL_ENV:'production'}}).game).hostname,'app.phmcup.cz');
 });
 test('analysis redirect loads the organization-scoped fixture and selects its actual teams',async()=>{
  let seen;const res=response();await createMatchPreviewHandler({preview:async(org,id,options)=>{seen={org,id,includeComparison:options.includeComparison};return game;}})({method:'GET',query:{org:'phm',gameId:id(1),action:'analysis',lang:'en'}},res);
@@ -29,5 +36,5 @@ test('public fallback projects sporting basics only, rejects foreign response ID
  assert.equal(await publicPregame(id(1),{fetchMetadata:async()=>({...data,gameId:id(9)})}),null);
 });
 test('new analysis text is included even for a previously saved template and localizes the target',()=>{
- const text=invitationText({...game,links:matchLinks('phm',game)},{en:true,template:'Old template: {home}'});assert.match(text,/More match analysis:/);assert.match(text,/\/analysis\?lang=en/);assert.doesNotMatch(text,/seasonId=/);
+ const text=invitationText({...game,links:matchLinks('phm',game)},{en:true,template:'Old template: {home}'});assert.match(text,/More match analysis:/);const url=new URL(text.split('More match analysis: ')[1]);assert.equal(url.pathname,'/team-comparison/phm');assert.equal(url.searchParams.get('lang'),'en');assert.equal(url.searchParams.get('left'),game.home.id);assert.equal(url.searchParams.get('right'),game.away.id);
 });

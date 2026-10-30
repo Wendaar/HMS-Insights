@@ -144,8 +144,9 @@ export async function mediaGame(org,gameId,options={}) {
       summary.provenance={...summary.provenance,score:'hms-result-or-recorded-goals'};
       summary.currentPeriod=Number.isInteger(detail.currentPeriod)&&detail.currentPeriod>0&&detail.currentPeriod<=9?detail.currentPeriod:null;
       summary.groupColor=game.groupColor;
-      summary.phaseLogoUrl=sportingImage(detail.Phase?.logoUrl);
-      summary.organizationLogoUrl=sportingImage(detail.Organization?.logoUrl);
+      const branding=hmsMediaContext(detail);
+      summary.phaseLogoUrl ||=branding.phaseLogoUrl;
+      summary.organizationLogoUrl ||=branding.organizationLogoUrl;
     }
     // Existing Příklepy are read from storage, never regenerated on refresh.
     if(options.refresh && env.DATABASE_URL) {
