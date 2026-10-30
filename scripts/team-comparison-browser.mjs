@@ -1,3 +1,4 @@
+import {comparisonDestination} from '../src/app/match-links.js';
 import assert from 'node:assert/strict';
 import {server} from '../src/server.js';
 import {mkdir} from 'node:fs/promises';
@@ -58,5 +59,6 @@ try{
  await page.locator('#teamComparePanel').getByRole('button',{name:'Explain: Lineup similarity'}).first().click();assert.equal(await page.locator('#teamComparePanel dialog[open]').isVisible(),true);await page.keyboard.press('Escape');
  await page.screenshot({path:'artifacts/team-comparison-studio.png',fullPage:true});await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
  await page.locator('#games').click();assert.equal(await page.locator('.workspace').isVisible(),true);assert.equal(await page.locator('#teamComparePanel').isVisible(),false);await page.locator('#insights').click();assert.equal(await page.locator('#insightTools').isVisible(),true);
+ await page.goto(base+comparisonDestination('phm',{seasonId:uuid(2),groupId:uuid(3),phaseId:uuid(4),home:{id:uuid(11)},away:{id:uuid(10)}},'cs'));await page.locator('.card').first().waitFor();assert.equal(await page.locator('#left').inputValue(),uuid(11));assert.equal(await page.locator('#right').inputValue(),uuid(10));
  assert.deepEqual(errors,[]);console.log('Browser QA passed: public season/division/phase selection, aligned sections, ranking badges, top four, avatars, analytics, public separation, Studio integration, organization defaults, CS/EN, 5 styles/formats, both templates, PNG, sharing/embed, duplicate teams and mobile. '+output);
 }finally{await browser.close();await new Promise(r=>server.close(r));}

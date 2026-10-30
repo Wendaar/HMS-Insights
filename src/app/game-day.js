@@ -1,3 +1,4 @@
+import {matchLinks} from './match-links.js';
 import {mediaGame, browseMedia, timeWindow} from './media-engine.js';
 import {organizationConfig} from './organizations.js';
 import {readTeamComparison} from './team-comparison.js';
@@ -45,7 +46,7 @@ export async function matchPreview(org,gameId,options={}) {
   if(upcoming&&options.includeComparison!==false&&game.seasonId&&game.groupId&&game.phaseId)try{comparison=await(options.compare??readTeamComparison)(config.code,game,options);}catch{}
   const side=key=>{const team=game[key],stats=comparison?.teams.find(t=>t.id.toLowerCase()===team.id?.toLowerCase());
     return {...team,preview:stats?{rank:stats.rank,points:stats.points,games:stats.games,score:stats.score,goalsFor:stats.goalsFor,goalsAgainst:stats.goalsAgainst,wins:stats.wins,draws:stats.draws,losses:stats.losses,form:stats.form,offense:stats.offense,defense:stats.defense,rating:stats.rating,attendance:stats.roster?.average??null,players:stats.players.slice(0,3)}:null};};
-  return {schemaVersion:1,kind:'match-preview',org:config.code,gameId:game.gameId,date:game.playedOn,time:game.startTime??null,competitionId:game.competitionId,competition:game.competition,venue:game.venue,status:game.status,eligible:upcoming,home:side('home'),away:side('away'),branding:{organizationLogoUrl:game.organizationLogoUrl,competitionLogoUrl:game.competitionLogoUrl},links:{game:publicOutputUrl(`/game-center/${game.gameId}`),compare:publicOutputUrl(`/team-comparison/${config.slug}?seasonId=${game.seasonId??''}&groupId=${game.groupId??''}&phaseId=${game.phaseId??''}&left=${game.home.id}&right=${game.away.id}`)},readAt:game.readAt,statistics:comparison?'current-before-game':'unavailable',extensions:{postGameReport:null}};
+  return {schemaVersion:1,kind:'match-preview',org:config.code,gameId:game.gameId,date:game.playedOn,time:game.startTime??null,competitionId:game.competitionId,competition:game.competition,seasonId:game.seasonId,groupId:game.groupId,phaseId:game.phaseId,group:game.group,phase:game.phase,venue:game.venue,venueId:game.venueId,status:game.status,eligible:upcoming,home:side('home'),away:side('away'),branding:{organizationLogoUrl:game.organizationLogoUrl,competitionLogoUrl:game.competitionLogoUrl,groupLogoUrl:game.groupLogoUrl,phaseLogoUrl:game.phaseLogoUrl,venueLogoUrl:game.venueLogoUrl,venueBackgroundUrl:game.venueBackgroundUrl},links:matchLinks(config.slug,game),readAt:game.readAt,statistics:comparison?'current-before-game':'unavailable',extensions:{postGameReport:null}};
 }
 export async function gameDay(org,input={},options={}) {
   const config=organizationConfig(org,options.env??process.env),date=input.date??timeWindow('Today',options.now).from;

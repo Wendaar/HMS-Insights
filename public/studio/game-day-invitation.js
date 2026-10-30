@@ -24,6 +24,8 @@ Dresy si prosím vezměte podle přiložené grafiky.
 
 Detail zápasu: {link}
 
+Více analýz k zápasu najdete zde: {analysis}
+
 Děkujeme a těšíme se na vás! Užijte si zápas,
 Vaše {organization}`,
  en:`Hi,
@@ -43,13 +45,20 @@ Please bring the jerseys shown in the attached graphic.
 
 Game details: {link}
 
+More match analysis: {analysis}
+
 Thank you and enjoy the game!
 Your {organization} team`,
 };
 export function invitationText(p,{en=false,template,organization=p.org??'HMS'}={}) {
  const calendar=fixtureDate(p.date,en),unknown=en?'To be confirmed':'Bude upřesněno';
- const values={...calendar,competition:p.competition||unknown,home:p.home.name,away:p.away.name,time:p.time||unknown,venue:p.venue||unknown,link:p.links.game,organization};
- return (template??invitationTemplates[en?'en':'cs']).replace(/\{([a-z]+)\}/g,(whole,key)=>Object.hasOwn(values,key)?values[key]:whole);
+ const localized=url=>{if(!url)return '';const value=new URL(url,'https://app.phmcup.cz');value.searchParams.set('lang',en?'en':'cs');return value.href;};
+ const values={...calendar,competition:p.competition||unknown,home:p.home.name,away:p.away.name,time:p.time||unknown,venue:p.venue||unknown,link:localized(p.links.game),analysis:localized(p.links.compare),organization};
+ let text=(template??invitationTemplates[en?'en':'cs']).replace(/\{([a-z]+)\}/g,(whole,key)=>Object.hasOwn(values,key)?values[key]:whole);
+ if(!values.analysis)text=text.split('\n').filter(line=>!/^\s*(Více analýz k zápasu najdete zde:|More match analysis:)\s*$/.test(line)).join('\n');
+ // Existing saved templates also receive the new fixture-specific analysis link.
+ if(values.analysis&&!text.includes(values.analysis))text+='\n\n'+(en?'More match analysis: ':'Více analýz k zápasu najdete zde: ')+values.analysis;
+ return text;
 }
 export function gameDayText(items,{en=false,organization='HMS'}={}) {
  if(!items.length)return '';

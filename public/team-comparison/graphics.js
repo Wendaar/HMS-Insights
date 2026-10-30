@@ -7,6 +7,10 @@ function badges(c,values,x,y,size,font){
  const gap=8,padding=12,height=size*1.15,widths=values.map(v=>{c.font=fontSpec(font,size,v.label);return c.measureText(v.label).width+padding*2;}),total=widths.reduce((a,b)=>a+b,0)+gap*(values.length-1);let left=x-total/2;
  values.forEach((v,i)=>{c.fillStyle=resultColors[v.result];c.beginPath();c.roundRect(left,y-height*.8,widths[i],height,5);c.fill();text(c,v.label,left+widths[i]/2,y,widths[i]-8,size,font);left+=widths[i]+gap;});
 }
+export function drawFormBadges(c,form,x,y,size,font){
+ const values=(form??[]).filter(g=>['W','D','L'].includes(g.result)).map(g=>({label:g.result,result:g.result}));
+ if(values.length)badges(c,values,x,y,size,font);
+}
 export async function renderComparison(canvas,teams,context,settings){
  const [w,h]=formats[settings.format],portrait=h>w,typo=designTypography(settings.design,settings.font),en=context.lang==='en',accent=settings.design==='pantha'?'#dfff3f':'#99e2cb';
  await Promise.all([document.fonts.load(fontSpec(typo.headline,32,'TEAM COMPARISON')),document.fonts.load(fontSpec(typo.body,32,teams.map(t=>t.name).join(' ')))]);await document.fonts.ready;

@@ -1,3 +1,5 @@
+import {createMatchPreviewHandler} from './web/match-preview-handler.js';
+const matchPreviewHandler=createMatchPreviewHandler();
 import {createGameDayHandler} from './web/game-day-handler.js';
 const gameDayHandler=createGameDayHandler();
 import {createSponsorsHandler} from './web/sponsors-handler.js';
@@ -42,6 +44,8 @@ const broadcastHandler = createBroadcastHandler();
 const portalHandler = createPublicPortalHandler();
 
 const assets = {
+  '/venue-media.js':['text/javascript; charset=utf-8','venue-media.js'],
+  '/match-preview.css':['text/css; charset=utf-8','match-preview.css'],
   '/organization-catalog.js':['text/javascript; charset=utf-8','organization-catalog.js'],
   '/hms-favicon-public-v2.svg':['image/svg+xml','hms-favicon-public-v2.svg'],
   '/hms-favicon-control-v2.svg':['image/svg+xml','hms-favicon-control-v2.svg'],
@@ -72,6 +76,11 @@ const assets = {
 
 export const server = createServer(async (request, response) => {
   const url = new URL(request.url, `http://${request.headers.host ?? "localhost"}`);
+  const pregameMatch=/^\/m\/([a-z0-9-]+)\/([a-fA-F0-9-]+)(?:\/(analysis))?\/?$/.exec(url.pathname);
+  if(pregameMatch||url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='match-preview'){
+    request.query={...Object.fromEntries(url.searchParams),...(pregameMatch?{org:pregameMatch[1],gameId:pregameMatch[2],action:pregameMatch[3]}:{})};
+    await matchPreviewHandler(request,{setHeader:(k,v)=>response.setHeader(k,v),status(code){response.statusCode=code;return this;},send(body){response.end(body);}});return;
+  }
   if(url.pathname==='/api/game-day'||url.pathname==='/api/cron/reminders'||url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='game-day'){
     request.query=Object.fromEntries(url.searchParams);if(url.pathname==='/api/cron/reminders')request.query.action='cron';
     if(request.method==='POST'){let body='';for await(const chunk of request){body+=chunk;if(Buffer.byteLength(body)>250000){response.writeHead(413);response.end();return;}}request.body=body;}

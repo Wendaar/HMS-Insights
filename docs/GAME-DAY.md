@@ -69,6 +69,51 @@ refresh icon for the major editors. Game Day places it in its own top load bar;
 Team Compare (including its Studio shadow root), All Stars, Studio and Broadcast
 use the shared visual rule rather than burying loading among design options.
 
+## Public pregame details, short analysis links and venue media
+
+Invitations now use `/m/<org>/<gameId>` for a read-only pregame page and
+`/m/<org>/<gameId>/analysis` for a short, fixture-specific analysis link. The latter
+resolves the organization-owned fixture and redirects to the existing public Team
+Compare URL with season, group, phase, left team, right team and CS/EN already
+selected. There is no external URL shortener or mutable link mapping. Missing
+comparison scope suppresses the invitation's analysis link. Previously saved text
+templates also receive the new short link; manually edited final messages remain
+under the creator's control.
+
+Old `/game-center/<gameId>` HTML links can display public sporting pregame basics
+before the result is imported. The established JSON GameSummary API still returns
+404 for unimported games. This fallback projects only fixture labels/date/time and
+approved logos; it does not invent scores or expose raw lineups/contact metadata.
+The scoped `/m` page additionally uses existing Team Compare data when available.
+
+Form badges call the shared Team Compare canvas badge renderer, including its
+green W, orange D and red L colors. Venue logos appear beside the prominent venue
+name; competition/group/phase logos and small source names appear above the team
+cards. When no logo is provided, the name remains. Source venue photos form a
+lower photographic band without replacing the creator's custom background.
+Multi-venue Game Day sheets do not pretend one venue photo belongs to all venues.
+
+`Venue.backgroundImageUrl` (also the explicit infographic variants) is retained
+through normalization/snapshots and the read model. Public metadata enrichment is
+checked against both teams, date and the venue name. Existing snapshots can get
+missing branding from the organization-scoped detail read. Flickr photo-page URLs
+are resolved through a fixed, credential-free oEmbed endpoint; only validated
+static Flickr raster URLs are accepted from that response. The existing raster
+bridge now also supports those narrow Flickr CDN paths, retains size/time/MIME
+bounds and refuses redirects. Arbitrary external image URLs are not server-proxied.
+
+A real read-only check of game F62C9A5E-98CA-11F1-8BDF-EF2495D048F3 on 30 October
+2026 returned NOT PLAYED, 1 November and a Venue object with name/nick/short only.
+It did not expose the venue logo or background. Rendering support is verified with
+synthetic media; the actual SPM photo still depends on the authenticated HMS detail
+providing that source field. No venue API endpoint or image URL is guessed.
+
+Verification after this addition: 443 Node tests pass; browser checks cover the
+pregame page, old HTML fallback, analysis redirect and actual preselected Team
+Compare selectors, logo/photo rendering and green/red form pixels. Public links
+use the canonical app.phmcup.cz host and become available there after rollout of
+these routes; the branch preview contains them independently of a production merge.
+
 ## Prepared private reminder backend (email UI deferred)
 
 Apply `db/migrations/008_game_day_reminders.sql` explicitly in the preview DB;
