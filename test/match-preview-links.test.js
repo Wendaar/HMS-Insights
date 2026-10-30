@@ -10,7 +10,7 @@ const id=n=>`${String(n).padStart(8,'0')}-1111-4111-8111-111111111111`;
 const game={org:'PHM',gameId:id(1),seasonId:id(2),groupId:id(3),phaseId:id(4),date:'2026-11-01',time:'20:00',status:'NOT PLAYED',venue:'SPM Aréna',home:{id:id(5),name:'Home'},away:{id:id(6),name:'Away'}};
 const response=()=>({headers:{},setHeader(k,v){this.headers[k]=v;},status(code){this.code=code;return this;},send(body){this.body=body;},json(body){this.body=body;}});
 test('comparison invitations use the existing direct route with the exact teams and competition scope',()=>{
- const links=matchLinks('phm',game,{env:{}});assert.equal(new URL(links.game).pathname,`/m/phm/${id(1)}`);assert.equal(links.compare,new URL(comparisonDestination('phm',game),'https://app.phmcup.cz').href);assert.equal(matchLinks('phm',{...game,phaseId:null}).compare,null);assert.equal(matchLinks('phm',{...game,home:game.away}).compare,null);
+ const links=matchLinks('phm',game,{env:{}});assert.equal(new URL(links.game).pathname,`/game-center/${id(1)}`);assert.equal(links.compare,new URL(comparisonDestination('phm',game),'https://app.phmcup.cz').href);assert.equal(matchLinks('phm',{...game,phaseId:null}).compare,null);assert.equal(matchLinks('phm',{...game,home:game.away}).compare,null);
  const target=new URL(comparisonDestination('phm',game,'en'),'https://app.phmcup.cz');assert.equal(target.searchParams.get('left'),id(5));assert.equal(target.searchParams.get('right'),id(6));assert.equal(target.searchParams.get('phaseId'),id(4));assert.equal(target.searchParams.get('lang'),'en');assert.throws(()=>comparisonDestination('phm',{...game,home:game.away}));
 });
 test('preview match details stay on the deployment containing the pregame page; production stays canonical',()=>{
@@ -25,9 +25,14 @@ test('analysis redirect loads the organization-scoped fixture and selects its ac
  assert.equal(res.code,302);assert.deepEqual(seen,{org:'PHM',id:id(1),includeComparison:false});const q=new URL(res.headers.location,'https://app.phmcup.cz').searchParams;assert.equal(q.get('left'),game.home.id);assert.equal(q.get('right'),game.away.id);assert.equal(q.get('seasonId'),game.seasonId);
  const bad=response();await createMatchPreviewHandler({preview:async()=>assert.fail('foreign organization must fail first')})({method:'GET',query:{org:'unknown',gameId:id(1)}},bad);assert.equal(bad.code,400);
 });
+test('HMS uppercase UUIDs produce the same canonical selection as the comparison catalog',()=>{
+ const home='5AECE010-3787-11EE-B89B-D72EE44CA9A6',away='7F408B69-F0D5-40EE-84F5-8CABEA1EFD12';
+ const g={...game,seasonId:'E6134160-47CF-11F1-A223-BFDFBDD3A64B',groupId:'32039020-47D0-11F1-A223-BFDFBDD3A64B',phaseId:'6FDC59F0-869F-11F1-BDD5-8958B510B6A2',home:{id:home},away:{id:away}};
+ const u=new URL(matchLinks('phm',g).compare);assert.equal(u.searchParams.get('left'),home.toLowerCase());assert.equal(u.searchParams.get('right'),away.toLowerCase());for(const key of ['seasonId','groupId','phaseId'])assert.equal(u.searchParams.get(key),g[key].toLowerCase());
+});
 test('old Game Center HTML opens public pregame basics before import; JSON remains 404',async()=>{
  const loadPregame=async()=>game;
- const html=response();await createGameReportHandler({loadSummary:async()=>null,loadPregame})({method:'GET',query:{gameId:id(1)}},html);assert.equal(html.code,200);assert.match(html.body,/SPM Aréna/);assert.match(html.body,/20:00/);assert.doesNotMatch(html.body,/>0:0</);
+ const html=response();await createGameReportHandler({loadSummary:async()=>null,loadPregame})({method:'GET',query:{gameId:id(1)}},html);assert.equal(html.code,200);assert.match(html.body,/SPM Aréna/);assert.match(html.body,/20:00/);assert.doesNotMatch(html.body,/>0:0</);assert.match(html.body,/match-hero/);assert.match(html.body,/game-report-premium.css/);assert.doesNotMatch(html.body,/match-preview.css|>null</);
  const json=response();await createGameReportHandler({json:true,loadSummary:async()=>null,loadPregame:async()=>assert.fail('JSON must not run fallback')})({method:'GET',query:{gameId:id(1)}},json);assert.equal(json.code,404);
 });
 test('public fallback projects sporting basics only, rejects foreign response IDs and escapes source labels',async()=>{

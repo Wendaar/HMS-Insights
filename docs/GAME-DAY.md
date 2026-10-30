@@ -71,7 +71,7 @@ use the shared visual rule rather than burying loading among design options.
 
 ## Public pregame details, direct analysis links and venue media
 
-Invitations use `/m/<org>/<gameId>` for a read-only pregame page and the existing
+Invitations use `/game-center/<gameId>` for the existing Match Report and the
 production `/team-comparison/<org>` URL with season, group, phase, left team, right
 team and CS/EN already selected. The older `/m/<org>/<gameId>/analysis` redirect
 remains supported. There is no external URL shortener or mutable link mapping. Missing
@@ -87,8 +87,11 @@ production rollout. Team Compare continues to use its existing production route.
 HMS phase/organization `logoUrls.md` must not be overwritten by missing legacy
 `logoUrl` fields after normalization.
 
-Old `/game-center/<gameId>` HTML links can display public sporting pregame basics
-before the result is imported. The established JSON GameSummary API still returns
+Game Center HTML displays public sporting pregame basics in the same report hero
+before the result is imported, replacing the score with the scheduled kickoff.
+After import, that exact URL displays the full Match Report. UUID selection is
+case-insensitive in the public Compare UI; generated query IDs are lowercase,
+matching the catalog even when HMS supplied uppercase IDs. The established JSON GameSummary API still returns
 404 for unimported games. This fallback projects only fixture labels/date/time and
 approved logos; it does not invent scores or expose raw lineups/contact metadata.
 The scoped `/m` page additionally uses existing Team Compare data when available.

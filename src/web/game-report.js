@@ -7,6 +7,15 @@ const html = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
 })[c]);
 
+// The same Game Center identity and match hero before the report is imported.
+// No fabricated result, lineups, events or statistics are supplied to the client.
+export function renderPregameReport(p,{lang:requestedLanguage}={}){
+ const lang=reportLanguage(requestedLanguage),en=lang==='en';
+ const s={...p,playedOn:p.date,startTime:p.time,home:{...p.home,id:p.home.id??'home'},away:{...p.away,id:p.away.id??'away'},venueLogoUrl:p.branding?.venueLogoUrl,groupLogoUrl:p.branding?.groupLogoUrl};
+ const text=en?'The game has not been imported yet. Results, lineups and the timeline will appear here after import.':'Zápas zatím není importován. Výsledek, sestavy a průběh zápasu se po importu zobrazí přímo zde.';
+ return reportHtml(`<!doctype html><html lang="${lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${html(p.home.name)} × ${html(p.away.name)} | HMS Game Center</title><link rel="stylesheet" href="/game-report.css"><link rel="stylesheet" href="/game-report-premium.css"><link rel="stylesheet" href="/hms-brand.css"><link rel="icon" href="/hms-favicon-public-v2.svg"></head><body><main><nav aria-label="Hlavní navigace">${hmsBrand('GAME CENTER','/')}<span class="language-switch"><a href="?lang=cs">CZ</a><a href="?lang=en">EN</a></span></nav>${renderHero(s,lang,{pregame:true})}<section id="overview" class="spotlight-section"><p class="eyebrow">GAME CENTER</p><h2>${en?'Match preview':'Před zápasem'}</h2><p>${text}</p><p><a href="https://prod.hms.wootera.net/">${en?'Open HMS':'Otevřít HMS'} ↗</a></p></section></main></body></html>`,lang,reportNames(s));
+}
+
 export function renderGameReport(summary, { preview = false, lang: requestedLanguage } = {}) {
   const s = summary;
   const lang = reportLanguage(requestedLanguage, s);
