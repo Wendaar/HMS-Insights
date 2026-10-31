@@ -19,7 +19,7 @@ let browser;try{
     await context.route('**/api/broadcast?*',route=>route.fulfill({json:{org:new URL(route.request().url()).searchParams.get('org'),schemaVersion:1,gameId,home,away,showControl:{types:['goal','penalty'],events:[],omitted:0}}}));
   }
   const context=await browser.newContext({viewport:{width:1200,height:1000}});await wire(context);const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
-  await page.goto(root+'/studio/media-mapping');await page.waitForFunction(()=>document.getElementById('asset').options.length>1);const asset=(await readMediaAssets('PHM'))[0];
+  await page.goto(root+'/studio/media-mapping');await page.waitForFunction(()=>document.getElementById('asset').options.length>1);const asset=(await readMediaAssets('PHM')).find(a=>a.path.endsWith('/shared/test-tone.wav'));
   await page.selectOption('#asset',asset.id);await page.locator('#preview').evaluate(async a=>{a.muted=true;await a.play();});assert.ok(await page.locator('#preview').evaluate(a=>a.duration>1&&a.duration<2));await page.locator('#preview').evaluate(a=>a.pause());
   await page.fill('#secret','test-admin');await page.click('#unlock');await page.waitForFunction(()=>!document.getElementById('assign').disabled);
   async function savePublish(){await page.click('#save');await page.waitForFunction(()=>!document.getElementById('publish').disabled);await page.click('#publish');await page.waitForFunction(()=>document.getElementById('status').textContent.startsWith('Zveřejněno'));}

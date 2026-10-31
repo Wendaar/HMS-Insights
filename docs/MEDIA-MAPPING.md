@@ -12,7 +12,7 @@ These are public static web assets. Organization filtering is not file-URL confi
 
 ## Assign once, use across computers
 
-1. Select the organization and unlock with its existing Tools Admin access code. The code is held only in page memory, never placed in a URL or browser storage. The API uses the existing organization's Tools Admin secret (or existing webhook fallback), not the HMS API token.
+1. Select the organization and unlock with its existing Operations code or Tools Admin access code. The code is held only in page memory, never placed in a URL or browser storage. The API accepts the existing Operations secret for the same organization as well as its Tools Admin secret (or existing webhook fallback), never an HMS API token. No credential value or other app's access configuration is changed.
 2. Pick a file, choose the target and cue, set gain and whether to loop, then add the assignment. Targets: organization default, named HMS team, selected HMS match, or named HMS sponsor. Teams/sponsors reuse the existing verified sponsor/teams catalog; matches use the Studio date picker. The server independently validates ownership on save and publish.
 3. Save the draft, then publish. Draft changes do not affect operators. Another editor's revision causes a 409 conflict rather than overwriting their changes. Reload the latest version and reapply the edit.
 4. Select or refresh the match in Show Control. Published mappings load centrally, including on another browser/computer with no local audio uploads. A new mapping takes effect on the next cue; currently playing audio keeps its original source and stops only under operator control/end of track.
