@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {showControlFeed,spokenClock} from '../src/domain/show-control.js';
-import {cues,adCues,cueChannel,reconcile,profileKeys,ledgerKey} from '../public/show-control/model.js';
+import {cues,adCues,cueChannel,reconcile,profileKeys,ledgerKey,signature,finishAnnouncement,sponsorAds} from '../public/show-control/model.js';
 import {ShowAudio} from '../public/show-control/audio.js';
 const detail={gameId:'game',HomeTeam:{teamId:'home',name:'Domácí'},AwayTeam:{teamId:'away',name:'Hosté'}};
 const goal={eventId:'GOAL-1',scoredByTeamId:'home',scoredByPlayerId:'p1',ScoredByPlayer:{playerId:'p1',firstName:'Jan',lastName:'Novák',email:'private@example.test'},period:1,gameTime:'03:12'};
@@ -76,6 +76,22 @@ test('speech ducks both channels and STOP cancels callbacks without marking an e
 });
 test('natural completion marks Done and restores volume; replacing tracks leaves a single bed',async()=>{
   const {audio,spoken,tracks}=audioHarness(),states=[];
-  await audio.play(new Blob(['mix']),'bed');audio.speak('Gól',null,s=>states.push(s));spoken[0].onend();assert.deepEqual(states,['Done']);assert.equal(tracks[0].volume,.8);
+  await audio.play(new Blob(['mix']),'bed');audio.speak('Gól',null,s=>states.push(s));spoken[0].onend();assert.deepEqual(states,['Done']);assert.equal(tracks[0].volume,audio.volume);
   await audio.play(new Blob(['mix2']),'bed');assert.equal(tracks[0].paused,true);assert.equal(Object.keys(audio.tracks).length,1);audio.stop();
+});
+test('speech completion/cancellation targets the current event after any number of LIVE reconciliations',()=>{
+  const original=feed().events;let rows=reconcile([],original,['goal']),id=rows[0].id,revision=signature(rows[0]);
+  rows[0].status='Playing';const old=rows[0];for(let i=0;i<3;i++)rows=reconcile(rows,original,['goal']);assert.notEqual(rows[0],old);
+  assert.equal(finishAnnouncement(rows,id,revision,'Done'),true);assert.equal(rows[0].status,'Done');
+  rows=reconcile(rows,[{...original[0],text:'Oprava'}],['goal']);assert.equal(finishAnnouncement(rows,id,revision,'Done'),false);assert.equal(rows[0].status,'New');
+});
+test('voice gain is independent from music and natural completion fires only once',()=>{
+  const {audio,spoken}=audioHarness(),states=[];audio.volume=.2;audio.voiceVolume=.9;audio.speak('Hlas',null,s=>states.push(s));assert.equal(spoken[0].volume,.9);assert.equal(audio.utterance,spoken[0]);
+  spoken[0].onend();spoken[0].onend();assert.deepEqual(states,['Done']);assert.equal(audio.utterance,null);
+});
+test('HMS sponsor names stay scoped to the organization and exact returned team links',()=>{
+  const id=n=>`${n.repeat(8)}-${n.repeat(4)}-${n.repeat(4)}-${n.repeat(4)}-${n.repeat(12)}`;
+  const catalog={org:'PHM',items:[{id:id('1'),name:'Organization',active:true},{id:id('2'),name:'Home',scopeRefs:{teamIds:[id('a')]}},{id:id('3'),name:'Away via binding'},{id:id('4'),name:'Other team',teams:[id('c')]}],bindings:[{sponsorId:id('3'),teamId:id('b')}]};
+  assert.equal(sponsorAds(catalog,'EUCHL',[]).length,0);assert.equal(sponsorAds(catalog,'PHM',[]).length,4);assert.deepEqual(sponsorAds(catalog,'PHM',[id('a'),id('b')],'teams').map(s=>s.name),['Home','Away via binding']);
+  assert.equal(sponsorAds(catalog,'PHM',[],'teams').length,0);assert.equal(sponsorAds(catalog,'PHM',[])[0].id,'hms:'+id('1'));
 });

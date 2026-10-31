@@ -17,6 +17,8 @@ try{
   });
   const id='11111111-1111-4111-8111-111111111111',home={id:'22222222-2222-4222-8222-222222222222',name:'Test domácí'},away={id:'33333333-3333-4333-8333-333333333333',name:'Test hosté'};
   let liveText='Gól týmu Test domácí. Střelec Jan Novák.',failed=false;
+  const sponsorId='44444444-4444-4444-8444-444444444444';
+  await context.route('**/api/sponsors?*',route=>{const org=new URL(route.request().url()).searchParams.get('org');return route.fulfill({json:{org,items:org==='PHM'?[{id:sponsorId,name:'Partner organizace',active:true},{id:'55555555-5555-4555-8555-555555555555',name:'Partner domácích',scopeRefs:{teamIds:[home.id]}},{id:'66666666-6666-4666-8666-666666666666',name:'Jiný tým',scopeRefs:{teamIds:['other-team']}}]:[],bindings:[],relationshipStatus:'returned-links'}});});
   await context.route('**/api/studio?*',route=>{
     const q=new URL(route.request().url()).searchParams;
     return route.fulfill({json:q.has('catalog')?{organizations:[{code:'PHM',name:'PHM · testovací fixture'},{code:'EUCHL',name:'EUCHL · testovací fixture'}]}:{source:'HMS',items:[{gameId:id,date:'2026-10-31',status:'RUNNING',home,away}],hasMore:false}});
@@ -38,28 +40,38 @@ try{
   await page.selectOption('#profile','team-home');await page.locator('#upload').setInputFiles({name:'domaci-horn.wav',mimeType:'audio/wav',buffer:Buffer.from('team fixture')});
   await page.waitForFunction(()=>document.querySelector('[data-cue="goal-home"]').textContent.includes('domaci-horn.wav'));
   assert.match(await page.locator('[data-cue="goal-away"]').textContent(),/vlastni-horn.wav/);
-  await page.locator('summary').filter({hasText:'Reklamy a sponzoři'}).click();await page.fill('#adName','Partner utkání');await page.click('#addAd');
-  await page.waitForFunction(()=>document.querySelectorAll('.pad').length===13);
-  const adId=await page.locator('.pad[data-cue^="ad:"]').getAttribute('data-cue');await page.selectOption('#kind',adId);
+  await page.locator('#advertising summary').click();await page.waitForFunction(()=>document.querySelectorAll('#adPads .pad').length===3);
+  const adId='ad:hms:'+sponsorId;await page.selectOption('#kind',adId);
   await page.locator('#upload').setInputFiles({name:'partner.wav',mimeType:'audio/wav',buffer:Buffer.from('AD fixture')});
-  await page.waitForFunction(()=>!document.querySelector('.pad[data-cue^="ad:"]').disabled);assert.match(await page.locator('.pad[data-cue^="ad:"]').textContent(),/AD 1.*Partner utkání.*Organizace/s);
-  await page.locator('.pad[data-cue^="ad:"]').click();assert.match(await page.locator('#now').textContent(),/AD 1 Partner utkání/);
-  await page.locator('summary').filter({hasText:'Reklamy a sponzoři'}).click();
+  await page.waitForFunction(()=>!document.querySelector('.pad[data-cue^="ad:"]').disabled);assert.match(await page.locator('.pad[data-cue^="ad:"]').first().textContent(),/Partner organizace.*AD 1.*Organizace/s);
+  await page.locator('.pad[data-cue^="ad:"]').first().click();assert.match(await page.locator('#now').textContent(),/AD 1 Partner organizace/);
+  await page.locator('#advertising summary').click();
   await page.locator('#matchSettings').evaluate(el=>el.open=true);await page.selectOption('#org','EUCHL');await page.waitForFunction(()=>document.querySelectorAll('.pad').length===12&&[...document.querySelectorAll('.pad')].every(b=>b.disabled));assert.equal(await page.locator('.event').count(),0);
   await page.locator('#matchSettings').evaluate(el=>el.open=true);await page.selectOption('#org','PHM');await page.waitForFunction(()=>document.querySelector('.event')?.dataset.status==='Done');
   await page.locator('summary').filter({hasText:'Zvuky a týmové profily'}).click();
+  await page.selectOption('#testType','penalty');await page.fill('#testText','Čas třináct patnáct. Vyloučen hráč testovacího týmu, menší trest, sekání.');await page.click('#addTest');
+  assert.equal(await page.locator('.event[data-type=penalty] .event-type').evaluate(el=>getComputedStyle(el).color),'rgb(255, 141, 152)');
+  assert.equal(await page.locator('.event[data-type=goal] .event-type').evaluate(el=>getComputedStyle(el).color),'rgb(114, 227, 180)');
   await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:output+'/manual-360.png',fullPage:true});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   await page.locator('#matchSettings').evaluate(el=>el.open=true);await page.selectOption('#mode','live');await page.selectOption('#game',id);await page.waitForFunction(()=>document.getElementById('connection').dataset.state==='live');
   assert.equal(await page.locator('.event').count(),1);assert.equal(await page.locator('.event').getAttribute('data-status'),'New');
-  await page.locator('.event .play').click();await page.evaluate(()=>window.showTest.spoken.at(-1).onend());await page.locator('#matchSettings').evaluate(el=>el.open=true);await page.click('#refresh');await page.waitForFunction(()=>document.getElementById('connection').dataset.state==='live');assert.equal(await page.locator('.event').getAttribute('data-status'),'Done');
+  await page.clock.install();await page.locator('.event .play').click();
+  await page.locator('.event').evaluate(el=>el.dataset.pollMarker='before');
+  const refreshed=page.waitForResponse(r=>r.url().includes('/api/broadcast?'));await page.clock.fastForward(16000);await refreshed;
+  await page.waitForFunction(()=>document.querySelector('.event')?.dataset.status==='Playing'&&!document.querySelector('.event').dataset.pollMarker);await page.evaluate(()=>window.showTest.spoken.at(-1).onend());assert.equal(await page.locator('.event').getAttribute('data-status'),'Done');
+  await page.locator('.event .play').click();assert.equal(await page.locator('.event').getAttribute('data-status'),'Playing');await page.evaluate(()=>window.showTest.spoken.at(-1).onend());
+  await page.locator('#matchSettings').evaluate(el=>el.open=true);await page.click('#refresh');await page.waitForFunction(()=>document.getElementById('connection').dataset.state==='live');assert.equal(await page.locator('.event').getAttribute('data-status'),'Done');
   liveText='Gól týmu Test domácí. Opravený střelec Petr Svoboda.';await page.locator('#matchSettings').evaluate(el=>el.open=true);await page.click('#refresh');await page.waitForFunction(()=>document.querySelector('.event')?.dataset.status==='New'&&document.querySelector('.event-meta').textContent.includes('OPRAVENO'));
-  await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:output+'/live-fixture-360.png',fullPage:true});
+  await page.locator('summary').filter({hasText:'Sponzoři HMS'}).click();await page.selectOption('#sponsorScope','teams');await page.waitForFunction(()=>document.querySelectorAll('#adPads .pad').length===1);assert.match(await page.locator('#adPads').textContent(),/Partner domácích/);assert.doesNotMatch(await page.locator('#adPads').textContent(),/Jiný tým|Partner organizace/);
+  const order=await page.evaluate(()=>{const y=id=>document.getElementById(id).getBoundingClientRect().top+scrollY;return {pads:y('pads'),ads:y('advertising'),events:y('events'),settings:y('settings')};});assert.ok(order.pads<order.ads&&order.ads<order.events&&order.events<order.settings);
+  assert.equal(await page.locator('.event').getAttribute('data-type'),'goal');
+  await page.locator('summary').filter({hasText:'Sponzoři HMS'}).click();await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:output+'/live-fixture-360.png',fullPage:true});
   failed=true;await page.locator('#matchSettings').evaluate(el=>el.open=true);await page.click('#refresh');await page.waitForFunction(()=>document.getElementById('connection').textContent.includes('LIVE nedostupné'));assert.equal(await page.locator('.event .play').isDisabled(),true);
   await page.setViewportSize({width:320,height:850});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   assert.deepEqual(errors,[]);
   // The unmocked local server must report actual unavailability, never a fabricated LIVE feed.
   const actual=await context.request.get(root+'/api/broadcast?org=PHM&gameId='+id+'&live=1');assert.equal(actual.status(),503);
-  const report={result:'passed',widths:[320,360],checks:['manual TTS lifecycle and STOP cancellation','duplicate and edited event handling','reload and mode history isolation','team → organization/default asset fallback','organization isolation','LIVE fixture corrections and unavailable-state blocking','no horizontal overflow','no browser errors'],limitations:['API and speech/audio mocked in browser behavior checks','local unconfigured HMS endpoint verified as 503; no real live match or audible speech verified']};
+  const report={result:'passed',widths:[320,360],checks:['TTS completion after the LIVE poll replaces the event object; immediate replay','manual TTS lifecycle and STOP cancellation','duplicate and edited event handling','reload and mode history isolation','team → organization/default asset fallback','HMS sponsor catalog/organization/team binding and sponsor audio upload','panels → advertising → events → settings layout','organization isolation','LIVE fixture corrections and unavailable-state blocking','no horizontal overflow','no browser errors'],limitations:['API and speech/audio mocked in browser behavior checks','local unconfigured HMS endpoint verified as 503; no real live match or audible speech verified']};
   await writeFile(output+'/report.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report));
 }finally{await browser?.close();await new Promise(resolve=>server.close(resolve));}
