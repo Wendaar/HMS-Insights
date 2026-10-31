@@ -1,10 +1,14 @@
-export const cues=[['goal-home','GOAL HORN','HOME','goal'],['goal-away','GOAL HORN','AWAY','goal'],['powerplay','POWER PLAY','HOME','powerplay'],['penalty','PENALTY','AWAY','penalty'],['pregame','PREGAME MIX','','pregame'],['ingame','IN-GAME MIX','','ingame'],['victory','VICTORY','HOME','victory']];
+export const cues=[['pregame','PREGAME MIX'],['puckdrop','PUCK DROP'],['goal','GOAL'],['powerplay','POWER PLAY'],['ingame','IN GAME MIX'],['victory','VICTORY']].flatMap(([kind,label])=>['HOME','AWAY'].map(side=>[`${kind}-${side.toLowerCase()}`,label,side,kind]));
+export function adCues(ads){return ads.map((ad,i)=>[`ad:${ad.id}`,`AD ${i+1}`,ad.name,`ad:${ad.id}`]);}
+export function cueChannel(kind){return ['pregame','ingame','victory'].includes(kind)?'bed':'effect';}
 export const signature=e=>JSON.stringify([e.type,e.side,e.period,e.clock,e.text]);
 export function reconcile(previous,incoming,types){
   const old=new Map(previous.map(e=>[e.id,e])),seen=new Set();
   const next=incoming.map(e=>{
     if(seen.has(e.id))throw new Error('Konfliktní nebo duplicitní události.');seen.add(e.id);
-    const before=old.get(e.id),unchanged=before&&signature(before)===signature(e);
+    const identities=new Set([e.id,...(e.members??[])]);
+    const exact=old.get(e.id),overlap=previous.find(p=>!p.withdrawn&&[p.id,...(p.members??[])].some(id=>identities.has(id)));
+    const before=exact&&!exact.withdrawn?exact:overlap??exact,unchanged=before&&signature(before)===signature(e);
     return {...e,status:unchanged?before.status:'New',edited:!!before&&(!unchanged||before.edited),withdrawn:false};
   });
   // Keep tombstones: removal must never turn a historical item into a new announcement.

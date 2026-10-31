@@ -94,7 +94,7 @@ export function createBroadcastHandler(options={}){
           if(q.live==='1'){
             try{data.match=broadcastMatch(detail,events,enrichBroadcastLineup(detail,lineup,metadata));}
             catch{data.match=null;}
-            try{data.showControl=showControlFeed(enrichPregame(detail,metadata),events,data.match?.roster);}
+            try{data.showControl=showControlFeed(enrichPregame(detail,metadata),events,data.match?.roster,{match:data.match,metadata});}
             catch{data.showControl=null;}
           }
           cache.set(key,{data,expires:Date.now()+(q.live==='1'?10000:30000)});if(cache.size>100)cache.delete(cache.keys().next().value);return data;
