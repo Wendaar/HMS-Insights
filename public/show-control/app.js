@@ -3,6 +3,9 @@ import {ShowAudio} from './audio.js';
 import {loadStudioAsset,saveStudioAsset,removeStudioAsset} from '../studio/preferences.js';
 const $=id=>document.getElementById(id),option=(value,label)=>{const o=document.createElement('option');o.value=value;o.textContent=label;return o;};
 const notice=message=>{$('notice').textContent=message??'';};
+const selectionDetails=document.createElement('details');selectionDetails.id='matchSettings';selectionDetails.open=true;
+const selectionSummary=document.createElement('summary');selectionSummary.textContent='Zápas a organizace';selectionDetails.append(selectionSummary);
+const selection=document.querySelector('.selection');selection.before(selectionDetails);selectionDetails.append(selection);
 let orgs=[],selected=null,events=[],generation=0,browseVersion=0,offset=0,timer,controller,liveReady=false,lastRead=0,padVersion=0;
 const assets=new Map(),synth=globalThis.speechSynthesis;
 const audio=new ShowAudio({onChange:message=>{if(message)notice(message);$('now').textContent=Object.entries(audio.tracks).map(([channel,t])=>`${channel==='bed'?'Hudba':'Efekt'}: ${t.label}`).join(' · ')||'Žádný zvuk nehraje';}});
@@ -56,12 +59,14 @@ async function poll(run=generation){
     if(events.some(e=>e.status==='Playing'&&feed.types.includes(e.type)&&!feed.events.some(n=>n.id===e.id&&signature(n)===signature(e))))audio.cancel();
     events=reconcile(events,feed.events,feed.types);persist();liveReady=true;lastRead=Date.now();
     connection(`LIVE HMS · načteno ${new Date().toLocaleTimeString('cs-CZ')} · ${feed.types.map(t=>t==='goal'?'góly':'tresty').join(', ')}${feed.omitted?` · ${feed.omitted} neověřených eventů vynecháno`:''}`,'live');
+    render();
     await loadPads();
   }catch(error){if(run!==generation)return;liveReady=false;audio.cancel();connection(`LIVE nedostupné · ${error.message}`);}finally{clearTimeout(timeout);if(run===generation){render();timer=setTimeout(()=>poll(run),15000);}}
 }
 async function choose(){
   reset();const run=generation;if(mode()==='test'){selected={id:'manual',home:{id:'test-home',name:'Test domácí'},away:{id:'test-away',name:'Test hosté'}};$('match').textContent='RUČNÍ TEST · žádná živá data';connection('TEST · ruční eventy, bez připojení k HMS','test');}
   else{selected=$('game').value?{id:$('game').value}:null;$('match').textContent='Vyberte zápas';connection(selected?'Načítám ověřené LIVE události…':'LIVE zatím není připojeno.');}
+  selectionDetails.open=mode()==='live'&&!selected;
   $('testTools').hidden=mode()!=='test';restore();render();await loadPads();if(run===generation&&selected&&mode()==='live')poll(run);
 }
 const cueTeam=cue=>cue[2]==='HOME'?team('home'):cue[2]==='AWAY'?team('away'):null;
