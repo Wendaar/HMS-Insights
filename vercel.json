@@ -16,12 +16,12 @@
     }
   },
   "redirects": [
-    {"source":"/studio/media-mapping","destination":"/media-mapping/index.html","permanent":false},
-    {"source":"/studio/media-mapping/","destination":"/media-mapping/index.html","permanent":false},
-    { "source": "/show-control", "destination": "/show-control/index.html", "permanent": false },
-    { "source": "/show-control/", "destination": "/show-control/index.html", "permanent": false },
-    { "source": "/studio/announcer", "destination": "/show-control/index.html", "permanent": false },
-    { "source": "/studio/announcer/", "destination": "/show-control/index.html", "permanent": false },
+    {"source":"/media-mapping/","destination":"/media-mapping","permanent":false},
+    {"source":"/studio/media-mapping","destination":"/media-mapping","permanent":false},
+    {"source":"/studio/media-mapping/","destination":"/media-mapping","permanent":false},
+    { "source": "/show-control/", "destination": "/show-control", "permanent": false },
+    { "source": "/studio/announcer", "destination": "/show-control", "permanent": false },
+    { "source": "/studio/announcer/", "destination": "/show-control", "permanent": false },
     { "source": "/broadcast", "destination": "/broadcast/index.html", "permanent": false },
     { "source": "/broadcast/", "destination": "/broadcast/index.html", "permanent": false },
     { "source": "/broadcast/sponsors.html", "destination": "/sponsors", "permanent": false },
@@ -84,6 +84,8 @@
     {"source":"/control/apps/registrations","headers":[{"key":"Cache-Control","value":"private, no-store"},{"key":"X-Robots-Tag","value":"noindex, nofollow, noarchive"},{"key":"X-Content-Type-Options","value":"nosniff"},{"key":"Referrer-Policy","value":"no-referrer"},{"key":"Content-Security-Policy","value":"default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' https://prod-hms-wootera.s3.eu-central-1.amazonaws.com https://hockeymanagementsystem.s3.amazonaws.com; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"}]}
   ],
   "rewrites": [
+    {"source":"/show-control","destination":"/show-control/index.html"},
+    {"source":"/media-mapping","destination":"/media-mapping/index.html"},
     {"source":"/api/media-mapping","destination":"/api/game-summary?view=media-mapping"},
     {"source":"/m/:org([a-z0-9-]+)/:gameId/analysis","destination":"/api/game-summary?view=match-preview&org=:org&gameId=:gameId&action=analysis"},
     {"source":"/m/:org([a-z0-9-]+)/:gameId","destination":"/api/game-summary?view=match-preview&org=:org&gameId=:gameId"},

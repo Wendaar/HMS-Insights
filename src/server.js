@@ -134,7 +134,7 @@ export const server = createServer(async (request, response) => {
     if(request.method==='POST'){let body='';for await(const chunk of request){body+=chunk;if(Buffer.byteLength(body)>100000){response.writeHead(413);response.end();return;}}request.body=body;}
     await createMediaMappingHandler()(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json; charset=utf-8');response.end(JSON.stringify(body));}});return;
   }
-  if(['/studio/media-mapping','/studio/media-mapping/'].includes(url.pathname)||/^\/media-mapping\/(index.html|app.js|model.js|style.css)$/.test(url.pathname)){
+  if(['/media-mapping','/media-mapping/','/studio/media-mapping','/studio/media-mapping/'].includes(url.pathname)||/^\/media-mapping\/(index.html|app.js|model.js|style.css)$/.test(url.pathname)){
     const name=/\.(html|js|css)$/.test(url.pathname)?url.pathname.split('/').pop():'index.html';response.setHeader('content-type',name.endsWith('.html')?'text/html; charset=utf-8':name.endsWith('.css')?'text/css':'text/javascript');response.setHeader('x-robots-tag','noindex, nofollow');response.end(await readFile(join(publicDirectory,'media-mapping',name)));return;
   }
   if(url.pathname.startsWith('/media/audio/')){

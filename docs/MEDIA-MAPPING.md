@@ -1,3 +1,5 @@
+Ostré adresy: [Show Control](https://public.heromanagementsystem.com/show-control?org=PHM), [Media Mapping](https://public.heromanagementsystem.com/media-mapping?org=PHM), [rozcestník](https://public.heromanagementsystem.com/control?org=phm). Staré adresy `/studio/announcer` a `/studio/media-mapping` zůstávají přesměrováním.
+
 # Media Mapping · centralized sound assignments
 
 Open `/studio/media-mapping` from Media Studio, Control Center or Show Control's settings. This is the shared audio mapping layer; Show Control is the playback surface. No upload is needed at the venue.

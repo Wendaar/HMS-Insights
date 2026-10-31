@@ -19,7 +19,7 @@ let browser;try{
     await context.route('**/api/broadcast?*',route=>route.fulfill({json:{org:new URL(route.request().url()).searchParams.get('org'),schemaVersion:1,gameId,home,away,showControl:{types:['goal','penalty'],events:[],omitted:0}}}));
   }
   const context=await browser.newContext({viewport:{width:1200,height:1000}});await wire(context);const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
-  await page.goto(root+'/studio/media-mapping');await page.waitForFunction(()=>document.getElementById('asset').options.length>1);const asset=(await readMediaAssets('PHM')).find(a=>a.path.endsWith('/shared/test-tone.wav'));
+  await page.goto(root+'/media-mapping?org=PHM');await page.waitForFunction(()=>document.getElementById('asset').options.length>1);const asset=(await readMediaAssets('PHM')).find(a=>a.path.endsWith('/shared/test-tone.wav'));
   await page.selectOption('#asset',asset.id);await page.locator('#preview').evaluate(async a=>{a.muted=true;await a.play();});assert.ok(await page.locator('#preview').evaluate(a=>a.duration>1&&a.duration<2));await page.locator('#preview').evaluate(a=>a.pause());
   await page.fill('#secret','test-admin');await page.click('#unlock');await page.waitForFunction(()=>!document.getElementById('assign').disabled);
   async function savePublish(){await page.click('#save');await page.waitForFunction(()=>!document.getElementById('publish').disabled);await page.click('#publish');await page.waitForFunction(()=>document.getElementById('status').textContent.startsWith('Zveřejněno'));}
@@ -29,7 +29,7 @@ let browser;try{
   await page.selectOption('#scope','sponsor');await page.selectOption('#target',sponsor.id);await page.click('#assign');await savePublish();assert.equal((await store.get('PHM','library')).published.bindings.length,4);
   await page.screenshot({path:output+'/configurator.png',fullPage:true});assert.deepEqual(errors,[]);
   // A clean browser/device has no IndexedDB assets or editor key, but uses the same public publication.
-  const device=await browser.newContext({viewport:{width:360,height:900}});await wire(device);const operator=await device.newPage();operator.on('pageerror',e=>errors.push(e.message));await operator.goto(root+'/studio/announcer');await operator.waitForFunction(()=>document.getElementById('game').options.length>1);await operator.selectOption('#game',gameId);
+  const device=await browser.newContext({viewport:{width:360,height:900}});await wire(device);const operator=await device.newPage();operator.on('pageerror',e=>errors.push(e.message));await operator.goto(root+'/show-control?org=PHM&gameId='+gameId);await operator.waitForFunction(id=>document.getElementById('game').value===id,gameId);assert.equal(await operator.inputValue('#mode'),'live');
   await operator.waitForFunction(()=>document.querySelector('[data-cue="goal-home"]')?.textContent.includes('Zápas · test-tone'));
   assert.match(await operator.locator('[data-cue="goal-away"]').textContent(),/Organizace · test-tone/);assert.equal(await operator.locator('[data-cue="goal-home"]').isEnabled(),true);
   await operator.locator('#advertising summary').click();await operator.waitForFunction(()=>document.querySelector('#adPads .pad')?.textContent.includes('Sponzor · test-tone'));assert.match(await operator.locator('#adPads').textContent(),/TEST Partner/);
