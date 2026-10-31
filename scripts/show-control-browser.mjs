@@ -7,7 +7,8 @@ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const root=`htt
 let browser;
 try{
   browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_PATH?{executablePath:process.env.CHROMIUM_PATH}:{})});
-  const context=await browser.newContext({viewport:{width:360,height:900}}),page=await context.newPage(),errors=[];
+  const context=await browser.newContext({viewport:{width:360,height:900}}),page=await context.newPage(),errors=[];await page.clock.install();
+  async function finishSpeech(){for(let i=0;i<60;i++){if(await page.locator('.event[data-status=Playing]').count()===0)return;await page.evaluate(()=>window.showTest.spoken.at(-1).onend());await page.clock.fastForward(700);}throw new Error('Speech did not finish');}
   page.on('pageerror',error=>errors.push(error.message));
   await page.addInitScript(()=>{
     window.showTest={spoken:[],tracks:[]};
@@ -16,12 +17,12 @@ try{
     window.Audio=class{constructor(){window.showTest.tracks.push(this);}async play(){this.paused=false;}pause(){this.paused=true;}removeAttribute(){}load(){}};
   });
   const id='11111111-1111-4111-8111-111111111111',home={id:'22222222-2222-4222-8222-222222222222',name:'Test domácí'},away={id:'33333333-3333-4333-8333-333333333333',name:'Test hosté'};
-  let liveText='Gól týmu Test domácí. Střelec Jan Novák.',failed=false;
+  let liveText='Gól týmu Test domácí. Střelec Jan Novák.',failed=false,omitSchedule=false;
   const sponsorId='44444444-4444-4444-8444-444444444444';
   await context.route('**/api/sponsors?*',route=>{const org=new URL(route.request().url()).searchParams.get('org');return route.fulfill({json:{org,items:org==='PHM'?[{id:sponsorId,name:'Partner organizace',active:true},{id:'55555555-5555-4555-8555-555555555555',name:'Partner domácích',scopeRefs:{teamIds:[home.id]}},{id:'66666666-6666-4666-8666-666666666666',name:'Jiný tým',scopeRefs:{teamIds:['other-team']}}]:[],bindings:[],relationshipStatus:'returned-links'}});});
   await context.route('**/api/studio?*',route=>{
     const q=new URL(route.request().url()).searchParams;
-    return route.fulfill({json:q.has('catalog')?{organizations:[{code:'PHM',name:'PHM · testovací fixture'},{code:'EUCHL',name:'EUCHL · testovací fixture'}]}:{source:'HMS',items:[{gameId:id,date:'2026-10-31',status:'RUNNING',home,away}],hasMore:false}});
+    return route.fulfill({json:q.has('catalog')?{organizations:[{code:'PHM',name:'PHM · testovací fixture'},{code:'EUCHL',name:'EUCHL · testovací fixture'}]}:{source:'HMS',items:omitSchedule?[]:[{gameId:id,date:'2026-10-31',status:'RUNNING',home,away}],hasMore:false}});
   });
   await context.route('**/api/broadcast?*',route=>failed?route.fulfill({status:503,json:{error:'Testovaný výpadek API'}}):route.fulfill({json:{schemaVersion:1,org:new URL(route.request().url()).searchParams.get('org'),gameId:id,home,away,showControl:{events:[{id:'goal:1',type:'goal',side:'home',period:1,clock:'03:20',text:liveText}],types:['goal','penalty'],omitted:0}}}));
   await page.goto(root+'/studio/announcer');await page.locator('#org:not([disabled])').waitFor();
@@ -30,9 +31,9 @@ try{
   await page.locator('.event .play').click();assert.equal(await page.locator('.event').getAttribute('data-status'),'Playing');
   await page.click('#stop');assert.equal(await page.locator('.event').getAttribute('data-status'),'New');
   await page.evaluate(()=>window.showTest.spoken.at(-1).onend());assert.equal(await page.locator('.event').getAttribute('data-status'),'New');
-  await page.locator('.event .play').click();await page.evaluate(()=>window.showTest.spoken.at(-1).onend());assert.equal(await page.locator('.event').getAttribute('data-status'),'Done');
+  await page.locator('.event .play').click();await finishSpeech();assert.equal(await page.locator('.event').getAttribute('data-status'),'Done');
   await page.fill('#testText','Opravený střelec. Petr Svoboda.');await page.click('#editTest');assert.equal(await page.locator('.event').getAttribute('data-status'),'New');assert.match(await page.locator('.event-meta').textContent(),/OPRAVENO/);
-  await page.locator('.event .play').click();await page.evaluate(()=>window.showTest.spoken.at(-1).onend());
+  await page.locator('.event .play').click();await finishSpeech();
   await page.locator('summary').filter({hasText:'Zvuky a týmové profily'}).click();await page.selectOption('#profile','default');await page.selectOption('#kind','goal');
   await page.locator('#upload').setInputFiles({name:'vlastni-horn.wav',mimeType:'audio/wav',buffer:Buffer.from('test fixture; playback is stubbed')});
   await page.waitForFunction(()=>!document.querySelector('[data-cue="goal-home"]').disabled&&!document.querySelector('[data-cue="goal-away"]').disabled);
@@ -56,17 +57,19 @@ try{
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   await page.locator('#matchSettings').evaluate(el=>el.open=true);await page.selectOption('#mode','live');await page.selectOption('#game',id);await page.waitForFunction(()=>document.getElementById('connection').dataset.state==='live');
   assert.equal(await page.locator('.event').count(),1);assert.equal(await page.locator('.event').getAttribute('data-status'),'New');
-  await page.clock.install();await page.locator('.event .play').click();
+  assert.equal(await page.locator('#pollInterval').inputValue(),'30');await page.locator('.event .play').click();
   await page.locator('.event').evaluate(el=>el.dataset.pollMarker='before');
-  const refreshed=page.waitForResponse(r=>r.url().includes('/api/broadcast?'));await page.clock.fastForward(16000);await refreshed;
-  await page.waitForFunction(()=>document.querySelector('.event')?.dataset.status==='Playing'&&!document.querySelector('.event').dataset.pollMarker);await page.evaluate(()=>window.showTest.spoken.at(-1).onend());assert.equal(await page.locator('.event').getAttribute('data-status'),'Done');
-  await page.locator('.event .play').click();assert.equal(await page.locator('.event').getAttribute('data-status'),'Playing');await page.evaluate(()=>window.showTest.spoken.at(-1).onend());
+  const refreshed=page.waitForResponse(r=>r.url().includes('/api/broadcast?'));await page.clock.fastForward(31000);await refreshed;
+  await page.waitForFunction(()=>document.querySelector('.event')?.dataset.status==='Playing'&&!document.querySelector('.event').dataset.pollMarker);await finishSpeech();assert.equal(await page.locator('.event').getAttribute('data-status'),'Done');
+  await page.locator('.event .play').click();assert.equal(await page.locator('.event').getAttribute('data-status'),'Playing');await finishSpeech();
   await page.locator('#matchSettings').evaluate(el=>el.open=true);await page.click('#refresh');await page.waitForFunction(()=>document.getElementById('connection').dataset.state==='live');assert.equal(await page.locator('.event').getAttribute('data-status'),'Done');
   liveText='Gól týmu Test domácí. Opravený střelec Petr Svoboda.';await page.locator('#matchSettings').evaluate(el=>el.open=true);await page.click('#refresh');await page.waitForFunction(()=>document.querySelector('.event')?.dataset.status==='New'&&document.querySelector('.event-meta').textContent.includes('OPRAVENO'));
   await page.locator('summary').filter({hasText:'Sponzoři HMS'}).click();await page.selectOption('#sponsorScope','teams');await page.waitForFunction(()=>document.querySelectorAll('#adPads .pad').length===1);assert.match(await page.locator('#adPads').textContent(),/Partner domácích/);assert.doesNotMatch(await page.locator('#adPads').textContent(),/Jiný tým|Partner organizace/);
   const order=await page.evaluate(()=>{const y=id=>document.getElementById(id).getBoundingClientRect().top+scrollY;return {pads:y('pads'),ads:y('advertising'),events:y('events'),settings:y('settings')};});assert.ok(order.pads<order.ads&&order.ads<order.events&&order.events<order.settings);
   assert.equal(await page.locator('.event').getAttribute('data-type'),'goal');
   await page.locator('summary').filter({hasText:'Sponzoři HMS'}).click();await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:output+'/live-fixture-360.png',fullPage:true});
+  await page.locator('#pollInterval').evaluate(el=>{el.value='10';el.dispatchEvent(new Event('change'));});
+  omitSchedule=true;await page.reload();await page.waitForFunction(()=>document.getElementById('connection').dataset.state==='live');assert.equal(await page.locator('#org').inputValue(),'PHM');assert.equal(await page.locator('#game').inputValue(),id);assert.equal(await page.locator('#pollInterval').inputValue(),'10');assert.match(await page.locator('#match').textContent(),/Test domácí/);assert.equal(await page.evaluate(()=>window.showTest.spoken.length),0);
   failed=true;await page.locator('#matchSettings').evaluate(el=>el.open=true);await page.click('#refresh');await page.waitForFunction(()=>document.getElementById('connection').textContent.includes('LIVE nedostupné'));assert.equal(await page.locator('.event .play').isDisabled(),true);
   await page.setViewportSize({width:320,height:850});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   assert.deepEqual(errors,[]);

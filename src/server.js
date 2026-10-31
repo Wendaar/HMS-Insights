@@ -254,7 +254,7 @@ export const server = createServer(async (request, response) => {
     response.setHeader('content-type',url.pathname.endsWith('.css')?'text/css':'font/woff2');
     response.end(await readFile(join(publicDirectory,url.pathname)));return;
   }
-  if(['/studio/announcer','/studio/announcer/','/show-control','/show-control/'].includes(url.pathname)||/^\/show-control\/(index.html|app.js|model.js|audio.js|style.css)$/.test(url.pathname)){
+  if(['/studio/announcer','/studio/announcer/','/show-control','/show-control/'].includes(url.pathname)||/^\/show-control\/(index.html|app.js|model.js|audio.js|speech.js|style.css)$/.test(url.pathname)){
     const name=/\.(html|js|css)$/.test(url.pathname)?url.pathname.split('/').pop():'index.html';
     response.setHeader('content-type',name.endsWith('.html')?'text/html; charset=utf-8':name.endsWith('.css')?'text/css':'text/javascript');
     response.setHeader('cache-control','no-cache');response.setHeader('x-robots-tag','noindex, nofollow');

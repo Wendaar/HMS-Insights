@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {showControlFeed,spokenClock} from '../src/domain/show-control.js';
 import {cues,adCues,cueChannel,reconcile,profileKeys,ledgerKey,signature,finishAnnouncement,sponsorAds} from '../public/show-control/model.js';
 import {ShowAudio} from '../public/show-control/audio.js';
+import {spokenText,pronunciationRules,speechParts} from '../public/show-control/speech.js';
 const detail={gameId:'game',HomeTeam:{teamId:'home',name:'Domácí'},AwayTeam:{teamId:'away',name:'Hosté'}};
 const goal={eventId:'GOAL-1',scoredByTeamId:'home',scoredByPlayerId:'p1',ScoredByPlayer:{playerId:'p1',firstName:'Jan',lastName:'Novák',email:'private@example.test'},period:1,gameTime:'03:12'};
 const feed=(goals=[goal])=>showControlFeed(detail,{gameId:'game',GameEventGoals:goals,GameEventPenalties:[]});
@@ -27,13 +28,13 @@ test('rich goal includes clock, jersey numbers, assists and independently verifi
   const roster=[{id:'p1',name:'Michal Honc',side:'home',number:8},{id:'p2',name:'Martin Murárik',side:'home',number:15},{id:'p3',name:'Jaroslav Beneš',side:'home',number:20}];
   const match={coverage:'matches-score',ordered:true,goals:[{id:goal.eventId,scoreAfter:{home:4,away:3}}]};
   const data=showControlFeed(detail,{GameEventGoals:[g]},roster,{match});const text=data.events[0].text;
-  assert.match(text,/Čas nula pět čtyřicet jedna/);assert.match(text,/Čtvrtou branku/);assert.match(text,/číslo osm Michal Honc/);assert.match(text,/číslo patnáct Martin Murárik a číslo dvacet Jaroslav Beneš/);assert.match(text,/čtyři ku tři/);
+  assert.match(text,/Čas nula pět čtyřicet jedna/);assert.match(text,/Čtvrtou branku/);assert.match(text,/číslo osm, Michal Honc/);assert.match(text,/číslo patnáct, Martin Murárik; a číslo dvacet, Jaroslav Beneš/);assert.match(text,/čtyři tři/);
   const unsafe=showControlFeed(detail,{GameEventGoals:[g]},roster,{match:{...match,coverage:'score-mismatch'}}).events[0].text;assert.doesNotMatch(unsafe,/Čtvrtou|Stav utkání/);assert.equal(spokenClock('garbage'),'');
 });
 test('same-clock penalties across both sides form one announcement; corrections retain identity evidence',()=>{
   const penalty=(id,side)=>({eventId:id,penalizedTeamId:side,period:1,gameTime:'13:15',ListPenaltyType:{name:'Minor'},ListPenaltySubtype:{name:side==='home'?'Roughing':'Cross-checking'}});
   const both=showControlFeed(detail,{GameEventPenalties:[penalty('p1','home'),penalty('p2','away')]}).events;
-  assert.equal(both.length,1);assert.equal(both[0].members.length,2);assert.match(both[0].text,/Současně/);assert.match(both[0].text,/menší trest, hrubost/);assert.match(both[0].text,/menší trest, krosček/);
+  assert.equal(both.length,1);assert.equal(both[0].members.length,2);assert.match(both[0].text,/Současně/);assert.match(both[0].text,/menší trest; hrubost/);assert.match(both[0].text,/menší trest; krosček/);
   const single=showControlFeed(detail,{GameEventPenalties:[penalty('p1','home')]}).events.map(e=>({...e,status:'Done'}));
   const updated=reconcile(single,both,['penalty']);assert.equal(updated[0].edited,true);assert.equal(updated[0].status,'New');
   updated[0].status='Done';const split=reconcile(updated,single,['penalty']);assert.equal(split[0].status,'New');assert.equal(split[0].edited,true);
@@ -42,7 +43,7 @@ test('same-clock penalties across both sides form one announcement; corrections 
 test('final result and official stars require finished status and exact team/roster binding',()=>{
   const game={...detail,status:'FINISHED',HomeTeamGoals:6,AwayTeamGoals:4,GameStars:[{playerId:'p1',teamId:'home'},{playerId:'p1',teamId:'home'},{playerId:'foreign',teamId:'away'}]};
   const roster=[{id:'p1',side:'home',name:'Michal Povolný',number:35,goalie:true}];
-  const data=showControlFeed(game,{GameEventGoals:[]},roster);assert.match(data.events.find(e=>e.type==='final').text,/šest ku čtyři/);const star=data.events.find(e=>e.type==='stars').text;assert.match(star,/číslo třicet pět Michal Povolný, brankář/);assert.equal(star.match(/Michal Povolný/g).length,1);assert.doesNotMatch(star,/foreign/);
+  const data=showControlFeed(game,{GameEventGoals:[]},roster);assert.match(data.events.find(e=>e.type==='final').text,/šest čtyři/);const star=data.events.find(e=>e.type==='stars').text;assert.match(star,/číslo třicet pět, Michal Povolný, brankář/);assert.equal(star.match(/Michal Povolný/g).length,1);assert.doesNotMatch(star,/foreign/);
   assert.equal(showControlFeed({...game,status:'RUNNING'},{GameEventGoals:[]},roster).events.length,0);
   assert.equal(showControlFeed({...game,HomeTeamGoals:null},{GameEventGoals:[]},roster).events.length,0);
   const {GameStars,...withoutStars}=game;assert.equal(showControlFeed(withoutStars,{GameEventGoals:[]},roster,{metadata:{...game,gameId:'foreign'}}).events.some(e=>e.type==='stars'),false);
@@ -94,4 +95,19 @@ test('HMS sponsor names stay scoped to the organization and exact returned team 
   const catalog={org:'PHM',items:[{id:id('1'),name:'Organization',active:true},{id:id('2'),name:'Home',scopeRefs:{teamIds:[id('a')]}},{id:id('3'),name:'Away via binding'},{id:id('4'),name:'Other team',teams:[id('c')]}],bindings:[{sponsorId:id('3'),teamId:id('b')}]};
   assert.equal(sponsorAds(catalog,'EUCHL',[]).length,0);assert.equal(sponsorAds(catalog,'PHM',[]).length,4);assert.deepEqual(sponsorAds(catalog,'PHM',[id('a'),id('b')],'teams').map(s=>s.name),['Home','Away via binding']);
   assert.equal(sponsorAds(catalog,'PHM',[],'teams').length,0);assert.equal(sponsorAds(catalog,'PHM',[])[0].id,'hms:'+id('1'));
+});
+test('Czech pronunciation dictionary changes speech only, with explicit language boundaries',()=>{
+  assert.equal(spokenText('PHM Cup. Kyle Poirier.'),'PHM Kap. Kajl Poariér.');
+  assert.equal(spokenText('PHM Cup. Kyle Poirier.',undefined,'en'),'PHM Cup. Kyle Poirier.');
+  assert.deepEqual(pronunciationRules('Kyle Poirier = Kajl Poariér\nbad line\nA = B'),[['Kyle Poirier','Kajl Poariér'],['A','B']]);
+  assert.deepEqual(speechParts('Číslo osm, Michal Honc; menší trest. Sekání.'),['Číslo osm,','Michal Honc;','menší trest.','Sekání.']);
+});
+test('timed pauses keep music ducked and Playing active until the final segment, respecting pause/resume',async()=>{
+  const {audio,spoken}=audioHarness(),states=[];audio.pauseMs=10;audio.speak('Číslo osm, Kyle Poirier. PHM Cup.',null,s=>states.push(s));
+  assert.equal(spoken[0].rate,.9);spoken[0].onend();assert.equal(audio.speaking,true);assert.deepEqual(states,[]);
+  await new Promise(r=>setTimeout(r,25));assert.equal(spoken[1].text,'Kajl Poariér.');audio.pause();spoken[1].onend();await new Promise(r=>setTimeout(r,25));assert.equal(spoken.length,2);
+  await audio.resume();assert.equal(spoken[2].text,'PHM Kap.');spoken[2].onend();assert.deepEqual(states,['Done']);assert.equal(audio.speaking,false);
+});
+test('STOP during an inter-part pause cancels all remaining speech',async()=>{
+  const {audio,spoken}=audioHarness(),states=[];audio.pauseMs=10;audio.speak('Číslo osm, hráč.',null,s=>states.push(s));spoken[0].onend();audio.stop();await new Promise(r=>setTimeout(r,25));assert.equal(spoken.length,1);assert.deepEqual(states,['New']);
 });

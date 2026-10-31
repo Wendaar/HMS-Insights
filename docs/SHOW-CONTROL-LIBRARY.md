@@ -44,6 +44,8 @@ Planned API shapes: GET manifest by organization+game, authorized library asset/
 
 ## Google Drive and HMS attachments
 
+GitHub remains suitable for code and a small fixed set of owned/licensed default jingles bundled into a deployment. This checkout currently has no tracked MP3/WAV/OGG/M4A files. An evolving user-uploaded library should not require repository-write credentials, create permanent binary history and trigger a deployment for every replacement. Keep app uploads in object storage and assignments in PostgreSQL. A hybrid of bundled generic defaults plus centrally uploaded team/sponsor media is compatible with the proposed manifest. Repository limits are documented in [GitHub's large-files guidance](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github).
+
 Drive can be an optional **import source**: select a file through a connected/authorized Drive workflow, copy it into the controlled audio store, then map its application UUID. If retaining a Drive source reference, keep the file ID and imported revision, not the visible name. It adds a separate permission and transfer flow; it should not be a runtime dependency for pressing GOAL during a match.
 
 HMS attachments can become another import source if HMS later exposes stable file IDs and dedicated typed relationships. A future native `team.audioProfileId` field could point to this catalog. There is no need to wait for it or encode cue behavior into attachment filenames now.

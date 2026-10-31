@@ -25,7 +25,7 @@ export function showControlFeed(detail,response,roster=[],{match,metadata}={}){
     if(id&&p?.playerId&&!same(id,p.playerId)||p?.teamId&&!same(p.teamId,teamId(side)))return {name:'',number:null};
     return {name:person(p),number:null};
   };
-  const playerText=p=>`${integer(p.number)===null?'':`číslo ${spokenNumber(integer(p.number))} `}${p.name}`.trim();
+  const playerText=p=>`${integer(p.number)===null?'':`číslo ${spokenNumber(integer(p.number))}, `}${p.name}`.trim();
   for(const [type,key] of [['goal','GameEventGoals'],['penalty','GameEventPenalties']]){
     const group=selectEventGroup(response,{},key,type);if(!group.available)continue;types.push(type);
     for(const e of uniqueEvents(group.events,type)){
@@ -41,10 +41,10 @@ export function showControlFeed(detail,response,roster=[],{match,metadata}={}){
         const verified=match?.coverage==='matches-score'&&match.ordered?match.goals.find(g=>same(g.id,id)):null;
         const score=verified?.scoreAfter,n=score?.[side],ordinal=ordinals[n];
         const assists=[player(e.assistedBy1PlayerId,e.AssistedBy1Player,side),player(e.assistedBy2PlayerId,e.AssistedBy2Player,side)].filter(a=>a.name);
-        announcement=spokenClock(clock)+(ordinal?`${ordinal} branku týmu ${teamName(side)} vstřelil `:`Gól týmu ${teamName(side)}! `)+(p.name?`${ordinal?'hráč':'Střelec, hráč'} ${playerText(p)}!`:ordinal?'hráč neuvedený v zápisu.':'')+(assists.length?` ${assists.length===1?'Asistoval hráč':'Asistovali hráči'} ${assists.map(playerText).join(' a ')}.`:'')+(score?` Stav utkání ${spokenNumber(score.home)} ku ${spokenNumber(score.away)}.`:'');
+        announcement=spokenClock(clock)+(ordinal?`${ordinal} branku týmu ${teamName(side)} vstřelil `:`Gól týmu ${teamName(side)}! `)+(p.name?`${ordinal?'hráč':'Střelec, hráč'} ${playerText(p)}!`:ordinal?'hráč neuvedený v zápisu.':'')+(assists.length?` ${assists.length===1?'Asistoval hráč':'Asistovali hráči'} ${assists.map(playerText).join('; a ')}.`:'')+(score?` Stav utkání ${spokenNumber(score.home)} ${spokenNumber(score.away)}.`:'');
       }else{
         const details=penaltyDetails(e),kind=penaltyLabel(details.type?.name),reason=penaltyLabel(details.subtype?.name);
-        penaltyClause=`${p.name?`hráč ${playerText(p)} týmu`:'hráč týmu'} ${teamName(side)}${kind?`, ${kind}`:''}${reason?`, ${reason}`:''}`;
+        penaltyClause=`${p.name?`hráč ${playerText(p)}, tým`:'hráč týmu'} ${teamName(side)}${kind?`; ${kind}`:''}${reason?`; ${reason}`:''}`;
         announcement=spokenClock(clock)+`Vyloučen ${penaltyClause}.`;
       }
       events.push({id:`${type}:${id.toLowerCase()}`,type,side,period,clock,text:announcement,...(penaltyClause?{penaltyClause}:{})});
@@ -55,14 +55,14 @@ export function showControlFeed(detail,response,roster=[],{match,metadata}={}){
   const groups=new Map();for(const e of events)if(e.type==='penalty'&&e.period!==null&&e.clock!==null){const key=e.period+':'+e.clock;groups.set(key,[...(groups.get(key)??[]),e]);}
   for(const rows of groups.values())if(new Set(rows.map(e=>e.side)).size>1){
     const first=events.indexOf(rows[0]);for(const row of rows)events.splice(events.indexOf(row),1);
-    events.splice(first,0,{id:'penalties:'+rows.map(e=>e.id).sort().join('|'),members:rows.map(e=>e.id),type:'penalty',side:null,period:rows[0].period,clock:rows[0].clock,text:spokenClock(rows[0].clock)+'Současně vyloučeni '+rows.map(e=>e.penaltyClause).join(' a ')+'.'});
+    events.splice(first,0,{id:'penalties:'+rows.map(e=>e.id).sort().join('|'),members:rows.map(e=>e.id),type:'penalty',side:null,period:rows[0].period,clock:rows[0].clock,text:spokenClock(rows[0].clock)+'Současně vyloučeni '+rows.map(e=>e.penaltyClause).join('; a ')+'.'});
   }
   for(const e of events)delete e.penaltyClause;
   const finished=detail.status==='FINISHED',homeScore=integer(detail.HomeTeamGoals),awayScore=integer(detail.AwayTeamGoals);
   types.push('final','stars');
   if(finished&&homeScore!==null&&awayScore!==null){
     const brand=hmsMediaContext(detail),competition=text(brand.competitionName),group=text(brand.groupName);
-    events.push({id:'final:result',type:'final',side:null,period:null,clock:null,text:`Dámy a pánové, sledovali jsme utkání${competition?' soutěže '+competition:''}${group?', '+group:''}, mezi týmy ${teamName('home')} a ${teamName('away')}. Konečný stav zápasu je ${spokenNumber(homeScore)} ku ${spokenNumber(awayScore)}! Děkujeme oběma týmům i vám, fanouškům!`});
+    events.push({id:'final:result',type:'final',side:null,period:null,clock:null,text:`Dámy a pánové, sledovali jsme utkání${competition?' soutěže '+competition:''}${group?', '+group:''}, mezi týmy ${teamName('home')} a ${teamName('away')}. Konečný stav zápasu je ${spokenNumber(homeScore)} ${spokenNumber(awayScore)}! Děkujeme oběma týmům i vám, fanouškům!`});
     const matchedMetadata=metadata&&(!metadata.gameId||same(metadata.gameId,detail.gameId))&&same(metadata.HomeTeam?.teamId,teamId('home'))&&same(metadata.AwayTeam?.teamId,teamId('away'))&&metadata.startDate===detail.startDate&&integer(metadata.HomeTeamGoals)===homeScore&&integer(metadata.AwayTeamGoals)===awayScore;
     const source=Array.isArray(detail.GameStars)?detail.GameStars:matchedMetadata?metadata.GameStars:[];
     const stars=[],seen=new Set();for(const s of Array.isArray(source)?source:[]){const id=s.playerId??s.Player?.playerId,side=same(s.teamId,teamId('home'))?'home':same(s.teamId,teamId('away'))?'away':null;
