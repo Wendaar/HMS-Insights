@@ -14,6 +14,10 @@
     }
   },
   "redirects": [
+    { "source": "/show-control", "destination": "/show-control/index.html", "permanent": false },
+    { "source": "/show-control/", "destination": "/show-control/index.html", "permanent": false },
+    { "source": "/studio/announcer", "destination": "/show-control/index.html", "permanent": false },
+    { "source": "/studio/announcer/", "destination": "/show-control/index.html", "permanent": false },
     { "source": "/broadcast", "destination": "/broadcast/index.html", "permanent": false },
     { "source": "/broadcast/", "destination": "/broadcast/index.html", "permanent": false },
     { "source": "/broadcast/sponsors.html", "destination": "/sponsors", "permanent": false },
@@ -21,6 +25,7 @@
   ],
   "headers": [
     {"source":"/registrations/:path*","headers":[{"key":"Cache-Control","value":"private, no-store"},{"key":"X-Robots-Tag","value":"noindex, nofollow, noarchive"},{"key":"X-Content-Type-Options","value":"nosniff"},{"key":"Referrer-Policy","value":"no-referrer"},{"key":"Content-Security-Policy","value":"default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' https://prod-hms-wootera.s3.eu-central-1.amazonaws.com https://hockeymanagementsystem.s3.amazonaws.com; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"}]},
+    {"source":"/show-control/:path*","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"},{"key":"Cache-Control","value":"no-cache"},{"key":"X-Content-Type-Options","value":"nosniff"},{"key":"Content-Security-Policy","value":"default-src 'self'; script-src 'self'; style-src 'self'; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'"}]},
     {"source":"/league/:path*","headers":[{"key":"Cache-Control","value":"no-store"},{"key":"X-Content-Type-Options","value":"nosniff"},{"key":"Referrer-Policy","value":"no-referrer"},{"key":"Content-Security-Policy","value":"default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self'; img-src 'self' https:; frame-src 'self' https://prod.hms.wootera.net; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"}]},
     {"source":"/team-comparison/:path*","headers":[{"key":"X-Content-Type-Options","value":"nosniff"},{"key":"Referrer-Policy","value":"no-referrer"},{"key":"Content-Security-Policy","value":"default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; connect-src 'self'; img-src 'self' blob: https://prod-hms-wootera.s3.eu-central-1.amazonaws.com https://hockeymanagementsystem.s3.amazonaws.com; base-uri 'none'; form-action 'self'; frame-ancestors *"}]},
     {"source":"/sponsors","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"},{"key":"X-Content-Type-Options","value":"nosniff"},{"key":"Referrer-Policy","value":"no-referrer"},{"key":"Cache-Control","value":"no-cache"}]},

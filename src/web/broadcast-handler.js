@@ -9,6 +9,7 @@ import {createChannelHandler} from './broadcast-channel.js';
 import {broadcastContext} from '../app/broadcast-context.js';
 import {loadSponsorCatalog} from '../app/sponsors.js';
 import {broadcastLeague} from '../app/broadcast-league.js';
+import {showControlFeed} from '../domain/show-control.js';
 const same=(a,b)=>typeof a==='string'&&typeof b==='string'&&a.toLowerCase()===b.toLowerCase();
 const label=value=>typeof value==='string'?value.trim().slice(0,240):null;
 const image=value=>sportingImage(value?.logoUrls?.md??value?.logoUrl);
@@ -93,6 +94,8 @@ export function createBroadcastHandler(options={}){
           if(q.live==='1'){
             try{data.match=broadcastMatch(detail,events,enrichBroadcastLineup(detail,lineup,metadata));}
             catch{data.match=null;}
+            try{data.showControl=showControlFeed(enrichPregame(detail,metadata),events,data.match?.roster);}
+            catch{data.showControl=null;}
           }
           cache.set(key,{data,expires:Date.now()+(q.live==='1'?10000:30000)});if(cache.size>100)cache.delete(cache.keys().next().value);return data;
         })();pending.set(key,task);task.finally(()=>pending.delete(key)).catch(()=>{});

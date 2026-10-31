@@ -254,6 +254,12 @@ export const server = createServer(async (request, response) => {
     response.setHeader('content-type',url.pathname.endsWith('.css')?'text/css':'font/woff2');
     response.end(await readFile(join(publicDirectory,url.pathname)));return;
   }
+  if(['/studio/announcer','/studio/announcer/','/show-control','/show-control/'].includes(url.pathname)||/^\/show-control\/(index.html|app.js|model.js|audio.js|style.css)$/.test(url.pathname)){
+    const name=/\.(html|js|css)$/.test(url.pathname)?url.pathname.split('/').pop():'index.html';
+    response.setHeader('content-type',name.endsWith('.html')?'text/html; charset=utf-8':name.endsWith('.css')?'text/css':'text/javascript');
+    response.setHeader('cache-control','no-cache');response.setHeader('x-robots-tag','noindex, nofollow');
+    response.end(await readFile(join(publicDirectory,'show-control',name)));return;
+  }
   if(url.pathname==='/studio' || /^\/studio\/[a-zA-Z0-9-]+\/?$/.test(url.pathname) || /^\/studio\/(index.html|app.js|graphics.js|subjects.js|typography.js|preferences.js|game-day.js|game-day-data.js|game-day-invitation.js|game-day-graphics.js|team-compare.js|i18n.js|routing.js|studio.css)$/.test(url.pathname)) {
     const name=!url.pathname.split('/').pop()?.includes('.')?'index.html':url.pathname.split('/').pop();
     response.setHeader('content-type',name.endsWith('.html')?'text/html; charset=utf-8':name.endsWith('.css')?'text/css':'text/javascript');
