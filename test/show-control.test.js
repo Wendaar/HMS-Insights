@@ -111,3 +111,19 @@ test('timed pauses keep music ducked and Playing active until the final segment,
 test('STOP during an inter-part pause cancels all remaining speech',async()=>{
   const {audio,spoken}=audioHarness(),states=[];audio.pauseMs=10;audio.speak('Číslo osm, hráč.',null,s=>states.push(s));spoken[0].onend();audio.stop();await new Promise(r=>setTimeout(r,25));assert.equal(spoken.length,1);assert.deepEqual(states,['New']);
 });
+
+test('English feed renders sporting goals, simultaneous penalties, final score and official stars from the same verified data',()=>{
+  const g={...goal,assistedBy1PlayerId:'p2'},roster=[{id:'p1',side:'home',name:'Kyle Poirier',number:8,goalie:true},{id:'p2',side:'home',name:'Jan Novák',number:15}];
+  const game={...detail,status:'FINISHED',HomeTeamGoals:4,AwayTeamGoals:3,GameStars:[{playerId:'p1',teamId:'home'}]};
+  const penalty=(eventId,side)=>({eventId,penalizedTeamId:side,period:1,gameTime:'13:15',ListPenaltyType:{name:'Minor'},ListPenaltySubtype:{name:'Slashing'}});
+  const data=showControlFeed(game,{GameEventGoals:[g],GameEventPenalties:[penalty('p1','home'),penalty('p2','away')]},roster,{match:{coverage:'matches-score',ordered:true,goals:[{id:goal.eventId,scoreAfter:{home:4,away:3}}]}});
+  const english=data.events.find(e=>e.type==='goal').texts.en;assert.match(english,/number eight, Kyle Poirier/);assert.match(english,/Assisted by number fifteen/);assert.match(english,/score is four three/);assert.doesNotMatch(english,/Kajl|číslo|branku/);
+  assert.match(data.events.find(e=>e.type==='penalty').texts.en,/Simultaneous penalties.*minor penalty; slashing/);
+  assert.match(data.events.find(e=>e.type==='final').texts.en,/final score is four three/);
+  assert.match(data.events.find(e=>e.type==='stars').texts.en,/Kyle Poirier, the goaltender/);
+  assert.ok(data.events.every(e=>e.texts.cs===e.text));
+});
+test('server audio ducks music, supports pause/resume, and STOP cancels stale completion',async()=>{
+  const {audio,tracks}=audioHarness(),states=[];await audio.play(new Blob(['bed']),'bed');await audio.speakFile(new Blob(['voice']),s=>states.push(s));const voice=audio.voiceAudio;assert.equal(tracks[0].volume,audio.volume*audio.duck);assert.equal(voice.volume,1);audio.pause();assert.equal(voice.paused,true);await audio.resume();assert.equal(voice.paused,false);voice.onended();assert.deepEqual(states,['Done']);assert.equal(audio.speaking,false);assert.equal(tracks[0].volume,audio.volume);
+  await audio.speakFile(new Blob(['next']),s=>states.push(s));const stale=audio.voiceAudio;audio.stop();stale.onended();assert.deepEqual(states,['Done','New']);assert.equal(audio.voiceAudio,null);
+});

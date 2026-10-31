@@ -12,12 +12,12 @@ try{
   page.on('pageerror',error=>errors.push(error.message));
   await page.addInitScript(()=>{
     window.showTest={spoken:[],tracks:[]};
-    Object.defineProperty(window,'speechSynthesis',{value:{getVoices:()=>[{voiceURI:'test-cs',name:'Testovací český hlas',lang:'cs-CZ',localService:true}],addEventListener(){},cancel(){},pause(){},resume(){},speak(u){window.showTest.spoken.push(u);}}});
+    Object.defineProperty(window,'speechSynthesis',{value:{getVoices:()=>[{voiceURI:'test-cs',name:'Testovací český hlas',lang:'cs-CZ',localService:true}],addEventListener(){},cancel(){},pause(){},resume(){},speak(u){window.showTest.spoken.push(u);u.onstart?.();}}});
     window.SpeechSynthesisUtterance=class{constructor(text){this.text=text;}};
     window.Audio=class{constructor(){window.showTest.tracks.push(this);}async play(){this.paused=false;}pause(){this.paused=true;}removeAttribute(){}load(){}};
   });
   const id='11111111-1111-4111-8111-111111111111',home={id:'22222222-2222-4222-8222-222222222222',name:'Test domácí'},away={id:'33333333-3333-4333-8333-333333333333',name:'Test hosté'};
-  let liveText='Gól týmu Test domácí. Střelec Jan Novák.',failed=false,omitSchedule=false;
+  let liveText='Gól týmu Test domácí střelec Jan Novák asistoval Petr Svoboda děkujeme fanouškům za podporu našeho týmu při dnešním utkání a gratulujeme střelci i oběma asistujícím hráčům k této krásné brance v přesilové hře.',failed=false,omitSchedule=false;
   const sponsorId='44444444-4444-4444-8444-444444444444';
   await context.route('**/api/sponsors?*',route=>{const org=new URL(route.request().url()).searchParams.get('org');return route.fulfill({json:{org,items:org==='PHM'?[{id:sponsorId,name:'Partner organizace',active:true},{id:'55555555-5555-4555-8555-555555555555',name:'Partner domácích',scopeRefs:{teamIds:[home.id]}},{id:'66666666-6666-4666-8666-666666666666',name:'Jiný tým',scopeRefs:{teamIds:['other-team']}}]:[],bindings:[],relationshipStatus:'returned-links'}});});
   await context.route('**/api/studio?*',route=>{

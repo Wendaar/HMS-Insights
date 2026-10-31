@@ -1,6 +1,6 @@
 import {cues,adCues,cueChannel,reconcile,profileKeys,ledgerKey,signature,finishAnnouncement,sponsorAds} from './model.js';
 import {ShowAudio} from './audio.js';
-import {defaultPronunciations,pronunciationRules} from './speech.js';
+import {defaultPronunciations,pronunciationRules,announcementText,matchingVoices,spokenText} from './speech.js';
 import {fetchSponsorCatalog} from '../sponsors/model.js';
 import {resolveMedia} from '../media-mapping/model.js';
 import {loadStudioAsset,saveStudioAsset,removeStudioAsset} from '../studio/preferences.js';
@@ -13,7 +13,18 @@ document.querySelector('#settings h2').after(selectionDetails);
 $('openSettings').onclick=()=>{selectionDetails.open=true;selectionDetails.scrollIntoView({behavior:'smooth',block:'start'});};
 let orgs=[],selected=null,events=[],generation=0,browseVersion=0,offset=0,timer,controller,liveReady=false,lastRead=0,padVersion=0,pollInFlight=null;
 let catalog=null,sponsorVersion=0,activeAnnouncement=null;
-let centralMedia=null,mappingVersion=0;
+let centralMedia=null,mappingVersion=0,speechRequest=null,preparing=null,serverVersion=0;
+const preparedSpeech=new Map();
+const language=()=>$('language').value;
+const spokenEvent=e=>announcementText(e,language());
+const speechKey=text=>JSON.stringify([org(),language(),text,audio.rate,audio.pauseMs,audio.pronunciations]);
+function cancelPreparation(){speechRequest?.abort();speechRequest=null;preparing=null;}
+async function serverStatus(){const version=++serverVersion;const current=org();try{const data=await get('/api/show-speech?'+new URLSearchParams({org:current}));if(version!==serverVersion||current!==org())return;$('serverInfo').textContent=data.configured?'Serverový hlas je připojený. Použijte kód organizace.':'Serverový hlas zatím není připojený. Dostupný je hlas zařízení.';}catch{if(version===serverVersion)$('serverInfo').textContent='Stav serverového hlasu nelze ověřit.';}}
+async function prepareSpeech(text){
+  if(!$('speechCode').value.trim())throw Error('Zadejte kód Operations / správy pro serverový hlas.');
+  const request=new AbortController();speechRequest=request;const timeout=setTimeout(()=>request.abort(),25000);
+  try{const r=await fetch('/api/show-speech?'+new URLSearchParams({org:org()}),{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer '+$('speechCode').value.trim()},body:JSON.stringify({text:spokenText(text,audio.pronunciations,language()),language:language(),rate:audio.rate,pauseMs:audio.pauseMs}),signal:request.signal});if(!r.ok){const d=await r.json();throw Error(d.error||'Serverový hlas není dostupný.');}if(!r.headers.get('content-type')?.startsWith('audio/'))throw Error('Server nevrátil hlasové audio.');return await r.blob();}finally{clearTimeout(timeout);if(speechRequest===request)speechRequest=null;}
+}
 const assets=new Map(),synth=globalThis.speechSynthesis;
 const audio=new ShowAudio({onChange:message=>{if(message)notice(message);$('now').textContent=Object.entries(audio.tracks).map(([channel,t])=>`${channel==='bed'?'Hudba':'Efekt'}: ${t.label}`).join(' · ')||'Žádný zvuk nehraje';}});
 const org=()=>$('org').value,mode=()=>$('mode').value,gameId=()=>selected?.id??'no-game';
@@ -24,8 +35,8 @@ const pollMs=()=>Number($('pollInterval').value)*1000;
 const staleMs=()=>Math.max(45000,pollMs()+20000);
 function rememberSelection(){try{localStorage.setItem('show:last-org:v1',org());localStorage.setItem(`show:selection:v1:${org()}`,JSON.stringify({mode:mode(),gameId:mode()==='live'&&validGame(selected?.id)?selected.id:null,label:selected?.home&&selected?.away?`${selected.home.name} × ${selected.away.name}`:'Obnovený zápas',filter:$('filter').value}));}catch{notice('Vybraný zápas nelze v tomto prohlížeči zapamatovat.');}}
 function restoreSelection(){try{const saved=JSON.parse(localStorage.getItem(`show:selection:v1:${org()}`)??'null');if(!saved)return;if(['live','test'].includes(saved.mode))$('mode').value=saved.mode;if([...$('filter').options].some(o=>o.value===saved.filter))$('filter').value=saved.filter;if(saved.mode==='live'&&validGame(saved.gameId)){$('game').append(option(saved.gameId,typeof saved.label==='string'?saved.label.slice(0,240):'Obnovený zápas'));$('game').value=saved.gameId;}}catch{}}
-function saveVoice(){audio.rate=Number($('rate').value);audio.pauseMs=Number($('speechPause').value);audio.pronunciations=pronunciationRules($('pronunciations').value);try{localStorage.setItem(`show:voice:v1:${org()}`,JSON.stringify({rate:audio.rate,pauseMs:audio.pauseMs,pronunciations:$('pronunciations').value.slice(0,12000),pollInterval:$('pollInterval').value}));}catch{notice('Volby hlasatele nelze uložit.');}}
-function loadVoice(){let saved={};try{saved=JSON.parse(localStorage.getItem(`show:voice:v1:${org()}`)??'{}')??{};}catch{}$('rate').value=Number.isFinite(saved.rate)&&saved.rate>=.75&&saved.rate<=1.1?saved.rate:.9;$('speechPause').value=Number.isFinite(saved.pauseMs)&&saved.pauseMs>=100&&saved.pauseMs<=600?saved.pauseMs:250;$('pronunciations').value=typeof saved.pronunciations==='string'?saved.pronunciations.slice(0,12000):defaultPronunciations.map(r=>r.join(' = ')).join('\n');$('pollInterval').value=['10','30'].includes(saved.pollInterval)?saved.pollInterval:'30';audio.rate=Number($('rate').value);audio.pauseMs=Number($('speechPause').value);audio.pronunciations=pronunciationRules($('pronunciations').value);}
+function saveVoice(){audio.language=language();audio.rate=Number($('rate').value);audio.pauseMs=Number($('speechPause').value);audio.pronunciations=pronunciationRules($('pronunciations').value);try{localStorage.setItem(`show:voice:v1:${org()}`,JSON.stringify({rate:audio.rate,pauseMs:audio.pauseMs,pronunciations:$('pronunciations').value.slice(0,12000),pollInterval:$('pollInterval').value,language:language(),engine:$('speechEngine').value,voiceURI:$('voice').value}));}catch{notice('Volby hlasatele nelze uložit.');}}
+function loadVoice(){let saved={};try{saved=JSON.parse(localStorage.getItem(`show:voice:v1:${org()}`)??'{}')??{};}catch{}$('language').value=saved.language==='en'?'en':'cs';$('speechEngine').value=saved.engine==='server'?'server':'device';audio.language=language();voices(saved.voiceURI);$('rate').value=Number.isFinite(saved.rate)&&saved.rate>=.75&&saved.rate<=1.1?saved.rate:.9;$('speechPause').value=Number.isFinite(saved.pauseMs)&&saved.pauseMs>=100&&saved.pauseMs<=600?saved.pauseMs:250;$('pronunciations').value=typeof saved.pronunciations==='string'?saved.pronunciations.slice(0,12000):defaultPronunciations.map(r=>r.join(' = ')).join('\n');$('pollInterval').value=['10','30'].includes(saved.pollInterval)?saved.pollInterval:'30';audio.rate=Number($('rate').value);audio.pauseMs=Number($('speechPause').value);audio.pronunciations=pronunciationRules($('pronunciations').value);}
 $('rate').oninput=saveVoice;$('speechPause').oninput=saveVoice;$('pronunciations').onchange=saveVoice;$('pollInterval').onchange=()=>{saveVoice();if(selected&&mode()==='live'){clearTimeout(timer);timer=setTimeout(()=>poll(),pollMs());}};
 const activeAds=()=>[...sponsorAds(catalog,org(),[team('home'),team('away')],$('sponsorScope').value),...readAds()];
 async function loadSponsors(){const version=++sponsorVersion,current=org();catalog=null;$('sponsorStatus').textContent='Načítám sponzory HMS…';loadPads();try{const data=await fetchSponsorCatalog(current);if(version!==sponsorVersion||org()!==current)return;catalog=data;$('sponsorStatus').textContent=`HMS · ${data.items.length} sponzorů organizace${data.relationshipStatus==='teams-unavailable'?' · týmové vazby nejsou dostupné':''}`;}catch{if(version!==sponsorVersion)return;$('sponsorStatus').textContent='Sponzoři HMS nejsou dostupní. Uložené vlastní spoty zůstávají dostupné.';}if(version===sponsorVersion)loadPads();}
@@ -45,7 +56,7 @@ $('addAd').onclick=()=>{const name=$('adName').value.trim();if(!name)return noti
 function key(){return ledgerKey(org(),gameId(),mode());}
 function persist(){try{localStorage.setItem(key(),JSON.stringify(events));}catch{notice('Historii nelze uložit. Neobnovujte stránku během obsluhy zápasu.');}}
 function restore(){try{const rows=JSON.parse(localStorage.getItem(key())??'[]');events=Array.isArray(rows)?rows.filter(e=>typeof e.id==='string'&&typeof e.text==='string'&&['New','Playing','Done','Skipped'].includes(e.status)).map(e=>({...e,status:e.status==='Playing'?'New':e.status})):[];}catch{events=[];}}
-function reset(){generation++;clearTimeout(timer);controller?.abort();audio.stop();activeAnnouncement=null;centralMedia=null;mappingVersion++;assets.clear();liveReady=false;lastRead=0;events=[];render();}
+function reset(){cancelPreparation();generation++;clearTimeout(timer);controller?.abort();audio.stop();activeAnnouncement=null;centralMedia=null;mappingVersion++;assets.clear();liveReady=false;lastRead=0;events=[];render();}
 function connection(message,state='error'){$('connection').textContent=message;$('connection').dataset.state=state;}
 function render(){
   $('events').replaceChildren();const visible=events.filter(e=>!e.withdrawn).slice(-Number($('count').value)).reverse();
@@ -56,23 +67,35 @@ function render(){
     const meta=document.createElement('div');meta.className='event-meta';
     const type=document.createElement('span');type.className='event-type';type.textContent=`${({goal:'● GÓL',penalty:'● TREST',final:'VÝSLEDEK',stars:'★ HVĚZDY'})[e.type]??e.type.toUpperCase()} · ${e.period?`${e.period}. tř. `:''}${e.clock??'—'}${e.edited?' · OPRAVENO':''}`;
     const state=document.createElement('strong');state.textContent=e.status;meta.append(type,state);
-    const text=document.createElement('p');text.textContent=e.text;
+    const text=document.createElement('p');text.textContent=spokenEvent(e)??'Anglický text této události není dostupný. Obnovte LIVE data nebo zvolte češtinu.';
     const controls=document.createElement('div');controls.className='row';
     const play=document.createElement('button');play.className='play';play.textContent=e.status==='Done'?'↻ Znovu TTS':'▶ Play TTS';
-    play.disabled=e.status==='Playing'||mode()==='live'&&(!liveReady||Date.now()-lastRead>staleMs());play.onclick=()=>speakEvent(e);
-    const skip=document.createElement('button');skip.textContent='Přeskočit';skip.disabled=e.status==='Skipped';skip.onclick=()=>{if(e.status==='Playing')audio.cancel();e.status='Skipped';persist();render();};controls.append(play,skip);
+    if($('speechEngine').value==='server')play.textContent=preparing?.id===e.id?'Připravuji hlas…':preparedSpeech.has(speechKey(spokenEvent(e)))?'▶ Přehrát hlas':'↓ Připravit hlas';
+    play.disabled=!spokenEvent(e)||!!preparing||e.status==='Playing'||mode()==='live'&&(!liveReady||Date.now()-lastRead>staleMs());play.onclick=()=>speakEvent(e);
+    const skip=document.createElement('button');skip.textContent='Přeskočit';skip.disabled=e.status==='Skipped';skip.onclick=()=>{if(preparing?.id===e.id)cancelPreparation();if(e.status==='Playing')audio.cancel();e.status='Skipped';persist();render();};controls.append(play,skip);
     if(e.status==='Playing'){const retry=document.createElement('button');retry.textContent='↻ Restart';retry.onclick=()=>speakEvent(e);controls.append(retry);}card.append(meta,text,controls);$('events').append(card);
   }
 }
-function voice(){return synth?.getVoices().find(v=>v.voiceURI===$('voice').value);}
-function speakEvent(e){
+function voice(){return matchingVoices(synth?.getVoices(),language()).find(v=>v.voiceURI===$('voice').value);}
+async function speakEvent(e){
   if(mode()==='live'&&(!liveReady||Date.now()-lastRead>staleMs()))return notice('LIVE data nejsou aktuální. Nejdříve je obnovte.');
-  const v=voice();if(!v)return notice('V zařízení není dostupný český hlas. Doplňte jej v nastavení systému a obnovte stránku.');
-  audio.cancel();const revision=signature(e),run=generation,id=e.id;activeAnnouncement={id,revision};finishAnnouncement(events,id,revision,'Playing');persist();render();
-  try{audio.speak(e.text,v,status=>{if(run!==generation)return;finishAnnouncement(events,id,revision,status);activeAnnouncement=null;persist();render();});}catch(error){finishAnnouncement(events,id,revision,'New');activeAnnouncement=null;persist();render();notice(error.message);}
+  const text=spokenEvent(e);if(!text)return notice('Pro tuto událost není dostupný anglický text. Obnovte data.');
+  const run=generation,id=e.id,revision=signature(e),key=speechKey(text);
+  if($('speechEngine').value==='server'&&!preparedSpeech.has(key)){
+    if(preparing)return;audio.cancel();const job={id};preparing=job;render();notice('Připravuji audio hlášení…');
+    try{const blob=await prepareSpeech(text);if(preparing!==job||run!==generation||!events.some(n=>n.id===id&&!n.withdrawn&&signature(n)===revision))return;while(preparedSpeech.size>=16)preparedSpeech.delete(preparedSpeech.keys().next().value);preparedSpeech.set(key,blob);notice('Audio připravené. Klepněte na Přehrát hlas.');}catch(error){if(preparing===job)notice(error.message);}finally{if(preparing===job){preparing=null;render();}}return;
+  }
+  audio.cancel();activeAnnouncement={id,revision};finishAnnouncement(events,id,revision,'Playing');persist();render();
+  const done=status=>{if(run!==generation)return;finishAnnouncement(events,id,revision,status);activeAnnouncement=null;persist();render();};
+  try{if($('speechEngine').value==='server')await audio.speakFile(preparedSpeech.get(key),done);else audio.speak(text,voice(),done);}catch(error){done('New');notice(error.name==='NotAllowedError'?'Audio připravené. Klepněte znovu pro přehrání.':error.message);}
 }
-function voices(){const previous=$('voice').value;const list=(synth?.getVoices()??[]).filter(v=>/^cs(?:-|$)/i.test(v.lang));$('voice').replaceChildren(...list.map(v=>option(v.voiceURI,`${v.name}${v.localService?' · zařízení':' · online'}`)));if(list.some(v=>v.voiceURI===previous))$('voice').value=previous;$('voiceInfo').textContent=list.length?'České hlasy dostupné v tomto zařízení.':'Český hlas není dostupný. Nainstalujte českou řeč v systému. Ostatní zvukové povely fungují samostatně.';}
-voices();synth?.addEventListener('voiceschanged',voices);
+function voices(preferred){const previous=typeof preferred==='string'?preferred:$('voice').value;const list=matchingVoices(synth?.getVoices(),language());$('voice').replaceChildren(option('','Systémový hlas · podle jazyka'),...list.map(v=>option(v.voiceURI,v.name+(v.localService?' · zařízení':' · online'))));if(list.some(v=>v.voiceURI===previous))$('voice').value=previous;else if(list.length)$('voice').value=list[0].voiceURI;$('voiceInfo').textContent=!synth?'Prohlížeč nepodporuje řeč. Použijte serverový hlas.':list.length?'Hlasy dostupné pro zvolený jazyk. Před utkáním vyzkoušejte hlas.':'Prohlížeč nevrátil hlas zvoleného jazyka. Lze zkusit systémový hlas; správný jazyk ověřte poslechem, nebo použijte serverový hlas.';}
+voices();synth?.addEventListener('voiceschanged',()=>voices());
+for(const delay of [500,1500,3000])setTimeout(()=>voices(),delay);
+$('refreshVoices').onclick=()=>{voices();serverStatus();};
+$('voice').onchange=saveVoice;
+$('language').onchange=()=>{cancelPreparation();audio.cancel();voices();saveVoice();render();notice(language()==='en'?'English announcements selected.':'Zvolena česká hlášení.');};
+$('speechEngine').onchange=()=>{cancelPreparation();audio.cancel();saveVoice();render();};
 async function get(url,signal){const r=await fetch(url,{signal:signal??AbortSignal.timeout(15000),cache:'no-store'});const data=await r.json();if(!r.ok)throw new Error(data.error||'Data nejsou dostupná.');return data;}
 async function browse(){
   if(!orgs.some(o=>o.code===org()))return;const version=++browseVersion,current=org();$('browse').disabled=true;$('next').disabled=true;$('previous').disabled=true;
@@ -102,7 +125,7 @@ async function choose(){
   reset();const run=generation;if(mode()==='test'){selected={id:'manual',home:{id:'test-home',name:'Test domácí'},away:{id:'test-away',name:'Test hosté'}};$('match').textContent='RUČNÍ TEST · žádná živá data';connection('TEST · ruční eventy, bez připojení k HMS','test');}
   else{selected=$('game').value?{id:$('game').value}:null;$('match').textContent='Vyberte zápas';connection(selected?'Načítám ověřené LIVE události…':'LIVE zatím není připojeno.');}
   selectionDetails.open=mode()==='live'&&!selected;
-  rememberSelection();loadVoice();$('testTools').hidden=mode()!=='test';restore();render();renderAds();loadSponsors();await loadCentralMedia();if(run!==generation)return;await loadPads();if(selected&&mode()==='live')poll(run);
+  rememberSelection();loadVoice();serverStatus();$('speechCode').value='';$('testTools').hidden=mode()!=='test';restore();render();renderAds();loadSponsors();await loadCentralMedia();if(run!==generation)return;await loadPads();if(selected&&mode()==='live')poll(run);
 }
 const cueTeam=cue=>cue[3].startsWith('ad:')?null:cue[2]==='HOME'?team('home'):cue[2]==='AWAY'?team('away'):null;
 async function resolveAsset(cue,currentOrg){const mapped=resolveMedia(centralMedia?.config,centralMedia?.assets??[],{org:currentOrg,gameId:selected?.id,homeId:team('home'),awayId:team('away'),cue:cue[3],side:cue[2]==='AWAY'?'away':'home'});if(mapped){if(!mapped.asset)return {missing:true,key:'central',name:'Přiřazený soubor chybí'};return {key:'central',sourceLabel:({game:'Zápas',team:'Tým',default:'Organizace',sponsor:'Sponzor'})[mapped.source],url:mapped.asset.path+'?v='+mapped.asset.checksum,name:mapped.asset.title,binding:mapped.binding};}for(const k of profileKeys(currentOrg,cueTeam(cue),cue[3])){const value=await loadStudioAsset(k);if(value?.blob instanceof Blob)return {...value,key:k};}return null;}
@@ -119,15 +142,15 @@ async function updateAssetLabel(){let k;try{k=editKey();const data=await loadStu
 $('upload').onchange=async()=>{const file=$('upload').files[0];if(!file)return;if(file.size>30*1024*1024||!(/\.(mp3|wav|ogg|m4a|aac|flac|webm)$/i.test(file.name)||file.type.startsWith('audio/')))return notice('Vyberte audio soubor do 30 MB.');try{await saveStudioAsset(editKey(),{blob:file,name:file.name});notice('Zvuk uložen do profilu v tomto prohlížeči.');await loadPads();}catch(error){notice('Zvuk nelze uložit. '+error.message);}finally{$('upload').value='';}};
 $('clear').onclick=async()=>{try{await removeStudioAsset(editKey());await loadPads();}catch(error){notice(error.message);}};
 $('profile').onchange=updateAssetLabel;$('kind').onchange=updateAssetLabel;
-$('stop').onclick=()=>{audio.stop();render();notice('Všechny zvuky a hlasatel zastaveny.');};
+$('stop').onclick=()=>{cancelPreparation();audio.stop();render();notice('Všechny zvuky a hlasatel zastaveny.');};
 $('pause').onclick=()=>{audio.pause();notice('Zvuk i hlasatel pozastaveny.');};$('resume').onclick=()=>audio.resume().then(()=>notice('Přehrávání obnoveno.')).catch(()=>notice('Zvuk nelze obnovit. Zkuste povel znovu.'));
 $('volume').oninput=()=>{audio.volume=Number($('volume').value)/100;audio.levels();};$('duck').oninput=()=>{audio.duck=Number($('duck').value)/100;audio.levels();};
 $('voiceVolume').oninput=()=>{audio.voiceVolume=Number($('voiceVolume').value)/100;};
-$('voiceTest').onclick=()=>{const v=voice();if(!v)return notice('Český hlas není dostupný.');try{audio.speak('Vítejte na dnešním utkání. Hlasatel je připraven.',v,()=>{});}catch(error){notice(error.message);}};
+$('voiceTest').onclick=async()=>{const text=language()==='en'?'Welcome to today’s game. Your announcer is ready.':'Vítejte na dnešním utkání. Hlasatel je připraven.';try{if($('speechEngine').value==='device')audio.speak(text,voice(),()=>{});else{const key=speechKey(text);if(preparedSpeech.has(key))await audio.speakFile(preparedSpeech.get(key),()=>{});else{if(preparing)return;const job={id:'voice-test'},run=generation;preparing=job;render();try{const blob=await prepareSpeech(text);if(preparing!==job||run!==generation)return;while(preparedSpeech.size>=16)preparedSpeech.delete(preparedSpeech.keys().next().value);preparedSpeech.set(key,blob);notice('Ukázka připravená. Klepněte znovu na Vyzkoušet hlas.');}finally{if(preparing===job){preparing=null;render();}}}}}catch(error){notice(error.message);}};
 $('mode').onchange=choose;$('game').onchange=choose;$('refresh').onclick=()=>{if(mode()==='test')notice('Ruční test nepoužívá LIVE API.');else choose();};
 $('org').onchange=()=>{browseVersion++;reset();selected=null;$('game').replaceChildren(option('','Vyberte zápas'));offset=0;choose();browse();};
 $('filter').onchange=()=>{offset=0;browse();};$('browse').onclick=()=>browse();$('previous').onclick=()=>{offset=Math.max(0,offset-20);browse();};$('next').onclick=()=>{offset+=20;browse();};$('count').onchange=render;
-function testEvent(edit=false,duplicate=false){if(mode()!=='test')return;const value=$('testText').value.trim();if(!value)return;const old=events.filter(e=>!e.withdrawn).at(-1);if((edit||duplicate)&&!old)return notice('Nejdříve přidejte testovací událost.');const incoming=events.map(e=>({...e}));if(edit){const i=incoming.findIndex(e=>e.id===old.id);incoming[i]={...old,text:value};if(old.status==='Playing')audio.cancel();}else if(!duplicate)incoming.push({id:'test:'+crypto.randomUUID(),type:$('testType').value,side:'home',period:null,clock:null,text:value});events=reconcile(events,incoming,[]);persist();render();notice(duplicate?'Stejné ID přijato znovu · žádný nový event.':edit?'Oprava přijata pod stejným ID.':'Testovací event přidán.');}
+function testEvent(edit=false,duplicate=false){if(mode()!=='test')return;const value=$('testText').value.trim();if(!value)return;const old=events.filter(e=>!e.withdrawn).at(-1);if((edit||duplicate)&&!old)return notice('Nejdříve přidejte testovací událost.');const incoming=events.map(e=>({...e}));if(edit){const i=incoming.findIndex(e=>e.id===old.id);incoming[i]={...old,text:value};if(old.status==='Playing')audio.cancel();}else if(!duplicate)incoming.push({id:'test:'+crypto.randomUUID(),type:$('testType').value,side:'home',period:null,clock:null,text:value,manual:true});events=reconcile(events,incoming,[]);persist();render();notice(duplicate?'Stejné ID přijato znovu · žádný nový event.':edit?'Oprava přijata pod stejným ID.':'Testovací event přidán.');}
 $('addTest').onclick=()=>testEvent();$('editTest').onclick=()=>testEvent(true);$('duplicateTest').onclick=()=>testEvent(false,true);
 window.addEventListener('pagehide',()=>{clearTimeout(timer);controller?.abort();audio.stop();});
 async function init(){try{const data=await get('/api/studio?catalog=1');orgs=data.organizations;if(!orgs?.length)throw new Error('Žádná připojená organizace.');$('org').replaceChildren(...orgs.map(o=>option(o.code,o.name)));let storedOrg;try{storedOrg=localStorage.getItem('show:last-org:v1');}catch{}const requested=new URLSearchParams(location.search).get('org')??storedOrg;if(orgs.some(o=>o.code===requested))$('org').value=requested;$('org').disabled=false;restoreSelection();const requestedGame=new URLSearchParams(location.search).get('gameId');if(validGame(requestedGame)){$('mode').value='live';if(![...$('game').options].some(o=>o.value===requestedGame))$('game').append(option(requestedGame,'Vybraný zápas z rozcestníku'));$('game').value=requestedGame;}await choose();browse();}catch(error){$('org').replaceChildren(option('LOCAL-TEST','Lokální test · bez organizace'));$('mode').value='test';await choose();notice('Katalog organizací není dostupný. '+error.message);}}

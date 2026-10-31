@@ -11,7 +11,7 @@ export function sponsorAds(catalog,org,teamIds=[],scope='organization'){
     return scope==='organization'||links.some(id=>teams.has(lower(id)));
   }).map(s=>({id:'hms:'+lower(s.id),name:s.name,sponsorId:lower(s.id),source:'HMS'}));
 }
-export const signature=e=>JSON.stringify([e.type,e.side,e.period,e.clock,e.text]);
+export const signature=e=>JSON.stringify([e.type,e.side,e.period,e.clock,e.text,e.texts?.en]);
 export function reconcile(previous,incoming,types){
   const old=new Map(previous.map(e=>[e.id,e])),seen=new Set();
   const next=incoming.map(e=>{

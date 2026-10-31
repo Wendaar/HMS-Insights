@@ -1,3 +1,5 @@
+import {createShowSpeechHandler} from './web/show-speech-handler.js';
+const showSpeech=createShowSpeechHandler();
 import {createMatchPreviewHandler} from './web/match-preview-handler.js';
 const matchPreviewHandler=createMatchPreviewHandler();
 import {createGameDayHandler} from './web/game-day-handler.js';
@@ -128,6 +130,10 @@ export const server = createServer(async (request, response) => {
     response.setHeader('x-content-type-options','nosniff');response.setHeader('referrer-policy','no-referrer');
     response.setHeader('content-security-policy',"default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; connect-src 'self'; img-src 'self' blob: https://prod-hms-wootera.s3.eu-central-1.amazonaws.com https://hockeymanagementsystem.s3.amazonaws.com; base-uri 'none'; form-action 'self'; frame-ancestors "+(url.pathname.startsWith('/control')?"'none'":'*'));
     response.end(request.method==='HEAD'?undefined:await readFile(join(publicDirectory,'team-comparison',name)));return;
+  }
+  if(url.pathname==='/api/show-speech'||url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='show-speech'){
+    let body='';if(request.method==='POST')for await(const chunk of request){body+=chunk;if(Buffer.byteLength(body)>16000){response.writeHead(413);response.end();return;}}
+    return showSpeech({method:request.method,headers:request.headers,query:Object.fromEntries(url.searchParams),body},{setHeader:(k,v)=>response.setHeader(k,v),status(code){response.statusCode=code;return this;},json(value){response.setHeader('content-type','application/json');response.end(JSON.stringify(value));},send(value){response.end(value);}});
   }
   if(url.pathname==='/api/media-mapping'||url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='media-mapping'){
     request.query=Object.fromEntries(url.searchParams);
