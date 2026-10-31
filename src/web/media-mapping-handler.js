@@ -13,10 +13,10 @@ export function createMediaMappingHandler(options={}){
     if(!['public','access','manage','save','publish','context'].includes(action))return fail(400,'Neznámá operace.');
     const method=['save','publish'].includes(action)?'POST':'GET';if(req.method!==method){res.setHeader('allow',method);return fail(405,'Nepovolená metoda.');}
     let org;try{org=organizationEntry(q.org,env);}catch{return fail(404,'Neznámá organizace.');}
-    const secret=env[`HMS_${org.code}_TOOLS_ADMIN_SECRET`]||env[`HMS_${org.code}_WEBHOOK_SECRET`]||(org.code==='PHM'?env.HMS_WEBHOOK_SECRET:null),storageReady=!!(env.DATABASE_URL||options.store);
-    if(action==='access')return res.status(200).json({org:org.code,configured:!!secret,storageReady,sandbox:mediaTool(env).endsWith('preview')});
+    const secret=env[`HMS_${org.code}_TOOLS_ADMIN_SECRET`]||env[`HMS_${org.code}_WEBHOOK_SECRET`]||(org.code==='PHM'?env.HMS_WEBHOOK_SECRET:null),operationsSecret=env[`HMS_${org.code}_OPERATIONS_SECRET`],storageReady=!!(env.DATABASE_URL||options.store);
+    if(action==='access')return res.status(200).json({org:org.code,configured:!!(secret||operationsSecret),operationsConfigured:!!operationsSecret,storageReady,sandbox:mediaTool(env).endsWith('preview')});
     if(['manage','save','publish'].includes(action)){
-      if(!secret)return fail(503,'Přístup správce organizace není nastavený.');if(!hasBearerSecret(req,secret))return fail(401,'Nesprávný přístupový kód organizace.');
+      if(!secret&&!operationsSecret)return fail(503,'Přístup správce ani Operations této organizace není nastavený.');if(!hasBearerSecret(req,secret)&&!hasBearerSecret(req,operationsSecret))return fail(401,'Zadejte kód Operations nebo správy pro vybranou organizaci.');
       if(req.headers.origin){try{if(new URL(req.headers.origin).host!==req.headers.host)throw new Error();}catch{return fail(403,'Nepovolený původ požadavku.');}}
     }
     try{
