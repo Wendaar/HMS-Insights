@@ -5,6 +5,7 @@
   "type": "module",
   "description": "HMS Insights / Priklepy MVP 0.1",
   "scripts": {
+    "build:media": "node scripts/build-media-catalog.js",
     "start": "node src/server.js",
     "build:static": "node scripts/build-static.js",
     "test": "node --test",

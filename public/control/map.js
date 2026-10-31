@@ -10,7 +10,7 @@ export const branches=[
   {id:'insights',name:'Insights',color:'cyan',nodes:[stage('insights-definition','Insights Definition','insights-definition','manage'),stage('insights-public','Insights Public','insights-public'),stage('insights-archive','Insights Archive','insights-archive')]},
   {id:'social',name:'Social Studio',color:'pink',nodes:[stage('game-day','Game Day Preview & Reminder','game-day'),stage('social-setup','Social Content Setup','studio','manage'),stage('social-studio','Social Studio','studio'),stage('social-output','Social Content Output','studio','export',{note:'Grafiky se exportují ze Studia jako PNG. Samostatná veřejná galerie zatím není.'})]},
   {id:'awards',name:'Awards',color:'amber',nodes:[stage('awards-definition','All Stars Definition','all-stars','manage'),stage('all-stars','All Stars Month','all-stars'),stage('hall-of-fame','Hall of Fame','hall-of-fame')]},
-  {id:'gameshow',name:'Game Show',color:'pink',nodes:[stage('gameshow-definition','Game Show Definition',null,'open',{note:'Plán: hudba týmu, goalhorn, song a hlas hlasatele.'}),stage('gameshow-control','Game Show Control',null)]},
+  {id:'gameshow',name:'Game Show · zvuky a hlasatel',color:'pink',nodes:[stage('gameshow-definition','Media Mapping · příprava zvuků','media-mapping'),stage('gameshow-control','LIVE Show Control · ovládání zápasu','show-control')]},
   {id:'sponsors',name:'Sponsors · napříč nástroji',color:'amber',nodes:[stage('sponsor-definition','Sponzoři z HMS','sponsors-catalog','open',{note:'Čtecí katalog z nové vrstvy HMS API. Evidence se spravuje v HMS; sjednocení všech nástrojů je další krok.'}),stage('sponsor-broadcast','Partneři v Broadcastu',null,'open',{note:'Rozšíření sponzorů je v samostatném rozpracovaném náhledu.'}),stage('sponsor-output','Broadcast / Social / Web',null)]},
   {id:'players',name:'Hráči & porovnání',color:'cyan',nodes:[stage('player-cards','Player Cards','player-cards'),stage('team-comparison','Team Comparison','team-comparison'),stage('playoff-players','Playoff Players','playoff-players')]},
   {id:'competition',name:'Soutěže & fanoušci',color:'violet',nodes:[stage('betting','Betting · Sázkovka','betting'),stage('playoff-bracket','Playoff pavouk','playoff-bracket'),stage('calendar','Kalendář','calendar')]},
@@ -36,6 +36,9 @@ export function nodeUrl(node,org,context={}){
   if(node.kind==='output')return validId(context.gameId)?publicOutputUrl('/broadcast/index.html?'+new URLSearchParams({org:organizationById(org)?.code??org.toUpperCase(),game:context.gameId,mode:'overlay',source:'hms',lang:'cs'})):null;
   if(node.kind==='export')return node.application?.links.open??null;
   if(!node.href)return null;
+  if(node.app==='show-control'&&validId(context.gameId)){
+    const url=new URL(node.href,'https://hms.local');url.searchParams.set('gameId',context.gameId);return url.pathname+url.search;
+  }
   if(node.href.startsWith('/broadcast/')&&validId(context.gameId)){
     const url=new URL(node.href,'https://hms.local');url.searchParams.set('game',context.gameId);return url.pathname+url.search;
   }

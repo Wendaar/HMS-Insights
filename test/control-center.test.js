@@ -7,7 +7,7 @@ import {server} from '../src/server.js';
 
 test('registry covers the inventory, with explicit unconfigured organization isolation',()=>{
   const apps=appsForOrganization('PHM');
-  assert.equal(apps.length,35);assert.equal(new Set(apps.map(a=>a.id)).size,apps.length);
+  assert.equal(apps.length,37);assert.equal(new Set(apps.map(a=>a.id)).size,apps.length);
   for(const app of apps){
     assert.ok(categories.some(c=>c.id===app.category));assert.ok(statuses[app.status]);assert.ok(app.dataSource);
     for(const href of Object.values(app.links))assert.match(href,/^(https:\/\/|\/(?!\/))/);
@@ -44,7 +44,7 @@ test('control routes and assets work locally without altering Studio, feeds or r
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   const root=`http://127.0.0.1:${server.address().port}`;
   try{
-    for(const path of ['/control','/control/','/control/index.html','/control/app.js','/control/registry.js','/control/map.js','/control/work-chats.js','/control/control.css']){
+    for(const path of ['/control','/control/','/control/index.html','/control/app.js','/control/registry.js','/control/map.js','/control/work-chats.js','/control/control.css','/show-control','/media-mapping']){
       const response=await fetch(root+path);assert.equal(response.status,200,path);
       assert.equal(response.headers.get('x-robots-tag'),'noindex, nofollow');
       assert.ok((await response.text()).length>100);
@@ -57,6 +57,7 @@ test('control routes and assets work locally without altering Studio, feeds or r
     assert.equal((await fetch(root+'/control/not-a-file.js')).status,404);
     const config=JSON.parse(await readFile(new URL('../vercel.json',import.meta.url),'utf8'));
     assert.equal(config.rewrites.find(r=>r.source==='/control').destination,'/control/index.html');
+    for(const path of ['/show-control','/media-mapping']){assert.equal(config.rewrites.find(r=>r.source===path)?.destination,path+'/index.html');assert.equal(config.redirects.some(r=>r.source===path),false);}
     for(const path of ['/studio','/priklepy','/archiv','/game-center/:gameId','/admin/import-game','/admin/backfill'])assert.ok(config.rewrites.some(r=>r.source===path));
   }finally{await new Promise(resolve=>server.close(resolve));}
 });

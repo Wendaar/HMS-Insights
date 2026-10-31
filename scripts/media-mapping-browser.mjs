@@ -1,0 +1,40 @@
+import assert from 'node:assert/strict';
+import {mkdir,writeFile} from 'node:fs/promises';
+import {server} from '../src/server.js';
+import {createMediaMappingHandler} from '../src/web/media-mapping-handler.js';
+import {readMediaAssets} from '../src/app/media-mapping.js';
+const {chromium}=await import(process.env.PLAYWRIGHT_MODULE||'playwright');
+const output='artifacts/media-mapping';await mkdir(output,{recursive:true});
+const id=n=>`${String(n).padStart(8,'0')}-1111-4111-8111-111111111111`,orgId=id(1),gameId=id(2),home={id:id(3),name:'TEST Voholto'},away={id:id(4),name:'TEST Rex'},sponsor={id:id(5),name:'TEST Partner'};
+const data=new Map(),store={async get(o,s){return structuredClone(data.get(o+s)??null);},async save(o,s,d,r){const old=data.get(o+s);if((old?.revision??0)!==r)return null;const next={draft:structuredClone(d),published:old?.published??null,revision:r+1};data.set(o+s,next);return structuredClone(next);},async publish(o,s,r){const row=data.get(o+s);if(!row||row.revision!==r)return null;row.published=structuredClone(row.draft);row.publishedAt=new Date().toISOString();row.revision++;return structuredClone(row);}};
+const catalog=org=>({org,items:org==='PHM'?[sponsor]:[],teams:org==='PHM'?[home,away]:[],bindings:[{sponsorId:sponsor.id,teamId:home.id}],relationshipStatus:'returned-links'});
+const handler=createMediaMappingHandler({env:{VERCEL_ENV:'preview',VERCEL_GIT_COMMIT_REF:'codex/hms-live-show-control',HMS_PHM_ORGANIZATION_ID:orgId,HMS_PHM_API_TOKEN:'test-private-api',HMS_PHM_TOOLS_ADMIN_SECRET:'test-admin'},store,loadSponsors:async o=>catalog(o.code),fetchDetail:async gid=>({gameId:gid,organizationId:orgId})});
+await new Promise(r=>server.listen(0,'127.0.0.1',r));const root='http://127.0.0.1:'+server.address().port;
+let browser;try{
+  browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_PATH?{executablePath:process.env.CHROMIUM_PATH}:{})});
+  async function wire(context){
+    await context.route('**/api/media-mapping?*',async route=>{const request=route.request(),url=new URL(request.url());let code=200,body;const res={setHeader(){},status(c){code=c;return this;},json(v){body=v;}};await handler({method:request.method(),query:Object.fromEntries(url.searchParams),headers:{...await request.allHeaders(),host:url.host},body:request.postData()},res);await route.fulfill({status:code,json:body});});
+    await context.route('**/api/studio?*',route=>{const q=new URL(route.request().url()).searchParams;return route.fulfill({json:q.has('catalog')?{organizations:[{code:'PHM',name:'PHM fixture'},{code:'EUCHL',name:'EUCHL fixture'}]}:{items:[{gameId,date:'2026-11-01',home,away,status:'RUNNING'}],source:'HMS',hasMore:false}});});
+    await context.route('**/api/sponsors?*',route=>route.fulfill({json:catalog(new URL(route.request().url()).searchParams.get('org'))}));
+    await context.route('**/api/broadcast?*',route=>route.fulfill({json:{org:new URL(route.request().url()).searchParams.get('org'),schemaVersion:1,gameId,home,away,showControl:{types:['goal','penalty'],events:[],omitted:0}}}));
+  }
+  const context=await browser.newContext({viewport:{width:1200,height:1000}});await wire(context);const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+  await page.goto(root+'/media-mapping?org=PHM');await page.waitForFunction(()=>document.getElementById('asset').options.length>1);const asset=(await readMediaAssets('PHM')).find(a=>a.path.endsWith('/shared/test-tone.wav'));
+  await page.selectOption('#asset',asset.id);await page.locator('#preview').evaluate(async a=>{a.muted=true;await a.play();});assert.ok(await page.locator('#preview').evaluate(a=>a.duration>1&&a.duration<2));await page.locator('#preview').evaluate(a=>a.pause());
+  await page.fill('#secret','test-admin');await page.click('#unlock');await page.waitForFunction(()=>!document.getElementById('assign').disabled);
+  async function savePublish(){await page.click('#save');await page.waitForFunction(()=>!document.getElementById('publish').disabled);await page.click('#publish');await page.waitForFunction(()=>document.getElementById('status').textContent.startsWith('Zveřejněno'));}
+  await page.selectOption('#cue','goal');await page.click('#assign');await page.click('#save');await page.waitForFunction(()=>!document.getElementById('publish').disabled);assert.equal((await store.get('PHM','library')).published,null);await page.click('#publish');await page.waitForFunction(()=>document.getElementById('status').textContent.startsWith('Zveřejněno'));
+  await page.selectOption('#scope','team');await page.selectOption('#target',home.id);await page.selectOption('#cue','goal');await page.click('#assign');await savePublish();
+  await page.selectOption('#scope','game');await page.click('#browse');await page.waitForFunction(()=>document.getElementById('target').options.length>1);await page.selectOption('#target',gameId);await page.selectOption('#side','home');await page.selectOption('#cue','goal');await page.click('#assign');await savePublish();
+  await page.selectOption('#scope','sponsor');await page.selectOption('#target',sponsor.id);await page.click('#assign');await savePublish();assert.equal((await store.get('PHM','library')).published.bindings.length,4);
+  await page.screenshot({path:output+'/configurator.png',fullPage:true});assert.deepEqual(errors,[]);
+  // A clean browser/device has no IndexedDB assets or editor key, but uses the same public publication.
+  const device=await browser.newContext({viewport:{width:360,height:900}});await wire(device);const operator=await device.newPage();operator.on('pageerror',e=>errors.push(e.message));await operator.goto(root+'/show-control?org=PHM&gameId='+gameId);await operator.waitForFunction(id=>document.getElementById('game').value===id,gameId);assert.equal(await operator.inputValue('#mode'),'live');
+  await operator.waitForFunction(()=>document.querySelector('[data-cue="goal-home"]')?.textContent.includes('Zápas · test-tone'));
+  assert.match(await operator.locator('[data-cue="goal-away"]').textContent(),/Organizace · test-tone/);assert.equal(await operator.locator('[data-cue="goal-home"]').isEnabled(),true);
+  await operator.locator('#advertising summary').click();await operator.waitForFunction(()=>document.querySelector('#adPads .pad')?.textContent.includes('Sponzor · test-tone'));assert.match(await operator.locator('#adPads').textContent(),/TEST Partner/);
+  const mediaRequest=operator.waitForRequest(r=>r.url().includes('/media/audio/shared/test-tone.wav'));await operator.locator('[data-cue="goal-home"]').click();await mediaRequest;await operator.waitForFunction(()=>document.getElementById('now').textContent.includes('GOAL HOME'));assert.match(await operator.locator('#now').textContent(),/GOAL HOME/);await operator.click('#stop');assert.match(await operator.locator('#now').textContent(),/Žádný zvuk/);
+  await operator.evaluate(()=>window.scrollTo(0,0));await operator.screenshot({path:output+'/operator-360.png',fullPage:true});assert.equal(await operator.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+  await operator.locator('#matchSettings').evaluate(e=>e.open=true);await operator.selectOption('#org','EUCHL');await operator.waitForFunction(()=>document.querySelector('[data-cue="goal-home"]')?.disabled);assert.doesNotMatch(await operator.locator('#adPads').textContent(),/TEST Partner/);assert.deepEqual(errors,[]);
+  const report={result:'passed',checks:['native WAV decoding','protected draft save versus public publication','organization/team/game/sponsor mapping via UI','cross-browser shared playback with no local uploads','match priority and organization fallback','HMS sponsor audio binding','real static audio request and STOP','organization isolation','360px layout'],limitations:['HMS and shared database are injected test fixtures; no deployed database writes performed','actual venue PA/OBS and user songs still require preflight']};await writeFile(output+'/report.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report));
+}finally{await browser?.close();await new Promise(r=>server.close(r));}

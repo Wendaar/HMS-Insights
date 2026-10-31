@@ -1,0 +1,123 @@
+{
+  "schemaVersion": 1,
+  "revision": "bf614a39888f103576c5dd080ebae1c945b6dba9fbfd3eb594ec51c1642dbb49",
+  "assets": [
+    {
+      "id": "119620354b939c4c3b3275a9",
+      "title": "01. Rock Jingle PHM Cup",
+      "path": "/media/audio/phm/01.%20Rock%20Jingle%20PHM%20Cup.mp3",
+      "owner": "PHM",
+      "bytes": 1042816,
+      "checksum": "c93ff004a0c8af2598b812d469f91484d54207a0127993b61cd171bd985daad5",
+      "kind": "audio"
+    },
+    {
+      "id": "e89a03ba07c3eace55e40e35",
+      "title": "02. Tvrdsi Moderna PHM Cup",
+      "path": "/media/audio/phm/02.%20Tvrdsi%20Moderna%20PHM%20Cup.mp3",
+      "owner": "PHM",
+      "bytes": 2906176,
+      "checksum": "60208d227bbcf2695cd7b54ff25ba37ec69d139a9787c961d4b2ffd19fb9c5bc",
+      "kind": "audio"
+    },
+    {
+      "id": "921766ff52b4714d3d0f2fb4",
+      "title": "03. Recese hit Dej si Gol PHM Cup",
+      "path": "/media/audio/phm/03.%20Recese%20hit%20Dej%20si%20Gol%20PHM%20Cup.mp3",
+      "owner": "PHM",
+      "bytes": 5032576,
+      "checksum": "651d1571888cbca2bbecd53a141b54c71e7315e5461dfc838fb7434d0e135955",
+      "kind": "audio"
+    },
+    {
+      "id": "34509cd5db5a7ecf476a2369",
+      "title": "04. Hockey News PHM Cup",
+      "path": "/media/audio/phm/04.%20Hockey%20News%20PHM%20Cup.mp3",
+      "owner": "PHM",
+      "bytes": 1629376,
+      "checksum": "c7f36ba037cce5040c287c26b1416f208ed8d2c9bd1831e5b3ef75806fcb784c",
+      "kind": "audio"
+    },
+    {
+      "id": "b902f6bc334a20a6f0f0cd59",
+      "title": "Heavy Groove PHM",
+      "path": "/media/audio/phm/Heavy%20Groove%20PHM.mp3",
+      "owner": "PHM",
+      "bytes": 2726656,
+      "checksum": "867d327c2f052b7d628fd912292cc5ef25323055e98beacae8e4630ced5a9533",
+      "kind": "audio"
+    },
+    {
+      "id": "c7898465c2547b2883f5d85c",
+      "title": "PHM PUCK DROP 1",
+      "path": "/media/audio/phm/PHM_PUCK%20DROP%201.mp3",
+      "owner": "PHM",
+      "bytes": 685205,
+      "checksum": "a0b45ec74ba1bf989629dd9a51cc299dba45fe9bdc235d022cf0f51c9d2331a8",
+      "kind": "audio"
+    },
+    {
+      "id": "f577b080fac8d414bcc3faea",
+      "title": "PHM Stars victory",
+      "path": "/media/audio/phm/PHM_Stars_victory.mp3",
+      "owner": "PHM",
+      "bytes": 2361744,
+      "checksum": "057af8d636a8874509010e533dad7e0d60807e9b8a941b216e0054583e358ce0",
+      "kind": "audio"
+    },
+    {
+      "id": "8c6885ebd6eb5a2df82f8f1f",
+      "title": "PHMCUP26 PUCKDROP NEW",
+      "path": "/media/audio/phm/PHMCUP26_PUCKDROP_NEW.mp3",
+      "owner": "PHM",
+      "bytes": 909358,
+      "checksum": "72d6fb3243b769630133152f61be4792cd2560a36400765b3c7a7f0c71933b34",
+      "kind": "audio"
+    },
+    {
+      "id": "e94f52ff65de80fa7d865607",
+      "title": "Power Play",
+      "path": "/media/audio/phm/Power%20Play.mp3",
+      "owner": "PHM",
+      "bytes": 327115,
+      "checksum": "331f62074f0b03cedbdce36cc7323304666545df43133757cbea8a78c331e65d",
+      "kind": "audio"
+    },
+    {
+      "id": "fb8fb910c53cf01b565ee04a",
+      "title": "Canada National Anthem (Instrumental)",
+      "path": "/media/audio/shared/Canada%20National%20Anthem%20(Instrumental).mp3",
+      "owner": "*",
+      "bytes": 1898507,
+      "checksum": "5d1d72882d850783fef1d813738aa4590c6c0edd39de453ddff1ab2e835b95b6",
+      "kind": "audio"
+    },
+    {
+      "id": "17b1a445a86e64e6c7e6d2f4",
+      "title": "CESKA FILHARMONIE",
+      "path": "/media/audio/shared/CESKA_FILHARMONIE.mp3",
+      "owner": "*",
+      "bytes": 1751558,
+      "checksum": "30657e280e4c686b05296339161d342cf31036ef36df18f1719d7e390867f953",
+      "kind": "audio"
+    },
+    {
+      "id": "d45cc2e7d214223f8bdeaa2f",
+      "title": "PHM GOAAAAL Horn",
+      "path": "/media/audio/shared/PHM%20GOAAAAL_Horn.mp3",
+      "owner": "*",
+      "bytes": 628675,
+      "checksum": "6215bb17cef7ae226d1d61af796bc84197718e8e6f660279b511fb5dab30b997",
+      "kind": "audio"
+    },
+    {
+      "id": "bfe47b2a20345626234b4b18",
+      "title": "test-tone",
+      "path": "/media/audio/shared/test-tone.wav",
+      "owner": "*",
+      "bytes": 38444,
+      "checksum": "42fa5e7f1faa739472d409aba7b23d25fe3f17c9c2b28e06316335cd6052f127",
+      "kind": "audio"
+    }
+  ]
+}
