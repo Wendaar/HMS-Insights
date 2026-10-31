@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "revision": "91f9196823bbf6a9df77d40f7c92ff26711c0b6e982952e340a0293aa3b9ec34",
+  "assets": [
+    {
+      "id": "bfe47b2a20345626234b4b18",
+      "title": "test-tone",
+      "path": "/media/audio/shared/test-tone.wav",
+      "owner": "*",
+      "bytes": 38444,
+      "checksum": "42fa5e7f1faa739472d409aba7b23d25fe3f17c9c2b28e06316335cd6052f127",
+      "kind": "audio"
+    }
+  ]
+}

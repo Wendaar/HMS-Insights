@@ -4,14 +4,14 @@ export class ShowAudio{
   constructor({synth=globalThis.speechSynthesis,AudioClass=globalThis.Audio,Utterance=globalThis.SpeechSynthesisUtterance,onChange=()=>{}}={}){
     Object.assign(this,{synth,AudioClass,Utterance,onChange});this.tracks={};this.volume=.65;this.voiceVolume=1;this.duck=.12;this.rate=.9;this.pauseMs=250;this.language='cs';this.pronunciations=defaultPronunciations;this.speaking=false;this.serial=0;this.paused=false;
   }
-  levels(){for(const t of Object.values(this.tracks))t.audio.volume=this.volume*(this.speaking?this.duck:1);}
-  async play(blob,channel,{loop=false,label=''}={}){
-    this.stopTrack(channel);const url=URL.createObjectURL(blob),audio=new this.AudioClass(url),track={audio,url,label};this.tracks[channel]=track;
+  levels(){for(const t of Object.values(this.tracks))t.audio.volume=this.volume*(t.gain??1)*(this.speaking?this.duck:1);}
+  async play(blob,channel,{loop=false,label='',gain=1}={}){
+    this.stopTrack(channel);const ownsUrl=blob instanceof Blob,url=ownsUrl?URL.createObjectURL(blob):blob,audio=new this.AudioClass(url),track={audio,url,label,ownsUrl,gain};this.tracks[channel]=track;
     audio.loop=loop;this.levels();audio.onended=()=>{if(this.tracks[channel]===track)this.stopTrack(channel);};
     audio.onerror=()=>{if(this.tracks[channel]===track){this.stopTrack(channel);this.onChange('Zvuk nelze přehrát. Zkuste jiný formát.');}};
     try{await audio.play();if(this.tracks[channel]===track)this.onChange();}catch(e){if(this.tracks[channel]===track)this.stopTrack(channel);throw e;}
   }
-  stopTrack(channel){const t=this.tracks[channel];if(!t)return;delete this.tracks[channel];t.audio.pause();t.audio.removeAttribute('src');t.audio.load();URL.revokeObjectURL(t.url);this.onChange();}
+  stopTrack(channel){const t=this.tracks[channel];if(!t)return;delete this.tracks[channel];t.audio.pause();t.audio.removeAttribute('src');t.audio.load();if(t.ownsUrl)URL.revokeObjectURL(t.url);this.onChange();}
   cancel(){this.serial++;clearTimeout(this.pauseTimer);this.pendingPart=null;this.paused=false;const done=this.finish;this.finish=null;this.utterance=null;this.synth?.cancel();this.speaking=false;this.levels();done?.('New');}
   speak(text,voice,done){
     this.cancel();if(!this.synth||!this.Utterance)throw new Error('Prohlížeč nepodporuje hlasatele.');

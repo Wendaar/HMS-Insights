@@ -2,6 +2,8 @@
 
 Open `/studio/announcer` or `/show-control/index.html`. Media Studio links to the panel and passes the selected organization. Designed for a separate 320–480 px browser window beside the HMS timekeeper. No production deployment or HMS writes are required.
 
+The primary shared audio setup is now [Media Mapping](MEDIA-MAPPING.md) at `/studio/media-mapping`, linked from Studio, Control Center and this panel's settings. Prepare files in GitHub once, then publish organization/team/match/sponsor assignments into the existing shared database. Published assignments override the legacy local test profiles, which remain available for regression/manual tests. Show Control refreshes central metadata on match selection and polling without interrupting the current audio track.
+
 ## Operating the panel
 
 1. Select the organization, date filter and match using the existing Studio game browser. Imported-only listings are labeled. The match settings collapse after selection.
@@ -35,7 +37,7 @@ Uploaded Blobs are in the existing browser IndexedDB asset store under `show:v1:
 
 ## Verification
 
-- `node --test` — 474 passing tests (includes timed pause/resume/STOP behavior, Czech speech dictionary and language isolation, safety/audio, rich announcements, simultaneous penalties, final result, official-star and HMS sponsor-scope tests).
+- `node --test` — 482 passing tests, including the shared Media Mapping ownership/publication/precedence/inventory tests.
 - `node scripts/build-static.js` — existing static build passes. It generates the existing Insights demo; Show Control ships as buildless files in `public/` under the existing Node/Vercel routes.
 - `PLAYWRIGHT_MODULE=<installed Playwright module> CHROMIUM_PATH=<Chrome executable> node scripts/show-control-browser.mjs` — browser behavior checks at 320/360 px, screenshots and report in ignored `artifacts/show-control/`. Use PowerShell environment-variable syntax on Windows. API and speech are explicit fixtures in these tests; they are not evidence of a real LIVE match or audible speech.
 
@@ -45,4 +47,4 @@ Regression fixed: a LIVE poll creates replacement event objects through reconcil
 
 ## Deferred
 
-Shared/server-persisted audio profiles, multi-file playlists, ElevenLabs voices, automatic announcements, additional HMS event types and PA/OBS device routing. The proposed central Blob + PostgreSQL library, access model, manifests and migration path are in [SHOW-CONTROL-LIBRARY.md](SHOW-CONTROL-LIBRARY.md); that service is not activated. No production merge/deploy is part of this MVP implementation.
+Private Blob uploads, multi-file playlists, ElevenLabs voices, automatic announcements, additional HMS event types and PA/OBS device routing. Central GitHub audio mappings are implemented in [MEDIA-MAPPING.md](MEDIA-MAPPING.md); [SHOW-CONTROL-LIBRARY.md](SHOW-CONTROL-LIBRARY.md) retains the possible future private-storage design. No production merge/deploy is part of this MVP implementation.

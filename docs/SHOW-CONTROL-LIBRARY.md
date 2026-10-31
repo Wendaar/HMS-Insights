@@ -1,10 +1,10 @@
-# Central Show Control library · proposed architecture
+# Future private media storage · reference design
 
-Status: design, not an activated shared service. Current uploads and AD labels still live in the browser. No bucket, database migration, public folder or subscription has been created by this change.
+Current delivery: [Media Mapping](MEDIA-MAPPING.md) implements GitHub-hosted audio plus centrally published PostgreSQL mappings for organizations, teams, matches and HMS sponsors. The user chose a prepared repository workflow instead of venue uploads. No Blob bucket or new subscription is needed for that delivery. The private-object-storage design below is a future option, not the current runtime.
 
 ## Decision
 
-Use the existing HMS Insights PostgreSQL/Neon database for the catalog and mappings, plus a **private Vercel Blob store for the audio bytes**. Keep HMS as the authority for organization, team, match, lineup and official stars. This fits the existing Vercel deployment; a storage adapter can later replace Blob with S3-compatible storage without changing team mappings.
+The implemented choice is the existing HMS Insights PostgreSQL/Neon database for published mappings and GitHub/Vercel static files for prepared audio. If private self-service uploads become necessary later, migrate file delivery to a **private Vercel Blob store**. Keep HMS as the authority for organization, team, match, lineup and official stars. The following tables and workflow describe that possible future migration; use MEDIA-MAPPING.md for the shipped schema/behavior.
 
 Uploading MP3/WAV into PostgreSQL is unnecessary. Filename conventions, team names and public Drive-folder paths are not identities. Every attachment receives an application asset UUID; bindings use the organization and HMS team UUID. Renaming files or teams does not change a binding.
 

@@ -3,6 +3,7 @@ const matchPreviewHandler=createMatchPreviewHandler();
 import {createGameDayHandler} from './web/game-day-handler.js';
 const gameDayHandler=createGameDayHandler();
 import {createSponsorsHandler} from './web/sponsors-handler.js';
+import {createMediaMappingHandler} from './web/media-mapping-handler.js';
 import {createRegistrationControlHandler} from './web/registration-control-handler.js';
 import {createPublicPortalHandler} from './web/public-portal-handler.js';
 import {createTeamComparisonHandler} from './web/team-comparison-handler.js';
@@ -127,6 +128,18 @@ export const server = createServer(async (request, response) => {
     response.setHeader('x-content-type-options','nosniff');response.setHeader('referrer-policy','no-referrer');
     response.setHeader('content-security-policy',"default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; connect-src 'self'; img-src 'self' blob: https://prod-hms-wootera.s3.eu-central-1.amazonaws.com https://hockeymanagementsystem.s3.amazonaws.com; base-uri 'none'; form-action 'self'; frame-ancestors "+(url.pathname.startsWith('/control')?"'none'":'*'));
     response.end(request.method==='HEAD'?undefined:await readFile(join(publicDirectory,'team-comparison',name)));return;
+  }
+  if(url.pathname==='/api/media-mapping'||url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='media-mapping'){
+    request.query=Object.fromEntries(url.searchParams);
+    if(request.method==='POST'){let body='';for await(const chunk of request){body+=chunk;if(Buffer.byteLength(body)>100000){response.writeHead(413);response.end();return;}}request.body=body;}
+    await createMediaMappingHandler()(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json; charset=utf-8');response.end(JSON.stringify(body));}});return;
+  }
+  if(['/studio/media-mapping','/studio/media-mapping/'].includes(url.pathname)||/^\/media-mapping\/(index.html|app.js|model.js|style.css)$/.test(url.pathname)){
+    const name=/\.(html|js|css)$/.test(url.pathname)?url.pathname.split('/').pop():'index.html';response.setHeader('content-type',name.endsWith('.html')?'text/html; charset=utf-8':name.endsWith('.css')?'text/css':'text/javascript');response.setHeader('x-robots-tag','noindex, nofollow');response.end(await readFile(join(publicDirectory,'media-mapping',name)));return;
+  }
+  if(url.pathname.startsWith('/media/audio/')){
+    const {mediaPath}=await import('../public/media-mapping/model.js');const valid=mediaPath(url.pathname);if(!valid){response.writeHead(400);response.end();return;}
+    const target=join(publicDirectory,decodeURIComponent(valid));try{const bytes=await readFile(target);const ext=valid.split('.').pop().toLowerCase();response.setHeader('content-type',({mp3:'audio/mpeg',wav:'audio/wav',ogg:'audio/ogg',m4a:'audio/mp4',aac:'audio/aac',flac:'audio/flac',webm:'audio/webm'})[ext]);response.setHeader('content-length',bytes.length);response.setHeader('x-content-type-options','nosniff');response.end(request.method==='HEAD'?undefined:bytes);}catch{response.writeHead(404);response.end();}return;
   }
   if(url.pathname==='/api/all-stars'||url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='all-stars'){
     request.query=Object.fromEntries(url.searchParams);
