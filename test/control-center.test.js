@@ -15,7 +15,7 @@ test('registry covers the inventory, with explicit unconfigured organization iso
   }
   for(const org of organizations.filter(o=>!o.ready)){
     const entries=appsForOrganization(org.id);assert.equal(entries.length,apps.length);
-    for(const app of entries){assert.deepEqual(app.links,{});assert.equal(app.gamePath,undefined);assert.equal(app.status,'prepared');assert.equal(app.dataSource,'Nenastaveno');}
+    for(const app of entries){if(app.id==='virtual-camera'){assert.equal(app.links.open,'/virtual-camera');continue;}assert.deepEqual(app.links,{});assert.equal(app.gamePath,undefined);assert.equal(app.status,'prepared');assert.equal(app.dataSource,'Nenastaveno');}
     assert.equal(gameReportUrl(org.id,'f6321894-98ca-11f1-8bdf-ef2495d048f3'),null);
   }
   assert.equal(organizationById('evil'),null);assert.deepEqual(appsForOrganization('evil'),[]);

@@ -1,5 +1,11 @@
 # HMS Control Center V1
 
+## Společný strom na obou doménách
+
+`https://app.phmcup.cz/control` a `https://public.heromanagementsystem.com/control` používají jednu implementaci `public/control` a jeden registr aplikací v tomto repozitáři. PHM adresa zůstává pro PHM, HERO adresa pro další klienty. Změny stromu se nasazují společně; nevytvářejte samostatnou PHM kopii mapy ani druhý seznam. Kontext organizace, sezony a pracovní filtry se ukládají v prohlížeči zvlášť pro každý origin, proto se uživatelské pohledy mohou lišit i při stejném kódu. Porovnávejte stejnou organizaci a filtry po obnovení stránky.
+
+**HERO Virtual Camera** je samostatná větev v mapě, položka v seznamu i součást pohledu Režie přenosu. Odkaz `/virtual-camera` zachovává doménu otevřené mapy: PHM → PHM, HERO → HERO. Kamera funguje i bez připojení organizace k HMS a bez výběru zápasu. Původní PHM odkazy na režii i OBS výstup zůstávají platné; není potřeba je přepisovat. Na druhé doméně se poslední kamerová relace z prohlížeče automaticky nepřenáší. Pro otevření stejné existující relace použijte celý odkaz s původní doménou a klíčem. Více v [návodu ke kameře](VIRTUAL-CAMERA.md).
+
 Vstup: `/control` nebo `/control?org=phm`. Připravené organizace:
 `/control?org=yhg` a `/control?org=fllh`. Neznámá organizace nikdy nepoužije PHM.
 Stávající Studio, Insights, archiv, importy a Game Report mají zachované adresy.

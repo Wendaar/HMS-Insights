@@ -32,7 +32,7 @@ test('configured organizations acquire their own generic tool links while unconn
    assert.equal(new URL(nodeUrl(node,slug,{gameId:id(20)})).searchParams.get('org'),slug==='new-league'?'CUSTOM':slug.toUpperCase());
   }
   setOrganizationCatalog(publicOrganizations({HMS_API_TOKEN:'PHM-PRIVATE'}));
-  for(const slug of ['fllh','yhg','police'])assert.ok(appsForOrganization(slug).every(a=>a.status==='prepared'&&!Object.keys(a.links).length));
+  for(const slug of ['fllh','yhg','police'])assert.ok(appsForOrganization(slug).every(a=>a.id==='virtual-camera'?a.links.open==='/virtual-camera':a.status==='prepared'&&!Object.keys(a.links).length));
  }finally{setOrganizationCatalog(defaultOrganizations.map(o=>({...o,configured:['PHM','EUCHL'].includes(o.code)})));}
 });
 test('OBS parses organization slugs and accepts only registered scoped configurations for channels and assets',()=>{
