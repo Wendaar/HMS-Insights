@@ -1,4 +1,4 @@
-import {crop,sourceURL} from './core.js';
+import {crop,sourceURL,cameraKeyPatch} from './core.js';
 const $=id=>document.getElementById(id),isOutput=location.pathname.includes('/output');
 let id,key,state={x:.5,y:.5,zoom:1,smooth:false,source:'',venue:''},received=performance.now(),operatorFresh=null,frame,loadedSource,dirty=false,sending=false,version=0,revision=1,mediaStatus='Bez zdroje',retryAt=0,connected=false,stopped=false,pollTimer;
 const setText=(id,text)=>{if($(id))$(id).textContent=text;};
@@ -6,7 +6,7 @@ async function api(action='state',method='GET',body){const query=new URLSearchPa
 function persist(){if(!isOutput)localStorage.setItem('hero-camera-session-v1',location.hash);}
 function media(force=false){if(!force&&loadedSource===state.source)return;loadedSource=state.source;retryAt=0;$('media').replaceChildren();$('media').classList.toggle('demo',!state.source);
  if(!state.source){const img=document.createElement('img');img.src='/virtual-camera/demo.svg';img.alt='Ukázka hřiště bez živého videa';$('media').append(img);frame=null;mediaStatus='Bez zdroje';return;}
- frame=document.createElement('iframe');frame.title='Živý široký záběr VDO.Ninja';frame.allow='autoplay; fullscreen';frame.referrerPolicy='no-referrer';frame.src=sourceURL(state.source);frame.onload=()=>{mediaStatus='Stránka načtena; zkontrolujte živý obraz';};$('media').append(frame);mediaStatus='Připojuji VDO.Ninja…';
+ frame=document.createElement('iframe');frame.title='Živý široký záběr VDO.Ninja';frame.allow='autoplay; fullscreen';frame.referrerPolicy='no-referrer';frame.src=sourceURL(state.source,{audio:isOutput});frame.onload=()=>{mediaStatus='Stránka načtena; zkontrolujte živý obraz';};$('media').append(frame);mediaStatus='Připojuji VDO.Ninja…';
 }
 window.addEventListener('message',e=>{if(e.origin!=='https://vdo.ninja'||e.source!==frame?.contentWindow||!e.data||typeof e.data!=='object')return;if(e.data.action==='view-connection'){mediaStatus=e.data.value?'WebRTC spojeno (obraz zkontrolujte)':'WebRTC odpojeno; obnovuji…';retryAt=e.data.value?0:performance.now()+10000;}});
 function controls(){if(isOutput)return;for(const field of ['source','venue'])if(document.activeElement!==$(field))$(field).value=state[field];$('smooth').checked=state.smooth;$('zoom').value=state.zoom;}
@@ -26,7 +26,7 @@ if(!isOutput){$('sourceForm').onsubmit=e=>{e.preventDefault();try{const source=s
  $('newSession').onclick=()=>{localStorage.removeItem('hero-camera-session-v1');location.href='/virtual-camera';};
  const point=e=>{const r=$('wide').getBoundingClientRect();change({x:(e.clientX-r.left)/r.width,y:(e.clientY-r.top)/r.height});};let dragging=false;
  $('drag').onpointerdown=e=>{dragging=true;$('drag').setPointerCapture(e.pointerId);$('wide').focus();point(e);};$('drag').onpointermove=e=>{if(dragging)point(e);};for(const event of ['pointerup','pointercancel','lostpointercapture'])$('drag').addEventListener(event,()=>dragging=false);
- window.addEventListener('keydown',e=>{if(/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)||e.ctrlKey||e.metaKey||e.altKey)return;const step=(e.shiftKey?.003:.02)/state.zoom;const p={ArrowLeft:{x:state.x-step},ArrowRight:{x:state.x+step},ArrowUp:{y:state.y-step},ArrowDown:{y:state.y+step},'+':{zoom:state.zoom+.1},'=':{zoom:state.zoom+.1},'-':{zoom:state.zoom-.1},r:{x:.5,y:.5,zoom:1},R:{x:.5,y:.5,zoom:1}}[e.key];if(p){e.preventDefault();change(p);}});
+ window.addEventListener('keydown',e=>{if(/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)||e.target.isContentEditable||e.ctrlKey||e.metaKey||e.altKey)return;const p=cameraKeyPatch(state,e.key,e.shiftKey);if(p){e.preventDefault();change(p);}});
 }
 const fallback=()=>operatorFresh===null||performance.now()-operatorFresh>8000||performance.now()-received>8000;
 let display={x:.5,y:.5,zoom:1},last=performance.now();

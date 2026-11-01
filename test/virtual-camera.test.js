@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createVirtualCameraHandler,cameraTable} from '../src/web/virtual-camera-handler.js';
-import {crop,sourceURL} from '../public/virtual-camera/core.js';
+import {crop,sourceURL,cameraKeyPatch} from '../public/virtual-camera/core.js';
 const response=()=>({headers:{},setHeader(k,v){this.headers[k]=v;},status(code){this.code=code;return this;},json(body){this.body=body;return this;}});
 function memoryStore(){const rows=new Map();return {rows,async create(id,edit_hash,read_hash,state){const row={id,edit_hash,read_hash,state,revision:1,operator_at:0,output_at:0,output_status:'Neznámý'};rows.set(id,row);return row;},async get(id){return rows.get(id);},async update(id,hash,revision,state,now){const row=rows.get(id);if(!row||row.edit_hash!==hash||row.revision!==revision)return;Object.assign(row,{state,revision:revision+1,operator_at:now});return row;},async touch(id,hash,role,now,status){const row=rows.get(id);if(!row||row[role==='edit'?'edit_hash':'read_hash']!==hash)return;if(role==='edit')row.operator_at=now;else{row.output_at=now;row.output_status=status;}return row;}};}
 const req=(method,action,session,key,body)=>({method,headers:{host:'camera.test',origin:'https://camera.test','content-type':'application/json',...(key?{authorization:'Bearer '+key}:{})},query:{action,session},body});
@@ -26,4 +26,14 @@ test('geometry remains inside the full 16:9 viewport; viewer URL whitelist',()=>
 });
 test('production and preview use separate tables; missing storage fails without exposing errors',async()=>{
  assert.notEqual(cameraTable({VERCEL_ENV:'production'}),cameraTable({VERCEL_ENV:'preview'}));const h=createVirtualCameraHandler({store:{get:async()=>{throw Error('postgres://private-secret');}}});const r=response();await h(req('GET','state','a'.repeat(48),'b'.repeat(48)),r);assert.equal(r.code,503);assert(!JSON.stringify(r.body).includes('private-secret'));
+});
+test('OBS enables source audio even for existing saved noaudio URLs; operator remains silent',()=>{
+ const saved='https://vdo.ninja/?view=test&password=secret&noaudio&muted&volume=0';
+ const obs=new URL(sourceURL(saved,{audio:true})),operator=new URL(sourceURL(saved));
+ assert(!obs.searchParams.has('noaudio'));assert(!obs.searchParams.has('muted'));assert(!obs.searchParams.has('volume'));assert.equal(obs.searchParams.get('view'),'test');assert.equal(obs.searchParams.get('password'),'secret');assert(operator.searchParams.has('noaudio'));assert(obs.searchParams.has('autostart'));
+});
+test('W/S zoom, all four arrows pan, R resets and numeric plus/minus remain available',()=>{
+ const s={x:.5,y:.5,zoom:2};assert.deepEqual(cameraKeyPatch(s,'w'),{zoom:2.1});assert.deepEqual(cameraKeyPatch(s,'W'),{zoom:2.1});assert.deepEqual(cameraKeyPatch(s,'s'),{zoom:1.9});assert.deepEqual(cameraKeyPatch(s,'S'),{zoom:1.9});
+ assert(cameraKeyPatch(s,'ArrowLeft').x<s.x);assert(cameraKeyPatch(s,'ArrowRight').x>s.x);assert(cameraKeyPatch(s,'ArrowUp').y<s.y);assert(cameraKeyPatch(s,'ArrowDown').y>s.y);assert(cameraKeyPatch(s,'ArrowRight',true).x<cameraKeyPatch(s,'ArrowRight').x);
+ assert.deepEqual(cameraKeyPatch(s,'R'),{x:.5,y:.5,zoom:1});assert.deepEqual(cameraKeyPatch(s,'+'),cameraKeyPatch(s,'w'));assert.deepEqual(cameraKeyPatch(s,'-'),cameraKeyPatch(s,'s'));assert.equal(cameraKeyPatch(s,'a'),undefined);
 });

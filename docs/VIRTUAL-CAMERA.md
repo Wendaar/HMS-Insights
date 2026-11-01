@@ -5,8 +5,8 @@ Otevřete `/virtual-camera` (také karta v Control Center → Media). Neinstaluj
 ## První použití
 
 1. Otevřít `/virtual-camera`, vložit přijímací `https://vdo.ninja/?view=…` pro jedinou kameru a kliknout Připojit kameru. Použijte Samsung na šířku, ideálně 16:9.
-2. Myší / šipkami posouvat výřez, +/− zoom, R reset; Shift jemně. Předvolby 1×, 1.5×, 2×, 3×; slider až 4×. Volitelné vyhlazení 250 ms.
-3. Zkopírovat nabídnutý výstupní odkaz do OBS → Zdroj Prohlížeč, 1920 × 1080, výchozí 30 FPS. Grafiku vložit nad něj. Zvuk přidat vlastním zdrojem; kamera používá `noaudio`, aby nevznikla zdvojená zvuková stopa.
+2. Myší / šipkami posouvat výřez, W přiblížit, S oddálit, R reset; Shift jemně. Fungují malá i velká písmena a také +/− včetně numerické klávesnice. Předvolby 1×, 1.5×, 2×, 3×; slider až 4×. Volitelné vyhlazení 250 ms. Při psaní do polí se kamerové zkratky nespouštějí.
+3. Zkopírovat nabídnutý výstupní odkaz do OBS → Zdroj Prohlížeč, 1920 × 1080, výchozí 30 FPS. Grafiku vložit nad něj. Výstup přijímá i zvuk, pokud ho původní VDO.Ninja zdroj vysílá. Náhled režiséra zůstává tichý (`noaudio`). V OBS lze zapnout „Ovládat zvuk přes OBS“ pro samostatný kanál ve směšovači; stejný zvuk nepřidávejte podruhé. Po aktualizaci obnovte Browser Source, aby načetl nové nastavení zvuku. Stávající uložené relace a URL fungují dál, včetně relací původně uložených s `noaudio`. V běžném prohlížeči může automatický zvuk omezovat politika autoplay; skutečné přehrání v OBS ověřte na živém zdroji. Server HERO zvuk nepřeposílá ani nemixuje, přijímá ho přímo výstupní VDO iframe spolu s videem.
 4. URL režie uložit pro příští návrat. Obsahuje editovací klíč; kolegovi u OBS poslat pouze výstupní URL. Název stanoviště a nastavení se ukládají automaticky, nejde zatím o sdílenou knihovnu profilů.
 
 Bez živé kamery je v režii vidět označená ukázka; OBS ukazuje černou. Ukázka není simulovaná živá kamera.
