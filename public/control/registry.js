@@ -93,7 +93,7 @@ export function appsForOrganization(id) {
     if(app.category==='development')return app;
     return {...app,status:'prepared',dataSource:'Nenastaveno',gamePath:undefined,links:{},note:'Pro '+org.name+' zatím není tento nástroj nastavený.'};
   }).map(publicLinks);
-  return applications.map(app => ({id:app.id,category:app.category,name:app.id==='phm-tv'?`${org.name} TV`:app.name,
+  return applications.map(app => app.id==='virtual-camera'?publicLinks(app):({id:app.id,category:app.category,name:app.id==='phm-tv'?`${org.name} TV`:app.name,
     description:app.description,status:'prepared',dataSource:'Nenastaveno',links:{},
     note:`Pro ${org.name} zatím nejsou ověřené odkazy ani datové připojení.`}));
 }

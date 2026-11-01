@@ -5,6 +5,7 @@ const id='F6321894-98CA-11F1-8BDF-EF2495D048F3';
 const nodes=org=>mapForOrganization(org).flatMap(b=>b.nodes);
 test('planned organizations and unimplemented sponsor outputs never acquire launch URLs from PHM',()=>{
   for(const org of ['yhg','fllh','unknown'])for(const n of nodes(org)){
+    if(org!=='unknown'&&n.app==='virtual-camera'){assert.equal(nodeUrl(n,org),'/virtual-camera');continue;}
     assert.equal(n.status,'Planned');assert.equal(nodeUrl(n,org,{gameId:id,seasonId:id}),null);
   }
   for(const n of nodes('phm').filter(n=>['sponsor-broadcast','sponsor-output'].includes(n.id))){assert.equal(n.status,'Planned');assert.equal(nodeUrl(n,'phm',{gameId:id}),null);}
@@ -43,4 +44,11 @@ test('Game Show launches preparation and operator panel with organization and op
     assert.equal(url.searchParams.get('org'),org.toUpperCase());assert.equal(url.searchParams.get('gameId'),id);
     assert.equal(nodeUrl(panel,org,{gameId:'bad'}),nodeUrl(panel,org));
   }
+});
+test('one shared map exposes the independent camera on both domains without match or HMS configuration',()=>{
+ for(const org of ['phm','euchl','yhg','fllh']){
+  const camera=nodes(org).find(n=>n.id==='virtual-camera');assert(camera);assert.equal(camera.status,'Beta');
+  const href=nodeUrl(camera,org);assert.equal(href,'/virtual-camera');assert.equal(nodeUrl(camera,org,{gameId:id,seasonId:id}),href);
+  for(const origin of ['https://app.phmcup.cz','https://public.heromanagementsystem.com'])assert.equal(new URL(href,origin).href,origin+'/virtual-camera');
+ }
 });

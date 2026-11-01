@@ -5,7 +5,7 @@ import {workChats,workChatFor,workChatHref} from './work-chats.js';
 const $=id=>document.getElementById(id),el=(tag,text,cls)=>{const n=document.createElement(tag);if(text)n.textContent=text;if(cls)n.className=cls;return n;};
 const currentOrgCode=()=>organizationById(orgId)?.code??'';
 let orgId='',context={},view='map',zoom=1,category='all',gamesRequest=0,availableGames=[],catalogRequest=0,gameLists=new Map(),catalogMessage='';
-const workBranches={broadcast:['broadcast','sponsors','gameshow'],social:['social','awards','sponsors','players'],games:['games','insights','players','competition','operations'],data:['data','development','operations']};
+const workBranches={broadcast:['broadcast','virtual-camera','sponsors','gameshow'],social:['social','awards','sponsors','players'],games:['games','insights','players','competition','operations'],data:['data','development','operations']};
 function anchor(href,label,cls){const a=el('a',label,cls);a.href=href;a.target='_blank';a.rel='noopener noreferrer';return a;}
 function chatPanel(chat,compact=false){
  const box=el('div',null,'work-chat'+(compact?' compact':'')),href=workChatHref(chat);
