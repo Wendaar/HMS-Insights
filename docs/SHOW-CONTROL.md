@@ -50,3 +50,21 @@ Regression fixed: a LIVE poll creates replacement event objects through reconcil
 ## Deferred
 
 Private Blob uploads, multi-file playlists, ElevenLabs voices, automatic announcements, additional HMS event types and PA/OBS device routing. Central GitHub audio mappings are implemented in [MEDIA-MAPPING.md](MEDIA-MAPPING.md); [SHOW-CONTROL-LIBRARY.md](SHOW-CONTROL-LIBRARY.md) retains the possible future private-storage design. No production merge/deploy is part of this MVP implementation.
+
+## Čeština, angličtina a mobilní zařízení
+
+Prohlížečový hlas zůstává výchozí. V Nastavení a volby → Zvuk a hlasatel lze zvolit Čeština / English a obnovit seznam hlasů. Jazyk i vybraný hlas se pamatují pro organizaci. LIVE hlášení mají samostatné české a anglické šablony pro góly, asistence, tresty, souběžné tresty, výsledek a oficiální hvězdy. Jména zůstávají původní; český slovník výslovnosti se v angličtině nepoužije. Starý feed bez anglického textu se anglickým hlasem nečte: nejdříve obnovit LIVE data. Ruční test čte přesně vložený text, nepřekládá jej.
+
+Android může vrátit seznam hlasů se zpožděním nebo bez hlasu zvoleného jazyka. Panel naslouchá změnám, zopakuje načtení a nabídne i systémový hlas se zadaným jazykem. To nezaručuje, že telefon jazyk skutečně umí — před utkáním je nutné poslechnout ukázku. Chybějící start nebo dokončení řeči skončí chybou a návratem eventu do New, aby nezůstal navždy Playing. Fyzický Samsung s konkrétním TTS enginem nebyl automatickými testy ověřen.
+
+## Volitelný serverový hlas Azure
+
+Adaptér je vypnutý, dokud správce v hostingu nenastaví `AZURE_SPEECH_KEY`, `AZURE_SPEECH_REGION` (například `westeurope`) a výslovný souhlas organizace `HMS_PHM_TTS_ENABLED=true`. Pro další organizaci se používá její vlastní `HMS_<ORG>_TTS_ENABLED`. Klíč Azure se nikdy nevkládá do klienta. Používají se hlasy `cs-CZ-AntoninNeural` a `en-US-GuyNeural`, SSML s escapováním textu, nastaveným tempem a pauzami. Nepoužíváme HD ani vlastní klonovaný hlas.
+
+V panelu lze ručně přepnout Zdroj hlasu na Serverový hlas. Generování vyžaduje vlastní kód Operations nebo správy organizace, držený jen v paměti stránky. Změna zápasu/organizace nebo obnovení jej vymaže. První klepnutí připraví audio, druhé ho přehraje s běžným ovládáním, duckingem a STOP ALL. STOP i změna jazyka zruší čekající přípravu a pozdní odpověď nesmí spustit zvuk. Neprobíhá automatický přechod na placenou službu ani automatické generování při pollingu.
+
+Prohlížeč drží nejvýše 16 připravených hlášení do obnovení stránky; změna textu, jazyka, tempa, pauz nebo výslovnosti použije jiný záznam. Server drží nejvýše 16 výsledků po 10 minut a jednu souběžnou výrobu na organizaci, nejvýše 10 nových požadavků za minutu. Jsou to limity jedné běžící instance funkce, nikoli globální finanční limit. Zaručený cenový strop vyžaduje Free F0 nebo jiný limit u poskytovatele; S0 bez samostatné kontroly rozpočtu nezapínat. Žádný Azure účet ani placený tarif tímto kódem nevzniká. Hosting a datové přenosy mají vlastní limity.
+
+Azure Free F0 podle ceníku nabízí 500 000 znaků Neural TTS měsíčně; do spotřeby patří i relevantní SSML značky. Před zřízením ověřit aktuální ceník a dostupnost F0 v účtu/regionu: https://azure.microsoft.com/en-us/pricing/details/speech/ . REST a podporované hlasy: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/rest-text-to-speech a https://learn.microsoft.com/en-us/azure/ai-services/speech-service/language-support .
+
+Adaptér má integrační testy s náhradou poskytovatele a prohlížeč přehrává skutečný vlastní testovací WAV. Bez připojeného Azure účtu není skutečná výroba ani zvuk Azure označen za ověřený. Před stadionem je třeba vyzkoušet obě řeči na cílovém telefonu, připojení a PA/OBS výstup.

@@ -9,3 +9,7 @@ export function spokenText(text,rules=defaultPronunciations,language='cs'){
   return result;
 }
 export function speechParts(text){return (String(text).match(/[^.!?;,]+[.!?;,]*/gu)??[]).map(s=>s.trim()).filter(Boolean);}
+
+export const languageLocale=language=>language==='en'?'en-US':'cs-CZ';
+export const announcementText=(event,language='cs')=>event.texts?.[language]??(language==='cs'||event.manual?event.text:null);
+export function matchingVoices(list,language='cs'){return (list??[]).filter(v=>String(v.lang).replaceAll('_','-').toLowerCase().split('-')[0]===language);}
