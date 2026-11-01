@@ -25,6 +25,7 @@ export function setOrganizationCatalog(rows){
 const missing = (id, category, name, description) => ({id,category,name,description,
   status:'missing', dataSource:'Nenastaveno', note:'Aplikace je v inventáři; její adresu a zdroj je potřeba ověřit.', links:{}});
 const applications = [
+  {id:'virtual-camera',category:'media',name:'HERO Virtual Camera · V1',description:'Ruční výřez živé kamery VDO.Ninja a samostatný výstup do OBS.',status:'partial',dataSource:'VDO.Ninja · nezávislé na HMS a zápasech',note:'Beta. Připojte živý zdroj a sdílejte pouze výstupní URL pro OBS. Ověření se Samsungem je součástí prvního testu.',links:{open:'/virtual-camera',manage:'/virtual-camera',github:code('docs/VIRTUAL-CAMERA.md')}},
   {id:'show-control',category:'media',name:'LIVE Show Control · zvuky a hlasatel',description:'Ovládání hudby a goalhornů, živé události a český hlasatel vedle časomíry.',status:'partial',dataSource:'LIVE HMS API + zveřejněná Media Mapping knihovna',note:'Ruční spouštění hlášení a zvuků. Nastavení a testy jsou přímo v panelu.',links:{open:'/show-control?org=PHM',manage:'/show-control?org=PHM',github:code('docs/SHOW-CONTROL.md')}},
   {id:'media-mapping',category:'media',name:'Media Mapping · zvuky a přiřazení',description:'Centrální přiřazení zvuků z GitHubu týmům, zápasům a sponzorům HMS.',status:'partial',dataSource:'GitHub audio + HMS identity + centrální konfigurace',note:'Správa používá přístupový kód organizace. Časoměřič používá zveřejněné přiřazení v Show Control.',links:{open:'/media-mapping?org=PHM',manage:'/media-mapping?org=PHM',github:code('docs/MEDIA-MAPPING.md')}},
   {id:'game-day',category:'media',name:'Game Day Preview & Reminder',description:'Stories, pozvánky a testovací Reminder Center.',status:'partial',dataSource:'Studio / Team Compare / CSV kontakty',note:'Produkční odesílání vypnuto. Soukromý přístup a databázová migrace pro Reminder Center.',links:{open:'/studio/phm?section=game-day',manage:'/studio/phm?section=game-day',github:code('docs/GAME-DAY.md')}},
@@ -74,7 +75,7 @@ export function appsForOrganization(id) {
   if (org.id === 'phm') return applications.map(publicLinks);
   if (org.ready) return applications.map(app=>{
     const slug=org.slug,code=org.code;
-    if(['games-view','game-center','data-engine','database','security'].includes(app.id))return app;
+    if(['virtual-camera','games-view','game-center','data-engine','database','security'].includes(app.id))return app;
     let links;
     if(app.id==='public-portal')links={...app.links,open:'https://public.heromanagementsystem.com/control/apps/public-portal?org='+slug,manage:'https://public.heromanagementsystem.com/control/apps/public-portal?org='+slug,public:'https://public.heromanagementsystem.com/league/'+slug};
     if(app.id==='game-day')links={...app.links,open:'/studio/'+slug+'?section=game-day',manage:'/studio/'+slug+'?section=game-day'};

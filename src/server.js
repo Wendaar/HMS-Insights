@@ -1,3 +1,5 @@
+import {createVirtualCameraHandler} from './web/virtual-camera-handler.js';
+const virtualCameraHandler=createVirtualCameraHandler();
 import {createMatchPreviewHandler} from './web/match-preview-handler.js';
 const matchPreviewHandler=createMatchPreviewHandler();
 import {createGameDayHandler} from './web/game-day-handler.js';
@@ -45,6 +47,9 @@ const broadcastHandler = createBroadcastHandler();
 const portalHandler = createPublicPortalHandler();
 
 const assets = {
+  ...Object.fromEntries(['index.html','output.html','style.css','app.js','core.js','demo.svg'].map(file=>['/virtual-camera/'+file,[file.endsWith('.js')?'text/javascript; charset=utf-8':file.endsWith('.css')?'text/css':file.endsWith('.svg')?'image/svg+xml':'text/html; charset=utf-8','virtual-camera/'+file]])),
+  '/virtual-camera':['text/html; charset=utf-8','virtual-camera/index.html'],
+  '/virtual-camera/output':['text/html; charset=utf-8','virtual-camera/output.html'],
   '/venue-media.js':['text/javascript; charset=utf-8','venue-media.js'],
   '/match-preview.css':['text/css; charset=utf-8','match-preview.css'],
   '/organization-catalog.js':['text/javascript; charset=utf-8','organization-catalog.js'],
@@ -77,6 +82,11 @@ const assets = {
 
 export const server = createServer(async (request, response) => {
   const url = new URL(request.url, `http://${request.headers.host ?? "localhost"}`);
+  if(url.pathname==='/api/virtual-camera'||url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='virtual-camera'){
+    request.query=Object.fromEntries(url.searchParams);
+    if(request.method!=='GET'){let raw='';for await(const chunk of request){raw+=chunk;if(raw.length>12000){response.writeHead(413);response.end();return;}}request.body=raw;}
+    await virtualCameraHandler(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json; charset=utf-8');response.end(JSON.stringify(body));}});return;
+  }
   const pregameMatch=/^\/m\/([a-z0-9-]+)\/([a-fA-F0-9-]+)(?:\/(analysis))?\/?$/.exec(url.pathname);
   if(pregameMatch||url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='match-preview'){
     request.query={...Object.fromEntries(url.searchParams),...(pregameMatch?{org:pregameMatch[1],gameId:pregameMatch[2],action:pregameMatch[3]}:{})};
