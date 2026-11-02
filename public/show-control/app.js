@@ -2,7 +2,7 @@ import {cues,adCues,cueChannel,reconcile,profileKeys,ledgerKey,signature,finishA
 import {ShowAudio} from './audio.js';
 import {defaultPronunciations,pronunciationRules} from './speech.js';
 import {fetchSponsorCatalog} from '../sponsors/model.js';
-import {resolveMedia} from '../media-mapping/model.js';
+import {resolveMedia,mediaAssetUrl} from '../media-mapping/model.js';
 import {loadStudioAsset,saveStudioAsset,removeStudioAsset} from '../studio/preferences.js';
 const $=id=>document.getElementById(id),option=(value,label)=>{const o=document.createElement('option');o.value=value;o.textContent=label;return o;};
 const notice=message=>{$('notice').textContent=message??'';};
@@ -105,7 +105,7 @@ async function choose(){
   rememberSelection();loadVoice();$('testTools').hidden=mode()!=='test';restore();render();renderAds();loadSponsors();await loadCentralMedia();if(run!==generation)return;await loadPads();if(selected&&mode()==='live')poll(run);
 }
 const cueTeam=cue=>cue[3].startsWith('ad:')?null:cue[2]==='HOME'?team('home'):cue[2]==='AWAY'?team('away'):null;
-async function resolveAsset(cue,currentOrg){const mapped=resolveMedia(centralMedia?.config,centralMedia?.assets??[],{org:currentOrg,gameId:selected?.id,homeId:team('home'),awayId:team('away'),cue:cue[3],side:cue[2]==='AWAY'?'away':'home'});if(mapped){if(!mapped.asset)return {missing:true,key:'central',name:'Přiřazený soubor chybí'};return {key:'central',sourceLabel:({game:'Zápas',team:'Tým',default:'Organizace',sponsor:'Sponzor'})[mapped.source],url:mapped.asset.path+'?v='+mapped.asset.checksum,name:mapped.asset.title,binding:mapped.binding};}for(const k of profileKeys(currentOrg,cueTeam(cue),cue[3])){const value=await loadStudioAsset(k);if(value?.blob instanceof Blob)return {...value,key:k};}return null;}
+async function resolveAsset(cue,currentOrg){const mapped=resolveMedia(centralMedia?.config,centralMedia?.assets??[],{org:currentOrg,gameId:selected?.id,homeId:team('home'),awayId:team('away'),cue:cue[3],side:cue[2]==='AWAY'?'away':'home'});if(mapped){if(!mapped.asset)return {missing:true,key:'central',name:'Přiřazený soubor chybí'};return {key:'central',sourceLabel:({game:'Zápas',team:'Tým',default:'Organizace',sponsor:'Sponzor'})[mapped.source],url:mediaAssetUrl(mapped.asset),name:mapped.asset.title,binding:mapped.binding};}for(const k of profileKeys(currentOrg,cueTeam(cue),cue[3])){const value=await loadStudioAsset(k);if(value?.blob instanceof Blob)return {...value,key:k};}return null;}
 async function loadPads(){
   const version=++padVersion,current=org(),activeCues=[...cues,...adCues(activeAds())];setupKinds();
   const buttons=[];

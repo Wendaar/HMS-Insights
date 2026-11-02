@@ -5,7 +5,7 @@
   "type": "module",
   "description": "HMS Insights / Priklepy MVP 0.1",
   "scripts": {
-    "build:media": "node scripts/build-media-catalog.js",
+    "build:media": "node scripts/build-media-client.js",
     "start": "node src/server.js",
     "build:static": "node scripts/build-static.js",
     "test": "node --test",
@@ -16,6 +16,10 @@
     "node": ">=20"
   },
   "dependencies": {
-    "@neondatabase/serverless": "^1.0.0"
+    "@neondatabase/serverless": "^1.0.0",
+    "@vercel/blob": "^2.8.2"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
   }
 }
