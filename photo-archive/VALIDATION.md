@@ -57,18 +57,33 @@ All four `flickr.photosets.getPhotos` calls succeeded using the existing resolve
 
 The bounded checker is in `photo-archive/preview-check.mjs`. A guarded hook in `scripts/build-media-client.js` runs it only for `VERCEL_ENV=preview` and the exact pilot branch. The hook emits aggregate results to private build logs and writes no rosters/photos into public output. It never writes to HMS. Final regression suite: **520/520 tests passed**, including two additional checks for the production guard and alias/redaction behavior.
 
-## Remaining blockers / initial unavailable credentials
+## Follow-up: OpenAI Preview redeploy and confirmed credit blocker
+
+After the user saved the OpenAI key/model and requested redeploy, the real pilot Git Preview received `OPENAI_API_KEY` and `PHOTO_VISION_MODEL=gpt-5.4-mini`. The checker now supports an explicit `[photo-vision-test]` commit marker, with at most three image calls per marked build. Ordinary unmarked builds perform no image-model calls. After HTTP 401, 403 or 429, remaining image calls are suppressed while read-only ingestion checks continue.
+
+Two marked test builds were observed as `READY` (Preview), each making one rejected image call and zero successful analyses:
+
+- Initial [Preview build](https://vercel.com/wendaar/hms-insights/dpl_2TYUwnZWAVUs1ivEWM7xphaX7SZc): HTTP 429; remaining calls stopped.
+- Diagnostic [Preview build](https://vercel.com/wendaar/hms-insights/dpl_DBdCwMXL18RoRk7WiQzd7DbKcPKd), commit `78e51f652e0fa45a46b465047ca2749951eaec1c`: **HTTP 429, `code=credit_balance_exhausted`, `type=insufficient_quota`**. The API organization has no prepaid credit available. No further requests should be made until the API billing balance is restored.
+
+Both builds again passed HMS and Flickr ingestion for all four cases with the same roster counts and album totals as above. The first Flickr photo selected for attempted analysis was `55634736411`. No model observations, jersey readings or player identifications were returned; recognition accuracy remains unmeasured. `READY` establishes deployment readiness, not successful AI analysis.
+
+The updated error handler reports only bounded provider error identifiers and a fixed error category; it omits raw provider error text. The latest automated suite reported **523/523 passing tests**, including the three-image bound, stop-after-quota behavior and filtered diagnostics.
+
+Required user action: add API credits in the OpenAI organization that owns the key through [API Billing](https://platform.openai.com/settings/organization/billing/overview). The current key and model do not need to be changed on the evidence available. Once credit is available, explicitly rerun the small marked test. See [official error-code guidance](https://developers.openai.com/api/docs/guides/error-codes).
+
+## Current blocker and historical credential checks
 
 - `HMS_API_TOKEN` was unavailable during the initial local run. The follow-up Preview test above has now verified both authenticated endpoints and the lineup adapter for all four pilot cases.
 - The initial local run lacked `FLICKR_API_KEY`. The branch-specific Preview key and Flickr metadata/preview availability are now verified through the alias described above.
-- `OPENAI_API_KEY` was unavailable; `PHOTO_VISION_MODEL` must also be configured before analysis: no live image analysis was made. No recognition accuracy, recall or correct player assignments have been measured.
+- OpenAI key and model are now configured and have been used for real requests. Analysis is currently blocked by `credit_balance_exhausted`; zero successful image analyses and no measured recognition accuracy.
 
 Credential availability was checked without printing values in both the sandbox and the network-enabled process. No populated project `.env` files were found. Public HTML access does not establish Flickr API permission. No credentials were recovered from unrelated application stores.
 
 ## Automated checks
 
-- **22/22 pilot tests passed**: CLI subprocess help, invalid arguments and exit codes; offline/no-network mode; recorded Flickr redirects; guest-page metadata; pagination and album identity; HTTPS/redirect boundaries; HMS game/team/player binding and GET-only requests; structured vision requests, low-confidence suppression, invalid/refused/incomplete output; multiple players and ambiguous numbers; mocked ingestion → vision → candidate matching; global image-call budget.
-- Full repository `node --test --test-reporter=dot` passed; a final `node --test --test-reporter=spec` run after the last code edits reported **518/518 passed, zero failures**. `pnpm install --frozen-lockfile` installed existing dependencies. The first attempt lacked `@vercel/blob` and had eight failures; those were resolved by installing the existing lockfile dependencies. No dependency declaration or lockfile changes were required.
+- The initial **22/22 pilot tests passed**; five additional tests now cover Preview production exclusion, typo alias/redaction, the live-image budget, quota-stop behavior and safe error identifiers. CLI subprocess help, invalid arguments and exit codes, offline mode, Flickr redirects/metadata/pagination, identity binding and conservative matching remain covered.
+- The latest full repository `node --test --test-reporter=spec` run reported **523/523 passed, zero failures**. The initial suite had 518 tests, then expanded to 520 and 523 as the Preview/live checks were added. `pnpm install --frozen-lockfile` installed existing dependencies. The first attempt lacked `@vercel/blob` and had eight failures; those were resolved by installing the existing lockfile dependencies. No dependency declaration or lockfile changes were required.
 - Network requests from the sandbox were blocked; the successful live validation used the approved network-enabled execution.
 
-Next real test: supply the credentials and explicit vision model securely, run one case with a small image budget, inspect the stored lineup/photo/analysis artifacts, then manually label jersey observations before evaluating accuracy. Human review UI and any persistent archive are outside this implemented CLI pilot.
+Next real test: restore OpenAI API credit and explicitly rerun the small marked Preview image test. Inspect the resulting observations and manually label images before evaluating accuracy. Human review UI and any persistent archive are outside this implemented CLI pilot.
