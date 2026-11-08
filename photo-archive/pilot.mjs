@@ -1,5 +1,5 @@
-import { fetchGameDetail, fetchGameLineup, hmsConfigFromEnv } from '../src/hms/client.js';
 #!/usr/bin/env node
+import { fetchGameDetail, fetchGameLineup, hmsConfigFromEnv } from '../src/hms/client.js';
 // Read-only HMS + Flickr ingestion pilot; Node 20+.
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
