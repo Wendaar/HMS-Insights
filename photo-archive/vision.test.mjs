@@ -35,3 +35,10 @@ test('HTTP errors, incomplete output, refusal and malformed output fail closed',
     [Response.json(completed({observations:[{...observation,jerseyNumber:'unknown'}]})),/Invalid/]
   ]) await assert.rejects(analyzePhoto(photo,{env,fetchImpl:async()=>response}),pattern);
 });
+
+test('provider rate/quota diagnostics preserve identifiers without exposing raw error text',async()=>{
+  await assert.rejects(analyzePhoto(photo,{env,fetchImpl:async()=>Response.json({error:{code:'billing_hard_limit_reached',type:'quota_error',message:'Insufficient credit: private account details'}},{status:429})}),err=>{
+    assert.match(err.message,/code=billing_hard_limit_reached/);assert.match(err.message,/category=quota_or_billing/);
+    assert.ok(!err.message.includes('private account'));return true;
+  });
+});

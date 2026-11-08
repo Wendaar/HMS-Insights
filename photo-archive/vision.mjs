@@ -34,9 +34,13 @@ export async function analyzePhoto(imageUrl, {env = process.env, fetchImpl = fet
   });
   if (!r.ok) {
     const errorBody=await r.json().catch(()=>null);
-    const code=errorBody?.error?.code;
-    const knownCodes=new Set(['insufficient_quota','rate_limit_exceeded','invalid_api_key','model_not_found','permission_denied','invalid_image_url','image_parse_error']);
-    throw new Error(`Vision API HTTP ${r.status}${knownCodes.has(code)?` (${code})`:''}`);
+    const providerError=errorBody?.error || errorBody;
+    const identifier=value=>typeof value==='string' && /^[a-z][a-z0-9_]{0,63}$/.test(value)?value:null;
+    const code=identifier(providerError?.code),type=identifier(providerError?.type);
+    const message=typeof providerError?.message==='string'?providerError.message:'';
+    const category=/quota|credit|billing|balance|usage limit/i.test(message)?'quota_or_billing':/rate.?limit|requests per|tokens per/i.test(message)?'rate_limit':null;
+    const details=[code && `code=${code}`,type && `type=${type}`,category && `category=${category}`].filter(Boolean).join('; ');
+    throw new Error(`Vision API HTTP ${r.status}${details?` (${details})`:''}`);
   }
   const data = await r.json();
   if (data.status !== 'completed') throw new Error('Vision response incomplete or failed');
