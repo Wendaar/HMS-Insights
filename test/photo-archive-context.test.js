@@ -39,7 +39,7 @@ test('proposal selection deduplicates safe unique candidates and preserves human
   const proposal={candidates:[players[0]],tentative:false},photo={suggestions:[proposal,proposal,{candidates:players.slice(0,2)}]};
   assert.deepEqual(initialSelection(photo),['odrazil']);assert.deepEqual(initialSelection(photo,{status:'in_progress',players:[]}),[]);
   assert.deepEqual(initialSelection(photo,{status:'confirmed',players:[players[1]]}),['zajicek']);
-  assert.match(thumbnailState(photo,{status:'confirmed',players:players.slice(0,2)}),/2 schválených.*uzavřeno/);
+  assert.match(thumbnailState(photo,{status:'confirmed',players:players.slice(0,2)}),/Schváleno: 2.*uzavřeno/);
   assert.match(thumbnailState(photo,{status:'in_progress',players:[players[0]]}),/rozpracováno/);
 });
 test('vision validation rejects invented colour/role enums and retains separate confidence values',()=>{

@@ -113,7 +113,7 @@ function renderPlayers(){
   if(!current?.state)return;
   const players=current.state.players,needle=folded($('player-search').value),selected=$('selected-players');selected.replaceChildren();
   for(const id of chosen){const p=players.find(p=>same(p.playerId,id));if(!p)continue;const chip=text('button',`${p.name || 'Hráč'} · #${p.jerseyNumber ?? '?'} ×`,'player-chip');chip.type='button';chip.onclick=()=>{chosen.delete(id);renderPlayers();};selected.append(chip);}
-  const matches=players.filter(p=>folded([p.name,p.jerseyNumber,teamName(p.teamId)].join(' ')).includes(needle) && (!$('player-team').value || same(p.teamId,$('player-team').value)) && (!$('player-role').value || p.role===$('player-role').value));
+  const matches=players.filter(p=>folded([p.name,p.jerseyNumber,teamName(p.teamId)].join(' ')).includes(needle) && (!$('player-team').value || same(p.teamId,$('player-team').value)) && (!$('player-role').value || ($('player-role').value==='goalie'?p.role==='goalie':p.role!=='goalie')));
   const sorted=[...matches].sort((a,b)=>teamName(a.teamId).localeCompare(teamName(b.teamId),'cs') || Number(a.jerseyNumber)-Number(b.jerseyNumber) || (a.name || '').localeCompare(b.name || '','cs'));
   const results=$('player-results');results.replaceChildren();
   for(const p of sorted){
@@ -127,8 +127,9 @@ function renderPlayers(){
 }
 function updateActions(){
   const p=photo();$('assign').disabled=busy || !p || !chosen.size || !$('verified').checked || !$('reviewer').value.trim();
-  $('confirm-proposals').disabled=busy || !p || !chosen.size || !$('reviewer').value.trim();$('confirm-proposals').textContent=`Potvrdit ${chosen.size} vybraných a uzavřít`;
-  $('proposal-summary').textContent=p?`${p.analysis?.status==='complete'?'AI kontrola provedena':'AI kontrola zatím není dokončená'} · ${chosen.size} vybraných osob z ${p.observations.length} AI pozorování. Potvrzení uzavře kontrolu této fotky; další osoby můžete nejdříve doplnit.`:'';
+  $('confirm-proposals').disabled=busy || !p || !chosen.size || !$('reviewer').value.trim();$('confirm-proposals').textContent=`Potvrdit výběr (${chosen.size}) a uzavřít`;
+  $('proposal-summary').textContent=p?`${p.analysis?.status==='complete'?'AI kontrola provedena':'AI kontrola zatím není dokončená'} · Vybrané osoby: ${chosen.size} · AI pozorování: ${p.observations.length}. Potvrzení uzavře kontrolu této fotky; další osoby můžete nejdříve doplnit.`:'';
+  for(const check of document.querySelectorAll('#ai-evidence input, #player-results input'))check.disabled=busy;
   for(const id of ['supplement-proposals','manual-proposals','save-draft'])$(id).disabled=busy || !p || !$('reviewer').value.trim();
   $('ai-photo').disabled=busy || !p || p.analysis?.status==='complete' && p.analysis.analysisVersion===2;
   $('reject').disabled=busy || !p || !$('reviewer').value.trim();$('reset').disabled=busy || !p;$('reset').hidden=!p || status(p)==='pending';

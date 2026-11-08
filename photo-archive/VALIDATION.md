@@ -139,3 +139,29 @@ The live new route rendered its Operations login screen. Local browser QA on syn
 The full automated suite passed **540/540** tests; the media-client build passed. Six new tests cover durable reuse/resume, no duplicate paid calls under concurrency, preserving human reviews during model requests, quota-stop/redaction, explicit failed/interrupted retries, successful empty-result caching, bounds and HTTP authorization/model guards. The UI can deep-link a game/photo and initially favors an available player suggestion. Final documentation-only/unmarked deployment makes no additional image-model calls.
 
 Remaining scope: unattended background workers, automatic cache invalidation for changed image content or model versions, a general enforced monthly spend cap, larger labeled recognition evaluation and downstream Studio/Insights/Broadcast/Socials pickers. The album operation itself is implemented; it needs the browser left open to advance between photos. See REVIEW-APP.md for failure/unknown-charge handling.
+
+## Match jersey context, goalie roles and review closure — 2026-11-09
+
+Commit `11c015a2d2641c69d6fcda8f4e2ef1882607ae3d` deployed `READY` in [the private Preview build](https://vercel.com/wendaar/hms-insights/dpl_C6pRwQKEMH87jGpeGSLfgaW6Sji2). The marked `[photo-context-smoke]` test refreshed the four pilot sources without changing reviews and verified explicit HMS game jersey fields:
+
+| Case | Home match jersey | Away match jersey | Verified goalie identities |
+| --- | --- | --- | --- |
+| 1 | HC Traverzáci, #b71c1c, red | Vikings, #ffffff, white | 2 |
+| 2 | HC Domynos Praha, #303f9f, blue | PUK PAK PIVO, #ffffff, white | 2 |
+| 3 | Prague Pigeons B, #1a237e, blue | HC Rekreanti Praha, #ffffff, white | 2 |
+| 4 | Ice Spiders, #ffffff, white | HC Destroit, #000000, black | 2 |
+
+These are `homeJerseyColor` / `awayJerseyColor` values for each actual game, not general team colours. Goalie roles come from explicit lineup flags or non-deleted saves/allowed-goal events. Other roles remain unknown when HMS does not provide them (23/25/26/22 unknown roles respectively); they are not silently certified as skaters.
+
+Exactly two requested screenshot photos were re-read with v2 colour/role outputs and their new results persisted in the actual Preview database:
+
+- `IMG_7785`, photo `55633749862`: white 19 at number confidence 0.98, colour confidence 0.94 -> **one Vikings candidate**, excluding Traverzáci. A second partly visible person remained unreadable.
+- `IMG_7798`, photo `55634871738`: red 19 (0.98) -> **one Traverzáci candidate**; red 6 (0.96) -> **one Traverzáci candidate**; white 70 (0.78) -> **one tentative Vikings candidate**, not preselected. The rightmost white player's number remained null at 0.35 confidence. The user reports 71 there; the model has **not** verified that reading and does not invent the missing number.
+
+Total returned usage: 1,412 input + 1,401 output tokens, zero cached input. Both calls completed and persisted. Model readings/candidates still need human approval; no real player-photo assignments were confirmed by this test. No actual goalkeeper photograph was analyzed in this run; goalie narrowing is implemented and covered with synthetic tests, not a measured live goalie-accuracy claim.
+
+The UI now shows candidate checkboxes directly, preselects only unique non-tentative suggestions, supports explicit quick closure, saves supplement/manual flows as in-progress, and includes only closed confirmed links in the archive. All photos remain visible by default. Green thumbnails show approved-person counts and closed state; amber marks saved in-progress work. Full manual search renders all matches sorted by team/number/name with team/role filters; the former alphabetical twelve-result cap is removed.
+
+Local synthetic browser verification passed: contextual colour narrowing, preselection, one-click confirmation, save as in-progress, adding a second person, explicit closure, two players in the archive, and reload retaining a green two-person closed badge. Screenshots use placeholder images and synthetic names; they are not real-image recognition evidence. The live route/authenticated code-entry browser path is not a substitute for the separately verified live server-side analysis results.
+
+Full regression suite: **549/549 passed**, including nine additional context/role/upgrade/draft tests; media-client build passed. Old pre-v2 image results are labeled as such and upgraded only by an explicit paid request for that photo or via the album upgrade checkbox. Ordinary unmarked builds spend no image credits. No HMS writes, main-branch changes, merge, Production deployment or secret change occurred.

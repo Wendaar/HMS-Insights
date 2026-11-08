@@ -4,8 +4,8 @@ export function initialSelection(photo,review){
 }
 export function thumbnailState(photo,review){
   const count=review?.players?.length || 0,heads='👤'.repeat(Math.min(count,3));
-  if(review?.status==='confirmed')return `✓ ${heads} ${count} schválených · uzavřeno`;
-  if(review?.status==='in_progress')return `◐ ${count} vybraných · rozpracováno`;
+  if(review?.status==='confirmed')return `✓ ${heads} Schváleno: ${count} · uzavřeno`;
+  if(review?.status==='in_progress')return `◐ Vybráno: ${count} · rozpracováno`;
   if(review?.status==='rejected')return '✓ Bez přiřazení · uzavřeno';
   if(photo.analysis?.status==='processing')return 'AI právě zpracovává';
   if(photo.suggestions?.some(s=>s.candidates.length))return 'AI návrhy · k potvrzení';
