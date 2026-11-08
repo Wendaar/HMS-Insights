@@ -7,7 +7,8 @@ import {server} from '../src/server.js';
 
 test('registry covers the inventory, with explicit unconfigured organization isolation',()=>{
   const apps=appsForOrganization('PHM');
-  assert.equal(apps.length,38);assert.equal(new Set(apps.map(a=>a.id)).size,apps.length);
+  assert.equal(apps.length,39);assert.equal(new Set(apps.map(a=>a.id)).size,apps.length);
+  assert.equal(apps.find(app=>app.id==='photo-archive').links.open,'/photo-archive?org=phm');
   for(const app of apps){
     assert.ok(categories.some(c=>c.id===app.category));assert.ok(statuses[app.status]);assert.ok(app.dataSource);
     for(const href of Object.values(app.links))assert.match(href,/^(https:\/\/|\/(?!\/))/);

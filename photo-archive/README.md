@@ -2,6 +2,8 @@
 
 Isolated pilot for four PHM games in `pilot-cases.json`. This code does not write to HMS or change production routes. Node.js 20+; the pilot itself needs no npm dependencies.
 
+The pilot now includes a real authenticated [review application](REVIEW-APP.md) at `/photo-archive?org=phm` in its Vercel Preview: manual player search/assignment, multi-player confirmations, rejections/resets and a persistent player archive. It uses the existing project dependencies and Operations login. Future Studio/Broadcast/Socials photo selection is prepared through a protected projection API; consumer apps are not changed yet.
+
 ## Run
 
 ```bash

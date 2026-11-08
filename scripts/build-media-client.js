@@ -10,4 +10,8 @@ if (process.env.VERCEL_ENV === 'preview' && process.env.VERCEL_GIT_COMMIT_REF ==
   const {runPreviewCheck}=await import('../photo-archive/preview-check.mjs');
   // Explicit commit marker keeps ordinary builds from spending image-model credits.
   await runPreviewCheck({analyze:(process.env.VERCEL_GIT_COMMIT_MESSAGE || '').includes('[photo-vision-test]'),expectedModel:'gpt-6-luna'});
+  if((process.env.VERCEL_GIT_COMMIT_MESSAGE || '').includes('[photo-review-seed]')){
+    const {seedReviewArchive}=await import('../photo-archive/seed-review.mjs');
+    await seedReviewArchive();
+  }
 }

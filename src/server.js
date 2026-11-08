@@ -1,4 +1,6 @@
 import {createVirtualCameraHandler} from './web/virtual-camera-handler.js';
+import {createPhotoArchiveHandler} from './web/photo-archive-handler.js';
+const photoArchiveHandler=createPhotoArchiveHandler();
 const virtualCameraHandler=createVirtualCameraHandler();
 import {createMatchPreviewHandler} from './web/match-preview-handler.js';
 const matchPreviewHandler=createMatchPreviewHandler();
@@ -82,6 +84,16 @@ const assets = {
 
 export const server = createServer(async (request, response) => {
   const url = new URL(request.url, `http://${request.headers.host ?? "localhost"}`);
+  if(url.pathname==='/api/photo-archive' || url.pathname==='/api/game-summary' && url.searchParams.get('view')==='photo-archive'){
+    request.query=Object.fromEntries(url.searchParams);
+    if(request.method==='POST'){let raw='';for await(const chunk of request){raw+=chunk;if(Buffer.byteLength(raw)>16000){response.writeHead(413);response.end();return;}}request.body=raw;}
+    await photoArchiveHandler(request,{setHeader:(k,v)=>response.setHeader(k,v),status(code){response.statusCode=code;return this;},json(body){response.setHeader('content-type','application/json; charset=utf-8');response.end(JSON.stringify(body));}});return;
+  }
+  if(['/photo-archive','/photo-archive/','/control/apps/photo-archive'].includes(url.pathname) || /^\/photo-archive\/(index.html|app.js|style.css)$/.test(url.pathname)){
+    const file=/\.(html|js|css)$/.test(url.pathname)?url.pathname.split('/').pop():'index.html';
+    response.setHeader('content-type',file.endsWith('.html')?'text/html; charset=utf-8':file.endsWith('.css')?'text/css':'text/javascript');response.setHeader('x-robots-tag','noindex, nofollow');response.setHeader('referrer-policy','no-referrer');
+    response.end(await readFile(join(publicDirectory,'photo-archive',file)));return;
+  }
   if(url.pathname==='/api/virtual-camera'||url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='virtual-camera'){
     request.query=Object.fromEntries(url.searchParams);
     if(request.method!=='GET'){let raw='';for await(const chunk of request){raw+=chunk;if(raw.length>12000){response.writeHead(413);response.end();return;}}request.body=raw;}

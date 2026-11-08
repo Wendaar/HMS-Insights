@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="cs"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><title>Fotoarchiv · HMS Hero Hub</title><link rel="icon" href="/hms-favicon-control-v2.svg"><link rel="stylesheet" href="/hms-brand.css"><link rel="stylesheet" href="/photo-archive/style.css"></head>
+<body><header class="topbar"><a class="hms-brand" href="/control"><span class="hms-logo"><img src="/hms-logo.png" alt="HMS"></span><span class="hms-product">HERO HUB<br>PHOTO ARCHIVE</span></a><div class="header-right"><span class="environment">PHM · Preview</span><a href="/control">Zpět do Hero Hub</a><button id="logout" class="quiet" hidden>Odhlásit</button></div></header>
+<main>
+  <section id="login" class="login-panel"><p class="eyebrow">Soukromý pracovní prostor</p><h1>Fotoarchiv hráčů</h1><p>Kontrola návrhů, ruční přiřazení fotografií a archiv podle hráčů. Použijte stejný přístupový kód jako v PHM Operations.</p><form id="login-form"><label for="access-code">Kód Operations</label><div class="login-row"><input id="access-code" type="password" autocomplete="current-password" required><button class="primary" type="submit">Přihlásit</button></div></form><p class="muted">Přihlášení zůstává v zabezpečené relaci. API klíče sem nepatří.</p></section>
+  <p id="notice" role="status" aria-live="polite">Ověřuji přístup…</p>
+  <section id="workspace" hidden>
+    <div class="page-heading"><div><p class="eyebrow">HMS · Hero Hub</p><h1>Fotoarchiv</h1><p class="muted">Originály na Flickru. Ověřená přiřazení u hráčů.</p></div><label class="reviewer">Kontrolor<input id="reviewer" maxlength="80" value="Správce PHM" autocomplete="name"></label></div>
+    <nav class="tabs" aria-label="Fotoarchiv"><button id="review-tab" aria-pressed="true">Kontrola shod</button><button id="archive-tab" aria-pressed="false">Archiv hráčů</button></nav>
+    <section id="review-panel">
+      <div class="context-bar"><label>Zápas<select id="game-select" aria-label="Vybrat zápas"></select></label><button id="import" data-hms-refresh>Načíst / obnovit album</button><label>Stav<select id="status-filter"><option value="pending">K ověření</option><option value="confirmed">Potvrzené</option><option value="rejected">Odmítnuté</option><option value="all">Všechny fotografie</option></select></label></div>
+      <div id="game-meta" class="game-meta"></div><div id="stats" class="stats" aria-live="polite"></div>
+      <div id="needs-import" class="empty" hidden><h2>Album ještě není v archivu</h2><p>Načtěte Flickr album a aktuální soupisky. Načtení metadat nespouští placenou AI analýzu.</p></div>
+      <div id="review-layout" class="review-layout" hidden>
+        <aside class="photo-browser"><div class="section-heading"><h2>Fotografie</h2><span id="photo-count" class="muted"></span></div><div id="photo-grid" class="photo-grid"></div><p id="no-photos" class="muted" hidden>Pro tento stav nejsou žádné fotografie.</p></aside>
+        <section id="photo-detail" class="photo-detail" hidden><div class="section-heading"><div><p class="eyebrow">Vybraná fotografie</p><h2 id="photo-title"></h2></div><span id="review-status" class="badge"></span></div>
+          <div class="image-stage"><button id="zoom-open" class="image-button" aria-label="Zvětšit fotografii"><img id="large-photo" alt="Vybraná fotografie zápasu"></button></div><div class="photo-links"><a id="original-link" target="_blank" rel="noopener noreferrer">Originál na Flickru ↗</a><button id="zoom-button" class="quiet">Přiblížit</button></div><div id="ai-evidence" class="evidence"></div>
+          <section class="assignment"><div class="section-heading"><h2>Přiřadit hráčům</h2><span id="selected-count" class="muted">0 vybraných</span></div><p class="muted">Hledejte v ověřené soupisce tohoto zápasu. Na fotografii může být více hráčů.</p><label class="search-label" for="player-search">Hledat hráče<input id="player-search" type="search" placeholder="Jméno, číslo dresu nebo tým…" autocomplete="off"></label><div id="selected-players" class="selected-players"></div><div id="player-results" class="player-results" aria-label="Hráči v soupisce"></div><p id="search-count" class="muted"></p>
+            <label for="note">Poznámka ke kontrole <span class="muted">(nepovinná)</span><textarea id="note" maxlength="300" rows="2" placeholder="Například hráč vpravo u mantinelu"></textarea></label>
+            <label class="verify"><input id="verified" type="checkbox"><span>Ověřil/a jsem vybrané hráče i jejich týmy podle fotografie.</span></label>
+            <div class="actions"><button id="assign" class="primary" disabled>Potvrdit přiřazení</button><button id="reject">Bez přiřazení / odmítnout</button><button id="reset" class="quiet" hidden>Vrátit ke kontrole</button></div><p id="last-review" class="muted"></p>
+          </section>
+        </section>
+      </div>
+    </section>
+    <section id="archive-panel" hidden><div class="archive-heading"><div><h2>Potvrzené fotografie hráčů</h2><p class="muted">Rozbalte hráče a prohlédněte jeho fotografie napříč zápasy.</p></div><label>Hledat v archivu<input id="archive-search" type="search" placeholder="Jméno hráče, tým…"></label></div><div id="archive-list"></div></section>
+    <footer class="workspace-footer">Ukládání do odděleného Preview archivu · bez zápisu do HMS · otevření galerie nespouští AI analýzu</footer>
+  </section>
+</main>
+<dialog id="zoom-dialog"><div class="zoom-toolbar"><label>Přiblížení <input id="zoom-range" type="range" min="1" max="3" step="0.25" value="1"></label><button id="zoom-close">Zavřít</button></div><div class="zoom-scroll"><img id="zoom-image" alt="Zvětšená fotografie zápasu"></div></dialog>
+<script type="module" src="/photo-archive/app.js"></script></body></html>
