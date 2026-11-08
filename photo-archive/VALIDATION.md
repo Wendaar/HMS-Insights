@@ -1,6 +1,6 @@
 # Validation — 2026-11-08
 
-Branch: `codex/hms-photo-archive-pilot`, PR #61. No merge or HMS mutation was performed. Production source files and deployment are unchanged. Initial local tests made no deployment; the follow-up below used an isolated Preview build.
+Branch: `codex/hms-photo-archive-pilot`, PR #61. No merge or HMS mutation was performed. The main branch and Production deployment are unchanged. The branch includes application changes deployed only to Preview. Initial local tests made no deployment; follow-ups below used isolated Preview builds.
 
 ## Live evidence
 
@@ -101,7 +101,23 @@ Credential availability was checked without printing values in both the sandbox 
 ## Automated checks
 
 - The initial **22/22 pilot tests passed**; seven additional tests now cover Preview production exclusion, typo alias/redaction, the live-image budget, quota-stop behavior, safe error identifiers, Luna usage counters and unexpected-model blocking. CLI subprocess help, invalid arguments and exit codes, offline mode, Flickr redirects/metadata/pagination, identity binding and conservative matching remain covered.
-- The latest full repository `node --test --test-reporter=spec` run reported **525/525 passed, zero failures**. `pnpm install --frozen-lockfile` installed existing dependencies. The first attempt lacked `@vercel/blob` and had eight failures; those were resolved by installing the existing lockfile dependencies. No dependency declaration or lockfile changes were required.
+- The latest full repository `node --test --test-reporter=spec` run reported **534/534 passed, zero failures**, including the nine review/archive tests described below. `pnpm install --frozen-lockfile` installed existing dependencies. The first attempt lacked `@vercel/blob` and had eight failures; those were resolved by installing the existing lockfile dependencies. No dependency declaration or lockfile changes were required.
 - Network requests from the sandbox were blocked; the successful live validation used the approved network-enabled execution.
 
-Next evaluation: manually review the three model readings, then use a larger representative labeled sample before expanding paid processing. Human review UI, a persistent archive/cache and verified monthly spend enforcement remain outside this implemented CLI pilot.
+Next evaluation: manually review the three model readings in the implemented review UI, then use a larger representative labeled sample before expanding paid processing. Review decisions and photo references now have durable storage. A general AI-analysis cache and verified monthly spend enforcement remain unimplemented.
+
+## Follow-up: deployed review UI and persistent player archive
+
+Commit `d5d539d189c840c94e6c8e27ccdf87245983852f` deployed to [the pilot review application](https://hms-insights-hrkizyzb6-wendaar.vercel.app/photo-archive?org=phm). [Private build evidence](https://vercel.com/wendaar/hms-insights/dpl_E4jypAbhgWf1yScSDiozuzN2yYBU) reports `READY`, Preview, all four HMS/Flickr cases successful and **zero image-model calls**. The live browser rendered the actual Fotoarchiv login screen and Operations-code prompt successfully. It did not expose roster or archive data before sign-in.
+
+The `[photo-review-seed]` build imported **230 photo references** (32/24/66/108) and **104 game-roster entries** (25/27/28/24; not a count of unique people). All four cases reported `persisted:true`. Real photos remain pending; no real player-photo assignment was confirmed by this test. Three earlier model observations appear as unverified hints only.
+
+Durable database verification ran in a separate `photo-archive-persistence-qa-preview` tool namespace with synthetic player/game identifiers. It saved a confirmation, reconstructed the service, read the confirmed archive, then reset it and verified removal from that archive. The build reported `durableSaveReadConfirmed:true`, `resetConfirmed:true`, `isolatedFixtureNamespace:true`, final revision 3. The actual review UI never reads that QA namespace.
+
+The UI supports game/photo selection, Czech-insensitive player search, manual assignment to one or multiple roster players, required human acknowledgement, rejection/reset, zoom, and expandable confirmed archives grouped by stable HMS player ID. Saves use the existing database with revision conflict detection. Authentication reuses PHM Operations; the reviewer label is user-declared, not an independently authenticated individual identity.
+
+Local browser QA used explicitly synthetic players and placeholder images: login, name search, confirmation, archive expansion, reload, reset, zoom and narrow mobile layout passed. This establishes UI behavior, not recognition accuracy or the correctness of real player identities. A real Operations-authenticated end-to-end browser review was not performed; its existing private access code was not exported. Server-side durable persistence was independently verified in the live Preview build as above.
+
+The full repository suite passed **534/534** tests and the media-client build completed successfully. Nine new automated tests cover authorization/environment/origin boundaries, safe import and refresh, multiple assignments, stable player IDs across jersey changes, revision conflicts, reset/audit, protected photo projections, storage failure and local routes.
+
+Studio, Insights, Broadcast and Socials have not yet been changed to consume archive photos. A protected confirmed-only `player-photos` API projection is available for that next integration. No HMS write, main-branch update, Production deployment, new image-model spending or secret change was performed. See [REVIEW-APP.md](REVIEW-APP.md) for the route, data contract and exact scope.
