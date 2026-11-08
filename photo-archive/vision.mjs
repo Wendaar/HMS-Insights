@@ -32,7 +32,12 @@ export async function analyzePhoto(imageUrl, {env = process.env, fetchImpl = fet
       input:[{role:'user',content:[{type:'input_text',text:'Read the visible jersey numbers in this photograph.'},{type:'input_image',image_url:url.href,detail:'high'}]}],
       text:{format:{type:'json_schema',name:'jersey_observations',strict:true,schema}}})
   });
-  if (!r.ok) throw new Error(`Vision API HTTP ${r.status}`);
+  if (!r.ok) {
+    const errorBody=await r.json().catch(()=>null);
+    const code=errorBody?.error?.code;
+    const knownCodes=new Set(['insufficient_quota','rate_limit_exceeded','invalid_api_key','model_not_found','permission_denied','invalid_image_url','image_parse_error']);
+    throw new Error(`Vision API HTTP ${r.status}${knownCodes.has(code)?` (${code})`:''}`);
+  }
   const data = await r.json();
   if (data.status !== 'completed') throw new Error('Vision response incomplete or failed');
   const content = (data.output || []).filter(o => o.type === 'message').flatMap(o => o.content || []);
