@@ -40,10 +40,27 @@ Evidence: [private Vercel build logs](https://vercel.com/wendaar/hms-insights/dp
 
 **The HMS credential/live-lineup blocker is resolved for execution inside Vercel Preview.** The local shell still cannot export the write-only Secret; subsequent authenticated tests should execute where Vercel injects it.
 
+## Follow-up: Flickr API key verified live
+
+The supplied key was saved as `FLICKT_API_KEY`, including a branch-specific Preview Secret for `codex/hms-photo-archive-pilot`. Vercel rejects renaming a Sensitive variable; the attempted rename returned HTTP 400 and made no change. The Preview check accepts this existing name as an in-memory alias for `FLICKR_API_KEY`. No secret was exported or logged, and the separate Production entry was not modified.
+
+An inline non-Git Preview did not receive the branch-specific key. A real Git Preview build of commit `3996765feb0d015d33e39ba519958541ced164f8` then received both existing secrets and passed the live ingestion checks. [Private build evidence](https://vercel.com/wendaar/hms-insights/dpl_DrhEPcBx8YEDBgv4UNhiDLZjDSHN), state `READY`, target Preview:
+
+| Case | HMS players / with numbers | Flickr album total | Metadata sample | Preview HEAD check |
+| --- | --- | --- | --- | --- |
+| 1 | 25 / 25 | 32 | 3, all with previews | HTTP 200, image content type |
+| 2 | 27 / 27 | 24 | 3, all with previews | HTTP 200, image content type |
+| 3 | 28 / 28 | 66 | 3, all with previews | HTTP 200, image content type |
+| 4 | 24 / 24 | 108 | 3, all with previews | HTTP 200, image content type |
+
+All four `flickr.photosets.getPhotos` calls succeeded using the existing resolver and Flickr client. Total album inventory: **230 photos**; **12 metadata records** sampled; **4 preview HEAD requests** verified availability and image content type. This did not download or visually inspect the images and did not run the image model.
+
+The bounded checker is in `photo-archive/preview-check.mjs`. A guarded hook in `scripts/build-media-client.js` runs it only for `VERCEL_ENV=preview` and the exact pilot branch. The hook emits aggregate results to private build logs and writes no rosters/photos into public output. It never writes to HMS. Final regression suite: **520/520 tests passed**, including two additional checks for the production guard and alias/redaction behavior.
+
 ## Remaining blockers / initial unavailable credentials
 
 - `HMS_API_TOKEN` was unavailable during the initial local run. The follow-up Preview test above has now verified both authenticated endpoints and the lineup adapter for all four pilot cases.
-- `FLICKR_API_KEY` was unavailable: no `flickr.photosets.getPhotos` call was made. Album counts, API visibility and image previews remain unverified.
+- The initial local run lacked `FLICKR_API_KEY`. The branch-specific Preview key and Flickr metadata/preview availability are now verified through the alias described above.
 - `OPENAI_API_KEY` was unavailable; `PHOTO_VISION_MODEL` must also be configured before analysis: no live image analysis was made. No recognition accuracy, recall or correct player assignments have been measured.
 
 Credential availability was checked without printing values in both the sandbox and the network-enabled process. No populated project `.env` files were found. Public HTML access does not establish Flickr API permission. No credentials were recovered from unrelated application stores.

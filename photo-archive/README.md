@@ -57,4 +57,6 @@ Flickr currently requires a **Pro** subscription to request a new API key. Sign 
 
 Enter the key directly in the Vercel dashboard for `hms-insights` → Environment Variables (also accessible through Settings → Environment Variables): name `FLICKR_API_KEY`, type **Secret** (legacy UI: Sensitive), environment **Preview**. Keep Production unselected for this pilot. Do not use `NEXT_PUBLIC_` or `VITE_` prefixes and do not send the value in chat or commit it. A new Preview execution will receive the key; the local CLI does not automatically inherit Vercel Secrets.
 
+The current pilot branch also accepts the already-saved `FLICKT_API_KEY` spelling in its bounded Preview build check, mapping it in memory only. There is no need to re-enter that Secret for testing. The standalone CLI still uses the standard `FLICKR_API_KEY` name. The Preview hook runs only on `codex/hms-photo-archive-pilot`, reports aggregate counts and one image HEAD check per album in private build logs, and does not run in Production.
+
 Sources: [Flickr key application instructions and Pro requirement](https://www.flickrhelp.com/hc/en-us/articles/4404070036884-Flickr-API), [public photoset API authentication requirements](https://www.flickr.com/services/api/flickr.photosets.getPhotos.html), [Vercel Secret variables](https://vercel.com/docs/environment-variables/sensitive-environment-variables).
