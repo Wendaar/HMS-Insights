@@ -12,11 +12,11 @@ Node.js 20+ is required. Use secure environment variables (never commit secrets)
 ```bash
 export FLICKR_API_KEY='your private key'
 export HMS_API_TOKEN='your private token'
-export HMS_LINEUP_URL_TEMPLATE='https://YOUR-HMS-API-HOST/.../gameLineup?gameId={gameId}'
+export HMS_API_BASE_URL='https://public-api.prod.hms.wootera.net/api/v1' # optional; existing client default
 node photo-archive/pilot.mjs --limit 25
 ```
 
-The HMS lineup URL template is configurable intentionally: the existing application must supply the **actual** authenticated endpoint, not a guessed path. Authorization defaults to `Bearer <HMS_API_TOKEN>`; adjust via `HMS_AUTH_HEADER` and `HMS_AUTH_PREFIX` if the pre-existing HMS connector requires other headers. If credentials are missing, a clear per-source error is recorded without inventing any data.
+The pilot now reuses `src/hms/client.js`: `fetchGameDetail` and `fetchGameLineup` call the existing verified `/game` and `/gameLineup` routes, using a server-side Bearer token. No new endpoint template is required. If credentials are missing, a clear per-source error is recorded without inventing any data.
 
 Flickr album IDs are derived from short links using the album endpoint redirect. Flickr metadata uses `flickr.photosets.getPhotos` and obtains image URLs only when the API supplies them. It stores **references only**, not image files.
 
@@ -31,3 +31,7 @@ This is a data-ingestion scaffold, not yet a completed or measured AI-identifica
 `organization_id, game_id, team_id, player_id, flickr_album_id, flickr_photo_id, jersey_number, proposed_evidence, status (suggested|confirmed|rejected), reviewed_by, reviewed_at`.
 
 A photo can have multiple players; jersey number alone is not unique across teams. Avoid face-based biometric identification.
+
+## Candidate matcher
+
+`node --test photo-archive/matcher.test.mjs` tests conservative matching of jersey number and verified team ID. `suggestPlayers` never automatically confirms a player, and handles multiple players on a single photograph independently. A visual model still needs to supply jersey observations; model integration and human review UI are not complete. Do not treat matching unit tests as measured real-world photo recognition accuracy.
