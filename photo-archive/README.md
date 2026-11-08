@@ -1,37 +1,52 @@
-# HMS Photo Archive — pilot
+# HMS Photo Archive — read-only pilot
 
-Independent **read-only** prototype in the `codex/hms-photo-archive-pilot` branch; production and current apps are unchanged.
-
-## Input
-Four HMS game ID / Flickr album URL pairs are in [pilot-cases.json](pilot-cases.json).
+Isolated pilot for four PHM games in `pilot-cases.json`. This code does not write to HMS or change production routes. Node.js 20+; the pilot itself needs no npm dependencies.
 
 ## Run
 
-Node.js 20+ is required. Use secure environment variables (never commit secrets):
-
 ```bash
-export FLICKR_API_KEY='your private key'
-export HMS_API_TOKEN='your private token'
-export HMS_API_BASE_URL='https://public-api.prod.hms.wootera.net/api/v1' # optional; existing client default
-node photo-archive/pilot.mjs --limit 25
+node photo-archive/pilot.mjs --help
+node photo-archive/pilot.mjs --resolve-only
+node photo-archive/pilot.mjs --offline --analyze
+node --test photo-archive/*.test.mjs
 ```
 
-The pilot now reuses `src/hms/client.js`: `fetchGameDetail` and `fetchGameLineup` call the existing verified `/game` and `/gameLineup` routes, using a server-side Bearer token. No new endpoint template is required. If credentials are missing, a clear per-source error is recorded without inventing any data.
+For authenticated ingestion, supply `HMS_API_TOKEN` and `FLICKR_API_KEY` as environment variables. Optional `HMS_API_BASE_URL` defaults to the existing HTTPS HMS public API. No `.env` file is loaded automatically. Never commit credentials.
 
-Flickr album IDs are derived from short links using the album endpoint redirect. Flickr metadata uses `flickr.photosets.getPhotos` and obtains image URLs only when the API supplies them. It stores **references only**, not image files.
+```bash
+node photo-archive/pilot.mjs --case 1 --limit 25
+```
 
-Results are saved to `photo-archive/out/` (gitignored). The script NEVER writes to HMS. API responses may contain player information, so do not deploy generated output publicly.
+For jersey analysis, also supply `OPENAI_API_KEY` and `PHOTO_VISION_MODEL` with a model available to your account that supports image input and strict structured outputs. There is deliberately no implicit model selection.
 
-## Status / next step
+```bash
+node photo-archive/pilot.mjs --case 1 --limit 5 --analyze --vision-limit 3
+```
 
-This is a data-ingestion scaffold, not yet a completed or measured AI-identification pilot. We must verify real HMS lineup response fields, authorize Flickr access and inspect sample photos. Number detection, review UI and any photo-player association will follow after validating ingested inputs. No accuracy claims until manual labels exist.
+`--limit` is 1–500 photos per case. `--vision-limit` is 1–25 API attempts **across the entire run** (default 3); exhausted cases report a blocked analysis. `--case` is 1–4. Unknown, duplicate, missing and non-integer arguments are rejected before requests or output writes.
 
-## Planned association record
+Exit codes: **0** every requested stage passed; **1** failed/blocked source, analysis or output; **2** invalid CLI invocation. `--resolve-only` skips HMS and all authenticated APIs. `--offline` makes no network requests. Default ingestion still resolves public album links when API keys are missing, then reports each missing credential independently.
 
-`organization_id, game_id, team_id, player_id, flickr_album_id, flickr_photo_id, jersey_number, proposed_evidence, status (suggested|confirmed|rejected), reviewed_by, reviewed_at`.
+## Flickr resolution
 
-A photo can have multiple players; jersey number alone is not unique across teams. Avoid face-based biometric identification.
+The resolver accepts HTTPS canonical `/photos/{owner}/albums/{id}` and legacy `/sets/{id}` URLs directly. Short `/s/{token}` and guest `/gp/{owner}/{token}` links follow bounded, host-validated redirects. If a landing page remains, only canonical and `og:url` metadata can establish the album ID. Conflicting metadata, login pages and unresolved links fail explicitly. Album IDs remain strings; there is no speculative decoding of short tokens.
 
-## Candidate matcher
+API metadata uses `flickr.photosets.getPhotos`, validates the returned photoset ID, follows bounded pagination and enforces the sample limit. Preview URLs use the largest API-provided size among `url_b`, `url_z` and `url_m`; image URLs are not invented. API requests reject redirects to avoid forwarding credentials.
 
-`node --test photo-archive/matcher.test.mjs` tests conservative matching of jersey number and verified team ID. `suggestPlayers` never automatically confirms a player, and handles multiple players on a single photograph independently. A visual model still needs to supply jersey observations; model integration and human review UI are not complete. Do not treat matching unit tests as measured real-world photo recognition accuracy.
+## Jersey analysis and review
+
+The analyzer sends the selected Flickr preview URL to the OpenAI Responses API with high image detail, `store:false`, strict JSON schema and no roster names or player IDs. It extracts visible jersey numbers, jersey descriptions and positional evidence, including multiple players and unreadable numbers. Invalid, refused and incomplete responses fail explicitly. This is jersey reading, not face identification.
+
+Outputs are validated locally. A subjective confidence below 0.8 suppresses a number from matching; this threshold is a heuristic, **not measured accuracy**. Model-supplied team IDs are ignored. Jersey colour never establishes a team ID. Matching across the game's validated lineup returns candidates requiring human review; even a unique number is never auto-confirmed. Same numbers on opposite teams remain ambiguous. A review UI and measured accuracy evaluation are still outstanding.
+
+Implementation follows [OpenAI image input documentation](https://developers.openai.com/api/docs/guides/images-vision) and [structured outputs documentation](https://developers.openai.com/api/docs/guides/structured-outputs?api-mode=responses).
+
+## Local results
+
+Each invocation creates a fresh `photo-archive/out/run-*/` directory, preventing stale photos or lineups from a previous run being mistaken for current results. `--out PATH` changes the local output root. `summary.json` records separate resolution, HMS, Flickr API and optional vision outcomes. Per-case files contain normalized lineups, photo references and analysis with suggestions. Errors redact configured keys and omit raw provider response bodies.
+
+Generated results are gitignored and may contain player information. They are not intended for public deployment. Images are referenced, not downloaded by this program; enabling analysis lets the configured image provider retrieve the preview.
+
+## Validation status
+
+See [VALIDATION.md](VALIDATION.md) for the observed live results and remaining blockers. Unit and mocked integration tests establish software behavior, not real-world recognition accuracy.
