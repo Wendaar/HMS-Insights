@@ -1,5 +1,6 @@
 const $=id=>document.getElementById(id),org=new URLSearchParams(location.search).get('org') || 'phm';
 let catalog=[],current=null,selectedId=null,chosen=new Set(),archive=[],busy=false,caseRequest=0;
+let analyzing=false,stopAnalysis=false;
 const folded=value=>String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 const text=(tag,value,className)=>{const node=document.createElement(tag);node.textContent=value;if(className)node.className=className;return node;};
 const same=(a,b)=>String(a).toLowerCase()===String(b).toLowerCase();
@@ -8,7 +9,7 @@ const photo=()=>current?.state?.photos.find(p=>p.id===selectedId);
 const status=p=>current?.state?.reviews[p.id]?.status || 'pending';
 const statusLabels={pending:'K ověření',confirmed:'Potvrzeno',rejected:'Odmítnuto'};
 const message=(value,error=false)=>{$('notice').textContent=value;$('notice').className=error?'error':'success';};
-function setBusy(value){busy=value;$('import').disabled=value;$('game-select').disabled=value;$('logout').disabled=value;updateActions();}
+function setBusy(value){busy=value;$('import').disabled=value;$('game-select').disabled=value;$('logout').disabled=value;$('ai-start').disabled=value || !current?.state;$('ai-refresh').disabled=value;$('ai-limit').disabled=value;$('ai-retry').disabled=value;updateActions();}
 async function api(action,{body,bearer,query={}}={}){
   const response=await fetch('/api/photo-archive?'+new URLSearchParams({org,action,...query}),{method:body || action==='session' || action==='logout'?'POST':'GET',credentials:'same-origin',
     headers:{...(body?{'content-type':'application/json'}:{}),...(bearer?{authorization:'Bearer '+bearer}:{})},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(55000)});
@@ -33,6 +34,7 @@ async function loadCase(gameId=$('game-select').value,targetPhoto=null){
   renderCase();message(data.needsImport?'Vyberte Načíst album pro první import.':'Načteno z uloženého fotoarchivu.');
 }
 function renderCase(){
+  renderAnalysis();
   $('needs-import').hidden=!current?.needsImport;$('review-layout').hidden=!current?.state;
   $('stats').replaceChildren();
   if(!current?.state){$('game-meta').textContent='';$('photo-detail').hidden=true;return;}
@@ -40,14 +42,14 @@ function renderCase(){
   for(const [key,label] of [['total','fotografií'],['pending','k ověření'],['confirmed','potvrzených'],['rejected','odmítnutých']]){const node=text('span','');node.append(text('strong',current.stats[key]),document.createTextNode(label));$('stats').append(node);}
   renderGrid();
 }
-function filteredPhotos(){const filter=$('status-filter').value;return (current?.state?.photos || []).filter(p=>filter==='all' || status(p)===filter);}
+function filteredPhotos(){const filter=$('status-filter').value;return (current?.state?.photos || []).filter(p=>filter==='all' || filter==='ai' && p.suggestions.some(s=>s.candidates.length) || status(p)===filter);}
 function renderGrid(){
   const photos=filteredPhotos(),grid=$('photo-grid');grid.replaceChildren();$('photo-count').textContent=String(photos.length);$('no-photos').hidden=photos.length>0;
   if(!photos.some(p=>p.id===selectedId))selectedId=photos[0]?.id || null;
   for(const p of photos){
     const button=text('button','', 'photo-tile');button.type='button';button.dataset.status=status(p);button.setAttribute('aria-pressed',String(p.id===selectedId));button.setAttribute('aria-label',`Fotografie ${p.id}, ${statusLabels[status(p)]}`);
     if(p.thumbnailUrl || p.previewUrl){const image=document.createElement('img');image.src=p.thumbnailUrl || p.previewUrl;image.alt=p.title || 'Fotografie zápasu';image.loading='lazy';button.append(image);}
-    button.append(text('span',status(p)==='pending' && p.observations.length?'AI návrh · ověřit':statusLabels[status(p)]));
+    button.append(text('span',status(p)==='pending' && p.suggestions.some(s=>s.candidates.length)?'AI navrhuje hráče':status(p)==='pending' && p.analysis?.status==='complete'?'AI bez shody · ručně':statusLabels[status(p)]));
     button.onclick=()=>{if(busy)return;selectedId=p.id;renderGrid();};grid.append(button);
   }
   selectPhoto();
@@ -58,13 +60,38 @@ function selectPhoto(){
   $('photo-title').textContent=p.title || 'Fotografie '+p.id;$('review-status').textContent=statusLabels[status(p)];
   $('large-photo').src=p.previewUrl || p.thumbnailUrl || '';$('large-photo').alt=p.title || current.state.title;$('original-link').href=p.originalUrl;
   const evidence=$('ai-evidence');evidence.replaceChildren();
-  if(!p.observations.length)evidence.append(text('span','Bez AI návrhu. Hráče můžete vyhledat a přiřadit ručně.'));
+  evidence.append(text('h3','AI návrhy hráčů'));
+  if(!p.observations.length)evidence.append(text('p',p.analysis?.status==='complete'?'AI kontrola dokončena. Na této fotce nenašla čitelné číslo pro návrh hráče.':p.analysis?.status==='failed'?'AI kontrola této fotky selhala. Podrobnosti jsou v průběhu alba.':p.analysis?.status==='processing'?'AI právě zpracovává tuto fotku…':'Tato fotka ještě neprošla AI kontrolou. Spusťte ji nad albem nahoře, nebo přiřaďte hráče ručně.'));
   p.observations.forEach((o,i)=>{
-    const suggestion=p.suggestions[i];evidence.append(text('span',`Pilotní AI čtení: ${o.observedNumber || 'nečitelné'} · jistota modelu ${Math.round(o.confidence*100)} %${!o.jerseyNumber?' · nepoužito pro přiřazení':''}`));
+    const suggestion=p.suggestions[i];evidence.append(text('p',`AI čtení: ${o.observedNumber || 'nečitelné'} · jistota čtení ${Math.round(o.confidence*100)} %${!o.jerseyNumber?' · nepoužito pro přiřazení':''}`));
+    if(o.evidence)evidence.append(text('p',o.evidence,'muted'));
+    if(suggestion?.candidates.length)evidence.append(text('p',`${suggestion.candidates.length>1?'Více možných hráčů — ověřte tým':'Navržený hráč — ověřte shodu'}: `+suggestion.candidates.map(p=>`${p.name || 'Hráč'} · #${p.jerseyNumber} · ${teamName(p.teamId)}`).join(' / '),'ai-candidates'));
+    else if(o.jerseyNumber)evidence.append(text('p','Číslo nemá odpovídajícího hráče v soupisce.','muted'));
     if(suggestion?.candidates.length){const button=text('button',suggestion.candidates.length===1?'Vybrat návrh':'Vyhledat kandidáty');button.type='button';button.onclick=()=>{if(suggestion.candidates.length===1)chosen.add(suggestion.candidates[0].playerId);else $('player-search').value=o.observedNumber || '';renderPlayers();};evidence.append(button);}
   });
   $('last-review').textContent=review?`${review.reviewerLabel} · ${new Date(review.reviewedAt).toLocaleString('cs-CZ')} · ${statusLabels[review.status]}`:'Zatím bez ručního rozhodnutí.';
   renderPlayers();
+}
+const analysisErrors={quota:'OpenAI nemá dostupný kredit nebo kvótu.',credentials:'OpenAI odmítlo klíč nebo oprávnění.',rate_limit:'OpenAI omezilo počet požadavků.',timeout:'Vypršel čas odpovědi; pokus mohl být účtovaný.',interrupted:'Předchozí požadavek byl přerušen; mohl být účtovaný.',analysis_failed:'Analýza se nezdařila. Pokus mohl být účtovaný.'};
+function renderAnalysis(){
+  const s=current?.analysisStats || {total:0,complete:0,remaining:0,failed:0},job=current?.state?.analysisJob;
+  $('ai-progress').max=s.total || 1;$('ai-progress').value=s.complete;
+  const usage=Object.values(current?.state?.analyses || {}).reduce((sum,a)=>sum+(a.usage?.totalTokens || 0),0);
+  const error=job?.lastError || Object.values(current?.state?.analyses || {}).find(a=>a.status==='failed')?.error;
+  $('ai-status').textContent=`AI hotovo ${s.complete}/${s.total} · čeká ${s.remaining} · chyb ${s.failed}${s.processing?' · právě zpracovává 1 fotku':''}${usage?' · evidováno '+usage+' tokenů':''}${error?' · '+(analysisErrors[error] || analysisErrors.analysis_failed):''}`;
+  $('ai-start').textContent=s.complete?'Pokračovat v AI kontrole':'Spustit AI kontrolu';$('ai-start').disabled=busy || !current?.state;
+}
+async function analyzeAlbum(){
+  analyzing=true;stopAnalysis=false;$('ai-stop').hidden=false;$('ai-stop').disabled=false;
+  try{
+    current=await api('analyze-start',{body:{gameId:current.gameId,revision:current.revision,limit:Number($('ai-limit').value),retryFailed:$('ai-retry').checked}});renderCase();
+    while(current.state.analysisJob.status==='running' && !stopAnalysis){
+      message('AI zpracovává další fotografii. Návrhy se průběžně ukládají…');
+      current=await api('analyze-next',{body:{gameId:current.gameId,revision:current.revision,jobId:current.state.analysisJob.id}});renderCase();
+    }
+    if(current.state.analysisJob.status==='failed')message('AI kontrola se zastavila: '+(analysisErrors[current.state.analysisJob.lastError] || analysisErrors.analysis_failed)+' Hotové výsledky zůstávají uložené.',true);
+    else message(stopAnalysis && current.state.analysisJob.status!=='completed'?'Pozastaveno. Uložené výsledky zůstávají; tlačítkem Pokračovat zpracujete zbytek.':'AI kontrola dokončena. Zvolte filtr AI navrhuje hráče a ověřte nabídnutá jména.');
+  }finally{analyzing=false;$('ai-stop').hidden=true;}
 }
 function renderPlayers(){
   if(!current?.state)return;
@@ -117,6 +144,9 @@ $('login-form').onsubmit=event=>{event.preventDefault();task(async()=>{const cod
 $('logout').onclick=()=>task(async()=>{await api('logout');current=null;archive=[];chosen.clear();await initialize();});
 $('game-select').onchange=()=>task(()=>loadCase());$('status-filter').onchange=renderGrid;
 $('import').onclick=()=>task(async()=>{message('Načítám album z Flickru a ověřené soupisky z HMS…');current=await api('import',{body:{gameId:$('game-select').value,revision:current?.revision ?? 0}});renderCase();await loadCatalog();message('Album a soupisky jsou uložené. Můžete přiřazovat hráče.');});
+$('status-filter').append(new Option('AI navrhuje hráče','ai'));
+$('ai-start').onclick=()=>task(analyzeAlbum);$('ai-stop').onclick=()=>{stopAnalysis=true;$('ai-stop').disabled=true;message('Dokončím a uložím právě zpracovávanou fotografii, poté pozastavím.');};
+$('ai-refresh').onclick=()=>task(()=>loadCase(current?.gameId,selectedId));
 $('player-search').oninput=renderPlayers;$('archive-search').oninput=renderArchive;$('verified').onchange=updateActions;$('reviewer').oninput=updateActions;
 $('assign').onclick=()=>task(()=>decide('assign'));$('reject').onclick=()=>task(()=>decide('reject'));$('reset').onclick=()=>task(()=>decide('reset'));
 $('review-tab').onclick=()=>setTab('review');$('archive-tab').onclick=()=>task(async()=>{setTab('archive');await loadArchive();message('Archiv obsahuje pouze ručně potvrzená přiřazení.');});

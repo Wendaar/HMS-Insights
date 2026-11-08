@@ -15,7 +15,17 @@ Select a game, optionally refresh/import its Flickr metadata and HMS lineup, the
 
 Each photo can be confirmed for multiple players. It can instead be rejected, or returned to pending. Existing assignments can be edited from the archive. A note and user-declared reviewer label accompany the recorded Operations role and server timestamp. A shared Operations code does not authenticate an individual person's identity; the reviewer label is not an independently verified identity.
 
-The three pilot AI observations are reused with their photo IDs and remain unverified suggestions. Other photos support manual assignment. Browsing/import/review makes no image-model call. The original Flickr image is not copied; the UI stores/render references, links to the original and offers an in-page zoom of the available preview.
+The three pilot AI observations are reused with their photo IDs and remain unverified suggestions. Other photos support manual assignment or explicit album analysis below. Browsing/import/review makes no image-model call. The original Flickr image is not copied; the UI stores/render references, links to the original and offers an in-page zoom of the available preview.
+
+## On-demand album AI
+
+The AI panel lets the reviewer process the selected album (up to 250 new photos per run), try three photos, or process the next ten. It uses the existing server-side `OPENAI_API_KEY` and requires `PHOTO_VISION_MODEL=gpt-6-luna`. It reads visible jersey numbers only; the deterministic matcher joins numbers to this game's verified lineup. Names are displayed inside the separate AI suggestions panel. Duplicate numbers show all candidates and require a team check; the manual roster list is explicitly labeled. AI never confirms an assignment.
+
+`POST analyze-start` accepts `{gameId,revision,limit,retryFailed}`; `POST analyze-next` accepts `{gameId,revision,jobId}` and processes at most one image. Both use the same Operations authorization, origin checks and Preview restriction as review writes. A database claim is saved before spending, preventing simultaneous duplicate calls. Structured results, model and returned token usage persist by photo ID in `analyses`; import preserves this cache, including successful empty results. Later model versions or changed source content do not automatically invalidate cached results in this pilot.
+
+The browser advances sequentially while open, showing progress and offering pause after the current image. Closing/reloading stops issuing more requests; an already accepted request may finish and save. Start again to process only the remainder. Each provider request times out after 35 seconds inside the existing 60-second function. Failures stop the run. Failed or uncertain calls are not silently retried: the reviewer must explicitly select the retry checkbox, acknowledging possible duplicate billing. Claims older than two minutes become interrupted failures on a new start. Auth/quota/rate errors show bounded categories, never provider text or secrets. Returned token counters exclude unknown usage for failed requests and the earlier pilot calls; there is no claimed enforced monthly spend cap.
+
+Result saves merge against the latest database revision, preserving human reviews written during analysis. A storage error never reports a successful save or automatically repeats a paid request. This is a browser-driven pilot queue, not an unattended background worker.
 
 ## Durable storage
 

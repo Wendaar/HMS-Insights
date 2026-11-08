@@ -19,13 +19,13 @@ export function validateObservations(value) {
   });
 }
 
-export async function analyzePhoto(imageUrl, {env = process.env, fetchImpl = fetch} = {}) {
+export async function analyzePhoto(imageUrl, {env = process.env, fetchImpl = fetch, timeoutMs = 60000} = {}) {
   if (!env.OPENAI_API_KEY?.trim()) throw new Error('Missing OPENAI_API_KEY');
   if (!env.PHOTO_VISION_MODEL?.trim()) throw new Error('Missing PHOTO_VISION_MODEL (vision + structured outputs required)');
   const url = new URL(imageUrl);
   if (url.protocol !== 'https:' || !/^(?:live\.staticflickr\.com|farm\d+\.staticflickr\.com)$/.test(url.hostname) || url.port || url.username || url.password) throw new Error('Expected an HTTPS Flickr image URL');
   const r = await fetchImpl('https://api.openai.com/v1/responses', {
-    method:'POST',redirect:'error',signal:AbortSignal.timeout(60000),
+    method:'POST',redirect:'error',signal:AbortSignal.timeout(timeoutMs),
     headers:{authorization:`Bearer ${env.OPENAI_API_KEY}`,'content-type':'application/json'},
     body:JSON.stringify({model:env.PHOTO_VISION_MODEL,store:false,max_output_tokens:4000,
       ...(env.PHOTO_VISION_MODEL==='gpt-6-luna'?{reasoning:{effort:'low'}}:{}),

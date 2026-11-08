@@ -6,6 +6,7 @@ import {normalizeLineup} from '../../photo-archive/lineup.mjs';
 import {fetchAlbum} from '../../photo-archive/flickr.mjs';
 import {suggestPlayers} from '../../photo-archive/matcher.mjs';
 import {pilotObservations} from '../../photo-archive/pilot-observations.mjs';
+import {analysisStats,createArchiveAnalysis} from './photo-archive-analysis.js';
 
 export const PHOTO_ARCHIVE_TOOL='photo-archive-preview';
 export const photoArchiveEnabled=env=>env.VERCEL_ENV==='preview' && env.VERCEL_GIT_COMMIT_REF==='codex/hms-photo-archive-pilot' || env.PHOTO_ARCHIVE_LOCAL==='1' && env.VERCEL_ENV!=='production';
@@ -38,9 +39,10 @@ export function createPhotoArchive(options={}){
   function requireStorage(){if(!ready)fail(503,'Databáze fotoarchivu není připojená. Změny se neuložily.');}
   function view(row,item){
     const state=row?.draft;
-    return {gameId:item.gameId,org:item.org,revision:row?.revision ?? 0,needsImport:!state,stats:archiveStats(state),
+    return {gameId:item.gameId,org:item.org,revision:row?.revision ?? 0,needsImport:!state,stats:archiveStats(state),analysisStats:analysisStats(state),
       state:state?{...state,audit:(state.audit || []).slice(-20),photos:state.photos.map(photo=>({...photo,
-        observations:pilotObservations[photo.id] || [],suggestions:suggestPlayers(state.players,pilotObservations[photo.id] || [])}))}:null};
+        analysis:state.analyses?.[photo.id] || (pilotObservations[photo.id]?{status:'complete',model:'gpt-6-luna',source:'pilot'}:null),
+        observations:state.analyses?.[photo.id]?.observations || pilotObservations[photo.id] || [],suggestions:suggestPlayers(state.players,state.analyses?.[photo.id]?.observations || pilotObservations[photo.id] || [])}))}:null};
   }
   async function loadSource(org,item){
     if(options.loadSource)return options.loadSource(org,item);
@@ -57,6 +59,7 @@ export function createPhotoArchive(options={}){
   }
   return {
     ready,
+    ...createArchiveAnalysis({env,store,context,view,requireStorage,fail,now,fetchImpl,analyzer:options.analyzer}),
     async catalog(org){
       if(org!=='PHM')fail(404,'Pilot fotoarchivu je nyní dostupný pro PHM.');
       const cases=await(options.readCases ?? readArchiveCases)();
@@ -77,6 +80,7 @@ export function createPhotoArchive(options={}){
       const merged=new Map((current?.draft?.photos || []).map(p=>[p.id,p]));for(const p of photos)merged.set(p.id,p);
       const state={schemaVersion:1,org,gameId:item.gameId,title:source.title,playedOn:source.playedOn,teams:source.teams,players:source.players,
         albumId:String(source.albumId),albumUrl:item.flickrAlbum,albumTotal:source.albumTotal,photos:[...merged.values()],reviews:current?.draft?.reviews || {},
+        analyses:current?.draft?.analyses || {},analysisJob:current?.draft?.analysisJob || null,
         importedAt:now(),audit:[...(current?.draft?.audit || []),{action:'import',at:now(),actor:reviewer}].slice(-1000)};
       const saved=await store.save(org,gameId.toLowerCase(),state,revision,null);
       if(!saved)fail(409,'Data se změnila během importu. Obnovte je.');return view(saved,item);
