@@ -72,18 +72,36 @@ The updated error handler reports only bounded provider error identifiers and a 
 
 Required user action: add API credits in the OpenAI organization that owns the key through [API Billing](https://platform.openai.com/settings/organization/billing/overview). The current key and model do not need to be changed on the evidence available. Once credit is available, explicitly rerun the small marked test. See [official error-code guidance](https://developers.openai.com/api/docs/guides/error-codes).
 
-## Current blocker and historical credential checks
+## Follow-up: three successful GPT-6 Luna image analyses
+
+After the user added API credit and changed the Vercel model, [Preview build evidence](https://vercel.com/wendaar/hms-insights/dpl_G2sBsM7m9gzVnqp2u247k5sqzLZn) for commit `4b747b181e83230286997c2d6b2e220ae16eecd0` confirmed `gpt-6-luna`, state `READY`, target Preview. All four HMS/Flickr ingestion cases passed again. **Three image calls completed successfully**; the fourth case made no image call because the global three-image budget was reached.
+
+| Case / Flickr photo ID | Model result (not manually verified) | Input tokens | Output tokens (includes reasoning) |
+| --- | --- | --- | --- |
+| 1 / 55634736411 | Three observations; possible `16` at subjective confidence 0.72 suppressed from matching; other numbers unreadable | 520 | 523 |
+| 2 / 55635051690 | Two observations; `22` at 0.98 proposes one roster candidate for review; another number unreadable | 520 | 228 |
+| 3 / 55633060430 | Two observations; `13` at 0.94 proposes one roster candidate for review; another number unreadable | 520 | 264 |
+
+No player was confirmed automatically. These are model readings and conservative candidate counts, not manually verified correct numbers or player identities. The two unique roster candidates remain `review`. The fourth album's images were not analyzed in this run.
+
+Total measured usage: **1,560 input tokens, 1,015 output tokens, zero cached input tokens**. The 550 reasoning tokens are included in output tokens and must not be billed a second time in the calculation. At the published Standard Luna rates of $0.10/M input and $0.50/M output, estimated model-token cost is **$0.0006635 for all three images**, or $0.00022117/image, excluding tax. This is calculated from returned usage, not reconciled against an invoice. [Model rates](https://developers.openai.com/api/docs/models/gpt-6-luna).
+
+Extrapolating this exact tiny sample gives about **$0.35 per 1,600-photo week** or **$1.53 per 6,933-photo month**. This is not a forecast or guaranteed cap: the three 1024px-preview inputs, visible player counts and short outputs do not establish the distribution of a full season. Crops, larger images, extra passes and harder scenes can increase usage. A larger manually labeled sample is still needed to evaluate cost and accuracy together.
+
+The test explicitly pins the Preview checker to Luna, uses low reasoning effort for Luna, and returns bounded token counters. An unexpected configured model is blocked before spending image credits. Full regression suite: **525/525 tests passed**. An account/project monthly hard spend limit has not been verified by this test. No full-album or recurring paid processing was enabled.
+
+## Current status and historical credential checks
 
 - `HMS_API_TOKEN` was unavailable during the initial local run. The follow-up Preview test above has now verified both authenticated endpoints and the lineup adapter for all four pilot cases.
 - The initial local run lacked `FLICKR_API_KEY`. The branch-specific Preview key and Flickr metadata/preview availability are now verified through the alias described above.
-- OpenAI key and model are now configured and have been used for real requests. Analysis is currently blocked by `credit_balance_exhausted`; zero successful image analyses and no measured recognition accuracy.
+- The previous OpenAI credit blocker is resolved. Three live Luna image analyses have now succeeded. Recognition accuracy and correct player identity remain unmeasured because manual labels/review are pending.
 
 Credential availability was checked without printing values in both the sandbox and the network-enabled process. No populated project `.env` files were found. Public HTML access does not establish Flickr API permission. No credentials were recovered from unrelated application stores.
 
 ## Automated checks
 
-- The initial **22/22 pilot tests passed**; five additional tests now cover Preview production exclusion, typo alias/redaction, the live-image budget, quota-stop behavior and safe error identifiers. CLI subprocess help, invalid arguments and exit codes, offline mode, Flickr redirects/metadata/pagination, identity binding and conservative matching remain covered.
-- The latest full repository `node --test --test-reporter=spec` run reported **523/523 passed, zero failures**. The initial suite had 518 tests, then expanded to 520 and 523 as the Preview/live checks were added. `pnpm install --frozen-lockfile` installed existing dependencies. The first attempt lacked `@vercel/blob` and had eight failures; those were resolved by installing the existing lockfile dependencies. No dependency declaration or lockfile changes were required.
+- The initial **22/22 pilot tests passed**; seven additional tests now cover Preview production exclusion, typo alias/redaction, the live-image budget, quota-stop behavior, safe error identifiers, Luna usage counters and unexpected-model blocking. CLI subprocess help, invalid arguments and exit codes, offline mode, Flickr redirects/metadata/pagination, identity binding and conservative matching remain covered.
+- The latest full repository `node --test --test-reporter=spec` run reported **525/525 passed, zero failures**. `pnpm install --frozen-lockfile` installed existing dependencies. The first attempt lacked `@vercel/blob` and had eight failures; those were resolved by installing the existing lockfile dependencies. No dependency declaration or lockfile changes were required.
 - Network requests from the sandbox were blocked; the successful live validation used the approved network-enabled execution.
 
-Next real test: restore OpenAI API credit and explicitly rerun the small marked Preview image test. Inspect the resulting observations and manually label images before evaluating accuracy. Human review UI and any persistent archive are outside this implemented CLI pilot.
+Next evaluation: manually review the three model readings, then use a larger representative labeled sample before expanding paid processing. Human review UI, a persistent archive/cache and verified monthly spend enforcement remain outside this implemented CLI pilot.
