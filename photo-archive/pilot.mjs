@@ -1,3 +1,4 @@
+import { fetchGameDetail, fetchGameLineup, hmsConfigFromEnv } from '../src/hms/client.js';
 #!/usr/bin/env node
 // Read-only HMS + Flickr ingestion pilot; Node 20+.
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
@@ -47,17 +48,30 @@ async function fetchAlbum(photoSetUrl) {
   return {photosetId,canonical,total,photos:photos.slice(0,limit)};
 }
 async function fetchLineup(gameId) {
-  const template = process.env.HMS_LINEUP_URL_TEMPLATE;
-  const token = process.env.HMS_API_TOKEN;
-  if (!template || !token) fail('Missing HMS_LINEUP_URL_TEMPLATE or HMS_API_TOKEN');
-  if (!template.includes('{gameId}')) fail('HMS_LINEUP_URL_TEMPLATE must include {gameId}');
-  const url = template.replaceAll('{gameId}',encodeURIComponent(gameId));
-  if (new URL(url).protocol !== 'https:') fail('HMS API URL must be HTTPS');
-  const header = process.env.HMS_AUTH_HEADER || 'Authorization';
-  const prefix = process.env.HMS_AUTH_PREFIX ?? 'Bearer ';
-  const response = await get(url, {[header]:prefix + token});
-  return response.json();
+  const config = hmsConfigFromEnv();
+  const options = {config: {...config, timeoutMs:20000, retries:1}};
+  const [detail,lineup] = await Promise.all([
+    fetchGameDetail(gameId,options),
+    fetchGameLineup(gameId,options)
+  ]);
+  if (detail?.gameId && detail.gameId.toLowerCase() !== gameId.toLowerCase()) {
+    fail('HMS returned a game different from the requested ID');
+  }
+  const rows = Array.isArray(lineup) ? lineup : lineup?.Lineups;
+  if (!Array.isArray(rows)) fail('HMS lineup response has no Lineups array');
+  if (lineup?.gameId && lineup.gameId.toLowerCase() !== gameId.toLowerCase()) {
+    fail('HMS returned a lineup for a different game');
+  }
+  const players = rows.filter(row=>!row.isDeleted).map(row=>({
+    playerId: row.playerId ?? row.Player?.playerId ?? null,
+    teamId: row.teamId ?? null,
+    jerseyNumber: row.number == null ? null : String(row.number),
+    name: [row.Player?.firstName,row.Player?.lastName].filter(Boolean).join(' ').trim() || row.name || null
+  })).filter(row=>row.playerId && row.teamId);
+  return { gameId, homeTeamId:detail?.homeTeamId ?? detail?.HomeTeam?.teamId ?? null,
+    awayTeamId:detail?.awayTeamId ?? detail?.AwayTeam?.teamId ?? null, players };
 }
+
 const summary = [];
 for (const [i, test] of cases.entries()) {
   const item = {case:i+1, gameId:test.gameId, org:test.org, flickrAlbum:test.flickrAlbum, hms:{ok:false}, flickr:{ok:false}};
@@ -65,7 +79,7 @@ for (const [i, test] of cases.entries()) {
     const lineup = await fetchLineup(test.gameId);
     // Store raw data locally for adapter inspection; do not publish.
     await writeFile(join(out,'case-'+(i+1)+'-lineup.json'),JSON.stringify(lineup,null,2));
-    item.hms = {ok:true, saved:true};
+    item.hms = {ok:true, players:lineup.players.length, withNumbers:lineup.players.filter(p=>p.jerseyNumber!==null).length};
   } catch (err) { item.hms = {ok:false,error:String(err.message)}; }
   try {
     const album = await fetchAlbum(test.flickrAlbum);
