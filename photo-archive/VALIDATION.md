@@ -1,6 +1,6 @@
 # Validation — 2026-11-08
 
-Branch: `codex/hms-photo-archive-pilot`, PR #61. No merge, deployment command or HMS mutation was performed. Production source files are unchanged by this continuation.
+Branch: `codex/hms-photo-archive-pilot`, PR #61. No merge or HMS mutation was performed. Production source files and deployment are unchanged. Initial local tests made no deployment; the follow-up below used an isolated Preview build.
 
 ## Live evidence
 
@@ -23,9 +23,26 @@ node photo-archive/pilot.mjs --analyze --limit 2 --vision-limit 1
 
 Outcome: **resolution 4/4 passed; exit code 1** because authenticated stages were blocked. The local report was generated at `2026-11-08T19:14:46.936Z`. It records zero vision calls.
 
-## Blocked / not verified live
+## Follow-up: existing Vercel HMS token verified live
 
-- `HMS_API_TOKEN` was unavailable: no authenticated `/game` or `/gameLineup` call was made. Real response field compatibility and actual roster contents remain unverified.
+After the user authorized reuse of the existing HMS Insights Vercel token, the saved Vercel CLI login was refreshed. Project metadata confirmed `HMS_API_TOKEN` exists as a Sensitive/Secret variable for Production and Preview. The value cannot be exported through the environment-variable API; it was not printed, saved, downgraded or copied.
+
+A minimal isolated **Preview** build ran the unchanged `fetchLineup` adapter with the existing injected token. The test made eight read-only HMS requests: `/game` and `/gameLineup` for each of the four fixed pilot game IDs. All four passed game/team/player identity validation:
+
+| Case | Usable players | Players with jersey numbers |
+| --- | --- | --- |
+| 1 | 25 | 25 |
+| 2 | 27 | 27 |
+| 3 | 28 | 28 |
+| 4 | 24 | 24 |
+
+Evidence: [private Vercel build logs](https://vercel.com/wendaar/hms-insights/dpl_FLxpV61mt4PN4bMLxKLYHUcTnoMq), deployment state `READY`, deployment target `null` (Preview). Logs contain only fixed game IDs, status and aggregate counts. No roster names, token values or raw HMS responses were published. The deployment's only public output is a generic test-complete page. No production alias, environment variable, project setting or main branch was changed.
+
+**The HMS credential/live-lineup blocker is resolved for execution inside Vercel Preview.** The local shell still cannot export the write-only Secret; subsequent authenticated tests should execute where Vercel injects it.
+
+## Remaining blockers / initial unavailable credentials
+
+- `HMS_API_TOKEN` was unavailable during the initial local run. The follow-up Preview test above has now verified both authenticated endpoints and the lineup adapter for all four pilot cases.
 - `FLICKR_API_KEY` was unavailable: no `flickr.photosets.getPhotos` call was made. Album counts, API visibility and image previews remain unverified.
 - `OPENAI_API_KEY` was unavailable; `PHOTO_VISION_MODEL` must also be configured before analysis: no live image analysis was made. No recognition accuracy, recall or correct player assignments have been measured.
 

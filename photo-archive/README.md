@@ -50,3 +50,11 @@ Generated results are gitignored and may contain player information. They are no
 ## Validation status
 
 See [VALIDATION.md](VALIDATION.md) for the observed live results and remaining blockers. Unit and mocked integration tests establish software behavior, not real-world recognition accuracy.
+
+## Obtaining and storing the Flickr key
+
+Flickr currently requires a **Pro** subscription to request a new API key. Sign in, open [API Keys](https://www.flickr.com/services/api/misc.api_keys.html), choose **Apply for your key online now**, and select Non-Commercial or Commercial according to the actual intended use. Suggested application name: `HMS Photo Archive`; describe read-only access to public hockey match albums and jersey-number analysis. Use the issued **Key**, not the application Secret. Public `flickr.photosets.getPhotos` requests require the API key but do not require a Flickr user OAuth login.
+
+Enter the key directly in the Vercel dashboard for `hms-insights` → Environment Variables (also accessible through Settings → Environment Variables): name `FLICKR_API_KEY`, type **Secret** (legacy UI: Sensitive), environment **Preview**. Keep Production unselected for this pilot. Do not use `NEXT_PUBLIC_` or `VITE_` prefixes and do not send the value in chat or commit it. A new Preview execution will receive the key; the local CLI does not automatically inherit Vercel Secrets.
+
+Sources: [Flickr key application instructions and Pro requirement](https://www.flickrhelp.com/hc/en-us/articles/4404070036884-Flickr-API), [public photoset API authentication requirements](https://www.flickr.com/services/api/flickr.photosets.getPhotos.html), [Vercel Secret variables](https://vercel.com/docs/environment-variables/sensitive-environment-variables).
