@@ -42,3 +42,12 @@ test('provider rate/quota diagnostics preserve identifiers without exposing raw 
     assert.ok(!err.message.includes('private account'));return true;
   });
 });
+
+test('Luna uses low reasoning effort and returns only token usage counters',async()=>{
+  const result=await analyzePhoto(photo,{env:{...env,PHOTO_VISION_MODEL:'gpt-6-luna'},fetchImpl:async(url,init)=>{
+    assert.equal(JSON.parse(init.body).reasoning.effort,'low');
+    return Response.json({...completed({observations:[]}),model:'gpt-6-luna',usage:{input_tokens:1200,output_tokens:200,total_tokens:1400,
+      input_tokens_details:{cached_tokens:100},output_tokens_details:{reasoning_tokens:50},private_field:'do not forward'}});
+  }});
+  assert.deepEqual(result.usage,{inputTokens:1200,outputTokens:200,cachedInputTokens:100,reasoningTokens:50,totalTokens:1400});
+});

@@ -5,7 +5,7 @@ import {analyzePhoto} from './vision.mjs';
 import {suggestPlayers} from './matcher.mjs';
 
 // Build-log diagnostics only: no tokens, roster identities, image URLs or files.
-export async function runPreviewCheck({env=process.env,fetchImpl=fetch,log=console.log,analyze=false}={}) {
+export async function runPreviewCheck({env=process.env,fetchImpl=fetch,log=console.log,analyze=false,expectedModel=null}={}) {
   if (env.VERCEL_ENV !== 'preview') throw new Error('Live check requires Vercel Preview');
   const flickrEnv={FLICKR_API_KEY:env.FLICKR_API_KEY || env.FLICKT_API_KEY};
   const safeError=err=>{
@@ -41,13 +41,14 @@ export async function runPreviewCheck({env=process.env,fetchImpl=fetch,log=conso
       if(visionBlocked) result.vision={ok:false,attempted:false,error:visionBlocked};
       else if(visionCalls>=3) result.vision={ok:false,attempted:false,error:'Global 3-image test budget reached'};
       else if(!env.OPENAI_API_KEY || !env.PHOTO_VISION_MODEL) result.vision={ok:false,attempted:false,error:'Missing OPENAI_API_KEY or PHOTO_VISION_MODEL'};
+      else if(expectedModel && env.PHOTO_VISION_MODEL!==expectedModel) result.vision={ok:false,attempted:false,error:'Configured model differs from the requested low-cost test model'};
       else if(!lineup || !photo) result.vision={ok:false,attempted:false,error:'Blocked by missing lineup or photo preview'};
       else {
         visionCalls++;
         try {
           const visual=await analyzePhoto(photo.previewUrl,{env,fetchImpl});
           const suggestions=suggestPlayers(lineup.players,visual.observations);
-          result.vision={ok:true,attempted:true,photoId:photo.id,model:visual.model,responseId:visual.responseId,
+          result.vision={ok:true,attempted:true,photoId:photo.id,model:visual.model,responseId:visual.responseId,usage:visual.usage,
             observations:visual.observations.map((o,i)=>({observedNumber:o.observedNumber,eligibleNumber:o.jerseyNumber,confidence:o.confidence,
               status:suggestions[i].status,candidateCount:suggestions[i].candidates.length,reason:suggestions[i].reason})),requiresHumanReview:true};
         } catch(err) {

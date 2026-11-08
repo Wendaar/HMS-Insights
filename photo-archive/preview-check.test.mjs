@@ -50,3 +50,9 @@ test('quota rejection stops further paid attempts while all ingestion cases cont
   assert.ok(results.every(r=>r.hms.ok && r.flickr.ok));assert.equal(results[1].vision.attempted,false);
   assert.ok(JSON.stringify(results).includes('private provider details')===false);
 });
+
+test('an unexpected configured model cannot spend credits in a model-pinned test',async()=>{
+  let calls=0;
+  const results=await runPreviewCheck({env:configured,analyze:true,expectedModel:'gpt-6-luna',log:()=>{},fetchImpl:pipelineFetch(()=>assert.fail('No image calls allowed'),()=>calls++)});
+  assert.equal(calls,0);assert.ok(results.every(r=>r.vision.attempted===false && /differs/.test(r.vision.error)));
+});

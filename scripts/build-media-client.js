@@ -9,5 +9,5 @@ console.log('Media catalog and direct Blob upload client built.');
 if (process.env.VERCEL_ENV === 'preview' && process.env.VERCEL_GIT_COMMIT_REF === 'codex/hms-photo-archive-pilot') {
   const {runPreviewCheck}=await import('../photo-archive/preview-check.mjs');
   // Explicit commit marker keeps ordinary builds from spending image-model credits.
-  await runPreviewCheck({analyze:(process.env.VERCEL_GIT_COMMIT_MESSAGE || '').includes('[photo-vision-test]')});
+  await runPreviewCheck({analyze:(process.env.VERCEL_GIT_COMMIT_MESSAGE || '').includes('[photo-vision-test]'),expectedModel:'gpt-6-luna'});
 }
