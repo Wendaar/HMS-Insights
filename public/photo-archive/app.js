@@ -30,7 +30,7 @@ async function loadCatalog(){
 async function loadCase(gameId=$('game-select').value,targetPhoto=null){
   if(!gameId)return;const generation=++caseRequest;
   const data=await api('case',{query:{gameId}});if(generation!==caseRequest)return;
-  current=data;selectedId=targetPhoto;chosen.clear();$('player-search').value='';$('note').value='';$('verified').checked=false;
+  current=data;selectedId=targetPhoto || data.state?.photos.find(p=>p.suggestions.some(s=>s.candidates.length))?.id || null;chosen.clear();$('player-search').value='';$('note').value='';$('verified').checked=false;
   renderCase();message(data.needsImport?'Vyberte Načíst album pro první import.':'Načteno z uloženého fotoarchivu.');
 }
 function renderCase(){
@@ -138,7 +138,10 @@ async function initialize(){
   const access=await api('access');$('login').hidden=access.authorized;$('workspace').hidden=!access.authorized;$('logout').hidden=!access.authorized;
   if(!access.configured){message('Kód Operations pro PHM zatím není nastavený.',true);return;}
   if(!access.authorized){message('Přihlaste se kódem Operations pro PHM.');return;}
-  await loadCatalog();await loadCase();if(!access.storageReady)message('Databáze není připojená. Ukládání zatím není dostupné.',true);
+  await loadCatalog();const params=new URLSearchParams(location.search),requestedGame=params.get('gameId'),requestedPhoto=params.get('photoId');
+  if(catalog.some(c=>same(c.gameId,requestedGame)))$('game-select').value=catalog.find(c=>same(c.gameId,requestedGame)).gameId;
+  if(requestedPhoto)$('status-filter').value='all';
+  await loadCase($('game-select').value,requestedPhoto);if(!access.storageReady)message('Databáze není připojená. Ukládání zatím není dostupné.',true);
 }
 $('login-form').onsubmit=event=>{event.preventDefault();task(async()=>{const code=$('access-code').value;try{await api('session',{bearer:code});}finally{$('access-code').value='';}await initialize();});};
 $('logout').onclick=()=>task(async()=>{await api('logout');current=null;archive=[];chosen.clear();await initialize();});

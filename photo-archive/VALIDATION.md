@@ -121,3 +121,21 @@ Local browser QA used explicitly synthetic players and placeholder images: login
 The full repository suite passed **534/534** tests and the media-client build completed successfully. Nine new automated tests cover authorization/environment/origin boundaries, safe import and refresh, multiple assignments, stable player IDs across jersey changes, revision conflicts, reset/audit, protected photo projections, storage failure and local routes.
 
 Studio, Insights, Broadcast and Socials have not yet been changed to consume archive photos. A protected confirmed-only `player-photos` API projection is available for that next integration. No HMS write, main-branch update, Production deployment, new image-model spending or secret change was performed. See [REVIEW-APP.md](REVIEW-APP.md) for the route, data contract and exact scope.
+
+## Follow-up: on-demand album AI — 2026-11-09
+
+Commit `d427e144dc4c89468d2b2b01186c8e741e52f012` added the album AI panel, sequential authenticated actions, durable per-photo analysis cache and explicit retry behavior. [Private Preview build evidence](https://vercel.com/wendaar/hms-insights/dpl_G7pApVASPt9qu1ELTTraSDsYEQ1k) reports `READY`. The explicit `[photo-album-ai-smoke]` marker exercised the same authorized `analyze-start` / `analyze-next` handlers used by the browser, using the injected Operations credential in memory. It analyzed exactly three previously uncached photos from case 1 with `gpt-6-luna`, then reconstructed the service and verified every result in the real Preview database. This is separate from the older CLI three-image test. Ordinary builds still make no model call.
+
+| Photo ID | Status | Roster candidates | Input / output tokens |
+| --- | --- | --- | --- |
+| 55634736421 | complete | 0 | 520 / 367 |
+| 55635158920 | complete | 1 | 520 / 143 |
+| 55633749902 | complete | 0 | 520 / 507 |
+
+All three results persisted; the run completed after three requests. Total returned usage: 1,560 input, 1,017 output, 2,577 total tokens, zero cached input. Reasoning tokens are already included in output. No real assignment was confirmed. Candidate count is not verified identification accuracy. The three original pilot observations remain available without new calls.
+
+The live new route rendered its Operations login screen. Local browser QA on synthetic data verified start, progress, pause request, cached results after reload, explicit display of candidate names and separate manual roster controls. Synthetic names/screenshots are not evidence of real-image accuracy. A real authenticated browser click-through remains unverified because the private Operations code was not exported; the live smoke test independently verified the actual HTTP handler and durable model-result path.
+
+The full automated suite passed **540/540** tests; the media-client build passed. Six new tests cover durable reuse/resume, no duplicate paid calls under concurrency, preserving human reviews during model requests, quota-stop/redaction, explicit failed/interrupted retries, successful empty-result caching, bounds and HTTP authorization/model guards. The UI can deep-link a game/photo and initially favors an available player suggestion. Final documentation-only/unmarked deployment makes no additional image-model calls.
+
+Remaining scope: unattended background workers, automatic cache invalidation for changed image content or model versions, a general enforced monthly spend cap, larger labeled recognition evaluation and downstream Studio/Insights/Broadcast/Socials pickers. The album operation itself is implemented; it needs the browser left open to advance between photos. See REVIEW-APP.md for failure/unknown-charge handling.
