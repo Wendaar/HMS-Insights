@@ -81,6 +81,13 @@ test('missing durable storage cannot report a successful save',async()=>{
   const service=createPhotoArchive({env,readCases:async()=>cases});assert.equal(service.ready,false);
   await assert.rejects(service.importCase('PHM',game,0),e=>e.status===503);
 });
+test('in-progress selections persist but enter the player archive only after explicit closure',async()=>{
+  const {service,store}=fixture();await service.importCase('PHM',game,0);let v=await service.decide('PHM',decision(1,{decision:'draft'}),'operations:PHM');
+  assert.equal(v.stats.inProgress,1);assert.equal(v.stats.confirmed,0);assert.deepEqual(await service.archive('PHM'),[]);
+  const reopened=createPhotoArchive({env,store,readCases:async()=>cases});assert.equal((await reopened.read('PHM',game)).state.reviews['55635051690'].players[0].playerId,a);
+  v=await reopened.decide('PHM',decision(v.revision),'operations:PHM');assert.equal(v.stats.inProgress,0);assert.equal((await reopened.archive('PHM')).length,1);
+  v=await reopened.decide('PHM',decision(v.revision,{decision:'draft',playerIds:[]}),'operations:PHM');assert.equal(v.stats.inProgress,1);assert.deepEqual(await reopened.archive('PHM'),[]);
+});
 test('local app and API routes are served through the existing function without adding a serverless function',async()=>{
   if(!server.listening)await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   const base='http://127.0.0.1:'+server.address().port;

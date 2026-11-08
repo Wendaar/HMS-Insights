@@ -10,6 +10,7 @@ export function normalizeLineup(gameId,detail,lineup) {
   const awayTeamId = detail.awayTeamId ?? detail.AwayTeam?.teamId;
   if (!homeTeamId || !awayTeamId) throw new Error('HMS game has no team identities');
   const players = [];
+  const goalieIds=new Set([...(detail.GameEventSaves || []).filter(e=>!e.isDeleted).map(e=>e.savedByPlayerId),...(detail.GameEventGoals || []).filter(e=>!e.isDeleted).map(e=>e.allowedByPlayerId)].filter(Boolean).map(id=>id.toLowerCase()));
   for (const row of rows) {
     if (row.isDeleted) continue;
     if (row.gameId && !equal(row.gameId,gameId)) throw new Error('HMS lineup row belongs to a different game');
@@ -17,7 +18,9 @@ export function normalizeLineup(gameId,detail,lineup) {
     if (row.playerId && row.Player?.playerId && !equal(row.playerId,row.Player.playerId)) throw new Error('Conflicting HMS player identities');
     if (!playerId || !row.teamId) continue;
     if (![homeTeamId,awayTeamId].some(id=>equal(id,row.teamId))) throw new Error('HMS lineup team is not in this game');
-    players.push({playerId,teamId:row.teamId,jerseyNumber:row.number == null?null:String(row.number),
+    const isGoalie=row.ListPosition?.isGoalie===true || goalieIds.has(playerId.toLowerCase());
+    const role=isGoalie?'goalie':row.ListPosition?.isGoalie===false?'skater':'unknown';
+    players.push({playerId,teamId:row.teamId,jerseyNumber:row.number == null?null:String(row.number),role,
       name:[row.Player?.firstName,row.Player?.lastName].filter(Boolean).join(' ').trim() || row.name || null});
   }
   if (!players.length) throw new Error('HMS lineup contains no usable players');

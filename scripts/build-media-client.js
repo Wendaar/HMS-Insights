@@ -18,4 +18,8 @@ if (process.env.VERCEL_ENV === 'preview' && process.env.VERCEL_GIT_COMMIT_REF ==
     const {smokeAlbumAnalysis}=await import('../photo-archive/album-ai-smoke.mjs');
     await smokeAlbumAnalysis();
   }
+  if((process.env.VERCEL_GIT_COMMIT_MESSAGE || '').includes('[photo-context-smoke]')){
+    const {smokeJerseyContext}=await import('../photo-archive/context-smoke.mjs');
+    await smokeJerseyContext();
+  }
 }

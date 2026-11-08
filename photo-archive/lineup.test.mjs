@@ -5,7 +5,7 @@ const detail={gameId:'game',homeTeamId:'home',awayTeamId:'away'};
 const row={gameId:'game',teamId:'home',number:0,Player:{playerId:'p',firstName:'Test',lastName:'Player'}};
 test('lineup adapter preserves zero, names, nested IDs and removes deleted rows',()=>{
   const data=normalizeLineup('GAME',detail,{gameId:'game',Lineups:[row,{...row,isDeleted:true}]});
-  assert.deepEqual(data.players,[{playerId:'p',teamId:'home',jerseyNumber:'0',name:'Test Player'}]);
+  assert.deepEqual(data.players,[{playerId:'p',teamId:'home',jerseyNumber:'0',name:'Test Player',role:'unknown'}]);
 });
 test('rejects wrong game, row game, team, identity conflicts and empty/unknown shape',()=>{
   assert.throws(()=>normalizeLineup('wrong',detail,[row]),/identity/);

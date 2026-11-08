@@ -58,3 +58,10 @@ test('AI HTTP actions require Operations auth, POST, same origin, storage and pi
   const bad=createPhotoArchive({...f.options,env:{...env,PHOTO_VISION_MODEL:'unexpected'}});await assert.rejects(start(bad),e=>e.status===503);
   assert.equal((await call('POST',{authorization:'Bearer fixture-secret'})).code,200);assert.equal(f.calls,0);
 });
+test('older cached observations are re-read only after explicit upgrade and only for the requested photo',async()=>{
+  const f=await setup();let row=await f.store.get();row.draft.analyses={'101':{status:'complete',observations:output.observations,model:'gpt-6-luna'}};
+  await f.store.save('PHM',game,row.draft,row.revision);let v=await f.service.read('PHM',game);assert.equal(v.analysisStats.outdated,1);
+  v=await start(f.service,v.revision,{photoId:'101'});assert.equal(v.state.analysisJob.targets.length,0);assert.equal(f.calls,0);
+  v=await start(f.service,v.revision,{photoId:'101',upgradeOld:true});v=await next(f.service,v);assert.equal(f.calls,1);assert.equal(v.analysisStats.outdated,0);assert.equal(v.state.photos[0].analysis.analysisVersion,2);
+  await assert.rejects(start(f.service,v.revision,{photoId:'foreign',upgradeOld:true}),e=>e.status===400);
+});
