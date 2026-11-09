@@ -5,7 +5,7 @@ import {themeVariables,teamDivisions,seasonMedia} from '../public/league/present
 import {createPublicPortalHandler,portalStorageNamespace} from '../src/web/public-portal-handler.js';
 import {toolStore} from '../src/infrastructure/tool-instances.js';
 import {gameReportNavigation} from '../public/games/navigation.js';
-import {insightsEmbedCode,insightsWidgetUrl} from '../public/league/embed-code.js';
+import {insightsAccent,insightsEmbedCode,insightsWidgetUrl} from '../public/league/embed-code.js';
 const id=n=>`${String(n).padStart(8,'0')}-1111-4111-8111-111111111111`;
 const env={HMS_PHM_ORGANIZATION_ID:id(1),HMS_EUCHL_ORGANIZATION_ID:id(2),HMS_PHM_TOOLS_ADMIN_SECRET:'phm-secret',HMS_EUCHL_TOOLS_ADMIN_SECRET:'euchl-secret'};
 const seasons=[{organization_id:id(1),competition_id:id(10),competition_name:'PHM Cup',season_id:id(11),season_name:'2026–2027'},{organization_id:id(1),competition_id:id(12),competition_name:'Other PHM Cup',season_id:id(13),season_name:'2026–2027'}];
@@ -103,6 +103,8 @@ test('Insights widget code is organization scoped, language aware and contains n
  assert.equal(insightsWidgetUrl(origin,'bnhlh','en'),'https://public.heromanagementsystem.com/widgets/insights/bnhlh?lang=en');
  const code=insightsEmbedCode(origin,'phm','cs');assert.match(code,/^<iframe /);assert.match(code,/height="720"/);assert.match(code,/widgets\/insights\/phm\?lang=cs/);assert.doesNotMatch(code,/secret|token|authorization/i);
  assert.throws(()=>insightsEmbedCode(origin,'../admin','cs'),TypeError);
+ assert.equal(insightsAccent('phm'),'#087b91');assert.equal(insightsAccent('phm','#12AABB'),'#12aabb');assert.equal(insightsAccent('phm','red'),'#087b91');
+ const branded=insightsEmbedCode(origin,'phm','cs','#12aabb');assert.match(branded,/accent=%2312aabb/);
 });
 test('standalone Insights widget is embeddable without weakening the Hub or Site Builder policy',async()=>{
  const {server}=await import('../src/server.js');await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
