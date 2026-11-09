@@ -34,7 +34,7 @@ export function publicSeasonGame(game,seasonId,date){
     return {id:isGameId(value?.teamId)?value.teamId.toLowerCase():null,name:text(value?.name),logoUrl:sportingImage(value?.logoUrl)??sportingImage(value?.logoUrls?.md)};
   };
   const status=text(game.status)?.toUpperCase()??'UNKNOWN';
-  const live=['PLAYING','IN PROGRESS','IN_PROGRESS','LIVE','STARTED'].includes(status);
+  const live=['RUNNING','PLAYING','IN PROGRESS','IN_PROGRESS','LIVE','STARTED'].includes(status);
   const scored=status==='FINISHED'||live;
   const reference=value=>({id:isGameId(value?.groupId??value?.phaseId)?(value.groupId??value.phaseId).toLowerCase():null,name:text(value?.name)});
   return {id:game.gameId.toLowerCase(),date,time:/^(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/.test(game.startTime??'')?game.startTime.slice(0,5):null,status,live,

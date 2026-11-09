@@ -32,3 +32,5 @@ Stávající stránky ani jejich původní pohled se tím nemění. Následujíc
 - Přímý Game Report nebo původní detail HMS se z vloženého přehledu otevře v novém panelu.
 - `lang=en` přepne angličtinu. `embed=1` zachová kompaktní prostor a odkazy pro vložený pohled.
 - Povolené weby: `https://phmcup.cz`, `https://www.phmcup.cz`, `https://bnhlh.cz`, `https://www.bnhlh.cz`. Není potřeba přihlášení ani secret.
+
+Pohled **Dnes** navíc automaticky obnovuje průběžné skóre po 30 sekundách. Rozehrané zápasy označuje zeleně jako Živě/Live. Skrytý panel nebo iframe obnovování pozastaví; ostatní pohledy se automaticky neobnovují. Při výpadku zůstává poslední skóre s upozorněním.

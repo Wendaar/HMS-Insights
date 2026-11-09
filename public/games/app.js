@@ -1,3 +1,4 @@
+import {createTodayPoller,readTodayPages} from './live.js';
 import {sportingImage} from '../game-report-media.js';
 import {publicOutputUrl} from '../public-output.js';
 import {gameReportNavigation} from './navigation.js';
@@ -5,7 +6,7 @@ import {reportLanguage,reportLocale} from '../game-report-i18n.js';
 const $=id=>document.getElementById(id),filters=['Today','Yesterday','+7 days','-7 days','Past','Future'];
 const words={cs:{games:'Zápasy',tba:'Tým bude určen',Today:'Dnes',Yesterday:'Včera','+7 days':'+7 dní','-7 days':'−7 dní',Past:'Minulé',Future:'Budoucí',Date:'Vybrané datum',group:'Skupina',phase:'Fáze',team:'Tým',date:'Datum',search:'Vyhledat',all:'Vše',find:'Hledat',placeholder:'Tým, stadion, jméno…',refresh:'Obnovit ↻',loading:'Načítání zápasů…',empty:'Tomuto výběru neodpovídají žádné zápasy. Zkuste jiný den nebo upravte filtry.',error:'Zápasy se nepodařilo načíst. Zkuste přehled obnovit.',invalid:'Zkontrolujte Season ID a filtry v odkazu.',missing:'Pro otevření přehledu je potřeba seasonId v URL. Můžete použít stejné Season ID jako v původním přehledu HMS.',rate:'HMS dočasně omezuje požadavky. Vyčkejte prosím a obnovte přehled.',final:'Konečný',live:'Živě',scheduled:'Plánováno',cancelled:'Zrušeno',postponed:'Odloženo',unknown:'Zápas',report:'Game Report →',hms:'Detail v HMS ↗',referee:'Rozhodčí',timekeeper:'Časoměřič',older:'← Starší',newer:'Novější →',previous:'← Předchozí',next:'Další →',source:'Zdroj: HMS · Časy dle zápisu HMS · Načteno',availability:'Game Report je dostupný u již importovaných zápasů. Ostatní zápasy mají odkaz na veřejný detail HMS.',selected:'Vybraný filtr',of:'z'},en:{games:'Games',tba:'Team to be confirmed',Today:'Today',Yesterday:'Yesterday','+7 days':'+7 days','-7 days':'−7 days',Past:'Past',Future:'Future',Date:'Selected date',group:'Group',phase:'Phase',team:'Team',date:'Date',search:'Search',all:'All',find:'Search',placeholder:'Team, venue, name…',refresh:'Refresh ↻',loading:'Loading games…',empty:'No games match this selection. Try another date or adjust the filters.',error:'Games could not be loaded. Please refresh the schedule.',invalid:'Please check the Season ID and filters in the link.',missing:'A seasonId is required in the URL. Use the same Season ID as the original HMS schedule.',rate:'HMS is temporarily limiting requests. Please wait and refresh the schedule.',final:'Final',live:'Live',scheduled:'Scheduled',cancelled:'Cancelled',postponed:'Postponed',unknown:'Game',report:'Game Report →',hms:'HMS details ↗',referee:'Referees',timekeeper:'Timekeepers',older:'← Earlier',newer:'Later →',previous:'← Previous',next:'Next →',source:'Source: HMS · Times as entered in HMS · Loaded',availability:'Game Reports are available for imported games. Other games link to their public HMS details.',selected:'Selected filter',of:'of'}};
 const html=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let params=new URLSearchParams(location.search),lang=reportLanguage(params.get('lang')),last=null,controller=null,requestId=0,busy=false,autoStopped=false;
+let params=new URLSearchParams(location.search),lang=reportLanguage(params.get('lang')),last=null,controller=null,requestId=0,busy=false,autoStopped=false,pageInView=true,liveFailed=false;
 document.documentElement.classList.toggle('embedded-games',params.get('embed')==='1');
 const t=key=>words[lang][key]??key;
 const dateLabel=(date,long=false)=>new Intl.DateTimeFormat(reportLocale(lang),{day:'numeric',month:long?'long':'short',year:'numeric',...(long?{weekday:'long'}:{}),timeZone:'UTC'}).format(new Date(date+'T12:00:00Z'));
@@ -20,6 +21,7 @@ function labels(){
   document.documentElement.lang=lang;document.title=t('games')+' | HMS Game Center';$('heading').textContent=t('games');
   document.querySelectorAll('[data-label]').forEach(node=>node.textContent=t(node.dataset.label));
   $('search-button').textContent=t('find');$('search').placeholder=t('placeholder');$('copy-link').textContent=lang==='en'?'Copy link':'Kopírovat odkaz';
+  liveNotice();
   $('load-more').textContent=busy?(lang==='en'?'Loading…':'Načítání…'):(lang==='en'?'Load more games':'Načíst další zápasy');
   document.querySelectorAll('[data-lang]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.lang===lang)));
   $('period-tabs').replaceChildren(...filters.map(filter=>{const button=document.createElement('button');button.type='button';button.textContent=t(filter);button.dataset.filter=filter;button.setAttribute('aria-pressed',String(filter===(params.get('filter')??'Today')));return button;}));
@@ -38,7 +40,7 @@ function gameRow(game){
   const hms='https://prod.hms.wootera.net/embed/game?'+new URLSearchParams({gameId:game.id,lang});
   const details=[game.venue,game.group.name,game.phase.name].filter(Boolean).map(value=>`<span>${html(value)}</span>`).join('');
   const staff=[[t('referee'),game.referee],[t('timekeeper'),game.timekeeper]].filter(([,value])=>value).map(([label,value])=>`<span class="staff">${html(label)}: ${html(value)}</span>`).join('');
-  return `<article class="game-row"><div class="game-time">${game.time?`<time datetime="${html(game.date+'T'+game.time)}">${html(game.time)}</time>`:''}<span class="status ${game.live?'live':''}">${html(status(game))}</span></div><div class="team home">${logo(game.home)}<strong>${html(game.home.name??t('tba'))}</strong></div><span class="score ${scored?'':'unplayed'}">${html(score)}</span><div class="team away">${logo(game.away)}<strong>${html(game.away.name??t('tba'))}</strong></div><div class="game-action">${game.reportAvailable?`<a class="report-link" href="${html(report.href)}"${report.target?' target="_blank" rel="noopener noreferrer"':''} aria-label="${html(t('report')+' '+game.home.name+' — '+game.away.name)}">${html(t('report'))}</a>`:`<a class="hms-link" href="${html(hms)}" target="_blank" rel="noopener noreferrer">${html(t('hms'))}</a>`}</div><div class="game-meta">${details}${game.name?`<span class="game-name">${html(game.name)}</span>`:''}${staff}</div></article>`;
+  return `<article class="game-row" data-game-id="${html(game.id)}"><div class="game-time">${game.time?`<time datetime="${html(game.date+'T'+game.time)}">${html(game.time)}</time>`:''}<span class="status ${game.live?'live':''}">${html(status(game))}</span></div><div class="team home">${logo(game.home)}<strong>${html(game.home.name??t('tba'))}</strong></div><span class="score ${scored?'':'unplayed'} ${game.live?'is-live':''}">${html(score)}</span><div class="team away">${logo(game.away)}<strong>${html(game.away.name??t('tba'))}</strong></div><div class="game-action">${game.reportAvailable?`<a class="report-link" href="${html(report.href)}"${report.target?' target="_blank" rel="noopener noreferrer"':''} aria-label="${html(t('report')+' '+game.home.name+' — '+game.away.name)}">${html(t('report'))}</a>`:`<a class="hms-link" href="${html(hms)}" target="_blank" rel="noopener noreferrer">${html(t('hms'))}</a>`}</div><div class="game-meta">${details}${game.name?`<span class="game-name">${html(game.name)}</span>`:''}${staff}</div></article>`;
 }
 function renderGames(items,append=false){
   if(!append)$('games').replaceChildren();
@@ -62,7 +64,7 @@ function draw(data,append=false,newItems=data.items){
 }
 async function load(append=false){
   if(append&&(busy||!last?.hasMore))return;
-  controller?.abort();controller=new AbortController();const current=++requestId;
+  livePoller.pause();controller?.abort();controller=new AbortController();const current=++requestId;
   busy=true;autoStopped=false;$('load-status').textContent='';$('load-status').className='';
   if(!append){last=null;$('games').replaceChildren();$('page-count').textContent='';}
   labels();$('load-more').disabled=true;$('load-more').hidden=!append;
@@ -77,17 +79,55 @@ async function load(append=false){
     if(data.seasonId!==params.get('seasonId')?.toLowerCase()||!Array.isArray(data.items)||data.hasMore&&!data.items.length)throw new Error('Wrong page');
     if(!['cs','en'].includes(params.get('lang')))lang=reportLanguage(null,{competition:data.competition});
     const known=new Set(append?last.items.map(game=>game.id):[]),newItems=data.items.filter(game=>!known.has(game.id));
-    last={...data,items:append?[...last.items,...newItems]:newItems,nextOffset:data.offset+data.limit};
+    liveFailed=false;last={...data,items:append?[...last.items,...newItems]:newItems,nextOffset:data.offset+data.limit};
     draw(last,append,newItems);
   }catch(error){
     if(error.name==='AbortError'||current!==requestId)return;
     autoStopped=true;const node=append?$('load-status'):$('message');node.className='error';node.textContent=t(error.status===400?'invalid':error.status===429?'rate':'error');
     $('load-more').hidden=false;$('load-more').textContent=lang==='en'?'Try again':'Zkusit znovu';
   }finally{
-    if(current===requestId){busy=false;document.querySelector('.results').setAttribute('aria-busy','false');$('load-more').disabled=false;
+    if(current===requestId){busy=false;liveNotice();livePoller.sync();document.querySelector('.results').setAttribute('aria-busy','false');$('load-more').disabled=false;
       if(!autoStopped){$('load-status').textContent='';$('load-more').textContent=lang==='en'?'Load more games':'Načíst další zápasy';scheduleContinuation();}}
   }
 }
+function liveNotice(){
+  const node=$('live-status');node.hidden=(params.get('filter')??'Today')!=='Today'||!last;
+  node.className=liveFailed?'live-notice stale':'live-notice';
+  node.textContent=liveFailed?(lang==='en'?'Update failed · showing the last known scores':'Obnovení se nezdařilo · zobrazen poslední stav'):(lang==='en'?'Scores refresh every 30 seconds':'Skóre se obnovuje každých 30 sekund');
+}
+async function refreshToday(signal){
+  const version=requestId,query=new URLSearchParams(params),data=await readTodayPages(query,last.items.length,{signal});
+  if(signal.aborted||version!==requestId||(params.get('filter')??'Today')!=='Today')return;
+  const sameOrder=last.from===data.from&&last.items.length===data.items.length&&last.items.every((game,index)=>game.id===data.items[index].id);
+  if(!sameOrder)renderGames(data.items);
+  else{
+    const nodes=new Map(Array.from($('games').querySelectorAll('[data-game-id]')).map(row=>[row.dataset.gameId,row]));
+    for(const game of data.items){
+      const row=nodes.get(game.id);if(!row)continue;
+      const scored=Number.isFinite(game.home.score)&&Number.isFinite(game.away.score),score=row.querySelector('.score'),state=row.querySelector('.status');
+      const value=scored?game.home.score+' : '+game.away.score:'—';
+      if(score.textContent!==value)score.textContent=value;
+      score.classList.toggle('unplayed',!scored);score.classList.toggle('is-live',game.live);
+      const label=status(game);if(state.textContent!==label)state.textContent=label;state.classList.toggle('live',game.live);
+      const action=row.querySelector('.game-action');
+      if(!!action.querySelector('.report-link')!==!!game.reportAvailable&&!action.contains(document.activeElement)){
+        const template=document.createElement('template');template.innerHTML=gameRow(game);action.replaceWith(template.content.querySelector('.game-action'));
+      }
+    }
+  }
+  last=data;liveFailed=false;liveNotice();
+  $('page-count').textContent=data.total?data.items.length+' '+t('of')+' '+data.total:'';
+  $('load-more').hidden=!data.hasMore;
+  $('source').textContent=t('source')+' '+new Intl.DateTimeFormat(reportLocale(lang),{timeZone:'Europe/Prague',dateStyle:'short',timeStyle:'short'}).format(new Date(data.readAt));
+}
+const livePoller=createTodayPoller({
+  isActive:()=>!busy&&!!last&&(params.get('filter')??'Today')==='Today'&&last.filter==='Today'&&last.seasonId===params.get('seasonId')?.toLowerCase()&&document.visibilityState==='visible'&&pageInView&&navigator.onLine,
+  refresh:refreshToday,onError:()=>{liveFailed=true;liveNotice();}
+});
+document.addEventListener('visibilitychange',()=>livePoller.sync({immediate:true}));
+window.addEventListener('offline',()=>{livePoller.pause();if(last?.filter==='Today'){liveFailed=true;liveNotice();}});window.addEventListener('online',()=>livePoller.sync({immediate:true}));
+window.addEventListener('pagehide',()=>livePoller.pause());window.addEventListener('pageshow',()=>livePoller.sync({immediate:true}));
+if('IntersectionObserver' in window)new IntersectionObserver(entries=>{pageInView=entries.some(entry=>entry.isIntersecting);livePoller.sync({immediate:true});}).observe(document.documentElement);
 function scheduleContinuation(){
   requestAnimationFrame(()=>{if(!busy&&!autoStopped&&last?.hasMore&&$('load-sentinel').getBoundingClientRect().top<innerHeight+300)load(true);});
 }
@@ -102,7 +142,7 @@ if('IntersectionObserver' in window)new IntersectionObserver(entries=>{if(entrie
 window.addEventListener('popstate',initialize);
 document.addEventListener('error',event=>{if(event.target instanceof HTMLImageElement)event.target.hidden=true;},true);
 async function initialize(){
- const navigation=++navigationVersion;
+ livePoller.pause();const navigation=++navigationVersion;
  canonicalPath=location.pathname;prettyRoute=/^\/games\/[a-z0-9-]+\/[a-z0-9-]+(?:\/[a-z0-9-]+)?\/?$/.test(canonicalPath);
  params=new URLSearchParams(location.search);params.delete('offset');params.delete('windowPage');if(params.has('period')){params.set('filter',periods[params.get('period')]??'invalid');params.delete('period');}
  lang=reportLanguage(params.get('lang'),{competition:prettyRoute&&canonicalPath.split('/')[2]==='euchl'?'EUCHL':''});

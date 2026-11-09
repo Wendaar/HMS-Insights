@@ -44,14 +44,15 @@ export async function readPublicGameDay(seasonId,date,options={}){
 }
 async function readDay(seasonId,date,options){
   const key=seasonId+':'+date,cacheable=!options.fetchImpl;
-  if(cacheable&&days.get(key)?.until>Date.now())return days.get(key).value;
+  const cached=days.get(key);
+  if(cacheable&&cached?.until>Date.now()&&(!options.liveToday||Date.now()-cached.readAt<15000))return cached.value;
   if(cacheable&&pending.has(key))return pending.get(key);
   if(cacheable&&pending.size>=24)throw new ScheduleSourceError();
   const task=(async()=>{
     const raw=await publicRead('games',{seasonId,startDate:date},options);
     if(!Array.isArray(raw)||raw.length>2000)throw new ScheduleSourceError();
     const value=raw.filter(g=>!g.isDeleted).map(g=>publicSeasonGame(g,seasonId,date));
-    if(cacheable){while(days.size&&(days.size>=80||[...days.values()].reduce((n,day)=>n+day.value.length,0)+value.length>10000))days.delete(days.keys().next().value);days.set(key,{value,until:Date.now()+60000});}return value;
+    if(cacheable){while(days.size&&(days.size>=80||[...days.values()].reduce((n,day)=>n+day.value.length,0)+value.length>10000))days.delete(days.keys().next().value);days.set(key,{value,readAt:Date.now(),until:Date.now()+60000});}return value;
   })();
   if(cacheable){pending.set(key,task);task.finally(()=>pending.delete(key)).catch(()=>{});}return task;
 }
@@ -99,7 +100,7 @@ export async function browseSeasonGames(query,options={}){
     rows=all.filter(g=>request.filter==='Future'?g.date>today:g.date<today);
   }else{
     const result=new Array(request.dates.length);let cursor=0;
-    await Promise.all(Array.from({length:Math.min(3,request.dates.length)},async()=>{while(cursor<request.dates.length){const index=cursor++;result[index]=await readDay(request.seasonId,request.dates[index],options);}}));
+    await Promise.all(Array.from({length:Math.min(3,request.dates.length)},async()=>{while(cursor<request.dates.length){const index=cursor++;result[index]=await readDay(request.seasonId,request.dates[index],{...options,liveToday:request.filter==='Today'});}}));
     rows=result.flat();
   }
   const page=seasonGamePage(rows,request),labels=await labelsPromise;

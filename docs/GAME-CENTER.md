@@ -176,3 +176,9 @@ Report display extras optionally refresh current group/competition logos using t
 The schedule places identity inside the season header and language/copy controls alongside period shortcuts. No week-window toolbar or numbered-page navigation is shown. Old `windowPage` links remain valid but Past/Future now use the whole selected season. The source must succeed completely; an outage is never presented as an empty result. Date/Today/Yesterday/±7-day reads remain bounded to their selected days.
 
 Embedding is permitted on HTTPS phmcup.cz and bnhlh.cz, with or without www, plus the same origin. Other products keep their existing framing policy. Report links from `embed=1` open outside the iframe. Ready-to-use snippets: [GAMES-EMBED.md](GAMES-EMBED.md).
+
+### Today live scores
+
+HMS public schedules use `RUNNING` for live games. Treat it as a scored state (including real 0:0), while planned default zeroes stay hidden. Only the Today view polls, every 30 seconds after a successful refresh, without clearing rows or changing filters/focus/scroll. It refreshes all previously loaded Today pages atomically; a failure leaves the last results and shows a stale-data notice. Finished games lose their live styling automatically. Other calendar views remain static.
+
+The Today HTTP response is `no-store`; shared server day reads are at most 15 seconds old for Today and coalesce concurrent requests. Other views retain their prior cache. Polls pause for hidden tabs/offscreen frames/offline/pagehide and resume when active. Errors back off (60 seconds initially, up to 5 minutes, honoring bounded Retry-After). Individual browser refresh requests time out after 12 seconds and never overlap. No API tokens or imports are involved. This is periodic source refresh, not a WebSocket feed; displayed changes depend on the HMS scorer's updates.
