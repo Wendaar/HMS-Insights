@@ -185,7 +185,7 @@ export const server = createServer(async (request, response) => {
     request.query=Object.fromEntries(url.searchParams);
     await createSeasonGamesHandler()(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json; charset=utf-8');response.end(JSON.stringify(body));}});return;
   }
-  if(['/game-center','/game-center/','/games/index.html','/games/app.js','/games/navigation.js','/games/styles.css'].includes(url.pathname)||/^\/games\/[a-z0-9-]+\/[a-z0-9-]+(?:\/[a-z0-9-]+)?\/?$/.test(url.pathname)){
+  if(['/game-center','/game-center/','/games/index.html','/games/app.js','/games/live.js','/games/navigation.js','/games/styles.css'].includes(url.pathname)||/^\/games\/[a-z0-9-]+\/[a-z0-9-]+(?:\/[a-z0-9-]+)?\/?$/.test(url.pathname)){
     const path=url.pathname.startsWith('/game-center')||/^\/games\/[a-z0-9-]+\//.test(url.pathname)?'/games/index.html':url.pathname;
     response.setHeader('content-type',path.endsWith('.html')?'text/html; charset=utf-8':path.endsWith('.css')?'text/css; charset=utf-8':'text/javascript; charset=utf-8');
     response.end(await readFile(join(publicDirectory,path)));return;

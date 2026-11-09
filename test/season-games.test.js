@@ -115,3 +115,31 @@ test('schedule embeds allow the two league websites without opening private tool
   }
   for(const entry of hosting.headers.filter(h=>['/operations/:path*','/registrations/:path*'].includes(h.source)))assert.match(entry.headers.find(h=>h.key==='Content-Security-Policy').value,/frame-ancestors 'none'/);
 });
+
+test('RUNNING is the real HMS live state, including a genuine 0:0; scheduled zeroes remain unknown',()=>{
+  const source=fixture();source.status='RUNNING';source.HomeTeamGoals=3;source.AwayTeamGoals=3;
+  let live=publicSeasonGame(source,seasonId,source.startDate);assert.equal(live.live,true);assert.equal(live.home.score,3);assert.equal(live.away.score,3);
+  source.HomeTeamGoals=0;source.AwayTeamGoals=0;live=publicSeasonGame(source,seasonId,source.startDate);assert.equal(live.live,true);assert.equal(live.home.score,0);assert.equal(live.away.score,0);
+  source.status='NOT PLAYED';assert.equal(publicSeasonGame(source,seasonId,source.startDate).home.score,null);
+  source.status='FINISHED';assert.equal(publicSeasonGame(source,seasonId,source.startDate).live,false);
+  source.status='RUNNING';source.HomeTeamGoals=null;assert.equal(publicSeasonGame(source,seasonId,source.startDate).home.score,null);
+});
+test('Today never inherits the 60-second day cache and concurrent live requests share one HMS read',async()=>{
+  const scoped=uuid(919),row=fixture(1);row.Phase.Group.Season.seasonId=scoped;row.status='RUNNING';
+  const originalFetch=globalThis.fetch,originalNow=Date.now;let time=originalNow(),calls=0;
+  Date.now=()=>time;
+  globalThis.fetch=async url=>new URL(url).pathname.endsWith('/seasonTerms')?new Response('{}'):(calls++,await new Promise(resolve=>setImmediate(resolve)),new Response(JSON.stringify([row])));
+  try{
+    const opt={now,env:{}};
+    await browseSeasonGames({seasonId:scoped,filter:'Date',date:row.startDate},opt);assert.equal(calls,1);
+    time+=16000;row.HomeTeamGoals=4;
+    const pages=await Promise.all([1,2].map(()=>browseSeasonGames({seasonId:scoped,filter:'Today'},opt)));
+    assert.equal(calls,2);assert.equal(pages[0].items[0].home.score,4);
+    time+=14000;await browseSeasonGames({seasonId:scoped,filter:'Today'},opt);assert.equal(calls,2);
+    time+=2000;row.HomeTeamGoals=5;const latest=await browseSeasonGames({seasonId:scoped,filter:'Today'},opt);assert.equal(calls,3);assert.equal(latest.items[0].home.score,5);
+  }finally{globalThis.fetch=originalFetch;Date.now=originalNow;}
+});
+test('Today bypasses HTTP/CDN caching; other calendar views keep their existing shared cache',async()=>{
+ const response=()=>({headers:{},setHeader(k,v){this.headers[k]=v;},status(c){this.code=c;return this;},json(data){this.data=data;}});
+ for(const filter of ['Today','Future','Past']){const res=response();await createSeasonGamesHandler({browse:async()=>({filter})})({method:'GET'},res);assert.equal(res.headers['cache-control'],filter==='Today'?'no-store':'public, s-maxage=30, stale-while-revalidate=30');}
+});
