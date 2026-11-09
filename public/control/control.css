@@ -6,3 +6,6 @@
 
 .source-stack{position:sticky;top:25px;margin-top:20px;width:190px}#hub{position:static;margin-top:0;padding:20px 13px}.source-sponsors{margin-top:14px;background:#fff9ed;border:1px solid #e8d3a6;border-radius:12px;padding:15px;color:#6a5329}.source-sponsors .eyebrow{font-size:8px;letter-spacing:.7px;color:#9a7b40}.source-link{display:block;font-weight:700;font-size:16px;text-decoration:none}.source-sponsors small{display:block;font-size:10px;line-height:1.6;margin-top:8px;color:#9a865f}#catalog-note{font-size:12px;line-height:1.6}.hint{font-size:11px;color:#8291a5}
 .work-chat:not(.compact) .work-chat-title{font-size:14px;font-weight:700;color:#203650}
+
+/* Areas replace duplicated setup/output cards. Peer tools wrap within an area. */
+.phase-head{grid-template-columns:230px 1fr}.chain{grid-template-columns:repeat(3,245px)}.node-description{font-size:11px;line-height:1.5;color:#6d7f95;margin:4px 0 10px}.node-shortcuts{display:flex;gap:10px;font-size:11px;margin:4px 0 9px}.contextbar>div{flex:1}.contextbar>div:first-child{flex:1.5}.contextbar button{white-space:nowrap}.source-stack{align-self:flex-start;position:sticky;top:24px}.source-column{align-items:flex-start}.node .node-action{margin-bottom:9px}@media(max-width:600px){.phase-head{grid-template-columns:170px 1fr}}

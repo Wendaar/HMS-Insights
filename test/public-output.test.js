@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {publicOutputUrl,PUBLIC_ORIGIN} from '../public/public-output.js';
+import {publicOutputUrl,PUBLIC_ORIGIN,sameSiteUrl} from '../public/public-output.js';
 import {channelUrl} from '../public/broadcast/channel.js';
 import {mapForOrganization,nodeUrl} from '../public/control/map.js';
 import {appsForOrganization} from '../public/control/registry.js';
@@ -22,13 +22,24 @@ test('public OBS channel never inherits private control fragments or parameters'
 test('public launchers use PHM while administration, external tools and planned organizations stay separate',()=>{
  for(const org of ['phm','euchl']){
   const nodes=mapForOrganization(org).flatMap(b=>b.nodes),node=id=>nodes.find(n=>n.id===id);
-  for(const id of ['insights-public','insights-archive'])assert.equal(new URL(nodeUrl(node(id),org)).origin,PUBLIC_ORIGIN);
+  for(const id of ['insights-public'])assert.equal(new URL(nodeUrl(node(id),org)).origin,PUBLIC_ORIGIN);
   const schedule=nodeUrl(node('games-view'),org,{gamesPath:`/games/${org}/2026-2027`});assert.equal(schedule,PUBLIC_ORIGIN+`/games/${org}/2026-2027`);
-  assert.ok(nodeUrl(node('obs-definition'),org).startsWith('/broadcast/'));
+  assert.ok(nodeUrl(node('obs-studio'),org).startsWith('/broadcast/'));
  }
  const playoff=appsForOrganization('phm').find(a=>a.id==='playoff-players');
  assert.ok(playoff.links.manage.startsWith('/control/'));assert.equal(new URL(playoff.links.public).origin,PUBLIC_ORIGIN);
  const stars=appsForOrganization('phm').find(a=>a.id==='all-stars');
  assert.equal(stars.links.open,'/control/apps/all-stars?org=phm');assert.equal(stars.links.public,PUBLIC_ORIGIN+'/all-stars/phm');
  assert.ok(mapForOrganization('yhg').flatMap(b=>b.nodes).every(n=>nodeUrl(n,'yhg')===(n.app==='virtual-camera'?'/virtual-camera':null)));
+});
+
+test('production navigation stays on the current host in both directions',()=>{
+ const origins=['https://public.heromanagementsystem.com','https://app.phmcup.cz'];
+ for(const origin of origins){
+  for(const path of ['/games/yhg/2026-2027?lang=cs','/priklepy/euchl?lang=en&q=Roy#priklep=abc','/control/apps/public-portal?org=police']){
+   assert.equal(publicOutputUrl(path,origin),origin+path);
+   for(const other of origins)assert.equal(sameSiteUrl(other+path,origin),origin+path);
+  }
+  for(const external of ['https://github.com/Wendaar/HMS-Insights','https://example.test/tool','https://hms-insights-git-codex-hms-photo-archive-pilot-wendaar.vercel.app/photo-archive?org=phm'])assert.equal(sameSiteUrl(external,origin),external);
+ }
 });

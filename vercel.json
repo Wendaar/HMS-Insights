@@ -16,6 +16,7 @@
     }
   },
   "redirects": [
+    {"source":"/favicon.ico","destination":"/hms-favicon-white-v3.png","permanent":false},
     {"source":"/media-mapping/","destination":"/media-mapping","permanent":false},
     {"source":"/studio/media-mapping","destination":"/media-mapping","permanent":false},
     {"source":"/studio/media-mapping/","destination":"/media-mapping","permanent":false},
