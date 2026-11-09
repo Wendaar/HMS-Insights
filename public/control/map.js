@@ -11,13 +11,15 @@ export const branches=[
  {id:'sponsors',name:'Sponsors',color:'amber',nodes:[stage('sponsor-definition','Sponsors','sponsors-catalog')]},
  {id:'gameshow',name:'Media & Game Show',color:'pink',nodes:[stage('gameshow-definition','Media Mapping','media-mapping'),stage('gameshow-control','LIVE Show Control','show-control')]},
  {id:'awards',name:'Awards & Achievements',color:'amber',nodes:[stage('insights-public','Insights · Public / Archive','insights-public'),stage('all-stars','All Stars','all-stars'),stage('hall-of-fame','Hall of Fame','hall-of-fame')]},
+ {id:'data',name:'Data & infrastruktura',color:'blue',nodes:[stage('registrations','Registrace 2026/27','registrations'),stage('api','HMS API','connections','github'),stage('engine','Data Engine','data-engine','github'),stage('database','Databáze','database','github')]},
+ {id:'development',name:'Vývoj & provoz',color:'slate',nodes:[stage('code','Code · GitHub','repository'),stage('deploy','Deploy','deploy'),stage('security','Security','security','github')]},
 ];
 export const workBranches={
  administration:['administration','website','competition','sponsors'],
  broadcast:['broadcast','gameshow','sponsors'],
  social:['content','awards','sponsors'],
  games:['competition','awards'],
- data:['administration','website','sponsors'],
+ data:['administration','website','sponsors','data','development'],
 };
 export function mapForOrganization(org){
   const apps=new Map(appsForOrganization(org).map(a=>[a.id,a]));
