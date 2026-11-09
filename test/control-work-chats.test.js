@@ -4,7 +4,7 @@ import {workChats,workChatFor,workChatHref} from '../public/control/work-chats.j
 import {mapForOrganization,nodeUrl} from '../public/control/map.js';
 
 test('OBS tools and sponsor layers point to the verified OBS work without altering tool launches',()=>{
- for(const id of ['obs-definition','obs-studio','obs-output','sponsor-definition','sponsor-broadcast','sponsor-output']){
+ for(const id of ['obs-studio','sponsor-definition']){
   const node=mapForOrganization('phm').flatMap(b=>b.nodes).find(n=>n.id===id);
   const chat=workChatFor(node.application?.id,node.id);assert.equal(chat.title,'HMS Control Center for OBS V1');
   assert.equal(workChatHref(chat),'codex://threads/01a165c4-e60e-72d1-b153-1dc4f418af12');

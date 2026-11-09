@@ -28,8 +28,8 @@ test('configured organizations acquire their own generic tool links while unconn
    const apps=appsForOrganization(slug),studio=apps.find(a=>a.id==='studio');assert.equal(studio.links.open,`/studio/${slug}?lang=cs`);
    assert.equal(new URL(apps.find(a=>a.id==='insights-public').links.public).pathname,`/priklepy/${slug}`);
    assert.equal(apps.find(a=>a.id==='playoff-players').status,'prepared');
-   const node=mapForOrganization(slug).flatMap(b=>b.nodes).find(n=>n.id==='obs-output');
-   assert.equal(new URL(nodeUrl(node,slug,{gameId:id(20)})).searchParams.get('org'),slug==='new-league'?'CUSTOM':slug.toUpperCase());
+   const node=mapForOrganization(slug).flatMap(b=>b.nodes).find(n=>n.id==='obs-studio');
+   assert.equal(new URL(nodeUrl(node,slug),'https://public.heromanagementsystem.com').searchParams.get('org'),slug==='new-league'?'CUSTOM':slug.toUpperCase());
   }
   setOrganizationCatalog(publicOrganizations({HMS_API_TOKEN:'PHM-PRIVATE'}));
   for(const slug of ['fllh','yhg','police'])assert.ok(appsForOrganization(slug).every(a=>a.id==='virtual-camera'?a.links.open==='/virtual-camera':a.status==='prepared'&&!Object.keys(a.links).length));

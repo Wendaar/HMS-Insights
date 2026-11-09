@@ -1,5 +1,5 @@
 // Public navigation metadata only. Never put credentials or private source exports here.
-import {publicOutputUrl} from '../public-output.js';
+import {publicOutputUrl,sameSiteUrl} from '../public-output.js';
 import {defaultOrganizations,normalizeOrganizationCatalog} from '../organization-catalog.js';
 export const repository = 'https://github.com/Wendaar/HMS-Insights';
 const code = path => `${repository}/blob/main/${path}`;
@@ -14,7 +14,7 @@ export const categories = [
 export const statuses = {
   available:'Dostupné', partial:'Částečně', missing:'Nenastaveno', prepared:'Připraveno',
 };
-export const linkLabels = {open:'Open', public:'Public', manage:'Manage', source:'Source', github:'GitHub'};
+export const linkLabels = {open:'Open', public:'Public', manage:'Manage', source:'Source', github:'GitHub',archive:'Archiv'};
 export const organizations=defaultOrganizations.map(org=>({...org,id:org.slug,ready:['PHM','EUCHL'].includes(org.code)}));
 export function setOrganizationCatalog(rows){
  const catalog=normalizeOrganizationCatalog(rows);
@@ -25,6 +25,10 @@ export function setOrganizationCatalog(rows){
 const missing = (id, category, name, description) => ({id,category,name,description,
   status:'missing', dataSource:'Nenastaveno', note:'Aplikace je v inventáři; její adresu a zdroj je potřeba ověřit.', links:{}});
 const applications = [
+  {id:'photo-archive',category:'media',name:'Photo Archive',description:'Přiřazování fotografií hráčům a kontrola shod s HMS soupiskou.',status:'partial',dataSource:'Flickr + HMS soupisky · pilot PHM',note:'Pilot PHM v samostatném chráněném náhledu. Přístup kódem PHM Operations.',links:{open:'https://hms-insights-git-codex-hms-photo-archive-pilot-wendaar.vercel.app/photo-archive?org=phm',github:repository+'/pull/61'}},
+  missing('statistics','stats','Statistics','Přehled statistik soutěže. Samostatná stránka zatím není připojená.'),
+  missing('standings','stats','Standings','Tabulky soutěže. Samostatná stránka zatím není připojená.'),
+  missing('team-profiles','competition','Team Profiles','Veřejné stránky týmů. Připravujeme.'),
   {id:'virtual-camera',category:'media',name:'HERO Virtual Camera · V1',description:'Ruční výřez živé kamery VDO.Ninja a samostatný výstup do OBS.',status:'partial',dataSource:'VDO.Ninja · nezávislé na HMS a zápasech',note:'Beta. Připojte živý zdroj a sdílejte pouze výstupní URL pro OBS. Ověření se Samsungem je součástí prvního testu.',links:{open:'/virtual-camera',manage:'/virtual-camera',github:code('docs/VIRTUAL-CAMERA.md')}},
   {id:'show-control',category:'media',name:'LIVE Show Control · zvuky a hlasatel',description:'Ovládání hudby a goalhornů, živé události a český hlasatel vedle časomíry.',status:'partial',dataSource:'LIVE HMS API + zveřejněná Media Mapping knihovna',note:'Ruční spouštění hlášení a zvuků. Nastavení a testy jsou přímo v panelu.',links:{open:'/show-control?org=PHM',manage:'/show-control?org=PHM',github:code('docs/SHOW-CONTROL.md')}},
   {id:'media-mapping',category:'media',name:'Media Mapping · zvuky a přiřazení',description:'Centrální přiřazení zvuků z GitHubu týmům, zápasům a sponzorům HMS.',status:'partial',dataSource:'GitHub audio + HMS identity + centrální konfigurace',note:'Správa používá přístupový kód organizace. Časoměřič používá zveřejněné přiřazení v Show Control.',links:{open:'/media-mapping?org=PHM',manage:'/media-mapping?org=PHM',github:code('docs/MEDIA-MAPPING.md')}},
@@ -33,11 +37,11 @@ const applications = [
   {id:'public-portal',category:'website',name:'Site Builder · web ligy / turnaje',description:'Veřejný rozcestník organizace, soutěží a sezon. Nastavení webu, náhled, publikace a viditelnost stránek.',status:'available',dataSource:'HMS API / společné aplikace',links:{open:'https://public.heromanagementsystem.com/control/apps/public-portal?org=phm',manage:'https://public.heromanagementsystem.com/control/apps/public-portal?org=phm',public:'https://public.heromanagementsystem.com/league/phm',github:code('docs/PUBLIC-PORTAL.md')}},
   {id:'operations',category:'data',name:'HMS Operations',description:'Směny, kontrola obsazení, CASH, volný led a podklady měsíční uzávěrky.',status:'partial',dataSource:'Společné HMS API · provozní přístup organizace',note:'Pracovní verze. Živá data vyžadují samostatný provozní kód; mapování CASH / PAID a účetní sazby musí potvrdit organizace.',links:{open:'/operations?org=phm',manage:'/operations?org=phm',github:code('docs/OPERATIONS.md')}},
   {id:'broadcast',category:'media',name:'Opening Studio · OBS',description:'Předzápasová vrstva pro OBS a YouTube miniatura z HMS API.',status:'available',dataSource:'HMS API · zápas, týmy, loga a pořadatelé',note:'Čistý OBS výstup 1920 × 1080. Vyberte zápas v ovládání a zkopírujte jeho URL.',links:{open:'/broadcast/index.html?org=PHM',manage:'/broadcast/index.html?org=PHM',source:'/api/broadcast?org=PHM',github:'https://github.com/Wendaar/Youtube-Overlays'}},
-  {id:'studio',category:'media',name:'Media Studio',description:'Grafika zápasů a Insights, náhledy a export PNG.',status:'available',dataSource:'HMS API / uložené snapshoty zápasů',note:'Dostupnost živých dat závisí na připojení organizace.',links:{open:'/studio/phm?lang=cs',manage:'/studio/phm?lang=cs',github:code('public/studio/app.js')}},
+  {id:'studio',category:'media',name:'Social Media Studio',description:'Game Day, Team Compare, Insights grafiky, náhledy a export PNG.',status:'available',dataSource:'HMS API / uložené snapshoty zápasů',note:'Dostupnost živých dat závisí na připojení organizace.',links:{open:'/studio/phm?lang=cs',manage:'/studio/phm?lang=cs',github:code('public/studio/app.js')}},
   {id:'all-stars',category:'media',name:'All Stars of Month',description:'Měsíční nominace z HMS, ruční sestava 3+2+1 a publikovaný výstup.',status:'partial',dataSource:'HMS API / společné snapshoty dokončených zápasů',note:'Beta. Kontrola úplnosti měsíce; předběžné pořadí bez nedostupných hvězd a shutoutů. Původní generátor zůstává dostupný ze správy.',links:{open:'/control/apps/all-stars?org=phm',manage:'/control/apps/all-stars?org=phm',public:'/all-stars/phm',source:'/api/all-stars?action=catalog&org=phm',github:code('docs/ALL-STARS.md')}},
   {id:'player-cards',category:'media',name:'Player Cards · kartičky hráčů',description:'Datová kartička hráče z importovaného zápasu.',status:'partial',dataSource:'Importované statistiky zápasů / HMS',note:'Ověřený je datový endpoint /api/player-card (gameId + playerId). Samostatný generátor zatím nemá ověřenou adresu.',links:{github:code('src/web/player-card-handler.js')}},
   missing('medals','media','Medailové infografiky','Grafiky pro medailové a finálové zápasy.'),
-  {id:'insights-public',category:'stats',name:'Insights · Public',description:'Veřejný výběr nejzajímavějších výkonů a Příklepů.',status:'available',dataSource:'Uložené Příklepy z dokončených zápasů',note:'Výběr PHM; API vrací data pouze této organizace.',links:{open:'/priklepy/phm',public:'/priklepy/phm',source:'/api/selection?org=PHM',github:code('src/web/public-feed-handler.js')}},
+  {id:'insights-public',category:'stats',name:'Insights · Public',description:'Veřejný výběr nejzajímavějších výkonů a Příklepů.',status:'available',dataSource:'Uložené Příklepy z dokončených zápasů',note:'Výběr PHM; API vrací data pouze této organizace.',links:{open:'/priklepy/phm',public:'/priklepy/phm',archive:'/archiv/phm',source:'/api/selection?org=PHM',github:code('src/web/public-feed-handler.js')}},
   {id:'insights-archive',category:'stats',name:'Insights · Archive',description:'Úplná historie Příklepů s hledáním a filtry.',status:'available',dataSource:'Databáze importovaných Příklepů',links:{open:'/archiv/phm',public:'/archiv/phm',source:'/api/feed?org=PHM',github:code('src/web/feed-loader.js')}},
   {id:'insights-definition',category:'stats',name:'Insights · Definition',description:'Pravidla, podle kterých vznikají Příklepy.',status:'partial',dataSource:'Pravidla v kódu HMS Insights',note:'Definice se mění v kódu. Samostatný editor není nastaven.',links:{manage:code('src/domain/rules.js'),github:code('src/domain/rules.js')}},
   {id:'game-center',category:'stats',name:'Game Center · Game Report',description:'Report zápasu, sestavy, statistiky a časová osa.',status:'available',dataSource:'Importovaný GameSummary / snapshot HMS',note:'Vyberte zápas podle týmů a data nad mapou. Report zobrazuje již načtený zápas.',gamePath:'/game-center/',links:{github:code('src/web/game-report-handler.js')}},
@@ -87,7 +91,7 @@ export function appsForOrganization(id) {
     if(app.id==='sponsors-catalog')links={open:'/broadcast/sponsors.html?org='+code};
     if(app.id==='broadcast')links={...app.links,open:'/broadcast/index.html?org='+code,manage:'/broadcast/index.html?org='+code,source:'/api/broadcast?org='+code};
     if(app.id==='studio')links={...app.links,open:'/studio/'+slug+'?lang=cs',manage:'/studio/'+slug+'?lang=cs'};
-    if(app.id==='insights-public')links={...app.links,open:'/priklepy/'+slug,public:'/priklepy/'+slug,source:'/api/selection?org='+code};
+    if(app.id==='insights-public')links={...app.links,open:'/priklepy/'+slug,public:'/priklepy/'+slug,archive:'/archiv/'+slug,source:'/api/selection?org='+code};
     if(app.id==='insights-archive')links={...app.links,open:'/archiv/'+slug,public:'/archiv/'+slug,source:'/api/feed?org='+code};
     if(links)return {...app,links,note:'Vlastní organizační kontext. Dostupnost dat a případné publikace závisí na nastavení organizace.'};
     if(app.category==='development')return app;
@@ -104,8 +108,9 @@ export function gameReportUrl(orgId, value) {
   return publicOutputUrl(path + encodeURIComponent(id));
 }
 function publicLinks(app){
+ if(app.id==='sponsors-catalog')app={...app,name:'Sponsors',links:{...app.links,open:app.links.open?.includes('org=PHM')?'/sponsors?org=PHM':app.links.open}};
  return {...app,links:Object.fromEntries(Object.entries(app.links).map(([kind,href])=>[kind,
-  href.startsWith('/')&&(kind==='public'||kind==='open'&&['insights-public','insights-archive'].includes(app.id))?publicOutputUrl(href):href]))};
+  href.startsWith('/')&&(kind==='public'||kind==='open'&&['insights-public','insights-archive'].includes(app.id))?publicOutputUrl(href):sameSiteUrl(href)]))};
 }
 const fold = value => String(value).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 export function filterApps(apps, {query='', category='all', status='all'}={}) {
