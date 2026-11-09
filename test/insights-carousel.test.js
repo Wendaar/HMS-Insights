@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {carouselItems,carouselCard} from '../public/insights-carousel.js';
+import {carouselItems,carouselCard,carouselAllLink} from '../public/insights-carousel.js';
 const id='11111111-1111-4111-8111-111111111111';
 const item={id:'highlight',gameId:id,date:'2026-10-28',type:'HATTRICK',importance:92,title:'Hattrick',text:'Jan dal 3 góly.',player:'Jan Novák',team:'Guardians',homeTeam:'Guardians',awayTeam:'Lions',homeScore:5,awayScore:7,facts:{goals:3},group:'Division One'};
 test('Home carousel uses only the selected organization and the newest eight public selection items',()=>{
@@ -18,4 +18,8 @@ test('large cards share Insights translations, approved photos and exact fixture
 test('cards escape sporting labels and reject arbitrary photo hosts while providing a logo/initials fallback',()=>{
  const html=carouselCard({...item,player:'<script>bad()</script>',text:'<img onerror="bad()">',playerImageUrl:'https://evil.test/photo',teamLogoUrl:'javascript:alert(1)'},'cs',0,1);
  assert.doesNotMatch(html,/<script>|<img onerror|evil\.test|javascript:/);assert.match(html,/&lt;script&gt;/);assert.match(html,/ic-initials/);
+});
+test('standalone carousel opens the full Insights archive outside its iframe',()=>{
+ const embedded=carouselAllLink('/priklepy/phm?lang=cs','Všechny Příklepy',true);assert.match(embedded,/target="_blank"/);assert.match(embedded,/rel="noopener noreferrer"/);
+ const native=carouselAllLink('/league/phm?section=insights','Všechny Příklepy');assert.doesNotMatch(native,/target=/);
 });
