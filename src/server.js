@@ -120,12 +120,12 @@ export const server = createServer(async (request, response) => {
     if(request.method==='POST'){let body='';for await(const chunk of request){body+=chunk;if(Buffer.byteLength(body)>50000){response.writeHead(413);response.end();return;}}request.body=body;}
     await portalHandler(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json; charset=utf-8');response.end(JSON.stringify(body));},send(body){response.end(body);}});return;
   }
-  const portalAsset=/^\/league\/(app.js|app.css|presentation.js|index.html)$/.exec(url.pathname);
-  if(portalAsset||/^\/league\/[a-z0-9-]+\/?$/.test(url.pathname)||url.pathname==='/control/apps/public-portal'||url.pathname==='/'&&url.hostname==='public.heromanagementsystem.com'){
+  const portalAsset=/^\/league\/(app.js|app.css|widget.css|presentation.js|embed-code.js|index.html)$/.exec(url.pathname),insightsWidget=/^\/widgets\/insights\/[a-z0-9-]+\/?$/.test(url.pathname);
+  if(portalAsset||insightsWidget||/^\/league\/[a-z0-9-]+\/?$/.test(url.pathname)||url.pathname==='/control/apps/public-portal'||url.pathname==='/'&&url.hostname==='public.heromanagementsystem.com'){
     if(!['GET','HEAD'].includes(request.method)){response.writeHead(405,{allow:'GET, HEAD'});response.end();return;}
     const name=portalAsset?.[1]??'index.html';
     response.setHeader('content-type',name.endsWith('.html')?'text/html; charset=utf-8':name.endsWith('.css')?'text/css; charset=utf-8':'text/javascript; charset=utf-8');
-    response.setHeader('content-security-policy',"default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self'; img-src 'self' https:; frame-src 'self' https://prod.hms.wootera.net; base-uri 'none'; form-action 'self'; frame-ancestors 'none'");
+    response.setHeader('content-security-policy',"default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self'; img-src 'self' https:; frame-src 'self' https://prod.hms.wootera.net; base-uri 'none'; form-action 'self'; frame-ancestors "+(insightsWidget?'*':"'none'"));
     response.setHeader('x-content-type-options','nosniff');response.setHeader('referrer-policy','no-referrer');response.setHeader('cache-control','no-store');
     response.end(request.method==='HEAD'?undefined:await readFile(join(publicDirectory,'league',name)));return;
   }
