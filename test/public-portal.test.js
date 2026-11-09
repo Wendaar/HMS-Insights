@@ -5,6 +5,7 @@ import {themeVariables,teamDivisions,seasonMedia} from '../public/league/present
 import {createPublicPortalHandler,portalStorageNamespace} from '../src/web/public-portal-handler.js';
 import {toolStore} from '../src/infrastructure/tool-instances.js';
 import {gameReportNavigation} from '../public/games/navigation.js';
+import {insightsEmbedCode,insightsWidgetUrl} from '../public/league/embed-code.js';
 const id=n=>`${String(n).padStart(8,'0')}-1111-4111-8111-111111111111`;
 const env={HMS_PHM_ORGANIZATION_ID:id(1),HMS_EUCHL_ORGANIZATION_ID:id(2),HMS_PHM_TOOLS_ADMIN_SECRET:'phm-secret',HMS_EUCHL_TOOLS_ADMIN_SECRET:'euchl-secret'};
 const seasons=[{organization_id:id(1),competition_id:id(10),competition_name:'PHM Cup',season_id:id(11),season_name:'2026–2027'},{organization_id:id(1),competition_id:id(12),competition_name:'Other PHM Cup',season_id:id(13),season_name:'2026–2027'}];
@@ -94,6 +95,21 @@ test('local and hosting routes share the existing function, preserve protected m
   const r=await fetch(base+'/api/portal?action=public&org=unknown');assert.equal(r.status,404);assert.equal((await fetch(base+'/api/portal?action=manage&org=phm')).status,503);
   const hosting=JSON.parse(await readFile(new URL('../vercel.json',import.meta.url)));assert.ok(hosting.rewrites.some(r=>r.source==='/api/portal'&&r.destination==='/api/game-summary?view=portal'));assert.ok(hosting.rewrites.some(r=>r.source==='/control/apps/public-portal'));
   for(const h of hosting.headers.filter(h=>h.source==='/game-center'||h.source==='/games/:path*'))assert.match(h.headers.find(h=>h.key==='Content-Security-Policy').value,/frame-ancestors 'self'/);
+ }finally{await new Promise(resolve=>server.close(resolve));}
+});
+test('Insights widget code is organization scoped, language aware and contains no credential',()=>{
+ const origin='https://public.heromanagementsystem.com';
+ assert.equal(insightsWidgetUrl(origin,'PHM','cs'),'https://public.heromanagementsystem.com/widgets/insights/phm?lang=cs');
+ assert.equal(insightsWidgetUrl(origin,'bnhlh','en'),'https://public.heromanagementsystem.com/widgets/insights/bnhlh?lang=en');
+ const code=insightsEmbedCode(origin,'phm','cs');assert.match(code,/^<iframe /);assert.match(code,/height="720"/);assert.match(code,/widgets\/insights\/phm\?lang=cs/);assert.doesNotMatch(code,/secret|token|authorization/i);
+ assert.throws(()=>insightsEmbedCode(origin,'../admin','cs'),TypeError);
+});
+test('standalone Insights widget is embeddable without weakening the Hub or Site Builder policy',async()=>{
+ const {server}=await import('../src/server.js');await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+ try{const base='http://127.0.0.1:'+server.address().port,widget=await fetch(base+'/widgets/insights/phm?lang=cs'),hub=await fetch(base+'/league/phm'),manager=await fetch(base+'/control/apps/public-portal');
+  assert.equal(widget.status,200);assert.match(await widget.text(),/\/league\/app.js/);assert.match(widget.headers.get('content-security-policy'),/frame-ancestors \*/);
+  assert.match(hub.headers.get('content-security-policy'),/frame-ancestors 'none'/);assert.match(manager.headers.get('content-security-policy'),/frame-ancestors 'none'/);
+  for(const path of ['/league/embed-code.js','/league/widget.css'])assert.equal((await fetch(base+path)).status,200);
  }finally{await new Promise(resolve=>server.close(resolve));}
 });
 test('division membership counts unique teams across matches and phases, retaining multiple real group memberships',async()=>{
