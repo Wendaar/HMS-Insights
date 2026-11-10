@@ -5,7 +5,7 @@ export const metrics={
  points:{field:'points',role:'skater',cs:'Body',en:'Points',direction:-1},
  goals:{field:'goals',role:'skater',cs:'Góly',en:'Goals',direction:-1},
  assists:{field:'assists',role:'skater',cs:'Asistence',en:'Assists',direction:-1},
- stars:{field:'stars',role:'skater',cs:'Hvězdy',en:'Stars',direction:-1},
+ stars:{field:'stars',role:'skater',cs:'Hvězdy',en:'Stars',direction:-1,tieBreak:'sourceOrder'},
  pim:{field:'pim',role:'skater',cs:'Trestné minuty',en:'PIM',direction:-1,neutral:true},
  wins:{field:'wins',role:'goalie',cs:'Výhry',en:'Wins',direction:-1},
  gaa:{field:'gaa',role:'goalie',cs:'GAA',en:'GAA',direction:1,digits:2},
@@ -30,11 +30,15 @@ export function normalizeWidget(input){
  if(typeof display!=='object'||Array.isArray(display)||input.enabled!==undefined&&typeof input.enabled!=='boolean'||['showPlayerPhoto','showTeamLogo','showScopeBranding'].some(k=>display[k]!==undefined&&typeof display[k]!=='boolean'))throw new TypeError('widget display/enabled');
  if(!widgetRegistry[input.widgetType].supportedDisplayModes.includes(mode))throw new TypeError('widget display');
  const placement=input.placement??'home';if(!['home','competition','group','phase'].includes(placement))throw new TypeError('widget placement');
- const result={widgetInstanceId:input.widgetInstanceId,widgetType:input.widgetType,enabled:input.enabled!==false,placement,scope,display:{mode,showPlayerPhoto:display.showPlayerPhoto!==false,showTeamLogo:display.showTeamLogo!==false,showScopeBranding:display.showScopeBranding!==false}};
+ const layout=input.layout??{},section=layout.section??'bottom',width=layout.width??'full';
+ if(!['top','main','bottom'].includes(section)||!['full','half','third'].includes(width))throw new TypeError('widget layout');
+ const result={widgetInstanceId:input.widgetInstanceId,widgetType:input.widgetType,enabled:input.enabled!==false,placement,scope,layout:{section,width},display:{mode,showPlayerPhoto:display.showPlayerPhoto!==false,showTeamLogo:display.showTeamLogo!==false,showScopeBranding:display.showScopeBranding!==false}};
  if(input.widgetType==='insights'&&Object.keys(scope).some(k=>k!=='organisationId'&&scope[k]))throw new TypeError('Insights supports organisation scope only');
  if(input.widgetType==='leaders'){
   const metric=input.metric??'points',limit=input.limit??5;if(!Object.hasOwn(metrics,metric)||![5,10].includes(limit))throw new TypeError('widget metric/limit');
   result.metric=metric;result.limit=limit;
+  if(input.allowPhaseSwitching!==undefined&&typeof input.allowPhaseSwitching!=='boolean')throw new TypeError('widget phase switching');
+  result.allowPhaseSwitching=input.allowPhaseSwitching===true;
   // Reserved for competition-owned eligibility rules. V1 applies HMS eligibility.
   if(input.eligibility!=null&&Object.keys(input.eligibility).length)throw new TypeError('Eligibility rules are not configured in V1');
  }

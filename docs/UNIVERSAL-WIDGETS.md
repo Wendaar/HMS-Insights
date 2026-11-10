@@ -1,4 +1,61 @@
-# HMS Universal Widgets + Leaders V1
+# HMS Universal Widgets + Leaders V1.1
+
+## V1.1 scope controls, layout and phases
+
+The builder now selects competition, season, group, phase and team by name. Its
+organization stays bound to the selected Site Builder organization. The protected
+`/api/portal?action=widget-catalog&org=<slug>&seasonId=<uuid>` endpoint uses the same
+owned catalog/directory as Leaders. UUIDs and the instance ID are in **Advanced / IDs**.
+Inherited values remain absent fields; **All** stores explicit `null`. Deliberate
+parent changes reset child constraints, preventing an old phase or team from
+remaining attached to an unrelated group. Loading failures preserve stored settings.
+
+Each instance has `layout: {section: 'top'|'main'|'bottom', width: 'full'|'half'|'third'}`.
+Old configurations default to **Bottom / Full**, preserving their original position.
+Top is before the existing homepage introduction, Main is between season cards and
+partners, and Bottom is after the existing homepage content. Existing sections are
+rendered once. Array order controls order within each region. One CSS Grid handles
+both public and protected preview output; thirds become halves and then full rows
+as space decreases. Narrow Leaders suppress their featured-player panel through
+the existing responsive renderer. Layout changes follow the original draft/publish
+workflow and never automatically rewrite stored public configuration.
+
+Leaders supports opt-in `allowPhaseSwitching` (default `false`). The renderer requests
+allowed `phaseOptions` from the same provider; selection is local to that instance.
+The API accepts `visitorPhaseId` separately from the base scope and validates it
+against that base's groups and known team/phase membership **before** fetching
+statistics. An effective phase constraint, explicit or inherited, is locked: no
+selector is offered and visitor attempts to clear/change it fail. One relevant
+phase also hides the selector. The active phase name appears in the header.
+
+**Whole season** requests the original official `groupId` or `seasonId` table;
+individual phases use the official skater `phaseIds` or goalie `phaseId` endpoint.
+There is no summing of phase snapshots or averaging of GAA/SV%. The menu reflects
+the existing imported-HMS directory, so phases without imported games are not
+invented or offered. This is still a sporting catalog, not complete registration data.
+
+Displayed rows now use sequential **1., 2., 3.** numbers. Internal `rank`/`tied` values
+remain statistical ranks, and `data-stat-rank` retains them in the rendered list.
+
+### Stars audit — 2026-11-11
+
+The current public HMS client
+`https://prod.hms.wootera.net/static/js/main.a97384ff.js` was inspected. Its
+Infographics Star Leaders maps the `Stars` field from
+`/admin/tablePlayersStats?phaseIds=...`, sorts only by descending `Stars`, and
+therefore preserves API order for ties. V1's alphabetical tie-break could choose a
+different TOP 5 at the same value. The shared metric definition now specifies
+`tieBreak: 'sourceOrder'` for Stars; all consumers of `rankLeaders` share that rule.
+No new Stars calculation was introduced.
+
+`node scripts/check-widget-stars.mjs` compares current public PHM season records
+with the same season's combined phase IDs, matching **player + team**, not names.
+The audit found **zero Stars value mismatches**. Radek Postupa, Jan Pravda and
+Eduard Synák each have 3 on their relevant records. Dominik Bláha has distinct team
+stints with 2 and 3; Radek also has zero-Star records for other teams. These records
+are kept separate, as in V1. The administrative Infographics response itself needs
+its own HMS login; this audit verifies its public source code and public sporting
+tables, not a captured authenticated admin response or unavailable screenshot scope.
 
 Widgets use the existing Site Builder draft/publication store. There is no new
 database table or independent publication workflow. The `widgets` array stores

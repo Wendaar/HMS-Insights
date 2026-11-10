@@ -24,6 +24,15 @@ test('ordered widget instances, enabled state and metrics survive drafts and onl
  assert.equal((await call('publish',{revision:3})).code,200);assert.equal((await call('public')).body.config.widgets[0].widgetInstanceId,'goals-2');
  assert.equal((await call('public')).body.config.widgets[0].enabled,false);
 });
+test('V1.1 layout and visitor controls remain in the draft until explicit publication',async()=>{
+ const {call}=harness(),first={...settings(),widgets:[{widgetType:'leaders',widgetInstanceId:'layout-1',layout:{section:'bottom',width:'full'}}]};
+ await call('save',{revision:0,config:first});await call('publish',{revision:1});
+ const changed={...first,widgets:[{...first.widgets[0],layout:{section:'top',width:'third'},allowPhaseSwitching:true}]};
+ assert.equal((await call('save',{revision:2,config:changed})).code,200);
+ const publicWidget=(await call('public')).body.config.widgets[0],previewWidget=(await call('preview')).body.config.widgets[0];
+ assert.equal(publicWidget.layout.section,'bottom');assert.equal(publicWidget.allowPhaseSwitching,false);assert.equal(previewWidget.layout.width,'third');assert.equal(previewWidget.allowPhaseSwitching,true);
+ await call('publish',{revision:3});assert.deepEqual((await call('public')).body.config.widgets[0].layout,{section:'top',width:'third'});
+});
 function memory(){const data=new Map();return {async get(o,s){return structuredClone(data.get(o+s)??null);},async save(o,s,d,r){const old=data.get(o+s);if((old?.revision??0)!==r)return null;const value={draft:structuredClone(d),published:old?.published??null,revision:r+1};data.set(o+s,value);return structuredClone(value);},async publish(o,s,r){const v=data.get(o+s);if(!v||v.revision!==r)return null;v.published=structuredClone(v.draft);v.publishedAt='2026-10-28';v.revision++;return structuredClone(v);},async unpublish(o,s,r){const v=data.get(o+s);if(!v||v.revision!==r)return null;v.published=null;v.revision++;return structuredClone(v);}};}
 function harness(extra={}){
  const store=memory(),options={env,store,loadPortalSeasons:async()=>seasons,...extra},handler=createPublicPortalHandler(options);
