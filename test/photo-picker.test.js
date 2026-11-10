@@ -91,3 +91,12 @@ test('larger Flickr albums expose subsequent pages with bounded requests and pre
   const result=await fetchAlbum('https://www.flickr.com/photos/owner/albums/123',{limit:250,offset:250,env:{FLICKR_API_KEY:'fixture'},fetchImpl:async(input)=>{const u=new URL(input);assert.equal(u.searchParams.get('page'),'2');return Response.json({stat:'ok',photoset:{id:'123',total:300,photo:Array.from({length:50},(_,i)=>({id:String(251+i)}))}});}});
   assert.equal(result.photos.length,50);assert.equal(result.photos[0].id,'251');assert.equal(result.nextOffset,300);assert.equal(result.total,300);
 });
+test('refreshing a large closed album requires loading its current remaining pages before closing again',async()=>{
+  const store=memory(),photos=Array.from({length:300},(_,i)=>({id:String(i+1),previewUrl:url}));
+  const reviews=Object.fromEntries(photos.map(p=>[p.id,{status:'rejected',players:[]}]))
+  await store.save('PHM',game,{...source(),org:'PHM',gameId:game,photos,albumId:'1',albumUrl:'https://flic.kr/s/test',albumTotal:300,reviews,albumStatus:'closed',flickrNextOffset:300},0);
+  const service=createPhotoArchive({env,store,readCases:async()=>cases,loadSource:async(org,item)=>({...source(),photos:photos.slice(item.offset,item.offset+250),albumTotal:300,nextOffset:Math.min(300,item.offset+250)})});
+  let v=await service.importCase('PHM',game,1);assert.equal(v.state.albumStatus,'in_progress');assert.equal(v.state.flickrNextOffset,250);
+  await assert.rejects(service.reviewAlbum('PHM',{gameId:game,revision:v.revision,status:'closed'},'QA'),e=>e.status===422);
+  v=await service.importCase('PHM',game,v.revision,'QA',250);v=await service.reviewAlbum('PHM',{gameId:game,revision:v.revision,status:'closed'},'QA');assert.equal(v.state.albumStatus,'closed');
+});

@@ -104,9 +104,10 @@ export function createPhotoArchive(options={}){
       });
       const merged=new Map((current?.draft?.photos || []).map(p=>[p.id,p]));for(const p of photos)merged.set(p.id,p);
       const changed=photos.some(p=>!(current?.draft?.photos || []).some(old=>old.id===p.id)) || !!current?.draft && String(current.draft.albumId)!==String(source.albumId);
+      const nextOffset=source.nextOffset ?? offset+source.photos.length;
       const state={schemaVersion:1,org,gameId:item.gameId,title:source.title,playedOn:source.playedOn,teams:source.teams,players:source.players,
-        albumStatus:changed?'in_progress':current?.draft?.albumStatus || 'in_progress',hasNewPhotos:changed || !!current?.draft?.hasNewPhotos,albumReviewedAt:current?.draft?.albumReviewedAt || null,albumSource:item.albumSource || 'saved-link',
-        flickrNextOffset:Math.max(String(current?.draft?.albumId)===String(source.albumId)?current?.draft?.flickrNextOffset || 0:0,source.nextOffset || source.photos.length),
+        albumStatus:changed || nextOffset<source.albumTotal?'in_progress':current?.draft?.albumStatus || 'in_progress',hasNewPhotos:changed || !!current?.draft?.hasNewPhotos,albumReviewedAt:current?.draft?.albumReviewedAt || null,albumSource:item.albumSource || 'saved-link',
+        flickrNextOffset:nextOffset,
         albumId:String(source.albumId),albumUrl:item.flickrAlbum,albumTotal:source.albumTotal,photos:[...merged.values()],reviews:current?.draft?.reviews || {},
         analyses:current?.draft?.analyses || {},analysisJob:current?.draft?.analysisJob || null,
         importedAt:now(),audit:[...(current?.draft?.audit || []),{action:'import',at:now(),actor:reviewer}].slice(-1000)};
@@ -117,7 +118,7 @@ export function createPhotoArchive(options={}){
       requireStorage();const item=await context(org,body.gameId),row=await get(org,item.gameId),state=row?.draft;
       if(!state || row.revision!==body.revision)fail(409,'Album se změnilo. Obnovte stav.');
       if(!['reviewed','closed','reopen'].includes(body.status))fail(400,'Neplatný stav alba.');
-      const stats=archiveStats(state);if(body.status==='closed'&&(stats.pending || stats.inProgress || state.photos.length<state.albumTotal))fail(422,'Před uzavřením načtěte celé album a uzavřete všechny fotografie.');
+      const stats=archiveStats(state);if(body.status==='closed'&&(stats.pending || stats.inProgress || state.photos.length<state.albumTotal || (state.flickrNextOffset ?? state.photos.length)<state.albumTotal))fail(422,'Před uzavřením načtěte celé album a uzavřete všechny fotografie.');
       const next={...state,albumStatus:body.status==='reopen'?'in_progress':body.status,hasNewPhotos:false,albumReviewedAt:body.status==='reopen'?null:now(),audit:[...(state.audit || []),{action:'album-'+body.status,actor,at:now()}].slice(-1000)};
       const saved=await store.save(org,item.gameId.toLowerCase(),next,row.revision,null);if(!saved)fail(409,'Album změnil jiný uživatel.');return view(saved,item);
     },
