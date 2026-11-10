@@ -1,13 +1,13 @@
 import {createTodayPoller,readTodayPages} from './live.js';
 import {sportingImage} from '../game-report-media.js';
 import {publicOutputUrl} from '../public-output.js';
-import {gameReportNavigation} from './navigation.js';
+import {gameReportNavigation,isEmbeddedSchedule} from './navigation.js';
 import {reportLanguage,reportLocale} from '../game-report-i18n.js';
 const $=id=>document.getElementById(id),filters=['Today','Yesterday','+7 days','-7 days','Past','Future'];
 const words={cs:{games:'Zápasy',tba:'Tým bude určen',Today:'Dnes',Yesterday:'Včera','+7 days':'+7 dní','-7 days':'−7 dní',Past:'Minulé',Future:'Budoucí',Date:'Vybrané datum',group:'Skupina',phase:'Fáze',team:'Tým',date:'Datum',search:'Vyhledat',all:'Vše',find:'Hledat',placeholder:'Tým, stadion, jméno…',refresh:'Obnovit ↻',loading:'Načítání zápasů…',empty:'Tomuto výběru neodpovídají žádné zápasy. Zkuste jiný den nebo upravte filtry.',error:'Zápasy se nepodařilo načíst. Zkuste přehled obnovit.',invalid:'Zkontrolujte Season ID a filtry v odkazu.',missing:'Pro otevření přehledu je potřeba seasonId v URL. Můžete použít stejné Season ID jako v původním přehledu HMS.',rate:'HMS dočasně omezuje požadavky. Vyčkejte prosím a obnovte přehled.',final:'Konečný',live:'Živě',scheduled:'Plánováno',cancelled:'Zrušeno',postponed:'Odloženo',unknown:'Zápas',report:'Game Report →',hms:'Detail v HMS ↗',referee:'Rozhodčí',timekeeper:'Časoměřič',older:'← Starší',newer:'Novější →',previous:'← Předchozí',next:'Další →',source:'Zdroj: HMS · Časy dle zápisu HMS · Načteno',availability:'Game Report je dostupný u již importovaných zápasů. Ostatní zápasy mají odkaz na veřejný detail HMS.',selected:'Vybraný filtr',of:'z'},en:{games:'Games',tba:'Team to be confirmed',Today:'Today',Yesterday:'Yesterday','+7 days':'+7 days','-7 days':'−7 days',Past:'Past',Future:'Future',Date:'Selected date',group:'Group',phase:'Phase',team:'Team',date:'Date',search:'Search',all:'All',find:'Search',placeholder:'Team, venue, name…',refresh:'Refresh ↻',loading:'Loading games…',empty:'No games match this selection. Try another date or adjust the filters.',error:'Games could not be loaded. Please refresh the schedule.',invalid:'Please check the Season ID and filters in the link.',missing:'A seasonId is required in the URL. Use the same Season ID as the original HMS schedule.',rate:'HMS is temporarily limiting requests. Please wait and refresh the schedule.',final:'Final',live:'Live',scheduled:'Scheduled',cancelled:'Cancelled',postponed:'Postponed',unknown:'Game',report:'Game Report →',hms:'HMS details ↗',referee:'Referees',timekeeper:'Timekeepers',older:'← Earlier',newer:'Later →',previous:'← Previous',next:'Next →',source:'Source: HMS · Times as entered in HMS · Loaded',availability:'Game Reports are available for imported games. Other games link to their public HMS details.',selected:'Selected filter',of:'of'}};
 const html=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let params=new URLSearchParams(location.search),lang=reportLanguage(params.get('lang')),last=null,controller=null,requestId=0,busy=false,autoStopped=false,pageInView=true,liveFailed=false;
-document.documentElement.classList.toggle('embedded-games',params.get('embed')==='1');
+document.documentElement.classList.toggle('embedded-games',isEmbeddedSchedule(params));
 const t=key=>words[lang][key]??key;
 const dateLabel=(date,long=false)=>new Intl.DateTimeFormat(reportLocale(lang),{day:'numeric',month:long?'long':'short',year:'numeric',...(long?{weekday:'long'}:{}),timeZone:'UTC'}).format(new Date(date+'T12:00:00Z'));
 let canonicalPath=location.pathname,prettyRoute=false,navigationVersion=0;
@@ -36,7 +36,7 @@ function status(game){if(game.live)return t('live');return t(game.status==='FINI
 function logo(team){const src=sportingImage(team.logoUrl),initials=(team.name??'').split(/\s+/).slice(0,2).map(v=>v[0]).join('');return `<span class="team-logo"><span aria-hidden="true">${html(initials)}</span>${src?`<img src="${html(src)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">`:''}</span>`;}
 function gameRow(game){
   const scored=Number.isFinite(game.home.score)&&Number.isFinite(game.away.score),score=scored?`${game.home.score} : ${game.away.score}`:'—';
-  const report=gameReportNavigation(game.id,lang,params.get('embed')==='1');
+  const report=gameReportNavigation(game.id,lang,isEmbeddedSchedule(params));
   const hms='https://prod.hms.wootera.net/embed/game?'+new URLSearchParams({gameId:game.id,lang});
   const details=[game.venue,game.group.name,game.phase.name].filter(Boolean).map(value=>`<span>${html(value)}</span>`).join('');
   const staff=[[t('referee'),game.referee],[t('timekeeper'),game.timekeeper]].filter(([,value])=>value).map(([label,value])=>`<span class="staff">${html(label)}: ${html(value)}</span>`).join('');
