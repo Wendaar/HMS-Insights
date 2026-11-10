@@ -1,3 +1,4 @@
+import {createPlayerCard} from './player-card.js';
 import { localizeReportNode, reportNames, reportLocale } from './game-report-i18n.js';
 import {mergeReportPortraits} from './game-report-portraits.js';
 import './game-report-extras.js';
@@ -85,40 +86,12 @@ function openGoals(ids){
 }
 document.addEventListener('error',event=>{if(event.target instanceof HTMLImageElement)event.target.hidden=true;},true);
 document.querySelectorAll('img').forEach(img=>{if(img.complete&&!img.naturalWidth)img.hidden=true;});
-const playerCache=new Map();let playerRequest=0;
-async function openPlayer(id){
-  if(!/^[a-f0-9-]{36}$/i.test(id)||!playerDialog)return;
-  const request=++playerRequest;
-  const knownPlayer=[...summary.players,...summary.goalies,...events.flatMap(e=>[e.player,...(e.assists??[]),e.allowedBy].filter(Boolean))].find(p=>p.id?.toLowerCase()===id.toLowerCase());
-  $('player-card-title').textContent=knownPlayer?.name??'Hráč';$('player-card-content').textContent='Načítání statistik…';
-  localize(playerDialog);if(!playerDialog.open)playerDialog.showModal();
-  try{
-    let card=playerCache.get(id);
-    if(!card){const response=await fetch(`/api/player-card?gameId=${encodeURIComponent(summary.gameId)}&playerId=${encodeURIComponent(id)}`,{headers:{accept:'application/json'}});if(!response.ok)throw Error('unavailable');card=await response.json();playerCache.set(id,card);}
-    if(request!==playerRequest||!playerDialog.open)return;
-    if(!card.available){$('player-card-content').textContent='Souhrnné statistiky tohoto hráče zatím nejsou k dispozici.';return;}
-    $('player-card-title').textContent=card.name||knownPlayer?.name||'Hráč';
-    const fragment=document.createDocumentFragment();
-    const image=sportingImage(knownPlayer?.imageUrl);
-    if(image){const photo=document.createElement('img');photo.src=image;photo.alt='';photo.className='player-card-photo';photo.referrerPolicy='no-referrer';fragment.append(photo);}
-    const context=document.createElement('p');context.className='player-scope';context.textContent=[card.scope.competition,card.scope.season,card.scope.group].filter(known).join(' · ');fragment.append(context);
-    const labels=card.role==='goalie'?{GP:'Zápasy',Svs:'Zákroky',GA:'Inkasované góly',SvP:'Úspěšnost %',SO:'Čistá konta',W:'Výhry',D:'Remízy',L:'Prohry',PIM:'Trestné minuty'}:{GP:'Zápasy',G:'Góly',A:'Asistence',P:'Body',PIM:'Trestné minuty',PPG:'PP góly',SHG:'SH góly',Stars:'Hvězda zápasu'};
-    if(card.rank){
-      const rank=document.createElement('p');rank.className='player-rank';rank.textContent=`#${card.rank} v bodování soutěže`;fragment.append(rank);
-      if(card.rank<=10&&card.role!=='goalie'&&card.source==='hms'){
-        const badge=document.createElement('div');badge.className=`league-badge ${card.rank===1?'league-leader':'league-top'}`;
-        const icon=document.createElement('span');icon.setAttribute('aria-hidden','true');icon.textContent=card.rank===1?'★':'◆';
-        const text=document.createElement('span');text.textContent=card.rank===1?'LÍDR BODOVÁNÍ':'TOP 10 BODOVÁNÍ';
-        const scope=document.createElement('small');scope.textContent='V této skupině soutěže';text.append(scope);badge.append(icon,text);fragment.append(badge);
-      }
-    }
-    const grid=document.createElement('div');grid.className='player-stat-grid';
-    for(const [key,label]of Object.entries(labels)){if(!Number.isFinite(card.stats[key]))continue;const cell=document.createElement('div'),value=document.createElement('strong'),name=document.createElement('small');value.textContent=new Intl.NumberFormat(reportLocale(lang),{maximumFractionDigits:2}).format(card.stats[key]);name.textContent=label;cell.append(value,name);grid.append(cell);}fragment.append(grid);
-    const source=document.createElement('p');source.className='map-caption';source.textContent=(card.source==='hms'?'Souhrnné statistiky HMS pro tuto skupinu soutěže.':'Součet z dosud načtených zápasů v této skupině soutěže.')+(card.asOf?(lang==='en'?' As of ':' K ')+new Intl.DateTimeFormat(reportLocale(lang),{timeZone:'Europe/Prague'}).format(new Date(card.asOf)):'');fragment.append(source);
-    $('player-card-content').replaceChildren(fragment);
-  }catch{if(request===playerRequest&&playerDialog.open)$('player-card-content').textContent='Statistiky se nyní nepodařilo načíst. Zkuste kartu otevřít znovu.';}
-  finally{localize(playerDialog);}
-}
+playerDialog?.classList.add('hms-player-card');
+const openPlayer=playerDialog?createPlayerCard({dialog:playerDialog,title:$('player-card-title'),content:$('player-card-content'),lang,localize,
+ knownPlayer:id=>[...summary.players,...summary.goalies,...events.flatMap(e=>[e.player,...(e.assists??[]),e.allowedBy].filter(Boolean))].find(p=>p.id?.toLowerCase()===id.toLowerCase()),
+ loadCard:async id=>{const response=await fetch('/api/player-card?'+new URLSearchParams({gameId:summary.gameId,playerId:id}),{headers:{accept:'application/json'}});if(!response.ok)throw Error('unavailable');return response.json();}
+}):()=>{};
+
 document.addEventListener('click',event=>{
   const languageLink=event.target.closest('[data-report-lang]');if(languageLink){const url=new URL(location.href);url.searchParams.set('lang',languageLink.dataset.reportLang);languageLink.href=url.pathname+url.search+url.hash;return;}
   const strength=event.target.closest('button[data-strength]');if(strength){
@@ -131,7 +104,7 @@ document.addEventListener('click',event=>{
 });
 document.addEventListener('keydown',event=>{const mark=event.target.closest('[data-goal-ids]');if(mark&&['Enter',' '].includes(event.key)){event.preventDefault();try{openGoals(JSON.parse(mark.dataset.goalIds));}catch{}}});
 $('player-dialog-close')?.addEventListener('click',()=>playerDialog.close());
-playerDialog?.addEventListener('close',()=>{playerRequest++;});
+
 if(rail){
   for(const [id,key]of[['report-team','team'],['report-period','period'],['report-event-type','type']])$(id).addEventListener('change',e=>{filters[key]=e.target.value;refresh();rail.scrollLeft=0;});
   const scroll=direction=>rail.scrollBy({left:direction*Math.max(230,rail.clientWidth*.75),behavior:behavior()});

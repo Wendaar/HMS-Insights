@@ -1,11 +1,9 @@
+import {portrait} from '../../public/player-portrait.js';
+export {portrait};
 import {hmsBrand} from '../../public/hms-brand.js';
 import { reportLocale } from '../../public/game-report-i18n.js';
 import { escape as html,teamPalette } from '../../public/game-report-graphics.js';
 import { sportingImage,flickrAlbum } from '../../public/game-report-media.js';
-export function portrait(person,{large=false,goalie=false}={}){
-  const src=sportingImage(person.imageUrl),initials=person.name?.split(/\s+/).filter(Boolean).slice(0,2).map(n=>n[0]).join('')??'';
-  return `<span class="portrait ${large?'portrait-large':''}${goalie?' portrait-goalie':''}"${person.id?` data-player-portrait="${html(person.id.toLowerCase())}"`:''}><span aria-hidden="true">${html(initials)}</span>${src?`<img src="${html(src)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">`:''}</span>`;
-}
 export function teamLogo(team,extra=''){
   const src=sportingImage(team.logoUrl);
   return `<span class="team-logo ${extra}"><span aria-hidden="true">${html(team.name?.split(/\s+/).slice(0,2).map(n=>n[0]).join('')??'')}</span>${src?`<img src="${html(src)}" alt="${html(team.name)} — logo" decoding="async" referrerpolicy="no-referrer">`:''}</span>`;

@@ -1,3 +1,4 @@
+import {officialPlayer} from '../../public/widgets/statistics.js';
 import {assignComparisonBadges} from '../domain/player-rankings.js';
 import {formIndex,teamSpecialTeams,teamRosterTrend,assignTeamRatings} from '../domain/team-performance.js';
 import {neon} from '@neondatabase/serverless';
@@ -70,9 +71,9 @@ export function compareTeams(tables,games,scope,{minStarts=null}={}){
     for(const r of rows??[]){
       const team=byId.get(id(r.TeamId)),playerId=id(r.PlayerId);if(!team||!playerId)continue;
       const key=team.id+playerId;if(keys.has(key))throw new Error('Duplicate player');keys.add(key);
-      const p={id:playerId,name:label([r.FirstName,r.LastName].filter(Boolean).join(' ')),gp:count(r.GP),photo:sportingImage(r.PlayerLogo)};
-      if(kind==='players')Object.assign(p,{goals:count(r.G),assists:count(r.A),points:count(r.G)!==null&&count(r.A)!==null?count(r.G)+count(r.A):null});
-      else Object.assign(p,{saves:count(r.Svs),ga:count(r.GA),wins:count(r.W),sv:decimal(r.SvP)!==null&&decimal(r.SvP)<=100?decimal(r.SvP):null,gaa:decimal(r.GAA)});
+      const official=officialPlayer(r),p={id:playerId,name:official.name,gp:official.games,photo:official.imageUrl};
+      if(kind==='players')Object.assign(p,{goals:official.goals,assists:official.assists,points:official.points});
+      else Object.assign(p,{saves:count(r.Svs),ga:count(r.GA),wins:official.wins,sv:official.sv,gaa:official.gaa});
       team[kind].push(p);
     }
   }

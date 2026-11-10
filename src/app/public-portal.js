@@ -1,3 +1,4 @@
+import {portalWidgets} from '../../public/widgets/definitions.js';
 import {neon} from '@neondatabase/serverless';
 import {organizationConfig} from './organizations.js';
 import {isGameId} from '../domain/game-summary.js';
@@ -21,7 +22,7 @@ export function portalSettings(input){
  if(!/^#[a-f0-9]{6}$/i.test(input.color??''))throw new TypeError('color');
  if(input.logoUrl&&!safePortalUrl(input.logoUrl))throw new TypeError('logo');
  if(typeof input.extras!=='string'||input.extras.length>30000)throw new TypeError('extras');
- return {title:input.title.trim(),description:text(input.description,600),color:input.color,logoUrl:safePortalUrl(input.logoUrl),seasonIds,defaultSeasonId:id(input.defaultSeasonId),sections:input.sections,lang:input.lang==='en'?'en':'cs',extras:input.extras};
+ return {title:input.title.trim(),description:text(input.description,600),color:input.color,logoUrl:safePortalUrl(input.logoUrl),seasonIds,defaultSeasonId:id(input.defaultSeasonId),sections:input.sections,lang:input.lang==='en'?'en':'cs',extras:input.extras,widgets:portalWidgets(input)};
 }
 export async function portalCatalog(org,options={}){
  const config=organizationConfig(org,options.env??process.env);
@@ -64,6 +65,19 @@ export async function portalBranding(org,season,options={}){
 export async function validatePortalSeasons(org,settings,options={}){
  const catalog=await(options.portalCatalog??portalCatalog)(org,options);
  if(!settings.seasonIds.every(s=>catalog.items.some(i=>i.seasonId===s)))throw new TypeError('foreign season');
+ const organization=organizationConfig(org,options.env??process.env);
+ for(const widget of settings.widgets??[]){
+  const scope=widget.scope??{};
+  if(scope.organisationId&&scope.organisationId!==organization.id.toLowerCase())throw new TypeError('foreign widget organisation');
+  if(scope.seasonId&&!settings.seasonIds.includes(scope.seasonId))throw new TypeError('unpublished widget season');
+  const seasons=catalog.items.filter(s=>settings.seasonIds.includes(s.seasonId)&&(!scope.seasonId||s.seasonId===scope.seasonId));
+  if(scope.competitionId&&!seasons.some(s=>s.competitionId===scope.competitionId))throw new TypeError('foreign widget competition');
+  if(scope.groupId||scope.phaseId||scope.teamId){
+   const season=seasons.find(s=>s.seasonId===(scope.seasonId??settings.defaultSeasonId));if(!season||scope.competitionId&&scope.competitionId!==season.competitionId)throw new TypeError('widget season');
+   const directory=await(options.portalDirectory??portalDirectory)(org,season.seasonId,options),group=directory.groups.find(g=>g.id===scope.groupId),phase=directory.groups.flatMap(g=>g.phases.map(p=>({...p,groupId:g.id}))).find(p=>p.id===scope.phaseId);
+   if(scope.groupId&&!group||scope.phaseId&&(!phase||group&&phase.groupId!==group.id)||scope.teamId&&!directory.teams.some(t=>t.id===scope.teamId&&(!scope.groupId||t.groupIds.includes(scope.groupId))))throw new TypeError('widget directory');
+  }
+ }
  return catalog.items.filter(i=>settings.seasonIds.includes(i.seasonId));
 }
 export async function portalDirectory(org,seasonId,options={}){

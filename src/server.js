@@ -1,3 +1,4 @@
+import {createWidgetsHandler} from './web/widgets-handler.js';
 import {createVirtualCameraHandler} from './web/virtual-camera-handler.js';
 const virtualCameraHandler=createVirtualCameraHandler();
 import {createMatchPreviewHandler} from './web/match-preview-handler.js';
@@ -115,12 +116,19 @@ export const server = createServer(async (request, response) => {
     response.setHeader('content-security-policy',"default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' https://prod-hms-wootera.s3.eu-central-1.amazonaws.com https://hockeymanagementsystem.s3.amazonaws.com; base-uri 'none'; form-action 'self'; frame-ancestors 'none'");
     response.end(request.method==='HEAD'?undefined:await readFile(join(publicDirectory,'registrations',name)));return;
   }
+  if(url.pathname==='/api/widgets'||url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='widgets'){
+    request.query=Object.fromEntries(url.searchParams);await createWidgetsHandler()(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json; charset=utf-8');response.end(JSON.stringify(body));}});return;
+  }
+  if(/^\/widgets\/(definitions|statistics|renderers|picker)\.js$/.test(url.pathname)||url.pathname==='/widgets/styles.css'||['/player-card.js','/player-card.css','/player-portrait.js'].includes(url.pathname)){
+    if(!['GET','HEAD'].includes(request.method)){response.writeHead(405,{allow:'GET, HEAD'});response.end();return;}
+    response.setHeader('content-type',url.pathname.endsWith('.css')?'text/css; charset=utf-8':'text/javascript; charset=utf-8');response.end(request.method==='HEAD'?undefined:await readFile(join(publicDirectory,url.pathname)));return;
+  }
   if(url.pathname==='/api/portal'||url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='portal'){
     request.query=Object.fromEntries(url.searchParams);
     if(request.method==='POST'){let body='';for await(const chunk of request){body+=chunk;if(Buffer.byteLength(body)>50000){response.writeHead(413);response.end();return;}}request.body=body;}
     await portalHandler(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json; charset=utf-8');response.end(JSON.stringify(body));},send(body){response.end(body);}});return;
   }
-  const portalAsset=/^\/league\/(app.js|app.css|widget.css|presentation.js|embed-code.js|index.html)$/.exec(url.pathname),insightsWidget=/^\/widgets\/insights\/[a-z0-9-]+\/?$/.test(url.pathname);
+  const portalAsset=/^\/league\/(app.js|app.css|widget.css|presentation.js|embed-code.js|index.html)$/.exec(url.pathname),insightsWidget=/^\/widgets\/[a-z0-9-]+\/[a-z0-9-]+\/?$/.test(url.pathname);
   if(portalAsset||insightsWidget||/^\/league\/[a-z0-9-]+\/?$/.test(url.pathname)||url.pathname==='/control/apps/public-portal'||url.pathname==='/'&&url.hostname==='public.heromanagementsystem.com'){
     if(!['GET','HEAD'].includes(request.method)){response.writeHead(405,{allow:'GET, HEAD'});response.end();return;}
     const name=portalAsset?.[1]??'index.html';
