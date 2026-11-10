@@ -1,5 +1,11 @@
 import {publicOrganizations} from '../src/app/organizations.js';
 import {createPhotoArchive,photoArchiveEnabled} from '../src/app/photo-archive.js';
+export async function checkProductionArchive(env=process.env){
+  if(env.VERCEL_ENV!=='production')throw Error('Production required');
+  const service=createPhotoArchive({env});
+  console.log('PHOTO_ARCHIVE_RELEASE '+JSON.stringify({enabled:photoArchiveEnabled(env),storage:service.ready,flickr:!!(env.FLICKR_API_KEY || env.FLICKT_API_KEY),openai:!!env.OPENAI_API_KEY,model:env.PHOTO_VISION_MODEL,organizations:publicOrganizations(env).map(o=>({org:o.code,hms:o.configured,operations:!!env[`HMS_${o.code}_OPERATIONS_SECRET`]})),modelCalls:0}));
+  if(env.HMS_PHM_OPERATIONS_SECRET){const catalog=await service.catalog('PHM'),players=await service.archive('PHM');console.log('PHOTO_ARCHIVE_RELEASE_STORAGE '+JSON.stringify({org:'PHM',games:catalog.length,albums:catalog.filter(c=>c.albumUrl).length,imported:catalog.filter(c=>c.imported).length,placeholderTitles:catalog.filter(c=>c.title==='Domácí × Hosté').length,confirmedPlayers:players.length,modelCalls:0}));}
+}
 export async function checkGeneralArchive(env=process.env){
   if(env.VERCEL_ENV!=='preview' || !photoArchiveEnabled(env))throw Error('Preview required');
   const service=createPhotoArchive({env});

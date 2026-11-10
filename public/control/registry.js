@@ -25,7 +25,7 @@ export function setOrganizationCatalog(rows){
 const missing = (id, category, name, description) => ({id,category,name,description,
   status:'missing', dataSource:'Nenastaveno', note:'Aplikace je v inventáři; její adresu a zdroj je potřeba ověřit.', links:{}});
 const applications = [
-  {id:'photo-archive',category:'media',name:'Photo Archive',description:'Přiřazování fotografií hráčům a kontrola shod s HMS soupiskou.',status:'partial',dataSource:'Flickr + HMS · oddělené organizace',note:'Preview. Organizační přístup Operations; schválené fotografie pro společný photo picker.',links:{open:'/photo-archive?org=phm',github:repository+'/pull/61'}},
+  {id:'photo-archive',category:'media',name:'Photo Archive',description:'Přiřazování fotografií hráčům a kontrola shod s HMS soupiskou.',status:'partial',dataSource:'Flickr + HMS · oddělené organizace',note:'Organizační přístup Operations; schválené fotografie pro společný photo picker.',links:{open:'/photo-archive?org=phm',github:repository+'/pull/61'}},
   missing('statistics','stats','Statistics','Přehled statistik soutěže. Samostatná stránka zatím není připojená.'),
   missing('standings','stats','Standings','Tabulky soutěže. Samostatná stránka zatím není připojená.'),
   missing('team-profiles','competition','Team Profiles','Veřejné stránky týmů. Připravujeme.'),
