@@ -9,7 +9,7 @@ import {sessionCookie} from '../src/security/operations-session.js';
 import {broadcastPhotoChoices,applyBroadcastPhotos} from '../public/photo-picker/broadcast.js';
 import {allStarsSettings,resolvedSelection} from '../src/app/all-stars.js';
 import {channelState,createChannelHandler} from '../src/web/broadcast-channel.js';
-import {fetchAlbum} from '../photo-archive/flickr.mjs';
+import {fetchAlbum,albumForHmsImages} from '../photo-archive/flickr.mjs';
 const game='11111111-1111-4111-8111-111111111111',player='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',team='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',orgId='cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const url='https://live.staticflickr.com/1/123_abcd_b.jpg';
 const env={VERCEL_ENV:'preview',VERCEL_GIT_COMMIT_REF:'codex/hms-photo-archive-pilot',HMS_PHM_OPERATIONS_SECRET:'phm-secret',HMS_EUCHL_OPERATIONS_SECRET:'euchl-secret',HMS_EUCHL_ORGANIZATION_ID:orgId,HMS_EUCHL_API_TOKEN:'euchl-token'};
@@ -27,11 +27,11 @@ test('publication validates archive identity against exact player and organizati
   await validatePlayerPhotoChoices('EUCHL',config,{playerPhotos:async(org,id)=>{seen=[org,id];return [{photos:[{id:'123',previewUrl:url}]}];}});assert.deepEqual(seen,['EUCHL',player]);
   await assert.rejects(validatePlayerPhotoChoices('PHM',config,{playerPhotos:async()=>[]}),TypeError);
 });
-test('organizations share neither assignments nor archives; partial photos prevent album closure',async()=>{
+test('organizations stay isolated and reviewers can close albums without approving pending photos',async()=>{
   const store=memory(),service=createPhotoArchive({env,store,readCases:async()=>cases,loadSource:source});
   await service.importCase('PHM',game,0);await service.importCase('EUCHL',game,0);
-  await assert.rejects(service.reviewAlbum('PHM',{gameId:game,revision:1,status:'closed'},'fixture'),e=>e.status===422);
-  let v=await service.decide('PHM',{gameId:game,photoId:'123',revision:1,decision:'assign',playerIds:[player],reviewer:'QA'},'fixture');
+  let v=await service.reviewAlbum('PHM',{gameId:game,revision:1,status:'closed'},'fixture');assert.equal(v.state.albumStatus,'closed');assert.equal(v.stats.pending,1);assert.deepEqual(await service.archive('PHM'),[]);
+  v=await service.decide('PHM',{gameId:game,photoId:'123',revision:v.revision,decision:'assign',playerIds:[player],reviewer:'QA'},'fixture');
   assert.equal((await service.archive('PHM')).length,1);assert.deepEqual(await service.archive('EUCHL'),[]);
   v=await service.reviewAlbum('PHM',{gameId:game,revision:v.revision,status:'closed'},'fixture');assert.equal(v.state.albumStatus,'closed');
   v=await service.decide('PHM',{gameId:game,photoId:'123',revision:v.revision,decision:'reset',reviewer:'QA'},'fixture');assert.equal(v.state.albumStatus,'in_progress');
@@ -48,7 +48,7 @@ test('PHM Operations cookie cannot authorize another organization; that organiza
   r=response();await handler({...req,headers:{authorization:'Bearer euchl-secret'}},r);assert.equal(r.code,200);assert.equal(orgSeen,'EUCHL');
 });
 test('HMS discovery checks token ownership, keeps old catalog entries and rejects foreign games before storage',async()=>{
-  const store=memory();let foreign=false;const discovery=createArchiveDiscovery({env,store,fetchImpl:async(u,init)=>{assert.equal(init.headers.authorization,'Bearer euchl-token');return Response.json([{gameId:game,organizationId:foreign?'wrong':orgId,startDate:'2026-11-05',flickrAlbum:'https://flic.kr/s/abc',HomeTeam:{name:'Home'},AwayTeam:{name:'Away'}}]);}});
+  const store=memory();let foreign=false;const discovery=createArchiveDiscovery({env,store,fetchImpl:async(u,init)=>{if(new URL(u).hostname==='api.prod.hms.wootera.net')return new Response('',{status:404});assert.equal(init.headers.authorization,'Bearer euchl-token');const row={gameId:game,organizationId:foreign?'wrong':orgId,startDate:'2026-11-05',flickrAlbum:'https://flic.kr/s/abc',HomeTeam:{name:'Home'},AwayTeam:{name:'Away'}};return Response.json(new URL(u).pathname.endsWith('/game')?row:[row]);}});
   const r=await discovery.discover('EUCHL',{from:'2026-11-01',to:'2026-11-10'});assert.equal(r.albums,1);assert.equal((await store.get('EUCHL','catalog')).draft.items.length,1);assert.equal(await store.get('PHM','catalog'),null);
   foreign=true;await assert.rejects(discovery.discover('EUCHL',{from:'2026-11-01',to:'2026-11-10'}));assert.equal((await store.get('EUCHL','catalog')).revision,1);
 });
@@ -91,12 +91,33 @@ test('larger Flickr albums expose subsequent pages with bounded requests and pre
   const result=await fetchAlbum('https://www.flickr.com/photos/owner/albums/123',{limit:250,offset:250,env:{FLICKR_API_KEY:'fixture'},fetchImpl:async(input)=>{const u=new URL(input);assert.equal(u.searchParams.get('page'),'2');return Response.json({stat:'ok',photoset:{id:'123',total:300,photo:Array.from({length:50},(_,i)=>({id:String(251+i)}))}});}});
   assert.equal(result.photos.length,50);assert.equal(result.photos[0].id,'251');assert.equal(result.nextOffset,300);assert.equal(result.total,300);
 });
-test('refreshing a large closed album requires loading its current remaining pages before closing again',async()=>{
+test('reviewer closure permits unloaded pages without inventing approvals and records skipped counts',async()=>{
   const store=memory(),photos=Array.from({length:300},(_,i)=>({id:String(i+1),previewUrl:url}));
   const reviews=Object.fromEntries(photos.map(p=>[p.id,{status:'rejected',players:[]}]))
   await store.save('PHM',game,{...source(),org:'PHM',gameId:game,photos,albumId:'1',albumUrl:'https://flic.kr/s/test',albumTotal:300,reviews,albumStatus:'closed',flickrNextOffset:300},0);
   const service=createPhotoArchive({env,store,readCases:async()=>cases,loadSource:async(org,item)=>({...source(),photos:photos.slice(item.offset,item.offset+250),albumTotal:300,nextOffset:Math.min(300,item.offset+250)})});
-  let v=await service.importCase('PHM',game,1);assert.equal(v.state.albumStatus,'in_progress');assert.equal(v.state.flickrNextOffset,250);
-  await assert.rejects(service.reviewAlbum('PHM',{gameId:game,revision:v.revision,status:'closed'},'QA'),e=>e.status===422);
+  let v=await service.importCase('PHM',game,1);assert.equal(v.state.albumStatus,'closed');assert.equal(v.state.flickrNextOffset,250);
+  v=await service.reviewAlbum('PHM',{gameId:game,revision:v.revision,status:'closed'},'QA');assert.equal(v.state.albumStatus,'closed');assert.equal(v.state.audit.at(-1).unloaded,50);assert.deepEqual(await service.archive('PHM'),[]);
   v=await service.importCase('PHM',game,v.revision,'QA',250);v=await service.reviewAlbum('PHM',{gameId:game,revision:v.revision,status:'closed'},'QA');assert.equal(v.state.albumStatus,'closed');
+});
+
+test('sparse HMS game lists are hydrated with real details, scoped team names and image-linked albums',async()=>{
+  const row={gameId:game,organizationId:orgId,startDate:'2026-11-05',homeTeamId:team,awayTeamId:player};
+  const store=memory(),discovery=createArchiveDiscovery({env:{...env,FLICKR_API_KEY:'fixture'},store,fetchImpl:async(input,init)=>{
+    const u=new URL(input);
+    if(u.hostname==='www.flickr.com'){assert.equal(init.redirect,'error');return Response.json(u.searchParams.get('method')==='flickr.photos.getInfo'?{stat:'ok',photo:{id:'123',owner:{nsid:'123@N01'}}}:{stat:'ok',set:[{id:'999'}]});}
+    if(u.hostname==='api.prod.hms.wootera.net'){assert.equal(init.headers.authorization,undefined);return Response.json(u.pathname.endsWith('gameMultimedia')?{images:[{full:url}]}:{startDate:row.startDate,HomeTeam:{teamId:team},AwayTeam:{teamId:player}});}
+    assert.equal(init.headers.authorization,'Bearer euchl-token');
+    return Response.json(u.pathname.endsWith('/teams')?[{teamId:team,name:'Real Home'},{teamId:player,name:'Real Away'}]:u.pathname.endsWith('/games')?[row]:row);
+  }});
+  const result=await discovery.discover('EUCHL',{from:'2026-11-01',to:'2026-11-10'});assert.equal(result.albums,1);
+  const [item]=(await store.get('EUCHL','catalog')).draft.items;assert.equal(item.title,'Real Home × Real Away');assert.equal(item.flickrAlbum,'https://www.flickr.com/photos/123@N01/albums/999');
+});
+
+test('HMS image membership resolution requires an unambiguous common Flickr album and valid owner',async()=>{
+  const images=[{full:url},{full:'https://live.staticflickr.com/1/124_abcd_b.jpg'}];let ambiguous=false,wrongOwner=false;
+  const fetchImpl=async(input)=>{const u=new URL(input);return Response.json(u.searchParams.get('method')==='flickr.photos.getInfo'?{stat:'ok',photo:{id:'123',owner:{nsid:wrongOwner?'../evil':'123@N01'}}}:{stat:'ok',set:ambiguous?[{id:'9'},{id:'10'}]:[{id:'9'},{id:u.searchParams.get('photo_id')}]});};
+  assert.equal(await albumForHmsImages(images,{env:{FLICKR_API_KEY:'fixture'},fetchImpl}),'https://www.flickr.com/photos/123@N01/albums/9');
+  ambiguous=true;assert.equal(await albumForHmsImages(images,{env:{FLICKR_API_KEY:'fixture'},fetchImpl}),null);
+  ambiguous=false;wrongOwner=true;assert.equal(await albumForHmsImages(images,{env:{FLICKR_API_KEY:'fixture'},fetchImpl}),null);
 });

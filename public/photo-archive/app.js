@@ -179,7 +179,8 @@ function renderArchive(){
 }
 async function initialize(){
   const access=await api('access');$('login').hidden=access.authorized;$('workspace').hidden=!access.authorized;$('logout').hidden=!access.authorized;
-  $('organization').replaceChildren(...(access.organizations || []).map(o=>new Option(o.name+(o.configured?'':' · nepřipojeno'),o.slug)));$('organization').value=org.toLowerCase();$('organization-label').textContent=access.org+' · Preview';
+  $('organization').replaceChildren(...(access.organizations || []).map(o=>new Option(o.name+(o.configured?'':' · nepřipojeno'),o.slug)));$('organization').value=org.toLowerCase();$('organization-label').textContent=access.org+(access.sandbox?' · Preview':'');
+  document.querySelector('.workspace-footer').textContent='Soukromý archiv organizace · bez zápisu do HMS · otevření galerie nespouští AI analýzu';
   if(!access.configured){message('Kód Operations této organizace zatím není nastavený.',true);return;}
   if(!access.authorized){message('Přihlaste se kódem Operations vybrané organizace.');return;}
   try{await discoverGames();for(let page=1;page<5 && discoveryPage?.hasMore;page++)await discoverGames(discoveryPage.nextOffset);}catch(error){message('HMS synchronizace není dostupná. Zobrazuji uložená alba.',true);await loadCatalog();}
@@ -210,4 +211,4 @@ task(initialize);
 $('organization').onchange=()=>{location.href='/photo-archive?'+new URLSearchParams({org:$('organization').value});};
 $('discover').onclick=()=>task(()=>discoverGames());$('discover-next').onclick=()=>task(()=>discoverGames(discoveryPage?.nextOffset || 0));$('album-filter').onchange=renderAlbums;
 $('link-album').onclick=()=>task(async()=>{await api('link-album',{body:{gameId:$('game-select').value,albumUrl:$('album-link').value.trim()}});await loadCatalog();current=await api('import',{body:{gameId:$('game-select').value,revision:current?.revision || 0}});renderCase();message('Odkaz a fotografie jsou uložené u zápasu. HMS se neměnilo.');});
-for(const [id,status] of [['album-reviewed','reviewed'],['album-close','closed'],['album-reopen','reopen']])$(id).onclick=()=>task(async()=>{if(!current?.state)return;current=await api('album-review',{body:{gameId:current.gameId,revision:current.revision,status}});renderCase();await loadCatalog();message('Stav kontroly alba je uložený.');});
+for(const [id,status] of [['album-reviewed','reviewed'],['album-close','closed'],['album-reopen','reopen']])$(id).onclick=()=>task(async()=>{if(!current?.state)return;current=await api('album-review',{body:{gameId:current.gameId,revision:current.revision,status}});renderCase();await loadCatalog();message(status==='closed'?'Album je uzavřené rozhodnutím kontrolora. Nezkontrolované fotografie zůstávají bez schválení; do archivu patří pouze potvrzená přiřazení.':'Stav kontroly alba je uložený.');});

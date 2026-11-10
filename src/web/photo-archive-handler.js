@@ -15,7 +15,7 @@ export function createPhotoArchiveHandler(options={}){
     const secret=env[`HMS_${org.code}_OPERATIONS_SECRET`];
     const bearer=hasBearerSecret({headers:{authorization:req.headers?.authorization}},secret);
     const authorized=bearer || hasOperationsSession(req,org,secret,options.now?.());
-    if(action==='access')return res.status(200).json({org:org.code,configured:!!secret,authorized,storageReady:service.ready,sandbox:true,organizations:publicOrganizations(env)});
+    if(action==='access')return res.status(200).json({org:org.code,configured:!!secret,authorized,storageReady:service.ready,sandbox:env.VERCEL_ENV!=='production',organizations:publicOrganizations(env)});
     if(writes.includes(action) && req.headers?.origin){try{if(new URL(req.headers.origin).host!==req.headers.host)throw Error();}catch{return fail(403,'Požadavek pochází z jiné stránky.');}}
     if(action==='logout'){res.setHeader('set-cookie',clearSessionCookie(org));return res.status(200).json({authorized:false});}
     if(!secret)return fail(503,'Kód Operations této organizace není nastavený.');

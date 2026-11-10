@@ -25,8 +25,8 @@ const decision=(revision,extra={})=>({gameId:game,photoId:'55635051690',decision
 const response=()=>({headers:{},setHeader(k,v){this.headers[k]=v;},status(code){this.code=code;return this;},json(body){this.body=body;return this;}});
 const request=(action,body,headers={authorization:'Bearer review-secret'})=>({method:body?'POST':'GET',query:{org:'phm',action},headers:{host:'preview.test',...headers,...(body?{'content-type':'application/json'}:{})},body});
 
-test('archive is Preview-only, isolated by tool name and rejects unsafe image references',()=>{
-  assert.equal(PHOTO_ARCHIVE_TOOL,'photo-archive-preview');assert.equal(photoArchiveEnabled({...env,VERCEL_ENV:'production'}),false);
+test('archive supports production, remains isolated by tool name and rejects unsafe image references',()=>{
+  assert.equal(PHOTO_ARCHIVE_TOOL,'photo-archive-preview');assert.equal(photoArchiveEnabled({...env,VERCEL_ENV:'production'}),true);
   assert.equal(photoArchiveEnabled({...env,VERCEL_GIT_COMMIT_REF:'other'}),false);
   assert.equal(flickrImage('https://evil.test/x'),null);assert.equal(flickrImage('https://user@live.staticflickr.com/x'),null);
 });
@@ -68,7 +68,8 @@ test('HTTP protects reads and writes before touching source/storage; accepts Ope
   const foreign=response();await handler(request('import',{gameId:game,revision:0},{authorization:'Bearer review-secret',origin:'https://other.test'}),foreign);assert.equal(foreign.code,403);
   const cookie=sessionCookie({code:'PHM'},'review-secret').split(';')[0],allowed=response();
   await handler(request('catalog',null,{cookie}),allowed);assert.equal(allowed.code,200);assert.equal(reads,1);
-  const prod=response();await createPhotoArchiveHandler({env:{...env,VERCEL_ENV:'production'},service})(request('catalog'),prod);assert.equal(prod.code,503);
+  const prod=response();await createPhotoArchiveHandler({env:{...env,VERCEL_ENV:'production'},service})(request('catalog',null,{}),prod);assert.equal(prod.code,401);
+  const prodAllowed=response();await createPhotoArchiveHandler({env:{...env,VERCEL_ENV:'production'},service})(request('catalog'),prodAllowed);assert.equal(prodAllowed.code,200);
 });
 test('authenticated decisions persist; future picker projection exposes only confirmed photo references',async()=>{
   const {service}=fixture();await service.importCase('PHM',game,0);const handler=createPhotoArchiveHandler({env,service});

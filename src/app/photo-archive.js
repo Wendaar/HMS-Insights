@@ -8,12 +8,12 @@ import {suggestPlayers} from '../../photo-archive/matcher.mjs';
 import {pilotObservations} from '../../photo-archive/pilot-observations.mjs';
 import {analysisStats,createArchiveAnalysis} from './photo-archive-analysis.js';
 import {withMatchJerseys} from '../../photo-archive/jersey-context.mjs';
-import {createArchiveDiscovery} from './photo-archive-discovery.js';
+import {createArchiveDiscovery,archiveGameTitle} from './photo-archive-discovery.js';
 import {isGameId} from '../domain/game-summary.js';
 import {flickrAlbum} from '../../public/game-report-media.js';
 
 export const PHOTO_ARCHIVE_TOOL='photo-archive-preview';
-export const photoArchiveEnabled=env=>env.VERCEL_ENV==='preview' && env.VERCEL_GIT_COMMIT_REF==='codex/hms-photo-archive-pilot' || env.PHOTO_ARCHIVE_LOCAL==='1' && env.VERCEL_ENV!=='production';
+export const photoArchiveEnabled=env=>env.VERCEL_ENV==='production' || env.VERCEL_ENV==='preview' && env.VERCEL_GIT_COMMIT_REF==='codex/hms-photo-archive-pilot' || env.PHOTO_ARCHIVE_LOCAL==='1' && env.VERCEL_ENV!=='production';
 export class PhotoArchiveError extends Error {constructor(status,message){super(message);this.status=status;}}
 const fail=(status,message)=>{throw new PhotoArchiveError(status,message);};
 const same=(a,b)=>typeof a==='string' && typeof b==='string' && a.toLowerCase()===b.toLowerCase();
@@ -68,7 +68,7 @@ export function createPhotoArchive(options={}){
       fetchAlbum(item.flickrAlbum,{limit:250,offset:item.offset || 0,env:{FLICKR_API_KEY:env.FLICKR_API_KEY || env.FLICKT_API_KEY},fetchImpl})]);
     if(!same(detail?.organizationId,scoped.id))fail(422,'HMS nepotvrdilo organizaci vybraného zápasu.');
     const normalized=normalizeLineup(item.gameId,detail,lineup);
-    const teams=withMatchJerseys([{teamId:normalized.homeTeamId,name:detail.HomeTeam?.name || 'Domácí'},{teamId:normalized.awayTeamId,name:detail.AwayTeam?.name || 'Hosté'}],detail);
+    const teams=withMatchJerseys([{teamId:normalized.homeTeamId,name:detail.HomeTeam?.name || item.detail?.HomeTeam?.name || 'Domácí'},{teamId:normalized.awayTeamId,name:detail.AwayTeam?.name || item.detail?.AwayTeam?.name || 'Hosté'}],detail);
     return {gameId:item.gameId,title:teams.map(t=>t.name).join(' × '),playedOn:detail.startDate || null,teams,players:normalized.players,
       albumId:album.photosetId,albumUrl:album.canonical,albumTotal:album.total,photos:album.photos,nextOffset:album.nextOffset};
   }
@@ -79,7 +79,7 @@ export function createPhotoArchive(options={}){
       requireStorage();const link=flickrAlbum(body.albumUrl);if(!link)fail(400,'Vložte platný Flickr odkaz na album.');
       const verified=await discovery.context(org,body.gameId,link);if(verified.flickrAlbum!==link)fail(409,'HMS už poskytuje jiný odkaz. Obnovte zápas z HMS.');
       const current=await store.get(org,'catalog'),items=new Map((current?.draft?.items || []).map(c=>[c.gameId.toLowerCase(),c]));
-      items.set(body.gameId.toLowerCase(),{org,gameId:verified.gameId,title:[verified.detail.HomeTeam?.name || 'Domácí',verified.detail.AwayTeam?.name || 'Hosté'].join(' × '),playedOn:verified.detail.startDate,flickrAlbum:link,source:'saved-link'});
+      items.set(body.gameId.toLowerCase(),{org,gameId:verified.gameId,title:archiveGameTitle(verified.detail),playedOn:verified.detail.startDate,flickrAlbum:link,source:'saved-link'});
       const saved=await store.save(org,'catalog',{title:'Archive discovery',items:[...items.values()]},current?.revision || 0,null);if(!saved)fail(409,'Katalog mezitím změnil jiný uživatel.');return {gameId:verified.gameId,albumUrl:link};
     },
     ...createArchiveAnalysis({env,store,context,view,requireStorage,fail,now,fetchImpl,analyzer:options.analyzer}),
@@ -106,7 +106,7 @@ export function createPhotoArchive(options={}){
       const changed=photos.some(p=>!(current?.draft?.photos || []).some(old=>old.id===p.id)) || !!current?.draft && String(current.draft.albumId)!==String(source.albumId);
       const nextOffset=source.nextOffset ?? offset+source.photos.length;
       const state={schemaVersion:1,org,gameId:item.gameId,title:source.title,playedOn:source.playedOn,teams:source.teams,players:source.players,
-        albumStatus:changed || nextOffset<source.albumTotal?'in_progress':current?.draft?.albumStatus || 'in_progress',hasNewPhotos:changed || !!current?.draft?.hasNewPhotos,albumReviewedAt:current?.draft?.albumReviewedAt || null,albumSource:item.albumSource || 'saved-link',
+        albumStatus:changed?'in_progress':current?.draft?.albumStatus || 'in_progress',hasNewPhotos:changed || !!current?.draft?.hasNewPhotos,albumReviewedAt:current?.draft?.albumReviewedAt || null,albumSource:item.albumSource || 'saved-link',
         flickrNextOffset:nextOffset,
         albumId:String(source.albumId),albumUrl:item.flickrAlbum,albumTotal:source.albumTotal,photos:[...merged.values()],reviews:current?.draft?.reviews || {},
         analyses:current?.draft?.analyses || {},analysisJob:current?.draft?.analysisJob || null,
@@ -118,8 +118,8 @@ export function createPhotoArchive(options={}){
       requireStorage();const item=await context(org,body.gameId),row=await get(org,item.gameId),state=row?.draft;
       if(!state || row.revision!==body.revision)fail(409,'Album se změnilo. Obnovte stav.');
       if(!['reviewed','closed','reopen'].includes(body.status))fail(400,'Neplatný stav alba.');
-      const stats=archiveStats(state);if(body.status==='closed'&&(stats.pending || stats.inProgress || state.photos.length<state.albumTotal || (state.flickrNextOffset ?? state.photos.length)<state.albumTotal))fail(422,'Před uzavřením načtěte celé album a uzavřete všechny fotografie.');
-      const next={...state,albumStatus:body.status==='reopen'?'in_progress':body.status,hasNewPhotos:false,albumReviewedAt:body.status==='reopen'?null:now(),audit:[...(state.audit || []),{action:'album-'+body.status,actor,at:now()}].slice(-1000)};
+      const stats=archiveStats(state);
+      const next={...state,albumStatus:body.status==='reopen'?'in_progress':body.status,hasNewPhotos:false,albumReviewedAt:body.status==='reopen'?null:now(),audit:[...(state.audit || []),{action:'album-'+body.status,actor,at:now(),pending:stats.pending,inProgress:stats.inProgress,unloaded:Math.max(0,state.albumTotal-(state.flickrNextOffset ?? state.photos.length))}].slice(-1000)};
       const saved=await store.save(org,item.gameId.toLowerCase(),next,row.revision,null);if(!saved)fail(409,'Album změnil jiný uživatel.');return view(saved,item);
     },
     async decide(org,body,actor){

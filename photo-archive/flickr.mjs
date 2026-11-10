@@ -1,5 +1,19 @@
 const hosts = new Set(['flic.kr', 'flickr.com', 'www.flickr.com']);
 
+// HMS multimedia sometimes contains only static image URLs. Resolve an album
+// from Flickr's actual membership of those images, never from team/name search.
+export async function albumForHmsImages(images,{env=process.env,fetchImpl=fetch}={}){
+  if(!env.FLICKR_API_KEY || !Array.isArray(images))return null;
+  const ids=[...new Set(images.map(image=>{try{const u=new URL(image.full || image.thumbnail);return u.protocol==='https:' && !u.port && !u.username && !u.password && /^(live\.staticflickr\.com|farm\d+\.staticflickr\.com)$/.test(u.hostname)?u.pathname.match(/\/([0-9]+)_[a-zA-Z0-9]+(?:_[a-z])?\.[a-z]+$/)?.[1]:null;}catch{return null;}}).filter(Boolean))].slice(0,2);
+  if(!ids.length)return null;
+  const api=async(method,photo_id)=>{const url=new URL('https://www.flickr.com/services/rest/');for(const [key,value] of Object.entries({method,photo_id,api_key:env.FLICKR_API_KEY,format:'json',nojsoncallback:1}))url.searchParams.set(key,String(value));const response=await fetchImpl(url,{redirect:'error',signal:AbortSignal.timeout(5000)});if(!response.ok)throw Error('Flickr membership unavailable');const data=await response.json();if(data.stat!=='ok')throw Error('Flickr membership rejected');return data;};
+  const memberships=await Promise.all(ids.map(id=>api('flickr.photos.getAllContexts',id)));
+  const sets=memberships.map(data=>new Set((data.set || []).map(s=>String(s.id)).filter(id=>/^\d+$/.test(id))));
+  const common=[...sets[0]].filter(id=>sets.every(set=>set.has(id)));if(common.length!==1)return null;
+  const info=await api('flickr.photos.getInfo',ids[0]);if(String(info.photo?.id)!==ids[0] || !/^[a-zA-Z0-9@_-]+$/.test(info.photo?.owner?.nsid || ''))return null;
+  return `https://www.flickr.com/photos/${info.photo.owner.nsid}/albums/${common[0]}`;
+}
+
 function flickrUrl(value, base) {
   const url = new URL(value, base);
   if (url.protocol !== 'https:' || !hosts.has(url.hostname) || url.port || url.username || url.password) {
