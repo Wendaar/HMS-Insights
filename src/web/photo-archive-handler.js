@@ -7,7 +7,7 @@ export function createPhotoArchiveHandler(options={}){
   return async(req,res)=>{
     res.setHeader('cache-control','private, no-store');res.setHeader('vary','Authorization, Cookie');res.setHeader('referrer-policy','no-referrer');res.setHeader('x-content-type-options','nosniff');
     const fail=(status,error)=>res.status(status).json({error});
-    if(!photoArchiveEnabled(env))return fail(503,'Fotoarchiv je zatím dostupný pouze v pilotním Preview.');
+    if(!photoArchiveEnabled(env))return fail(503,'Fotoarchiv v tomto prostředí není dostupný.');
     const q=req.query || {},action=q.action || 'catalog',writes=['session','logout','import','decide','analyze-start','analyze-next','discover','album-review','link-album'];
     if(!['access','session','logout','catalog','case','import','decide','archive','player-photos','analyze-start','analyze-next','discover','album-review','link-album'].includes(action))return fail(400,'Neznámá operace.');
     const method=writes.includes(action)?'POST':'GET';if(req.method!==method){res.setHeader('allow',method);return fail(405,'Nepovolená metoda.');}
