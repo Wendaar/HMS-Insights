@@ -52,6 +52,8 @@ async function discoverGames(offset=0){
   if(!activeRange || activeRange.from!==from || activeRange.to!==to)offset=0;
   if(offset===0){activeRange={from,to};visibleGames=new Set();discoveryPage=null;}
   stopDiscovery=false;$('discover-stop').hidden=false;$('discover-stop').disabled=false;
+  $('discovery-status').textContent=`${from} – ${to} · načítám zápasy z HMS…`;
+  message('Načítám celé vybrané období z HMS. Stránky budou přibývat průběžně.');
   try{
     discoveryPage=await readArchivePages({from,to,offset,read:body=>api('discover',{body}),stopped:()=>stopDiscovery,onPage:async(page,counts)=>{
       for(const id of page.gameIds || [])visibleGames?.add(id.toLowerCase());
@@ -64,7 +66,7 @@ async function discoverGames(offset=0){
     $('discovery-status').textContent=`${from} – ${to} · ${catalog.length} zápasů${discoveryPage.hasMore?' · zbývají další stránky, použijte Pokračovat':' · celé období načteno'}`;
     if(current && !catalog.some(c=>same(c.gameId,current.gameId)))await loadCase();
     message(`HMS: ${catalog.length} zápasů ve vybraném období. ${discoveryPage.hasMore?'Načítání lze dokončit tlačítkem Pokračovat.':'Načtené jsou všechny stránky.'}`);
-  }finally{$('discover-stop').hidden=true;}
+  }catch(error){$('discovery-status').textContent=`${from} – ${to} · načítání přerušeno, obnovte načítání nebo pokračujte další stránkou`;await loadCatalog();throw error;}finally{$('discover-stop').hidden=true;}
 }
 function selectPeriod(value,page=0){period=value;periodPage=page;const range=archivePeriod(value,new Date(),page);$('discover-from').value=range.from;$('discover-to').value=range.to;document.querySelectorAll('[data-archive-period]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.archivePeriod===value)));$('period-older').hidden=!['Past','Future'].includes(value);$('period-newer').hidden=!['Past','Future'].includes(value)||page===0;}
 async function loadCase(gameId=$('game-select').value,targetPhoto=null){
