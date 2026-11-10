@@ -96,6 +96,7 @@ test('local app and API routes are served through the existing function without 
     const page=await fetch(base+'/photo-archive');assert.equal(page.status,200);assert.match(await page.text(),/Hledat hráče/);
     const alias=await fetch(base+'/control/apps/photo-archive');assert.equal(alias.status,200);
     const script=await fetch(base+'/photo-archive/app.js');assert.equal(script.status,200);assert.match(script.headers.get('content-type'),/javascript/);
+    const catalogModel=await fetch(base+'/photo-archive/catalog-model.js');assert.equal(catalogModel.status,200);assert.match(await catalogModel.text(),/readArchivePages/);
     const api=await fetch(base+'/api/photo-archive?action=access&org=phm');assert.equal(api.status,503); // local process has no explicit pilot opt-in
   }finally{await new Promise(resolve=>server.close(resolve));}
 });

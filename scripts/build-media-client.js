@@ -11,6 +11,8 @@ if(process.env.VERCEL_ENV==='production' && (process.env.VERCEL_GIT_COMMIT_MESSA
 // Pilot branch only: bounded, read-only ingestion check with Preview-only secrets.
 if (process.env.VERCEL_ENV === 'preview' && process.env.VERCEL_GIT_COMMIT_REF === 'codex/hms-photo-archive-pilot') {
   const {runPreviewCheck}=await import('../photo-archive/preview-check.mjs');
+  if((process.env.VERCEL_GIT_COMMIT_MESSAGE || '').includes('[photo-api-fields]')){const {checkArchiveHmsFields}=await import('../photo-archive/hms-fields-check.mjs');await checkArchiveHmsFields();}
+  if((process.env.VERCEL_GIT_COMMIT_MESSAGE || '').includes('[photo-older-check]')){const {checkOlderArchive}=await import('../photo-archive/hms-fields-check.mjs');await checkOlderArchive();}
   // Explicit commit marker keeps ordinary builds from spending image-model credits.
   await runPreviewCheck({analyze:(process.env.VERCEL_GIT_COMMIT_MESSAGE || '').includes('[photo-vision-test]'),expectedModel:'gpt-6-luna'});
   if((process.env.VERCEL_GIT_COMMIT_MESSAGE || '').includes('[photo-review-seed]')){

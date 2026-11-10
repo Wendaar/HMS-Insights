@@ -93,7 +93,7 @@ export const server = createServer(async (request, response) => {
     await photoArchiveHandler(request,{setHeader:(k,v)=>response.setHeader(k,v),status(code){response.statusCode=code;return this;},json(body){response.setHeader('content-type','application/json; charset=utf-8');response.end(JSON.stringify(body));}});return;
   }
   if(/^\/photo-picker\/(picker.js|model.js|broadcast.js|style.css)$/.test(url.pathname)){response.setHeader('content-type',url.pathname.endsWith('.css')?'text/css':'text/javascript');response.end(await readFile(join(publicDirectory,url.pathname.slice(1))));return;}
-  if(['/photo-archive','/photo-archive/','/control/apps/photo-archive'].includes(url.pathname) || /^\/photo-archive\/(index.html|app.js|review-model.js|style.css)$/.test(url.pathname)){
+  if(['/photo-archive','/photo-archive/','/control/apps/photo-archive'].includes(url.pathname) || /^\/photo-archive\/(index.html|app.js|review-model.js|catalog-model.js|style.css)$/.test(url.pathname)){
     const file=/\.(html|js|css)$/.test(url.pathname)?url.pathname.split('/').pop():'index.html';
     response.setHeader('content-type',file.endsWith('.html')?'text/html; charset=utf-8':file.endsWith('.css')?'text/css':'text/javascript');response.setHeader('x-robots-tag','noindex, nofollow');response.setHeader('referrer-policy','no-referrer');
     response.end(await readFile(join(publicDirectory,'photo-archive',file)));return;
