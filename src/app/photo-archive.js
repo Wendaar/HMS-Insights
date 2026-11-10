@@ -10,6 +10,7 @@ import {analysisStats,createArchiveAnalysis} from './photo-archive-analysis.js';
 import {withMatchJerseys} from '../../photo-archive/jersey-context.mjs';
 import {createArchiveDiscovery} from './photo-archive-discovery.js';
 import {isGameId} from '../domain/game-summary.js';
+import {flickrAlbum} from '../../public/game-report-media.js';
 
 export const PHOTO_ARCHIVE_TOOL='photo-archive-preview';
 export const photoArchiveEnabled=env=>env.VERCEL_ENV==='preview' && env.VERCEL_GIT_COMMIT_REF==='codex/hms-photo-archive-pilot' || env.PHOTO_ARCHIVE_LOCAL==='1' && env.VERCEL_ENV!=='production';
@@ -38,7 +39,7 @@ export function createPhotoArchive(options={}){
     const catalog=await store.get(org,'catalog'),legacy=org==='PHM'?await readArchiveCases():[];
     const saved=store.list?await store.list(org):[];
     const items=new Map([...legacy,...(catalog?.draft?.items || [])].filter(c=>c.org===org).map(c=>[c.gameId.toLowerCase(),c]));
-    for(const row of saved)if(isGameId(row.slug)&&!items.has(row.slug.toLowerCase())){const game=await store.get(org,row.slug);if(game?.draft?.org===org)items.set(row.slug.toLowerCase(),{org,gameId:row.slug,flickrAlbum:game.draft.albumUrl,title:game.draft.title});}
+    for(const row of saved)if(isGameId(row.slug)&&!items.get(row.slug.toLowerCase())?.flickrAlbum){const game=await store.get(org,row.slug);if(game?.draft?.org===org)items.set(row.slug.toLowerCase(),{...items.get(row.slug.toLowerCase()),org,gameId:row.slug,flickrAlbum:game.draft.albumUrl,title:game.draft.title,source:'saved-link'});}
     return [...items.values()];
   }
   async function context(org,gameId){
@@ -74,15 +75,24 @@ export function createPhotoArchive(options={}){
   return {
     ready,
     async discover(org,params){requireStorage();return discovery.discover(org,params);},
+    async linkAlbum(org,body){
+      requireStorage();const link=flickrAlbum(body.albumUrl);if(!link)fail(400,'Vložte platný Flickr odkaz na album.');
+      const verified=await discovery.context(org,body.gameId,link);if(verified.flickrAlbum!==link)fail(409,'HMS už poskytuje jiný odkaz. Obnovte zápas z HMS.');
+      const current=await store.get(org,'catalog'),items=new Map((current?.draft?.items || []).map(c=>[c.gameId.toLowerCase(),c]));
+      items.set(body.gameId.toLowerCase(),{org,gameId:verified.gameId,title:[verified.detail.HomeTeam?.name || 'Domácí',verified.detail.AwayTeam?.name || 'Hosté'].join(' × '),playedOn:verified.detail.startDate,flickrAlbum:link,source:'saved-link'});
+      const saved=await store.save(org,'catalog',{title:'Archive discovery',items:[...items.values()]},current?.revision || 0,null);if(!saved)fail(409,'Katalog mezitím změnil jiný uživatel.');return {gameId:verified.gameId,albumUrl:link};
+    },
     ...createArchiveAnalysis({env,store,context,view,requireStorage,fail,now,fetchImpl,analyzer:options.analyzer}),
     async catalog(org){
       const cases=await casesFor(org);
       return Promise.all(cases.filter(c=>c.org===org).map(async(c,i)=>{const row=await store.get(org,c.gameId.toLowerCase());return {gameId:c.gameId,
-        title:row?.draft?.title || c.title || `Zápas ${i+1}`,playedOn:row?.draft?.playedOn || c.playedOn || null,albumUrl:c.flickrAlbum,imported:!!row,revision:row?.revision ?? 0,stats:archiveStats(row?.draft),albumStatus:row?.draft && c.flickrAlbum && c.flickrAlbum!==row.draft.albumUrl?'new':row?.draft?.albumStatus || (row?.draft?.photos?.length?'in_progress':c.flickrAlbum?'new':'no_album'),hasNewPhotos:!!row?.draft?.hasNewPhotos || !!(row?.draft && c.flickrAlbum && c.flickrAlbum!==row.draft.albumUrl),albumTotal:row?.draft?.albumTotal || 0};}));
+        title:row?.draft?.title || c.title || `Zápas ${i+1}`,playedOn:row?.draft?.playedOn || c.playedOn || null,albumUrl:c.flickrAlbum || row?.draft?.albumUrl || null,albumSource:row?.draft?.albumSource || c.source || 'saved-link',imported:!!row,revision:row?.revision ?? 0,stats:archiveStats(row?.draft),albumStatus:row?.draft && c.flickrAlbum && c.flickrAlbum!==row.draft.albumUrl?'new':row?.draft?.albumStatus || (row?.draft?.photos?.length?'in_progress':c.flickrAlbum?'new':'no_album'),hasNewPhotos:!!row?.draft?.hasNewPhotos || !!(row?.draft && c.flickrAlbum && c.flickrAlbum!==row.draft.albumUrl),albumTotal:row?.draft?.albumTotal || 0};}));
     },
     async read(org,gameId){const item=await context(org,gameId);return view(await store.get(org,gameId.toLowerCase()),item);},
     async importCase(org,gameId,revision,reviewer='Operations',offset=0){
-      requireStorage();const item=options.readCases?await context(org,gameId):await discovery.context(org,gameId),current=await store.get(org,gameId.toLowerCase());
+      requireStorage();if(!isGameId(gameId))fail(400,'Neplatné ID zápasu.');const current=await store.get(org,gameId.toLowerCase());
+      const known=options.readCases?null:(await casesFor(org)).find(c=>same(c.gameId,gameId));
+      const item=options.readCases?await context(org,gameId):await discovery.context(org,gameId,known?.flickrAlbum || current?.draft?.albumUrl);
       if(!Number.isInteger(revision) || revision!==(current?.revision ?? 0))fail(409,'Zápas mezitím změnil jiný uživatel. Obnovte data.');
       if(!Number.isInteger(offset)||offset<0||offset%250)fail(400,'Neplatná stránka alba.');
       const source=await loadSource(org,{...item,offset});
@@ -95,7 +105,7 @@ export function createPhotoArchive(options={}){
       const merged=new Map((current?.draft?.photos || []).map(p=>[p.id,p]));for(const p of photos)merged.set(p.id,p);
       const changed=photos.some(p=>!(current?.draft?.photos || []).some(old=>old.id===p.id)) || !!current?.draft && String(current.draft.albumId)!==String(source.albumId);
       const state={schemaVersion:1,org,gameId:item.gameId,title:source.title,playedOn:source.playedOn,teams:source.teams,players:source.players,
-        albumStatus:changed?'in_progress':current?.draft?.albumStatus || 'in_progress',hasNewPhotos:changed,albumReviewedAt:current?.draft?.albumReviewedAt || null,
+        albumStatus:changed?'in_progress':current?.draft?.albumStatus || 'in_progress',hasNewPhotos:changed || !!current?.draft?.hasNewPhotos,albumReviewedAt:current?.draft?.albumReviewedAt || null,albumSource:item.albumSource || 'saved-link',
         flickrNextOffset:Math.max(String(current?.draft?.albumId)===String(source.albumId)?current?.draft?.flickrNextOffset || 0:0,source.nextOffset || source.photos.length),
         albumId:String(source.albumId),albumUrl:item.flickrAlbum,albumTotal:source.albumTotal,photos:[...merged.values()],reviews:current?.draft?.reviews || {},
         analyses:current?.draft?.analyses || {},analysisJob:current?.draft?.analysisJob || null,

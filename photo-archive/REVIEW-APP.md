@@ -5,8 +5,8 @@ The pilot branch adds `/photo-archive?org=phm` and the Hero Hub shortcut `/contr
 ## Access and scope
 
 - The server is enabled only for Vercel Preview on `codex/hms-photo-archive-pilot`, or explicit `PHOTO_ARCHIVE_LOCAL=1` outside Production.
-- PHM only, restricted to the four curated pilot game/album pairs. HMS requests are GET only and validate organization, game and roster identities.
-- Sign in with the existing `HMS_PHM_OPERATIONS_SECRET`. Existing valid Operations sessions on the same origin also work. Browser login creates the existing signed, HttpOnly, Secure, SameSite=Strict, eight-hour Operations session cookie. Credentials are not stored in localStorage or URLs.
+- Organization-scoped discovery now supplements the four original PHM pilot pairs. Only registered, configured organizations are enabled. HMS requests are GET only and validate organization, game and roster identities. Missing connections do not fall back to PHM.
+- Sign in with `HMS_<CODE>_OPERATIONS_SECRET` for the selected organization. Existing valid Operations sessions on the same origin also work. Browser login creates the existing signed, HttpOnly, Secure, SameSite=Strict, eight-hour organization session cookie. Credentials are not stored in localStorage or URLs.
 - All data reads, searches, imports and mutations require authorization. Mutations check same-origin requests. Anonymous `action=access` returns configuration booleans only.
 
 ## Review workflow
@@ -52,7 +52,7 @@ Base route `/api/photo-archive?org=phm` (equivalent to `/api/game-summary?view=p
 | `archive` | GET | Confirmed photos grouped by player across pilot games |
 | `player-photos&playerId=…` | GET | Confirmed photo references only, omitting reviewer/audit details |
 
-The protected `player-photos` projection is the integration point for future Studio, Insights, Broadcast and Socials pickers. Those apps have **not yet been modified to select/use archive photos**. Publication permissions, image attribution/licensing and public-delivery contracts should be set before making such a picker public. HMS profile portraits remain separate.
+The protected `player-photos` projection now powers the shared picker in All Stars, Social Media Studio/individual Insights, and Broadcast Studio. HMS profile portraits remain the primary source; confirmed archive photographs and own resized uploads are explicit alternatives. See [PHOTO-PICKER.md](../docs/PHOTO-PICKER.md) for discovery, album review states, consumer persistence, OBS transport and configuration boundaries. The archive listing remains private; existing authorized graphic publication exposes only the selected output.
 
 ## Seed and verification
 

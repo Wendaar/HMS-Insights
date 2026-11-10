@@ -26,7 +26,7 @@ function setTab(tab){
   $('review-panel').hidden=tab!=='review';$('archive-panel').hidden=tab!=='archive';
 }
 async function loadCatalog(){
-  const data=await api('catalog');catalog=data.cases;
+  const data=await api('catalog');catalog=data.cases.sort((a,b)=>Number(!!b.albumUrl)-Number(!!a.albumUrl) || String(b.playedOn || '').localeCompare(String(a.playedOn || '')));
   const previous=$('game-select').value;
   $('game-select').replaceChildren(...catalog.map(c=>new Option(`${c.title} · ${albumLabels[c.albumStatus] || 'Nové'}${c.hasNewPhotos?' · nové fotky':''}`,c.gameId)));
   if(catalog.some(c=>c.gameId===previous))$('game-select').value=previous;
@@ -180,8 +180,8 @@ function renderArchive(){
 async function initialize(){
   const access=await api('access');$('login').hidden=access.authorized;$('workspace').hidden=!access.authorized;$('logout').hidden=!access.authorized;
   $('organization').replaceChildren(...(access.organizations || []).map(o=>new Option(o.name+(o.configured?'':' · nepřipojeno'),o.slug)));$('organization').value=org.toLowerCase();$('organization-label').textContent=access.org+' · Preview';
-  if(!access.configured){message('Kód Operations pro PHM zatím není nastavený.',true);return;}
-  if(!access.authorized){message('Přihlaste se kódem Operations pro PHM.');return;}
+  if(!access.configured){message('Kód Operations této organizace zatím není nastavený.',true);return;}
+  if(!access.authorized){message('Přihlaste se kódem Operations vybrané organizace.');return;}
   try{await discoverGames();for(let page=1;page<5 && discoveryPage?.hasMore;page++)await discoverGames(discoveryPage.nextOffset);}catch(error){message('HMS synchronizace není dostupná. Zobrazuji uložená alba.',true);await loadCatalog();}
   const params=new URLSearchParams(location.search),requestedGame=params.get('gameId'),requestedPhoto=params.get('photoId');
   if(catalog.some(c=>same(c.gameId,requestedGame)))$('game-select').value=catalog.find(c=>same(c.gameId,requestedGame)).gameId;
@@ -209,4 +209,5 @@ $('zoom-open').onclick=openZoom;$('zoom-button').onclick=openZoom;$('zoom-close'
 task(initialize);
 $('organization').onchange=()=>{location.href='/photo-archive?'+new URLSearchParams({org:$('organization').value});};
 $('discover').onclick=()=>task(()=>discoverGames());$('discover-next').onclick=()=>task(()=>discoverGames(discoveryPage?.nextOffset || 0));$('album-filter').onchange=renderAlbums;
+$('link-album').onclick=()=>task(async()=>{await api('link-album',{body:{gameId:$('game-select').value,albumUrl:$('album-link').value.trim()}});await loadCatalog();current=await api('import',{body:{gameId:$('game-select').value,revision:current?.revision || 0}});renderCase();message('Odkaz a fotografie jsou uložené u zápasu. HMS se neměnilo.');});
 for(const [id,status] of [['album-reviewed','reviewed'],['album-close','closed'],['album-reopen','reopen']])$(id).onclick=()=>task(async()=>{if(!current?.state)return;current=await api('album-review',{body:{gameId:current.gameId,revision:current.revision,status}});renderCase();await loadCatalog();message('Stav kontroly alba je uložený.');});

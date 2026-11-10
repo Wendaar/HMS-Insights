@@ -9,6 +9,7 @@ import {sessionCookie} from '../src/security/operations-session.js';
 import {broadcastPhotoChoices,applyBroadcastPhotos} from '../public/photo-picker/broadcast.js';
 import {allStarsSettings,resolvedSelection} from '../src/app/all-stars.js';
 import {channelState,createChannelHandler} from '../src/web/broadcast-channel.js';
+import {fetchAlbum} from '../photo-archive/flickr.mjs';
 const game='11111111-1111-4111-8111-111111111111',player='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',team='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',orgId='cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const url='https://live.staticflickr.com/1/123_abcd_b.jpg';
 const env={VERCEL_ENV:'preview',VERCEL_GIT_COMMIT_REF:'codex/hms-photo-archive-pilot',HMS_PHM_OPERATIONS_SECRET:'phm-secret',HMS_EUCHL_OPERATIONS_SECRET:'euchl-secret',HMS_EUCHL_ORGANIZATION_ID:orgId,HMS_EUCHL_API_TOKEN:'euchl-token'};
@@ -70,4 +71,23 @@ test('OBS channel stores and publicly returns only an explicitly chosen validate
   const response=()=>({setHeader(){},status(code){this.code=code;return this;},json(body){this.body=body;}});
   let r=response();await handler({method:'POST',query:{channels:'1'},headers:{'content-type':'application/json'},body:{state}},r);assert.equal(r.code,201);assert.equal(r.body.state.photoChoices[player].url,url);
   r=response();await handler({method:'PATCH',query:{channel:row.id},headers:{'content-type':'application/json'},body:{state,revision:1}},r);assert.equal(r.code,403);
+});
+test('saved links remain usable when HMS omits albums; multimedia is read without credentials and checked against game identity',async()=>{
+  let wrong=false;const detail={gameId:game,organizationId:orgId,startDate:'2026-11-05',homeTeamId:team,awayTeamId:player};
+  const store=memory(),discovery=createArchiveDiscovery({env,store,fetchImpl:async(input,init)=>{
+    const u=new URL(input);if(u.hostname==='api.prod.hms.wootera.net'){assert.equal(init.headers.authorization,undefined);if(u.pathname.endsWith('gameMultimedia'))return Response.json({albumUrl:'https://flic.kr/s/hmsalbum'});return Response.json({startDate:'2026-11-05',HomeTeam:{teamId:wrong?game:team},AwayTeam:{teamId:player}});}
+    assert.equal(init.headers.authorization,'Bearer euchl-token');return Response.json(detail);
+  }});
+  let result=await discovery.context('EUCHL',game,'https://flic.kr/s/saved');assert.equal(result.albumSource,'hms');assert.equal(result.flickrAlbum,'https://flic.kr/s/hmsalbum');
+  wrong=true;result=await discovery.context('EUCHL',game,'https://flic.kr/s/saved');assert.equal(result.albumSource,'saved-link');assert.equal(result.flickrAlbum,'https://flic.kr/s/saved');
+});
+test('manual album attachment verifies game organization and never writes to HMS or another catalog',async()=>{
+  const store=memory();let foreign=false,calls=0;const service=createPhotoArchive({env,store,fetchImpl:async(input,init)=>{calls++;assert.equal(init.method || 'GET','GET');const u=new URL(input);if(u.hostname==='api.prod.hms.wootera.net')return new Response('',{status:404});return Response.json({gameId:game,organizationId:foreign?'wrong':orgId,startDate:'2026-11-05'});}});
+  await assert.rejects(service.linkAlbum('EUCHL',{gameId:game,albumUrl:'https://evil.test'}),e=>e.status===400);assert.equal(calls,0);
+  await service.linkAlbum('EUCHL',{gameId:game,albumUrl:'https://flic.kr/s/manual'});assert.equal((await store.get('EUCHL','catalog')).draft.items[0].source,'saved-link');assert.equal(await store.get('PHM','catalog'),null);
+  foreign=true;await assert.rejects(service.linkAlbum('EUCHL',{gameId:game,albumUrl:'https://flic.kr/s/other'}));assert.equal((await store.get('EUCHL','catalog')).revision,1);
+});
+test('larger Flickr albums expose subsequent pages with bounded requests and preserve the true total',async()=>{
+  const result=await fetchAlbum('https://www.flickr.com/photos/owner/albums/123',{limit:250,offset:250,env:{FLICKR_API_KEY:'fixture'},fetchImpl:async(input)=>{const u=new URL(input);assert.equal(u.searchParams.get('page'),'2');return Response.json({stat:'ok',photoset:{id:'123',total:300,photo:Array.from({length:50},(_,i)=>({id:String(251+i)}))}});}});
+  assert.equal(result.photos.length,50);assert.equal(result.photos[0].id,'251');assert.equal(result.nextOffset,300);assert.equal(result.total,300);
 });
