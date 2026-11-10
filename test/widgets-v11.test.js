@@ -44,6 +44,10 @@ test('Group logo wins, falls back to competition logo, and phase identity retain
 test('Stars ties mirror stable HMS table order without changing values, true ranks or team stints',()=>{
  const normalized=officialPlayers([...players,{...players[0],TeamId:id(21),Stars:2}]);const ranked=rankLeaders(normalized,'stars',10);assert.equal(ranked[0].name,'Zdeněk Žák');assert.deepEqual(ranked.map(p=>p.rank),[1,1,3]);assert.equal(ranked[1].stars,3);assert.equal(ranked.length,3);
 });
+test('identical competition and group names appear once in scope branding',async()=>{
+ const context=await widgetContext('yhg',{seasonId:id(10),groupId:id(30)},options({portalDirectory:async()=>({...directory,groups:[{...directory.groups[0],name:season.competition.toUpperCase()}]})}));
+ assert.equal(context.branding.name,'YHG Cup');assert.equal(context.branding.color,'#123456');
+});
 test('public phase switching cannot escape the base group and never mutates that base context',async()=>{
  const context=await widgetContext('yhg',{seasonId:id(10),groupId:id(30)},options());assert.equal(availableWidgetPhases(context).length,2);
  const selected=visitorPhaseScope(context,{allowPhaseSwitching:'true',visitorPhaseId:id(41)});assert.equal(selected.phaseId,id(41));assert.equal(selected.groupId,id(30));assert.equal(context.scope.phaseId,undefined);
