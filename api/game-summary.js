@@ -1,3 +1,5 @@
+import {createWidgetsHandler} from '../src/web/widgets-handler.js';
+const widgets=createWidgetsHandler();
 import {createVirtualCameraHandler} from '../src/web/virtual-camera-handler.js';
 import {createPhotoArchiveHandler} from '../src/web/photo-archive-handler.js';
 const photoArchiveHandler=createPhotoArchiveHandler();
@@ -42,4 +44,4 @@ const playerCard=createPlayerCardHandler();
 // twelve functions while preserving the existing GameSummary JSON contract.
 const legacyHandler=(request,response)=>request.query?.view==='virtual-camera'?virtualCamera(request,response):request.query?.view==='media-mapping'?mediaMappingHandler(request,response):request.query?.view==='match-preview'?matchPreviewHandler(request,response):request.query?.view==='game-day'?gameDayHandler(request,response):request.query?.view==='registrations'?registrations(request,response):request.query?.view==='sponsors'?sponsors(request,response):request.query?.view==='portal'?publicPortal(request,response):request.query?.view==='team-comparison'?teamComparison(request,response):request.query?.view==='pregame-rankings'?pregameRankings(request,response):request.query?.view==='all-stars'?allStars(request,response):request.query?.view==='operations'?operations(request,response):request.query?.view==='games'?seasonGames(request,response):request.query?.view==='tools'?tools(request,response):request.query?.view==='broadcast'?broadcast(request,response):request.query?.view==='studio-image'?studioImage(request,response):request.query?.view==='studio'?studio(request,response):request.query?.view==='extras'?extras(request,response):request.query?.view==='player-card'?playerCard(request,response):summary(request,response);
 
-export default (request,response)=>request.query?.view==='photo-archive'?photoArchiveHandler(request,response):legacyHandler(request,response);
+export default (request,response)=>request.query?.view==='widgets'?widgets(request,response):request.query?.view==='photo-archive'?photoArchiveHandler(request,response):legacyHandler(request,response);

@@ -32,3 +32,7 @@ Verify browser behavior of the live embeds, complete source catalog coverage, or
 ## HMS public domain
 
 `public.heromanagementsystem.com` is attached to the existing HMS Vercel project. DNS is managed externally: CNAME host `public`, target `63f053b96bcc83ad.vercel-dns-017.com`. The apex A record is unrelated and is preserved. A host-specific root route serves the neutral portal landing page; organization portals keep `/league/<org>`. The domain follows production; preview drafts/settings stay isolated. DNS/TLS verification and production release are separate from adding the hostname. Application release does not publish an organization draft.
+
+## Universal Widgets V1
+
+The homepage Insights carousel is now a normal widget instance in the shared registry. The builder supports multiple configurable Leaders instances and group/phase placements, with the existing draft/preview/publication policy. See [Universal Widgets](UNIVERSAL-WIDGETS.md) for scope inheritance, official statistics reuse, routes and validation.

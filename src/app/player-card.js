@@ -1,48 +1,44 @@
 import {pointRanks} from '../domain/player-rankings.js';
 import { isGameId } from '../domain/game-summary.js';
 import { loadGameSnapshot,loadPlayerSeasonRecords } from '../infrastructure/postgres-repository.js';
-const cache=new Map();
+import {readOfficialStatistics} from './broadcast-league.js';
 const number=value=>value!==null&&value!==undefined&&value!==''&&Number.isFinite(Number(value))&&Number(value)>=0?Number(value):null;
 const same=(a,b)=>typeof a==='string'&&typeof b==='string'&&a.toLowerCase()===b.toLowerCase();
 const text=value=>typeof value==='string'?value.slice(0,160):null;
 
 export function playerCard(rows,playerId,scope,{role='skater',source='hms',asOf=new Date().toISOString()}={}) {
   if(!Array.isArray(rows))return null;
-  const grouped=new Map();
-  const fields=role==='goalie'?['GP','Svs','GA','SO','PIM','W','D','L']:['GP','G','A','PIM','PPG','SHG','Stars'];
+  const grouped=new Map(),singleRows=new Map();
+  const fields=role==='goalie'?['GP','Svs','GA','SO','PIM','W','D','L']:['GP','G','A','P','PIM','PPG','SHG','Stars'];
   for(const row of rows){
     if(!isGameId(row.PlayerId))continue;
     const id=row.PlayerId.toLowerCase();
+    singleRows.set(id,singleRows.has(id)?null:row);
     if(!grouped.has(id))grouped.set(id,{id,name:[text(row.FirstName),text(row.LastName)].filter(Boolean).join(' '),team:text(row.Team),stats:{}});
     const player=grouped.get(id);
-    for(const key of fields){const value=number(row[key]);if(value!==null)player.stats[key]=(player.stats[key]??0)+value;}
+    for(const key of fields){const value=key==='P'&&number(row.P)===null&&number(row.G)!==null&&number(row.A)!==null?number(row.G)+number(row.A):number(row[key]);if(value!==null)player.stats[key]=(player.stats[key]??0)+value;}
   }
   const players=[...grouped.values()];
-  if(role==='skater')for(const player of players)if(player.stats.G!=null&&player.stats.A!=null)player.stats.P=player.stats.G+player.stats.A;
   players.sort((a,b)=>(b.stats.P??-1)-(a.stats.P??-1)||(b.stats.G??-1)-(a.stats.G??-1));
   const ranks=pointRanks(players.map(p=>({id:p.id,points:p.stats.P,goals:p.stats.G})));
   for(const player of players)player.rank=role==='skater'?ranks.get(player.id)??null:null;
   const player=players.find(p=>same(p.id,playerId));
   if(!player)return null;
   if(role==='goalie'){
+    const official=singleRows.get(player.id),gaa=number(official?.GAA),sv=number(official?.SvP);
+    if(gaa!==null)player.stats.GAA=gaa;
     const shots=player.stats.Svs!=null&&player.stats.GA!=null?player.stats.Svs+player.stats.GA:null;
-    if(shots>0)player.stats.SvP=Math.round(player.stats.Svs/shots*10000)/100;
+    if(sv!==null&&sv<=100)player.stats.SvP=sv;
+    else if(shots>0)player.stats.SvP=Math.round(player.stats.Svs/shots*10000)/100;
   }
   return {available:true,...player,role,scope:{competition:text(scope.competition_name),season:text(scope.season_name),group:text(scope.group_name)},source,asOf};
 }
 
 export async function publicStats(groupId,role,options={}){
   if(!isGameId(groupId))return null;
-  const key=`${role}:${groupId.toLowerCase()}`;
-  if(!options.fetchImpl&&cache.get(key)?.until>Date.now())return cache.get(key).rows;
-  const url=new URL(role==='goalie'?'https://api.prod.hms.wootera.net/public/goaliesStats':'https://api.prod.hms.wootera.net/public/playersStats');
-  url.searchParams.set('groupId',groupId);
   try{
-    const response=await(options.fetchImpl??fetch)(url,{headers:{accept:'application/json'},signal:AbortSignal.timeout(5000)});
-    if(!response.ok)return null;
-    const rows=await response.json();
+    const rows=await readOfficialStatistics({groupId},role,options);
     if(!Array.isArray(rows))return null;
-    if(!options.fetchImpl){if(cache.size>=32)cache.delete(cache.keys().next().value);cache.set(key,{rows,until:Date.now()+120000});}
     return rows;
   }catch{return null;}
 }
