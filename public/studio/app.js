@@ -1,4 +1,6 @@
 import {setupGameDay} from './game-day.js';
+import {openPhotoPicker} from '/photo-picker/picker.js';
+import {selectedPhotoUrl} from '/photo-picker/model.js';
 import {mountSponsorPicker} from '../sponsors/picker.js';
 import {setupTeamCompare} from './team-compare.js';
 const initialStudioSection=new URLSearchParams(location.search).get('section');
@@ -162,6 +164,9 @@ async function upload(event,key){const file=event.target.files[0];if(!file)retur
 $('upload').onchange=e=>upload(e,'background');$('partnerUpload').onchange=e=>upload(e,'partnerLogo');$('playerUpload').onchange=e=>upload(e,'playerPhoto');$('competitionUpload').onchange=e=>upload(e,'competitionLogo');$('groupUpload').onchange=e=>upload(e,'groupLogo');
 $('clearBrands').onclick=()=>{for(const key of ['competitionLogo','groupLogo']){assetVersions[key]++;brandOverrides.delete(brandKey(key));}$('competitionUpload').value='';$('groupUpload').value='';saveBrands();draw();};
 $('clearPlayer').onclick=()=>{assetVersions.playerPhoto++;playerPhotos.delete(subjectKey());$('playerUpload').value='';draw();};
+const personPhotoButton=document.createElement('button');personPhotoButton.type='button';personPhotoButton.textContent='Vybrat fotografii · HMS / archiv / nahrát';$('subjectEditor').prepend(personPhotoButton);
+personPhotoButton.onclick=async()=>{const selectedOrg=$('org').value,key=subjectKey(),subject=resolveInsightSubject(game,activeInsight());if(!subject?.playerId)return;
+  try{const choice=await openPhotoPicker({org:selectedOrg,playerId:subject.playerId,name:subject.playerName,hmsUrl:subject.photoUrl});if(!choice || selectedOrg!==$('org').value || key!==subjectKey())return;assetVersions.playerPhoto++;if(choice.source==='hms')playerPhotos.delete(key);else playerPhotos.set(key,selectedPhotoUrl(choice,subject.photoUrl));draw();}catch(error){status(error.message);}};
 $('clearBackground').onclick=()=>{assetVersions.background++;removeStudioAsset(settingsAssetKey('background')).catch(()=>{});settings.background='';$('background').value='';$('upload').value='';save();draw();};
 $('clearPartner').onclick=()=>{assetVersions.partnerLogo++;removeStudioAsset(settingsAssetKey('partnerLogo')).catch(()=>{});settings.partnerLogo='';$('partnerLogo').value='';$('partnerUpload').value='';save();draw();};
 function exportFile(){return new File([blob],exportFilename(game,gameOutputs(game).find(t=>t.id===$('template').value),settings,activeInsight()),{type:'image/png'});}
