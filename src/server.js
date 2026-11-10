@@ -132,7 +132,7 @@ export const server = createServer(async (request, response) => {
   if(url.pathname==='/api/widgets'||url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='widgets'){
     request.query=Object.fromEntries(url.searchParams);await createWidgetsHandler()(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json; charset=utf-8');response.end(JSON.stringify(body));}});return;
   }
-  if(/^\/widgets\/(definitions|statistics|renderers|picker)\.js$/.test(url.pathname)||url.pathname==='/widgets/styles.css'||['/player-card.js','/player-card.css','/player-portrait.js'].includes(url.pathname)){
+  if(/^\/widgets\/(definitions|statistics|renderers|picker|scope-options|scope-picker)\.js$/.test(url.pathname)||url.pathname==='/widgets/styles.css'||['/player-card.js','/player-card.css','/player-portrait.js'].includes(url.pathname)){
     if(!['GET','HEAD'].includes(request.method)){response.writeHead(405,{allow:'GET, HEAD'});response.end();return;}
     response.setHeader('content-type',url.pathname.endsWith('.css')?'text/css; charset=utf-8':'text/javascript; charset=utf-8');response.end(request.method==='HEAD'?undefined:await readFile(join(publicDirectory,url.pathname)));return;
   }

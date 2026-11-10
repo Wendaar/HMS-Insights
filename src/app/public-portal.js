@@ -75,7 +75,7 @@ export async function validatePortalSeasons(org,settings,options={}){
   if(scope.groupId||scope.phaseId||scope.teamId){
    const season=seasons.find(s=>s.seasonId===(scope.seasonId??settings.defaultSeasonId));if(!season||scope.competitionId&&scope.competitionId!==season.competitionId)throw new TypeError('widget season');
    const directory=await(options.portalDirectory??portalDirectory)(org,season.seasonId,options),group=directory.groups.find(g=>g.id===scope.groupId),phase=directory.groups.flatMap(g=>g.phases.map(p=>({...p,groupId:g.id}))).find(p=>p.id===scope.phaseId);
-   if(scope.groupId&&!group||scope.phaseId&&(!phase||group&&phase.groupId!==group.id)||scope.teamId&&!directory.teams.some(t=>t.id===scope.teamId&&(!scope.groupId||t.groupIds.includes(scope.groupId))))throw new TypeError('widget directory');
+   if(scope.groupId&&!group||scope.phaseId&&(!phase||group&&phase.groupId!==group.id)||scope.teamId&&!directory.teams.some(t=>t.id===scope.teamId&&(!scope.groupId||t.groupIds.includes(scope.groupId))&&(!phase||t.groupIds.includes(phase.groupId)&&(!phase.teamIds?.length||phase.teamIds.includes(t.id)))))throw new TypeError('widget directory');
   }
  }
  return catalog.items.filter(i=>settings.seasonIds.includes(i.seasonId));
@@ -91,14 +91,18 @@ export async function portalDirectory(org,seasonId,options={}){
  for(const r of rows){
   if(id(r.organization_id)!==id(config.id)||id(r.season_id)!==seasonId)throw new Error('directory ownership');
   for(const side of ['home','away'])if(id(r[side+'_team_id'])){
-   const teamId=id(r[side+'_team_id']),team=teams.get(teamId)??{id:teamId,name:text(r[side+'_team_name']),logoUrl:null,groupIds:[]};
+   const teamId=id(r[side+'_team_id']),team=teams.get(teamId)??{id:teamId,name:text(r[side+'_team_name']),logoUrl:null,groupIds:[],phaseIds:[]};
+   if(id(r.phase_id)&&!team.phaseIds.includes(id(r.phase_id)))team.phaseIds.push(id(r.phase_id));
    team.logoUrl??=sportingImage(r[side+'_logo_url']);if(id(r.group_id)&&!team.groupIds.includes(id(r.group_id)))team.groupIds.push(id(r.group_id));teams.set(teamId,team);
   }
   if(text(r.venue_name))venues.set(text(r.venue_name),{name:text(r.venue_name),logoUrl:sportingImage(r.venue_logo_url)});
   if(id(r.group_id)){const g=groups.get(id(r.group_id))??{id:id(r.group_id),name:text(r.group_name),phases:[],logoUrl:null,color:null,teamIds:[]};
    g.logoUrl??=sportingImage(r.group_logo_url);g.color??=color(r.group_color);
    for(const side of ['home','away'])if(id(r[side+'_team_id'])&&!g.teamIds.includes(id(r[side+'_team_id'])))g.teamIds.push(id(r[side+'_team_id']));
-   if(id(r.phase_id)&&!g.phases.some(p=>p.id===id(r.phase_id)))g.phases.push({id:id(r.phase_id),name:text(r.phase_name)});groups.set(g.id,g);}
+   if(id(r.phase_id)){
+    let phase=g.phases.find(p=>p.id===id(r.phase_id));if(!phase){phase={id:id(r.phase_id),name:text(r.phase_name),teamIds:[]};g.phases.push(phase);}
+    for(const side of ['home','away'])if(id(r[side+'_team_id'])&&!phase.teamIds.includes(id(r[side+'_team_id'])))phase.teamIds.push(id(r[side+'_team_id']));
+   }groups.set(g.id,g);}
  }
  return {teams:[...teams.values()].sort((a,b)=>a.name.localeCompare(b.name,'cs')),teamCount:teams.size,venues:[...venues.values()],groups:[...groups.values()].sort((a,b)=>a.name.localeCompare(b.name,'cs')).map(g=>({...g,teamCount:g.teamIds.length})),source:'imported-hms-games'};
 }
