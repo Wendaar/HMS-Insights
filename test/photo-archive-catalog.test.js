@@ -27,13 +27,15 @@ test('pause retains the next page and a bad server cursor cannot loop forever',a
 
 test('direct Flickr Album field has priority; explicit empty is distinguished from an omitted API field',async()=>{
   const org='cccccccc-cccc-4ccc-8ccc-cccccccccccc',game='11111111-1111-4111-8111-111111111111';
-  const env={HMS_EUCHL_API_TOKEN:'fixture',HMS_EUCHL_ORGANIZATION_ID:org};let value='https://flic.kr/s/aHBqjDakpE',omit=false,rows;
+  const env={HMS_EUCHL_API_TOKEN:'fixture',HMS_EUCHL_ORGANIZATION_ID:org};let value='https://flic.kr/s/aHBqjDakpE',omit=false,failDetail=false,rows;
   const discovery=createArchiveDiscovery({env,store:{get:async()=>null,save:async(o,k,d)=>{rows=d.items;return {draft:d};}},fetchImpl:async input=>{
     const u=new URL(input);if(u.hostname==='api.prod.hms.wootera.net')return new Response('',{status:404});
+    if(failDetail && u.pathname.endsWith('/game'))return new Response('',{status:503});
     const row={gameId:game,organizationId:org,startDate:'2026-10-05',HomeTeam:{name:'Home'},AwayTeam:{name:'Away'},...(!omit?{flickrAlbum:value}:{})};
     return Response.json(u.pathname.endsWith('/games')?[row]:u.pathname.endsWith('/teams')?[]:row);
   }});
   await discovery.discover('EUCHL',{from:'2026-10-01',to:'2026-10-31'});assert.equal(rows[0].flickrAlbum,value);assert.equal(rows[0].albumFieldStatus,'link');
   value=null;await discovery.discover('EUCHL',{from:'2026-10-01',to:'2026-10-31'});assert.equal(rows[0].flickrAlbum,null);assert.equal(rows[0].albumFieldStatus,'empty');
   omit=true;await discovery.discover('EUCHL',{from:'2026-10-01',to:'2026-10-31'});assert.equal(rows[0].albumFieldStatus,'unavailable');
+  omit=false;failDetail=true;value='https://flic.kr/s/workingList';const result=await discovery.discover('EUCHL',{from:'2026-10-01',to:'2026-10-31'});assert.equal(result.games,1);assert.equal(rows[0].flickrAlbum,value);
 });
