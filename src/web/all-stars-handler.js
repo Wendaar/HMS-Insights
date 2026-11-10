@@ -3,6 +3,7 @@ import {hasBearerSecret} from '../security/bearer-secret.js';
 import {toolStore} from '../infrastructure/tool-instances.js';
 import {allStarsSettings,readAllStars,resolvedSelection} from '../app/all-stars.js';
 import {controlContextCatalog} from '../app/control-context.js';
+import {validatePlayerPhotoChoices} from '../app/player-photo-choices.js';
 const slugPattern=/^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 export function createAllStarsHandler(options={}){
   const env=options.env??process.env,store=options.store??toolStore({env,tool:'all-stars'}),read=options.readAllStars??readAllStars;
@@ -38,18 +39,18 @@ export function createAllStarsHandler(options={}){
       }
       if(action==='manage')return res.status(200).json({org:org.code,slug,instance,list:await store.list(org.code)});
       if(!env.DATABASE_URL&&!options.store)return fail(503,'Centrální ukládání není připojeno.','Central storage is not configured.');
-      let body;try{if(Buffer.byteLength(JSON.stringify(req.body??''))>20000)throw new Error();body=typeof req.body==='string'?JSON.parse(req.body):req.body;if(!body||typeof body!=='object'||Array.isArray(body))throw new Error();}catch{return fail(400,'Neplatné nastavení.','Invalid settings.');}
+      let body;try{if(Buffer.byteLength(JSON.stringify(req.body??''))>1200000)throw new Error();body=typeof req.body==='string'?JSON.parse(req.body):req.body;if(!body||typeof body!=='object'||Array.isArray(body))throw new Error();}catch{return fail(400,'Neplatné nastavení.','Invalid settings.');}
       if(!Number.isInteger(body.revision)||body.revision!==(instance?.revision??0))return fail(409,'Nastavení změnil jiný správce. Načtěte jej znovu.','Another editor changed the draft. Reload it.');
       if(action==='save'){
         const config=allStarsSettings(body.config,org.code),data=await read(org.code,config,{...options,env});
-        resolvedSelection(config,data);
+        resolvedSelection(config,data);await validatePlayerPhotoChoices(org.code,config,{...options,env});
         const saved=await store.save(org.code,slug,config,body.revision,null);
         return saved?res.status(200).json({instance:saved}):fail(409,'Nastavení se změnilo.','The draft changed.');
       }
       if(!instance)throw new TypeError('draft');
       const config=allStarsSettings(instance.draft,org.code),data=await read(org.code,config,{...options,env});
       if(!data.monthClosed||!data.coverage.complete)return fail(422,'Publikace vyžaduje uzavřený měsíc a všechny dokončené zápasy s ověřenými statistikami.','Publication requires a closed month and verified statistics for every finished game.');
-      const lineup=resolvedSelection(config,data,{complete:true});
+      await validatePlayerPhotoChoices(org.code,config,{...options,env});const lineup=resolvedSelection(config,data,{complete:true});
       const output={lineup,graphics:config.graphics,season:data.season,group:data.groups.find(g=>g.id===config.groupId),coverage:data.coverage,readAt:data.readAt,rules:data.rules,source:data.source};
       // Compare-and-swap twice: publishing never overwrites a concurrent edit.
       const frozen=await store.save(org.code,slug,{...config,output},body.revision,null);

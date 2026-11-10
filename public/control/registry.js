@@ -25,7 +25,7 @@ export function setOrganizationCatalog(rows){
 const missing = (id, category, name, description) => ({id,category,name,description,
   status:'missing', dataSource:'Nenastaveno', note:'Aplikace je v inventáři; její adresu a zdroj je potřeba ověřit.', links:{}});
 const applications = [
-  {id:'photo-archive',category:'media',name:'Photo Archive',description:'Přiřazování fotografií hráčům a kontrola shod s HMS soupiskou.',status:'partial',dataSource:'Flickr + HMS soupisky · pilot PHM',note:'Pilot PHM v samostatném chráněném náhledu. Přístup kódem PHM Operations.',links:{open:'https://hms-insights-git-codex-hms-photo-archive-pilot-wendaar.vercel.app/photo-archive?org=phm',github:repository+'/pull/61'}},
+  {id:'photo-archive',category:'media',name:'Photo Archive',description:'Přiřazování fotografií hráčům a kontrola shod s HMS soupiskou.',status:'partial',dataSource:'Flickr + HMS · oddělené organizace',note:'Organizační přístup Operations; schválené fotografie pro společný photo picker.',links:{open:'/photo-archive?org=phm',github:repository+'/pull/61'}},
   missing('statistics','stats','Statistics','Přehled statistik soutěže. Samostatná stránka zatím není připojená.'),
   missing('standings','stats','Standings','Tabulky soutěže. Samostatná stránka zatím není připojená.'),
   missing('team-profiles','competition','Team Profiles','Veřejné stránky týmů. Připravujeme.'),
@@ -87,6 +87,7 @@ export function appsForOrganization(id) {
     if(app.id==='media-mapping')links={...app.links,open:'/media-mapping?org='+code,manage:'/media-mapping?org='+code};
     if(app.id==='team-comparison')links={...app.links,open:'/studio/'+slug+'?lang=cs&section=team-compare',manage:'/studio/'+slug+'?lang=cs&section=team-compare',public:'/team-comparison/'+slug};
     if(app.id==='all-stars')links={...app.links,open:'/control/apps/all-stars?org='+slug,manage:'/control/apps/all-stars?org='+slug,public:'/all-stars/'+slug,source:'/api/all-stars?action=catalog&org='+slug};
+    if(app.id==='photo-archive')links={...app.links,open:'/photo-archive?org='+slug,manage:'/photo-archive?org='+slug};
     if(app.id==='operations')links={...app.links,open:'/operations?org='+slug,manage:'/operations?org='+slug};
     if(app.id==='sponsors-catalog')links={open:'/broadcast/sponsors.html?org='+code};
     if(app.id==='broadcast')links={...app.links,open:'/broadcast/index.html?org='+code,manage:'/broadcast/index.html?org='+code,source:'/api/broadcast?org='+code};
