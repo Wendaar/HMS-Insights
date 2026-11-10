@@ -1,7 +1,8 @@
-import {seasonGamesQuery,publicSeasonGame,seasonGamePage} from '../domain/season-games.js';
+import {seasonGamesQuery,publicSeasonGame,seasonGamePage,calendarDate} from '../domain/season-games.js';
 import {loadAvailableGameReports} from '../infrastructure/postgres-repository.js';
 const days=new Map(),pending=new Map(),meta=new Map();
 const rawDays=new Map(),rawPending=new Map();
+const seasons=new Map(),seasonPending=new Map();
 let cooldownUntil=0;
 const MAX_BYTES=4*1024*1024;
 export class ScheduleSourceError extends Error{constructor(status=503,retryAfter=30){super('Schedule source unavailable');this.status=status;this.retryAfter=Math.min(300,Math.max(1,Number(retryAfter)||30));}}
@@ -10,10 +11,11 @@ async function publicRead(endpoint,params,options){
   const url=new URL('https://api.prod.hms.wootera.net/public/'+endpoint);for(const [key,value]of Object.entries(params))url.searchParams.set(key,value);
   const response=await(options.fetchImpl??fetch)(url.href,{headers:{accept:'application/json'},signal:AbortSignal.timeout(6000)});
   if(!response.ok){const error=new ScheduleSourceError(response.status===429?429:503,response.headers?.get('retry-after'));if(error.status===429&&!options.fetchImpl)cooldownUntil=Date.now()+error.retryAfter*1000;throw error;}
-  if(Number(response.headers?.get('content-length'))>MAX_BYTES)throw new ScheduleSourceError();
+  const maxBytes=options.maxBytes??MAX_BYTES;
+  if(Number(response.headers?.get('content-length'))>maxBytes)throw new ScheduleSourceError();
   if(!response.body?.getReader)return response.json(); // injected test response
   const reader=response.body.getReader(),chunks=[];let size=0;
-  try{while(true){const {value,done}=await reader.read();if(done)break;size+=value.byteLength;if(size>MAX_BYTES)throw new ScheduleSourceError();chunks.push(value);}}finally{await reader.cancel().catch(()=>{});}
+  try{while(true){const {value,done}=await reader.read();if(done)break;size+=value.byteLength;if(size>maxBytes)throw new ScheduleSourceError();chunks.push(value);}}finally{await reader.cancel().catch(()=>{});}
   const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.length;}
   return JSON.parse(new TextDecoder().decode(bytes));
 }
@@ -42,14 +44,15 @@ export async function readPublicGameDay(seasonId,date,options={}){
 }
 async function readDay(seasonId,date,options){
   const key=seasonId+':'+date,cacheable=!options.fetchImpl;
-  if(cacheable&&days.get(key)?.until>Date.now())return days.get(key).value;
+  const cached=days.get(key);
+  if(cacheable&&cached?.until>Date.now()&&(!options.liveToday||Date.now()-cached.readAt<15000))return cached.value;
   if(cacheable&&pending.has(key))return pending.get(key);
   if(cacheable&&pending.size>=24)throw new ScheduleSourceError();
   const task=(async()=>{
     const raw=await publicRead('games',{seasonId,startDate:date},options);
     if(!Array.isArray(raw)||raw.length>2000)throw new ScheduleSourceError();
     const value=raw.filter(g=>!g.isDeleted).map(g=>publicSeasonGame(g,seasonId,date));
-    if(cacheable){while(days.size&&(days.size>=80||[...days.values()].reduce((n,day)=>n+day.value.length,0)+value.length>10000))days.delete(days.keys().next().value);days.set(key,{value,until:Date.now()+60000});}return value;
+    if(cacheable){while(days.size&&(days.size>=80||[...days.values()].reduce((n,day)=>n+day.value.length,0)+value.length>10000))days.delete(days.keys().next().value);days.set(key,{value,readAt:Date.now(),until:Date.now()+60000});}return value;
   })();
   if(cacheable){pending.set(key,task);task.finally(()=>pending.delete(key)).catch(()=>{});}return task;
 }
@@ -63,15 +66,49 @@ async function seasonLabels(seasonId,options){
     if(!options.fetchImpl){if(meta.size>=80)meta.delete(meta.keys().next().value);meta.set(seasonId,{value:result,until:Date.now()+300000});}return result;
   }catch{return {};}
 }
+// Whole-season search uses one shared, bounded index, never a walk over empty weeks.
+async function readSeason(seasonId,options){
+  const cacheable=!options.fetchImpl;
+  if(cacheable&&seasons.get(seasonId)?.until>Date.now())return seasons.get(seasonId).value;
+  if(cacheable&&seasonPending.has(seasonId))return seasonPending.get(seasonId);
+  if(cacheable&&seasonPending.size>=8)throw new ScheduleSourceError();
+  const task=(async()=>{
+    const raw=await publicRead('games',{seasonId},{...options,maxBytes:16*1024*1024});
+    if(!Array.isArray(raw)||raw.length>20000)throw new ScheduleSourceError();
+    const value=raw.filter(g=>!g.isDeleted).map(g=>{
+      if(!calendarDate(g.startDate))throw new ScheduleSourceError();
+      return publicSeasonGame(g,seasonId,g.startDate);
+    });
+    // Validate conflicting duplicates before caching the public index.
+    seasonGamePage(value,{offset:0,filter:'Future'});
+    if(cacheable){
+      while(seasons.size&&(seasons.size>=8||[...seasons.values()].reduce((sum,s)=>sum+s.value.length,0)+value.length>40000))seasons.delete(seasons.keys().next().value);
+      seasons.set(seasonId,{value,until:Date.now()+120000});
+    }
+    return value;
+  })();
+  if(cacheable){seasonPending.set(seasonId,task);task.finally(()=>seasonPending.delete(seasonId)).catch(()=>{});}
+  return task;
+}
 export async function browseSeasonGames(query,options={}){
-  const request=seasonGamesQuery(query,options.now),result=new Array(request.dates.length);let cursor=0;
+  const request=seasonGamesQuery(query,options.now),wholeSeason=['Past','Future'].includes(request.filter);
   const labelsPromise=seasonLabels(request.seasonId,options);
-  await Promise.all(Array.from({length:Math.min(3,request.dates.length)},async()=>{while(cursor<request.dates.length){const index=cursor++;result[index]=await readDay(request.seasonId,request.dates[index],options);}}));
-  const page=seasonGamePage(result.flat(),request),labels=await labelsPromise;
+  let rows;
+  if(wholeSeason){
+    const all=await readSeason(request.seasonId,options);
+    const today=seasonGamesQuery({seasonId:request.seasonId,filter:'Today'},options.now).from;
+    rows=all.filter(g=>request.filter==='Future'?g.date>today:g.date<today);
+  }else{
+    const result=new Array(request.dates.length);let cursor=0;
+    await Promise.all(Array.from({length:Math.min(3,request.dates.length)},async()=>{while(cursor<request.dates.length){const index=cursor++;result[index]=await readDay(request.seasonId,request.dates[index],{...options,liveToday:request.filter==='Today'});}}));
+    rows=result.flat();
+  }
+  const page=seasonGamePage(rows,request),labels=await labelsPromise;
+  const dates=rows.map(g=>g.date).sort();
   let availabilityKnown=false;
   if(page.items.length&&((options.env??process.env).DATABASE_URL||options.loadReports))try{
     const ids=await(options.loadReports??loadAvailableGameReports)(page.items.map(g=>g.id),request.seasonId,{env:options.env});
     const available=new Set(ids.map(id=>String(id).toLowerCase()));page.items=page.items.map(g=>({...g,reportAvailable:available.has(g.id)}));availabilityKnown=true;
   }catch{/* Schedule remains usable when imported-report storage is unavailable. */}
-  return {...page,seasonId:request.seasonId,competition:result.flat()[0]?.competition??labels.competition??null,season:result.flat()[0]?.season??labels.season??null,filter:request.filter,windowPage:request.windowPage,from:request.from,to:request.to,availabilityKnown,source:'HMS',readAt:new Date().toISOString()};
+  return {...page,seasonId:request.seasonId,competition:rows[0]?.competition??labels.competition??null,season:rows[0]?.season??labels.season??null,filter:request.filter,scope:wholeSeason?'season':'days',windowPage:0,from:wholeSeason?dates[0]??null:request.from,to:wholeSeason?dates.at(-1)??null:request.to,availabilityKnown,source:'HMS',readAt:new Date().toISOString()};
 }

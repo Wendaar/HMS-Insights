@@ -8,6 +8,8 @@ import {suggestPlayers} from '../../photo-archive/matcher.mjs';
 import {pilotObservations} from '../../photo-archive/pilot-observations.mjs';
 import {analysisStats,createArchiveAnalysis} from './photo-archive-analysis.js';
 import {withMatchJerseys} from '../../photo-archive/jersey-context.mjs';
+import {createArchiveDiscovery} from './photo-archive-discovery.js';
+import {isGameId} from '../domain/game-summary.js';
 
 export const PHOTO_ARCHIVE_TOOL='photo-archive-preview';
 export const photoArchiveEnabled=env=>env.VERCEL_ENV==='preview' && env.VERCEL_GIT_COMMIT_REF==='codex/hms-photo-archive-pilot' || env.PHOTO_ARCHIVE_LOCAL==='1' && env.VERCEL_ENV!=='production';
@@ -29,12 +31,23 @@ export function createPhotoArchive(options={}){
   const env=options.env ?? process.env,store=options.store ?? toolStore({env,tool:PHOTO_ARCHIVE_TOOL}),fetchImpl=options.fetchImpl ?? fetch;
   const now=()=>new Date(options.now?.() ?? Date.now()).toISOString();
   const ready=!!(options.store || env.DATABASE_URL);
+  const discovery=createArchiveDiscovery({env,store,fetchImpl});
+  async function casesFor(org){
+    if(options.readCases)return (await options.readCases()).filter(c=>c.org===org);
+    organizationConfig(org,env);
+    const catalog=await store.get(org,'catalog'),legacy=org==='PHM'?await readArchiveCases():[];
+    const saved=store.list?await store.list(org):[];
+    const items=new Map([...legacy,...(catalog?.draft?.items || [])].filter(c=>c.org===org).map(c=>[c.gameId.toLowerCase(),c]));
+    for(const row of saved)if(isGameId(row.slug)&&!items.has(row.slug.toLowerCase())){const game=await store.get(org,row.slug);if(game?.draft?.org===org)items.set(row.slug.toLowerCase(),{org,gameId:row.slug,flickrAlbum:game.draft.albumUrl,title:game.draft.title});}
+    return [...items.values()];
+  }
   async function context(org,gameId){
-    if(org!=='PHM')fail(404,'Pilot fotoarchivu je nyní dostupný pro PHM.');
-    const cases=await(options.readCases ?? readArchiveCases)();
+    const cases=await casesFor(org);
     const item=cases.find(c=>c.org===org && same(c.gameId,gameId));
-    if(!item)fail(404,'Zápas není v pilotním výběru.');
-    return item;
+    if(options.readCases){if(!item)fail(404,'Zápas není v seznamu organizace.');return item;}
+    // Persisted membership is not authority to import a different organization's game.
+    if(item)return item;
+    const verified=await discovery.context(org,gameId);return verified;
   }
   const get=async(org,gameId)=>{await context(org,gameId);return store.get(org,gameId.toLowerCase());};
   function requireStorage(){if(!ready)fail(503,'Databáze fotoarchivu není připojená. Změny se neuložily.');}
@@ -51,40 +64,52 @@ export function createPhotoArchive(options={}){
     const config={...hmsConfigFromEnv({...env,HMS_API_TOKEN:scoped.token}),timeoutMs:15000,retries:0};
     const init={config,fetchImpl:(url,settings)=>fetchImpl(url,{...settings,redirect:'error'})};
     const [detail,lineup,album]=await Promise.all([fetchGameDetail(item.gameId,init),fetchGameLineup(item.gameId,init),
-      fetchAlbum(item.flickrAlbum,{limit:250,env:{FLICKR_API_KEY:env.FLICKR_API_KEY || env.FLICKT_API_KEY},fetchImpl})]);
+      fetchAlbum(item.flickrAlbum,{limit:250,offset:item.offset || 0,env:{FLICKR_API_KEY:env.FLICKR_API_KEY || env.FLICKT_API_KEY},fetchImpl})]);
     if(!same(detail?.organizationId,scoped.id))fail(422,'HMS nepotvrdilo organizaci vybraného zápasu.');
     const normalized=normalizeLineup(item.gameId,detail,lineup);
     const teams=withMatchJerseys([{teamId:normalized.homeTeamId,name:detail.HomeTeam?.name || 'Domácí'},{teamId:normalized.awayTeamId,name:detail.AwayTeam?.name || 'Hosté'}],detail);
     return {gameId:item.gameId,title:teams.map(t=>t.name).join(' × '),playedOn:detail.startDate || null,teams,players:normalized.players,
-      albumId:album.photosetId,albumUrl:album.canonical,albumTotal:album.total,photos:album.photos};
+      albumId:album.photosetId,albumUrl:album.canonical,albumTotal:album.total,photos:album.photos,nextOffset:album.nextOffset};
   }
   return {
     ready,
+    async discover(org,params){requireStorage();return discovery.discover(org,params);},
     ...createArchiveAnalysis({env,store,context,view,requireStorage,fail,now,fetchImpl,analyzer:options.analyzer}),
     async catalog(org){
-      if(org!=='PHM')fail(404,'Pilot fotoarchivu je nyní dostupný pro PHM.');
-      const cases=await(options.readCases ?? readArchiveCases)();
+      const cases=await casesFor(org);
       return Promise.all(cases.filter(c=>c.org===org).map(async(c,i)=>{const row=await store.get(org,c.gameId.toLowerCase());return {gameId:c.gameId,
-        title:row?.draft?.title || `Pilotní zápas ${i+1}`,playedOn:row?.draft?.playedOn || null,albumUrl:c.flickrAlbum,imported:!!row,revision:row?.revision ?? 0,stats:archiveStats(row?.draft)};}));
+        title:row?.draft?.title || c.title || `Zápas ${i+1}`,playedOn:row?.draft?.playedOn || c.playedOn || null,albumUrl:c.flickrAlbum,imported:!!row,revision:row?.revision ?? 0,stats:archiveStats(row?.draft),albumStatus:row?.draft && c.flickrAlbum && c.flickrAlbum!==row.draft.albumUrl?'new':row?.draft?.albumStatus || (row?.draft?.photos?.length?'in_progress':c.flickrAlbum?'new':'no_album'),hasNewPhotos:!!row?.draft?.hasNewPhotos || !!(row?.draft && c.flickrAlbum && c.flickrAlbum!==row.draft.albumUrl),albumTotal:row?.draft?.albumTotal || 0};}));
     },
     async read(org,gameId){const item=await context(org,gameId);return view(await store.get(org,gameId.toLowerCase()),item);},
-    async importCase(org,gameId,revision,reviewer='Operations'){
-      requireStorage();const item=await context(org,gameId),current=await get(org,gameId);
+    async importCase(org,gameId,revision,reviewer='Operations',offset=0){
+      requireStorage();const item=options.readCases?await context(org,gameId):await discovery.context(org,gameId),current=await store.get(org,gameId.toLowerCase());
       if(!Number.isInteger(revision) || revision!==(current?.revision ?? 0))fail(409,'Zápas mezitím změnil jiný uživatel. Obnovte data.');
-      const source=await loadSource(org,item);
+      if(!Number.isInteger(offset)||offset<0||offset%250)fail(400,'Neplatná stránka alba.');
+      const source=await loadSource(org,{...item,offset});
       if(!same(source.gameId,gameId) || !Array.isArray(source.players) || !source.players.length || !Array.isArray(source.photos) || source.photos.length>250)fail(422,'Neplatná data zdrojového alba nebo soupisky.');
       const photos=source.photos.map(photo=>{
         if(!/^\d+$/.test(photo.id))fail(422,'Flickr vrátilo neplatnou identitu fotografie.');
         return {id:photo.id,title:String(photo.title || '').slice(0,200),thumbnailUrl:flickrImage(photo.thumbnailUrl),previewUrl:flickrImage(photo.previewUrl),
-          originalUrl:`https://www.flickr.com/photos/153512269@N03/${photo.id}/`,takenAt:photo.takenAt || null};
+          originalUrl:`https://www.flickr.com/photo.gne?id=${photo.id}`,takenAt:photo.takenAt || null};
       });
       const merged=new Map((current?.draft?.photos || []).map(p=>[p.id,p]));for(const p of photos)merged.set(p.id,p);
+      const changed=photos.some(p=>!(current?.draft?.photos || []).some(old=>old.id===p.id)) || !!current?.draft && String(current.draft.albumId)!==String(source.albumId);
       const state={schemaVersion:1,org,gameId:item.gameId,title:source.title,playedOn:source.playedOn,teams:source.teams,players:source.players,
+        albumStatus:changed?'in_progress':current?.draft?.albumStatus || 'in_progress',hasNewPhotos:changed,albumReviewedAt:current?.draft?.albumReviewedAt || null,
+        flickrNextOffset:Math.max(String(current?.draft?.albumId)===String(source.albumId)?current?.draft?.flickrNextOffset || 0:0,source.nextOffset || source.photos.length),
         albumId:String(source.albumId),albumUrl:item.flickrAlbum,albumTotal:source.albumTotal,photos:[...merged.values()],reviews:current?.draft?.reviews || {},
         analyses:current?.draft?.analyses || {},analysisJob:current?.draft?.analysisJob || null,
         importedAt:now(),audit:[...(current?.draft?.audit || []),{action:'import',at:now(),actor:reviewer}].slice(-1000)};
       const saved=await store.save(org,gameId.toLowerCase(),state,revision,null);
       if(!saved)fail(409,'Data se změnila během importu. Obnovte je.');return view(saved,item);
+    },
+    async reviewAlbum(org,body,actor){
+      requireStorage();const item=await context(org,body.gameId),row=await get(org,item.gameId),state=row?.draft;
+      if(!state || row.revision!==body.revision)fail(409,'Album se změnilo. Obnovte stav.');
+      if(!['reviewed','closed','reopen'].includes(body.status))fail(400,'Neplatný stav alba.');
+      const stats=archiveStats(state);if(body.status==='closed'&&(stats.pending || stats.inProgress || state.photos.length<state.albumTotal))fail(422,'Před uzavřením načtěte celé album a uzavřete všechny fotografie.');
+      const next={...state,albumStatus:body.status==='reopen'?'in_progress':body.status,hasNewPhotos:false,albumReviewedAt:body.status==='reopen'?null:now(),audit:[...(state.audit || []),{action:'album-'+body.status,actor,at:now()}].slice(-1000)};
+      const saved=await store.save(org,item.gameId.toLowerCase(),next,row.revision,null);if(!saved)fail(409,'Album změnil jiný uživatel.');return view(saved,item);
     },
     async decide(org,body,actor){
       requireStorage();const item=await context(org,body?.gameId),current=await get(org,item.gameId),state=current?.draft;
@@ -103,14 +128,16 @@ export function createPhotoArchive(options={}){
       const review={status,players,reviewerLabel:reviewer,reviewedBy:actor,reviewedAt:at,note};
       const next={...state,reviews:{...state.reviews,[body.photoId]:review},audit:[...(state.audit || []),{action:body.decision,photoId:body.photoId,
         playerIds:players.map(p=>p.playerId),previousPlayerIds:(state.reviews[body.photoId]?.players || []).map(p=>p.playerId),actor,reviewerLabel:reviewer,at}].slice(-1000)};
+      if(['draft','reset'].includes(body.decision))next.albumStatus='in_progress';
       const saved=await store.save(org,item.gameId.toLowerCase(),next,body.revision,null);
       if(!saved)fail(409,'Změnu současně uložil jiný uživatel. Obnovte data.');return view(saved,item);
     },
     async archive(org,playerId=null){
-      const cases=await(options.readCases ?? readArchiveCases)();if(org!=='PHM')fail(404,'Neznámý fotoarchiv.');
-      const rows=await Promise.all(cases.filter(c=>c.org===org).map(c=>store.get(org,c.gameId.toLowerCase())));
+      let rows;
+      if(store.archiveRows && !options.readCases){organizationConfig(org,env);rows=await store.archiveRows(org,playerId);}
+      else {const cases=await casesFor(org);rows=await Promise.all(cases.filter(c=>c.org===org).map(c=>store.get(org,c.gameId.toLowerCase())));}
       const players=new Map();
-      for(const row of rows){const state=row?.draft;if(!state)continue;
+      for(const row of rows){const state=row?.draft;if(!state)continue;if(state.org!==org)fail(422,'Archiv neodpovídá organizaci.');
         for(const photo of state.photos){const review=state.reviews[photo.id];if(review?.status!=='confirmed')continue;
           for(const player of review.players){if(playerId && !same(playerId,player.playerId))continue;
             const key=player.playerId.toLowerCase();if(!players.has(key))players.set(key,{playerId:player.playerId,name:player.name || 'Hráč',photos:[]});

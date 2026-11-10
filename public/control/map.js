@@ -3,22 +3,24 @@ import {publicOutputUrl} from '../public-output.js';
 export const validId = value => /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(value??'');
 const stage=(id,label,app,kind='open',extra={})=>({id,label,app,kind,...extra});
 export const branches=[
-  {id:'website',name:'Site Builder · web ligy / turnaje',color:'blue',nodes:[stage('portal-definition','Site Builder · nastavení','public-portal','manage'),stage('portal-preview','Náhled a publikace','public-portal'),stage('portal-public','League Page · veřejný web','public-portal','public')]},
-  {id:'operations',name:'Operations · provoz a uzávěrky',color:'cyan',nodes:[stage('operations','HMS Operations','operations')]},
-  {id:'games',name:'Zápasy & reporty',color:'blue',nodes:[stage('games-view','Games View','games-view'),stage('game-report','Game Report','game-center')]},
-  {id:'broadcast',name:'OBS Broadcast',color:'violet',nodes:[stage('obs-definition','Broadcast Definition','broadcast','manage',{note:'Nastavení je součástí Broadcast Studia.'}),stage('obs-studio','Broadcast Studio','broadcast'),stage('obs-output','OBS Output','broadcast','output')]},
-  {id:'virtual-camera',name:'Virtuální kamera · samostatná režie',color:'violet',nodes:[stage('virtual-camera','HERO Virtual Camera','virtual-camera','open',{note:'VDO.Ninja → ruční výřez → vlastní OBS URL se zvukem. Funguje bez výběru organizace v HMS, sezony nebo zápasu.'})]},
-  {id:'insights',name:'Insights',color:'cyan',nodes:[stage('insights-definition','Insights Definition','insights-definition','manage'),stage('insights-public','Insights Public','insights-public'),stage('insights-archive','Insights Archive','insights-archive')]},
-  {id:'social',name:'Social Studio',color:'pink',nodes:[stage('game-day','Game Day Preview & Reminder','game-day'),stage('social-setup','Social Content Setup','studio','manage'),stage('social-studio','Social Studio','studio'),stage('social-output','Social Content Output','studio','export',{note:'Grafiky se exportují ze Studia jako PNG. Samostatná veřejná galerie zatím není.'})]},
-  {id:'awards',name:'Awards',color:'amber',nodes:[stage('awards-definition','All Stars Definition','all-stars','manage'),stage('all-stars','All Stars Month','all-stars'),stage('hall-of-fame','Hall of Fame','hall-of-fame')]},
-  {id:'gameshow',name:'Game Show · zvuky a hlasatel',color:'pink',nodes:[stage('gameshow-definition','Media Mapping · příprava zvuků','media-mapping'),stage('gameshow-control','LIVE Show Control · ovládání zápasu','show-control')]},
-  {id:'sponsors',name:'Sponsors · napříč nástroji',color:'amber',nodes:[stage('sponsor-definition','Sponzoři z HMS','sponsors-catalog','open',{note:'Čtecí katalog z nové vrstvy HMS API. Evidence se spravuje v HMS; sjednocení všech nástrojů je další krok.'}),stage('sponsor-broadcast','Partneři v Broadcastu',null,'open',{note:'Rozšíření sponzorů je v samostatném rozpracovaném náhledu.'}),stage('sponsor-output','Broadcast / Social / Web',null)]},
-  {id:'players',name:'Hráči & porovnání',color:'cyan',nodes:[stage('player-cards','Player Cards','player-cards'),stage('team-comparison','Team Comparison','team-comparison'),stage('playoff-players','Playoff Players','playoff-players')]},
-  {id:'competition',name:'Soutěže & fanoušci',color:'violet',nodes:[stage('betting','Betting · Sázkovka','betting'),stage('playoff-bracket','Playoff pavouk','playoff-bracket'),stage('calendar','Kalendář','calendar')]},
-  {id:'data',name:'Data & infrastruktura',color:'blue',nodes:[stage('registrations','Registrace 2026/27','registrations'),stage('api','HMS API','connections','github'),stage('engine','Data Engine','data-engine','github'),stage('database','Databáze','database','github')]},
-  {id:'development',name:'Vývoj & provoz',color:'slate',nodes:[stage('code','Code · GitHub','repository'),stage('deploy','Deploy','deploy'),stage('security','Security','security','github')]},
+ {id:'administration',name:'Administration',color:'cyan',nodes:[stage('operations','HMS Operations','operations')]},
+ {id:'website',name:'Web / Hub',color:'blue',nodes:[stage('portal-definition','Site Builder','public-portal','manage',{note:'Nastavení webu, náhled a publikace na jednom místě.'}),stage('portal-public','League Page · veřejný web','public-portal','public')]},
+ {id:'competition',name:'Competition basics',color:'blue',nodes:[stage('games-view','Games View','games-view'),stage('player-cards','Player Cards','player-cards'),stage('statistics','Statistics','statistics'),stage('standings','Standings','standings'),stage('team-profiles','Team Profiles','team-profiles'),stage('playoff-bracket','Playoff pavouk','playoff-bracket'),stage('playoff-players','Hráči do playoff','playoff-players')]},
+ {id:'broadcast',name:'Broadcast',color:'violet',nodes:[stage('obs-studio','Broadcast Studio','broadcast'),stage('virtual-camera','HERO Virtual Camera','virtual-camera')]},
+ {id:'content',name:'Content creation',color:'pink',nodes:[stage('social-studio','Social Media Studio','studio','open',{note:'Game Day, Team Compare, Insights grafiky, náhledy a export PNG.'}),stage('photo-archive','Photo Archive','photo-archive'),stage('betting','Sázkovka','betting')]},
+ {id:'sponsors',name:'Sponsors',color:'amber',nodes:[stage('sponsor-definition','Sponsors','sponsors-catalog')]},
+ {id:'gameshow',name:'Media & Game Show',color:'pink',nodes:[stage('gameshow-definition','Media Mapping','media-mapping'),stage('gameshow-control','LIVE Show Control','show-control')]},
+ {id:'awards',name:'Awards & Achievements',color:'amber',nodes:[stage('insights-public','Insights · Public / Archive','insights-public'),stage('all-stars','All Stars','all-stars'),stage('hall-of-fame','Hall of Fame','hall-of-fame')]},
+ {id:'data',name:'Data & infrastruktura',color:'blue',nodes:[stage('registrations','Registrace 2026/27','registrations'),stage('api','HMS API','connections','github'),stage('engine','Data Engine','data-engine','github'),stage('database','Databáze','database','github')]},
+ {id:'development',name:'Vývoj & provoz',color:'slate',nodes:[stage('code','Code · GitHub','repository'),stage('deploy','Deploy','deploy'),stage('security','Security','security','github')]},
 ];
-branches.unshift(branches.splice(branches.findIndex(b=>b.id==='sponsors'),1)[0]);
+export const workBranches={
+ administration:['administration','website','competition','sponsors'],
+ broadcast:['broadcast','gameshow','sponsors'],
+ social:['content','awards','sponsors'],
+ games:['competition','awards'],
+ data:['administration','website','sponsors','data','development'],
+};
 export function mapForOrganization(org){
   const apps=new Map(appsForOrganization(org).map(a=>[a.id,a]));
   return branches.map(branch=>({...branch,nodes:branch.nodes.map(node=>{
@@ -52,7 +54,7 @@ export function readContext(storage,org){
     return {leagues:Array.isArray(data.leagues)?data.leagues.filter(l=>l&&typeof l.name==='string'&&l.name.length<=100&&(!l.seasonId||validId(l.seasonId))).slice(-40):[],
       league:typeof data.league==='string'?data.league.slice(0,100):'',gameId:validId(data.gameId)?data.gameId:'',
       gameLabel:typeof data.gameLabel==='string'?data.gameLabel.slice(0,240):'',
-      work:['all','broadcast','social','games','data'].includes(data.work)?data.work:'all'};
+      work:['all','administration','broadcast','social','games','data'].includes(data.work)?data.work:'all'};
   }catch{return {};}
 }
 export function writeContext(storage,org,data){try{storage.setItem('hms-map-v2:'+org,JSON.stringify(data));return true;}catch{return false;}}

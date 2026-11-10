@@ -2,6 +2,7 @@ import {initialSelection,thumbnailState} from './review-model.js';
 const $=id=>document.getElementById(id),org=new URLSearchParams(location.search).get('org') || 'phm';
 let catalog=[],current=null,selectedId=null,chosen=new Set(),archive=[],busy=false,caseRequest=0;
 let analyzing=false,stopAnalysis=false;
+let discoveryPage=null;
 const folded=value=>String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 const text=(tag,value,className)=>{const node=document.createElement(tag);node.textContent=value;if(className)node.className=className;return node;};
 const same=(a,b)=>String(a).toLowerCase()===String(b).toLowerCase();
@@ -12,7 +13,7 @@ const statusLabels={pending:'K ověření',in_progress:'Rozpracováno',confirmed
 const colors={white:'bílá',black:'černá',grey:'šedá',red:'červená',blue:'modrá',green:'zelená',yellow:'žlutá',orange:'oranžová',purple:'fialová',unknown:'neurčeno'};
 const roleLabel=role=>role==='goalie'?'Brankář':role==='skater'?'Hráč v poli':'Role neurčena';
 const message=(value,error=false)=>{$('notice').textContent=value;$('notice').className=error?'error':'success';};
-function setBusy(value){busy=value;$('import').disabled=value;$('game-select').disabled=value;$('logout').disabled=value;$('ai-start').disabled=value || !current?.state;$('ai-refresh').disabled=value;$('ai-limit').disabled=value;$('ai-retry').disabled=value;$('ai-upgrade').disabled=value;updateActions();}
+function setBusy(value){busy=value;$('import').disabled=value;$('game-select').disabled=value;$('logout').disabled=value;$('ai-start').disabled=value || !current?.state;$('ai-refresh').disabled=value;$('ai-limit').disabled=value;$('ai-retry').disabled=value;$('ai-upgrade').disabled=value;for(const id of ['discover','discover-next','organization','album-reviewed','album-close','album-reopen'])$(id).disabled=value;updateActions();}
 async function api(action,{body,bearer,query={}}={}){
   const response=await fetch('/api/photo-archive?'+new URLSearchParams({org,action,...query}),{method:body || action==='session' || action==='logout'?'POST':'GET',credentials:'same-origin',
     headers:{...(body?{'content-type':'application/json'}:{}),...(bearer?{authorization:'Bearer '+bearer}:{})},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(55000)});
@@ -27,22 +28,42 @@ function setTab(tab){
 async function loadCatalog(){
   const data=await api('catalog');catalog=data.cases;
   const previous=$('game-select').value;
-  $('game-select').replaceChildren(...catalog.map(c=>new Option(c.title,c.gameId)));
+  $('game-select').replaceChildren(...catalog.map(c=>new Option(`${c.title} · ${albumLabels[c.albumStatus] || 'Nové'}${c.hasNewPhotos?' · nové fotky':''}`,c.gameId)));
   if(catalog.some(c=>c.gameId===previous))$('game-select').value=previous;
+  renderAlbums();
+}
+const albumLabels={new:'Nové album',no_album:'Zápas bez alba',in_progress:'Rozpracované',reviewed:'Ověřené',closed:'Uzavřené'};
+function renderAlbums(){
+  const container=$('album-list');container.replaceChildren();
+  const filter=$('album-filter').value;
+  for(const album of catalog.filter(a=>!filter || a.albumStatus===filter)){
+    const button=text('button',`${album.title} · ${(album.playedOn || '').slice(0,10)} · ${albumLabels[album.albumStatus] || 'Nové'} · schváleno ${album.stats.confirmed}/${album.stats.total}${album.hasNewPhotos?' · NOVÉ FOTKY':''}`,'album-entry');
+    button.dataset.status=album.albumStatus;button.onclick=()=>task(async()=>{$('game-select').value=album.gameId;await loadCase(album.gameId);});container.append(button);
+  }
+  if(!container.children.length)container.append(text('p','Žádné zápasy pro tento filtr. Načtěte zápasy a alba z HMS.','muted'));
+}
+async function discoverGames(offset=0){
+  message('Kontroluji nové zápasy a odkazy na alba v HMS…');
+  discoveryPage=await api('discover',{body:{...($('discover-from').value?{from:$('discover-from').value}:{}),...($('discover-to').value?{to:$('discover-to').value}:{}),offset}});
+  $('discover-from').value=discoveryPage.from;$('discover-to').value=discoveryPage.to;$('discover-next').hidden=!discoveryPage.hasMore;
+  await loadCatalog();message(`HMS: načteno ${discoveryPage.games} zápasů, ${discoveryPage.albums} odkazů na alba na této stránce. Uložené kontroly zůstaly zachované.`);
 }
 async function loadCase(gameId=$('game-select').value,targetPhoto=null){
   if(!gameId)return;const generation=++caseRequest;
-  const data=await api('case',{query:{gameId}});if(generation!==caseRequest)return;
+  let data=await api('case',{query:{gameId}});if(generation!==caseRequest)return;
+  if(data.needsImport && catalog.find(c=>same(c.gameId,gameId))?.albumUrl){message('Načítám fotografie nového alba…');data=await api('import',{body:{gameId,revision:data.revision}});if(generation!==caseRequest)return;}
   current=data;selectedId=targetPhoto || data.state?.photos.find(p=>p.suggestions.some(s=>s.candidates.length))?.id || null;chosen.clear();$('player-search').value='';$('note').value='';$('verified').checked=false;
   renderCase();message(data.needsImport?'Vyberte Načíst album pro první import.':'Načteno z uloženého fotoarchivu.');
 }
 function renderCase(){
   renderAnalysis();
+  $('import-more').hidden=!current?.state || (current.state.flickrNextOffset || current.state.photos.length)>=current.state.albumTotal;
   $('jersey-context').replaceChildren();
   $('needs-import').hidden=!current?.needsImport;$('review-layout').hidden=!current?.state;
   $('stats').replaceChildren();
   if(!current?.state){$('game-meta').textContent='';$('photo-detail').hidden=true;return;}
   const state=current.state;$('game-meta').textContent=`${state.title} · ${state.playedOn?new Date(state.playedOn).toLocaleDateString('cs-CZ'):''} · ${state.players.length} hráčů · ${state.albumTotal} fotografií v albu · Revize ${current.revision}`;
+  $('album-status').textContent=albumLabels[state.albumStatus] || 'Rozpracované';
   for(const team of state.teams){const chip=text('span',`${team.name}: ${colors[team.jerseyFamily] || 'dres není načten'}${team.jerseySource==='hms-game'?' · HMS zápas':''}`,'jersey-chip');if(/^#[a-f0-9]{6}$/i.test(team.jerseyColor || '')){const dot=text('i','','jersey-dot');dot.style.backgroundColor=team.jerseyColor;chip.prepend(dot);}$('jersey-context').append(chip);}
   for(const [key,label] of [['total','fotografií'],['pending','k ověření'],['inProgress','rozpracovaných'],['confirmed','uzavřených s hráči'],['rejected','bez přiřazení']]){const node=text('span','');node.append(text('strong',current.stats[key] || 0),document.createTextNode(label));$('stats').append(node);}
   const oldTeam=$('player-team').value;$('player-team').replaceChildren(new Option('Oba týmy',''),...state.teams.map(t=>new Option(t.name,t.teamId)));$('player-team').value=oldTeam;
@@ -158,9 +179,11 @@ function renderArchive(){
 }
 async function initialize(){
   const access=await api('access');$('login').hidden=access.authorized;$('workspace').hidden=!access.authorized;$('logout').hidden=!access.authorized;
+  $('organization').replaceChildren(...(access.organizations || []).map(o=>new Option(o.name+(o.configured?'':' · nepřipojeno'),o.slug)));$('organization').value=org.toLowerCase();$('organization-label').textContent=access.org+' · Preview';
   if(!access.configured){message('Kód Operations pro PHM zatím není nastavený.',true);return;}
   if(!access.authorized){message('Přihlaste se kódem Operations pro PHM.');return;}
-  await loadCatalog();const params=new URLSearchParams(location.search),requestedGame=params.get('gameId'),requestedPhoto=params.get('photoId');
+  try{await discoverGames();for(let page=1;page<5 && discoveryPage?.hasMore;page++)await discoverGames(discoveryPage.nextOffset);}catch(error){message('HMS synchronizace není dostupná. Zobrazuji uložená alba.',true);await loadCatalog();}
+  const params=new URLSearchParams(location.search),requestedGame=params.get('gameId'),requestedPhoto=params.get('photoId');
   if(catalog.some(c=>same(c.gameId,requestedGame)))$('game-select').value=catalog.find(c=>same(c.gameId,requestedGame)).gameId;
   if(requestedPhoto)$('status-filter').value='all';
   await loadCase($('game-select').value,requestedPhoto);if(!access.storageReady)message('Databáze není připojená. Ukládání zatím není dostupné.',true);
@@ -169,6 +192,7 @@ $('login-form').onsubmit=event=>{event.preventDefault();task(async()=>{const cod
 $('logout').onclick=()=>task(async()=>{await api('logout');current=null;archive=[];chosen.clear();await initialize();});
 $('game-select').onchange=()=>task(()=>loadCase());$('status-filter').onchange=renderGrid;
 $('import').onclick=()=>task(async()=>{message('Načítám album z Flickru a ověřené soupisky z HMS…');current=await api('import',{body:{gameId:$('game-select').value,revision:current?.revision ?? 0}});renderCase();await loadCatalog();message('Album a soupisky jsou uložené. Můžete přiřazovat hráče.');});
+$('import-more').onclick=()=>task(async()=>{if(!current?.state)return;current=await api('import',{body:{gameId:current.gameId,revision:current.revision,offset:current.state.flickrNextOffset}});renderCase();await loadCatalog();});
 $('status-filter').append(new Option('AI navrhuje hráče','ai'));
 $('ai-start').onclick=()=>task(()=>analyzeAlbum());$('ai-stop').onclick=()=>{stopAnalysis=true;$('ai-stop').disabled=true;message('Dokončím a uložím právě zpracovávanou fotografii, poté pozastavím.');};
 $('ai-photo').onclick=()=>task(()=>analyzeAlbum(selectedId));
@@ -183,3 +207,6 @@ $('review-tab').onclick=()=>setTab('review');$('archive-tab').onclick=()=>task(a
 function openZoom(){const p=photo();if(!p)return;$('zoom-image').src=p.previewUrl || p.thumbnailUrl;$('zoom-image').style.width='100%';$('zoom-range').value='1';$('zoom-dialog').showModal();}
 $('zoom-open').onclick=openZoom;$('zoom-button').onclick=openZoom;$('zoom-close').onclick=()=>$('zoom-dialog').close();$('zoom-range').oninput=()=>{$('zoom-image').style.width=Number($('zoom-range').value)*100+'%';};
 task(initialize);
+$('organization').onchange=()=>{location.href='/photo-archive?'+new URLSearchParams({org:$('organization').value});};
+$('discover').onclick=()=>task(()=>discoverGames());$('discover-next').onclick=()=>task(()=>discoverGames(discoveryPage?.nextOffset || 0));$('album-filter').onchange=renderAlbums;
+for(const [id,status] of [['album-reviewed','reviewed'],['album-close','closed'],['album-reopen','reopen']])$(id).onclick=()=>task(async()=>{if(!current?.state)return;current=await api('album-review',{body:{gameId:current.gameId,revision:current.revision,status}});renderCase();await loadCatalog();message('Stav kontroly alba je uložený.');});

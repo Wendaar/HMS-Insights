@@ -22,4 +22,7 @@ if (process.env.VERCEL_ENV === 'preview' && process.env.VERCEL_GIT_COMMIT_REF ==
     const {smokeJerseyContext}=await import('../photo-archive/context-smoke.mjs');
     await smokeJerseyContext();
   }
+  if((process.env.VERCEL_GIT_COMMIT_MESSAGE || '').includes('[photo-picker-readcheck]')){
+    const {checkGeneralArchive}=await import('../photo-archive/picker-readcheck.mjs');await checkGeneralArchive();
+  }
 }

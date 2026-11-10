@@ -229,3 +229,15 @@ ani e-mailů a nepřesouvat kvůli tomu celý projekt na nové hostování. Pře
 přepnutím návštěvníků je nutné nasadit ověřenou verzi do zamýšlené cílové
 větve a zkontrolovat správné přiřazení domény. Úprava veřejných odkazů
 DNS ani přiřazení domény nemění a nevytváří nový projekt.
+
+## Členění mapy a domény — listopad 2026
+
+Mapa začíná Administration → HMS Operations. Další oblasti jsou Web / Hub, Competition basics, Broadcast, Content creation, Sponsors, Media & Game Show a Awards & Achievements. Nastavení, náhled a publikace Site Builderu jsou jeden vstup; stejně tak Broadcast Studio a All Stars. Samostatné OBS výstupy a Game Report se otevírají až uvnitř příslušné aplikace. Insights mají jednu kartu a doplňkový odkaz Archiv.
+
+Photo Archive je v Content creation; zatím jde o pilot PHM v chráněném Preview z PR #61. Ostatní organizace tuto položku dostanou jako Planned bez odkazu do PHM. Statistics, Standings a Team Profiles jsou výslovně připravené položky bez předstírané funkčnosti. Hráči do playoff zůstávají v Competition basics.
+
+Výběr zápasu se v mapě nepoužívá; stará uložená hodnota se nepředává do nástrojů. Výběr organizace, sezony a role zůstává. Role filtruje mapu i seznam odkazů. Technické a historické odkazy zůstávají v seznamu.
+
+Sdílené public-output.js zachovává aktuální produkční doménu app.phmcup.cz nebo public.heromanagementsystem.com, včetně cesty, parametrů a fragmentu. Externí služby a výslovné pilotní odkazy se nepřepisují. Bez kontextu produkční domény zůstává historický výchozí host PHM. Všechny aktuální stránky používají společnou bílou HMS faviconu hms-favicon-white-v3; původní adresy ikon fungují jako kompatibilní aliasy.
+
+Spodní větve Data & infrastruktura a Vývoj & provoz jsou zachované i v mapě na obou doménách: Registrace, HMS API, Data Engine, Databáze, GitHub, Deploy a Security. Zobrazuje je celý ekosystém i role Správa dat a vývoj.

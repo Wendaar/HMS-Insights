@@ -49,13 +49,14 @@ export async function resolveAlbum(value, {fetchImpl = fetch} = {}) {
   throw new Error('Too many Flickr redirects');
 }
 
-export async function fetchAlbum(value, {limit = 25, env = process.env, fetchImpl = fetch, resolved} = {}) {
+export async function fetchAlbum(value, {limit = 25, offset=0, env = process.env, fetchImpl = fetch, resolved} = {}) {
   if (!env.FLICKR_API_KEY?.trim()) throw new Error('Missing FLICKR_API_KEY');
   if (!Number.isInteger(limit) || limit < 1 || limit > 500) throw new Error('Invalid photo limit');
+  if(!Number.isInteger(offset)||offset<0||offset>100000||offset%limit)throw new Error('Invalid photo offset');
   const album = resolved || await resolveAlbum(value, {fetchImpl});
   const photos = [];
   let total = 0;
-  for (let page = 1; page <= 10; page++) {
+  for (let page = offset/limit+1; page <= offset/limit+10; page++) {
     const url = new URL('https://www.flickr.com/services/rest/');
     for (const [k,v] of Object.entries({method:'flickr.photosets.getPhotos',api_key:env.FLICKR_API_KEY,format:'json',nojsoncallback:1,
       photoset_id:album.photosetId,page,per_page:limit,extras:'url_sq,url_m,url_z,url_b,date_taken'})) url.searchParams.set(k,String(v));
@@ -68,7 +69,7 @@ export async function fetchAlbum(value, {limit = 25, env = process.env, fetchImp
     total = Number(set.total);
     photos.push(...set.photo.map(p => ({id:String(p.id),title:p.title || '',thumbnailUrl:p.url_sq || p.url_m || null,
       previewUrl:p.url_b || p.url_z || p.url_m || null,takenAt:p.datetaken || null})));
-    if (photos.length >= limit || photos.length >= total || !set.photo.length) break;
+    if (photos.length >= limit || offset+photos.length >= total || !set.photo.length) break;
   }
-  return {...album,total,photos:photos.slice(0,limit)};
+  return {...album,total,photos:photos.slice(0,limit),nextOffset:Math.min(total,offset+Math.min(limit,photos.length))};
 }

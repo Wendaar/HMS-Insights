@@ -1,6 +1,7 @@
 import {fontSpec,fontForText,designTypography} from '../studio/typography.js';
 import {designs,loadImage,effects,designAtmosphere} from '../studio/graphics.js';
 import {sportingImage} from '../game-report-media.js';
+import {selectedPhotoUrl} from '../photo-picker/model.js';
 import {formats,graphicSettings} from './presentation.js';
 export {designs};
 const media=new Map();
@@ -33,7 +34,7 @@ export async function renderAllStarsGraphic(canvas,lineup,context,preferences){
   await document.fonts.ready;
   const bgPath=context.org?.toLowerCase()==='phm'&&settings.design==='pantha'?'/all-stars/assets/'+(portrait?'portrait':'landscape')+'.webp':null;
   const groupImage=sportingImage(context.groupLogoUrl);
-  const [background,groupLogo,images]=await Promise.all([picture(bgPath,true),picture(groupImage),Promise.all(players.map(async p=>({id:p.id,photo:await picture(sportingImage(p.imageUrl),false,context.portraitRevision),logo:await picture(sportingImage(p.teamLogoUrl))})))]);
+  const [background,groupLogo,images]=await Promise.all([picture(bgPath,true),picture(groupImage),Promise.all(players.map(async p=>({id:p.id,photo:await picture(selectedPhotoUrl(p.photoChoice,p.imageUrl),false,context.portraitRevision),logo:await picture(sportingImage(p.teamLogoUrl))})))]);
   canvas.width=w;canvas.height=h;c.fillStyle='#081420';c.fillRect(0,0,w,h);
   if(background)cover(c,background,0,0,w,h);
   if(bgPath&&!background)missing.push(lang==='en'?'PHM background':'PHM pozadí');

@@ -10,17 +10,16 @@ test('planned organizations and unimplemented sponsor outputs never acquire laun
   }
   for(const n of nodes('phm').filter(n=>['sponsor-broadcast','sponsor-output'].includes(n.id))){assert.equal(n.status,'Planned');assert.equal(nodeUrl(n,'phm',{gameId:id}),null);}
 });
-test('launchers require valid context and forward only supported destination parameters',()=>{
-  const find=(org,id)=>nodes(org).find(n=>n.id===id);
-  assert.equal(nodeUrl(find('phm','game-report'),'phm'),null);
-  assert.equal(nodeUrl(find('phm','games-view'),'phm',{seasonId:'bad'}),null);
-  assert.equal(nodeUrl(find('phm','game-report'),'phm',{gameId:id}),'https://app.phmcup.cz/game-center/'+id);
-  const schedule=new URL(nodeUrl(find('euchl','games-view'),'euchl',{seasonId:id}),'https://hms.test');assert.equal(schedule.searchParams.get('seasonId'),id);
-  const obs=new URL(nodeUrl(find('euchl','obs-output'),'euchl',{gameId:id}),'https://hms.test');
-  assert.equal(obs.searchParams.get('org'),'EUCHL');assert.equal(obs.searchParams.get('game'),id);assert.equal(obs.searchParams.get('mode'),'overlay');
-  assert.equal(nodeUrl(find('phm','all-stars'),'phm',{gameId:id,seasonId:id}),'/control/apps/all-stars?org=phm');
-  assert.equal(nodeUrl(find('phm','social-output'),'phm'),'/studio/phm?lang=cs');
+test('launchers keep season-level entry points and omit duplicate or single-game cards',()=>{
+ const find=(org,id)=>nodes(org).find(n=>n.id===id);
+ for(const id of ['game-report','obs-output','obs-definition','portal-preview','social-output','social-setup','awards-definition','sponsor-broadcast','sponsor-output'])assert.equal(find('phm',id),undefined);
+ assert.equal(nodeUrl(find('phm','games-view'),'phm',{seasonId:'bad'}),null);
+ const schedule=new URL(nodeUrl(find('euchl','games-view'),'euchl',{seasonId:id}));assert.equal(schedule.searchParams.get('seasonId'),id);
+ assert.equal(nodeUrl(find('euchl','obs-studio'),'euchl'),'/broadcast/index.html?org=EUCHL');
+ assert.equal(nodeUrl(find('phm','all-stars'),'phm'),'/control/apps/all-stars?org=phm');
+ assert.equal(nodeUrl(find('phm','social-studio'),'phm'),'/studio/phm?lang=cs');
 });
+
 test('local context is organization scoped, durable and resilient to invalid browser storage',()=>{
   const values=new Map(),storage={getItem:k=>values.get(k),setItem:(k,v)=>values.set(k,v)};
   writeContext(storage,'phm',{leagues:[{name:'PHM 2026',seasonId:id}],gameId:id,work:'broadcast'});

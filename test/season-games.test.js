@@ -66,3 +66,80 @@ test('Game Report links back to its own season and selected language',()=>{
   assert.equal(summary.seasonId,seasonId);
   assert.match(renderGameReport(summary,{lang:'en'}),new RegExp('/game-center\\?seasonId='+seasonId+'&amp;lang=en">Games</a>'));
 });
+
+test('Future searches the entire remaining season, including distant weeks and accented officials',async()=>{
+  const rows=[fixture(1,'2026-10-25'),fixture(2,'2027-03-07'),fixture(3,'2027-04-06'),fixture(4,'2026-10-01'),fixture(5,'2026-10-24')];
+  rows[1].AwayTeam.name='HC Kosti';rows[2].referee='Christína Marinettí';
+  let calls=0;
+  const opt={now,loadReports:async()=>[],fetchImpl:async url=>{const u=new URL(url);return {ok:true,json:async()=>u.pathname.endsWith('/seasonTerms')?{}:(calls++,assert.equal(u.searchParams.has('startDate'),false),rows)};}};
+  const future=await browseSeasonGames({seasonId,filter:'Future',q:'Kosti'},opt);
+  assert.equal(calls,1);assert.equal(future.scope,'season');assert.equal(future.total,1);assert.equal(future.items[0].date,'2027-03-07');
+  const staff=await browseSeasonGames({seasonId,filter:'Future',q:'Christina'},opt);assert.equal(staff.total,1);assert.equal(staff.items[0].date,'2027-04-06');
+  const all=await browseSeasonGames({seasonId,filter:'Future',windowPage:17},opt);assert.equal(all.total,3);assert.equal(all.windowPage,0);
+  assert.doesNotMatch(JSON.stringify(all),/SECRET|private|email/);
+});
+test('whole-season pages filter and order before slicing, and reports are loaded only for the displayed batch',async()=>{
+  const rows=Array.from({length:45},(_,i)=>fixture(i+1,i%2?'2027-01-12':'2027-04-06'));
+  const batches=[],opt={now,loadReports:async ids=>{batches.push(ids);return [ids[0]];},fetchImpl:async url=>({ok:true,json:async()=>new URL(url).pathname.endsWith('/seasonTerms')?{}:rows})};
+  const first=await browseSeasonGames({seasonId,filter:'Future'},opt),second=await browseSeasonGames({seasonId,filter:'Future',offset:20},opt),third=await browseSeasonGames({seasonId,filter:'Future',offset:40},opt);
+  assert.deepEqual([first.items.length,second.items.length,third.items.length],[20,20,5]);assert.equal(third.hasMore,false);
+  assert.equal(new Set([...first.items,...second.items,...third.items].map(g=>g.id)).size,45);assert.equal(first.items[0].date,'2027-01-12');
+  assert.deepEqual(batches.map(b=>b.length),[20,20,5]);assert.equal(first.items[0].reportAvailable,true);
+  rows[0].startDate='2026-01-01';rows[1].startDate='2026-10-22';
+  const past=await browseSeasonGames({seasonId,filter:'Past'},opt);assert.equal(past.total,2);assert.equal(past.items[0].date,'2026-10-22');
+});
+test('season index rejects foreign seasons, impossible dates, overlarge payloads and source failures',async()=>{
+  const run=rows=>browseSeasonGames({seasonId,filter:'Future'},{now,fetchImpl:async url=>({ok:true,json:async()=>new URL(url).pathname.endsWith('/seasonTerms')?{}:rows})});
+  const foreign=fixture(1,'2027-01-01');foreign.Phase.Group.Season.seasonId=uuid(9);
+  await assert.rejects(run([foreign]));await assert.rejects(run([fixture(1,'2027-02-30')]));await assert.rejects(run(Array.from({length:20001},()=>fixture())));
+  await assert.rejects(browseSeasonGames({seasonId,filter:'Future'},{now,fetchImpl:async()=>({ok:true,headers:new Headers({'content-length':String(17*1024*1024)}),json:async()=>[]})}),ScheduleSourceError);
+  await assert.rejects(browseSeasonGames({seasonId,filter:'Future'},{now,fetchImpl:async()=>({ok:false,status:429,headers:new Headers({'retry-after':'12'})})}),e=>e instanceof ScheduleSourceError&&e.status===429);
+});
+test('parallel browsing reuses one public season index and later searches do not reload HMS',async()=>{
+  const scoped=uuid(909),row=fixture(1,'2027-01-01');row.Phase.Group.Season.seasonId=scoped;
+  const previous=globalThis.fetch;let calls=0;
+  globalThis.fetch=async url=>{const u=new URL(url);if(u.pathname.endsWith('/seasonTerms'))return new Response(JSON.stringify({}));calls++;await new Promise(resolve=>setImmediate(resolve));return new Response(JSON.stringify([row]));};
+  try{
+    const opt={now,env:{}},queries=[{seasonId:scoped,filter:'Future'},{seasonId:scoped,filter:'Future',q:'Prague'}];
+    const pages=await Promise.all(queries.map(q=>browseSeasonGames(q,opt)));assert.equal(pages[0].total,1);assert.equal(pages[1].total,1);assert.equal(calls,1);
+    await browseSeasonGames({seasonId:scoped,filter:'Future',q:'Bratislava'},opt);assert.equal(calls,1);
+  }finally{globalThis.fetch=previous;}
+});
+
+test('schedule embeds allow the two league websites without opening private tools to framing',async()=>{
+  const {readFile}=await import('node:fs/promises'),hosting=JSON.parse(await readFile(new URL('../vercel.json',import.meta.url)));
+  for(const entry of hosting.headers.filter(h=>['/game-center','/games/:path*'].includes(h.source))){
+    const csp=entry.headers.find(h=>h.key==='Content-Security-Policy').value;
+    for(const host of ['https://phmcup.cz','https://www.phmcup.cz','https://bnhlh.cz','https://www.bnhlh.cz'])assert.ok(csp.includes(host));
+    assert.doesNotMatch(csp,/frame-ancestors \*/);assert.match(csp,/script-src 'self'/);
+  }
+  for(const entry of hosting.headers.filter(h=>['/operations/:path*','/registrations/:path*'].includes(h.source)))assert.match(entry.headers.find(h=>h.key==='Content-Security-Policy').value,/frame-ancestors 'none'/);
+});
+
+test('RUNNING is the real HMS live state, including a genuine 0:0; scheduled zeroes remain unknown',()=>{
+  const source=fixture();source.status='RUNNING';source.HomeTeamGoals=3;source.AwayTeamGoals=3;
+  let live=publicSeasonGame(source,seasonId,source.startDate);assert.equal(live.live,true);assert.equal(live.home.score,3);assert.equal(live.away.score,3);
+  source.HomeTeamGoals=0;source.AwayTeamGoals=0;live=publicSeasonGame(source,seasonId,source.startDate);assert.equal(live.live,true);assert.equal(live.home.score,0);assert.equal(live.away.score,0);
+  source.status='NOT PLAYED';assert.equal(publicSeasonGame(source,seasonId,source.startDate).home.score,null);
+  source.status='FINISHED';assert.equal(publicSeasonGame(source,seasonId,source.startDate).live,false);
+  source.status='RUNNING';source.HomeTeamGoals=null;assert.equal(publicSeasonGame(source,seasonId,source.startDate).home.score,null);
+});
+test('Today never inherits the 60-second day cache and concurrent live requests share one HMS read',async()=>{
+  const scoped=uuid(919),row=fixture(1);row.Phase.Group.Season.seasonId=scoped;row.status='RUNNING';
+  const originalFetch=globalThis.fetch,originalNow=Date.now;let time=originalNow(),calls=0;
+  Date.now=()=>time;
+  globalThis.fetch=async url=>new URL(url).pathname.endsWith('/seasonTerms')?new Response('{}'):(calls++,await new Promise(resolve=>setImmediate(resolve)),new Response(JSON.stringify([row])));
+  try{
+    const opt={now,env:{}};
+    await browseSeasonGames({seasonId:scoped,filter:'Date',date:row.startDate},opt);assert.equal(calls,1);
+    time+=16000;row.HomeTeamGoals=4;
+    const pages=await Promise.all([1,2].map(()=>browseSeasonGames({seasonId:scoped,filter:'Today'},opt)));
+    assert.equal(calls,2);assert.equal(pages[0].items[0].home.score,4);
+    time+=14000;await browseSeasonGames({seasonId:scoped,filter:'Today'},opt);assert.equal(calls,2);
+    time+=2000;row.HomeTeamGoals=5;const latest=await browseSeasonGames({seasonId:scoped,filter:'Today'},opt);assert.equal(calls,3);assert.equal(latest.items[0].home.score,5);
+  }finally{globalThis.fetch=originalFetch;Date.now=originalNow;}
+});
+test('Today bypasses HTTP/CDN caching; other calendar views keep their existing shared cache',async()=>{
+ const response=()=>({headers:{},setHeader(k,v){this.headers[k]=v;},status(c){this.code=c;return this;},json(data){this.data=data;}});
+ for(const filter of ['Today','Future','Past']){const res=response();await createSeasonGamesHandler({browse:async()=>({filter})})({method:'GET'},res);assert.equal(res.headers['cache-control'],filter==='Today'?'no-store':'public, s-maxage=30, stale-while-revalidate=30');}
+});

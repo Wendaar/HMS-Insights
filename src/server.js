@@ -49,22 +49,25 @@ const broadcastHandler = createBroadcastHandler();
 const portalHandler = createPublicPortalHandler();
 
 const assets = {
+  '/favicon.ico':['image/png','hms-favicon-white-v3.png'],
+  '/hms-favicon-control-v2.svg':['image/svg+xml','hms-favicon-white-v3.svg'],
+  '/hms-favicon-public-v2.svg':['image/svg+xml','hms-favicon-white-v3.svg'],
+  '/hms-favicon-control-v2.png':['image/png','hms-favicon-white-v3.png'],
+  '/hms-favicon-public-v2.png':['image/png','hms-favicon-white-v3.png'],
+  '/hms-favicon-32.png':['image/png','hms-favicon-white-v3.png'],
   ...Object.fromEntries(['index.html','output.html','style.css','app.js','core.js','demo.svg'].map(file=>['/virtual-camera/'+file,[file.endsWith('.js')?'text/javascript; charset=utf-8':file.endsWith('.css')?'text/css':file.endsWith('.svg')?'image/svg+xml':'text/html; charset=utf-8','virtual-camera/'+file]])),
   '/virtual-camera':['text/html; charset=utf-8','virtual-camera/index.html'],
   '/virtual-camera/output':['text/html; charset=utf-8','virtual-camera/output.html'],
   '/venue-media.js':['text/javascript; charset=utf-8','venue-media.js'],
   '/match-preview.css':['text/css; charset=utf-8','match-preview.css'],
   '/organization-catalog.js':['text/javascript; charset=utf-8','organization-catalog.js'],
-  '/hms-favicon-public-v2.svg':['image/svg+xml','hms-favicon-public-v2.svg'],
-  '/hms-favicon-control-v2.svg':['image/svg+xml','hms-favicon-control-v2.svg'],
-  '/hms-favicon-public-v2.png':['image/png','hms-favicon-public-v2.png'],
-  '/hms-favicon-control-v2.png':['image/png','hms-favicon-control-v2.png'],
+  '/hms-favicon-white-v3.svg':['image/svg+xml','hms-favicon-white-v3.svg'],
+  '/hms-favicon-white-v3.png':['image/png','hms-favicon-white-v3.png'],
   '/public-output.js':['text/javascript; charset=utf-8','public-output.js'],
   '/insights-i18n.js':['text/javascript; charset=utf-8','insights-i18n.js'],
   '/hms-brand.css':['text/css; charset=utf-8','hms-brand.css'],
   '/hms-brand.js':['text/javascript; charset=utf-8','hms-brand.js'],
   '/hms-logo.png':['image/png','hms-logo.png'],
-  '/hms-favicon-32.png':['image/png','hms-favicon-32.png'],
   "/organization-import.js": ["text/javascript; charset=utf-8", "organization-import.js"],
   "/game-report-extras.js": ["text/javascript; charset=utf-8", "game-report-extras.js"],
   "/game-report-premium.css": ["text/css; charset=utf-8", "game-report-premium.css"],
@@ -89,6 +92,7 @@ export const server = createServer(async (request, response) => {
     if(request.method==='POST'){let raw='';for await(const chunk of request){raw+=chunk;if(Buffer.byteLength(raw)>16000){response.writeHead(413);response.end();return;}}request.body=raw;}
     await photoArchiveHandler(request,{setHeader:(k,v)=>response.setHeader(k,v),status(code){response.statusCode=code;return this;},json(body){response.setHeader('content-type','application/json; charset=utf-8');response.end(JSON.stringify(body));}});return;
   }
+  if(/^\/photo-picker\/(picker.js|model.js|broadcast.js|style.css)$/.test(url.pathname)){response.setHeader('content-type',url.pathname.endsWith('.css')?'text/css':'text/javascript');response.end(await readFile(join(publicDirectory,url.pathname.slice(1))));return;}
   if(['/photo-archive','/photo-archive/','/control/apps/photo-archive'].includes(url.pathname) || /^\/photo-archive\/(index.html|app.js|review-model.js|style.css)$/.test(url.pathname)){
     const file=/\.(html|js|css)$/.test(url.pathname)?url.pathname.split('/').pop():'index.html';
     response.setHeader('content-type',file.endsWith('.html')?'text/html; charset=utf-8':file.endsWith('.css')?'text/css':'text/javascript');response.setHeader('x-robots-tag','noindex, nofollow');response.setHeader('referrer-policy','no-referrer');
@@ -129,12 +133,12 @@ export const server = createServer(async (request, response) => {
     if(request.method==='POST'){let body='';for await(const chunk of request){body+=chunk;if(Buffer.byteLength(body)>50000){response.writeHead(413);response.end();return;}}request.body=body;}
     await portalHandler(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json; charset=utf-8');response.end(JSON.stringify(body));},send(body){response.end(body);}});return;
   }
-  const portalAsset=/^\/league\/(app.js|app.css|presentation.js|index.html)$/.exec(url.pathname);
-  if(portalAsset||/^\/league\/[a-z0-9-]+\/?$/.test(url.pathname)||url.pathname==='/control/apps/public-portal'||url.pathname==='/'&&url.hostname==='public.heromanagementsystem.com'){
+  const portalAsset=/^\/league\/(app.js|app.css|widget.css|presentation.js|embed-code.js|index.html)$/.exec(url.pathname),insightsWidget=/^\/widgets\/insights\/[a-z0-9-]+\/?$/.test(url.pathname);
+  if(portalAsset||insightsWidget||/^\/league\/[a-z0-9-]+\/?$/.test(url.pathname)||url.pathname==='/control/apps/public-portal'||url.pathname==='/'&&url.hostname==='public.heromanagementsystem.com'){
     if(!['GET','HEAD'].includes(request.method)){response.writeHead(405,{allow:'GET, HEAD'});response.end();return;}
     const name=portalAsset?.[1]??'index.html';
     response.setHeader('content-type',name.endsWith('.html')?'text/html; charset=utf-8':name.endsWith('.css')?'text/css; charset=utf-8':'text/javascript; charset=utf-8');
-    response.setHeader('content-security-policy',"default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self'; img-src 'self' https:; frame-src 'self' https://prod.hms.wootera.net; base-uri 'none'; form-action 'self'; frame-ancestors 'none'");
+    response.setHeader('content-security-policy',"default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self'; img-src 'self' https:; frame-src 'self' https://prod.hms.wootera.net; base-uri 'none'; form-action 'self'; frame-ancestors "+(insightsWidget?'*':"'none'"));
     response.setHeader('x-content-type-options','nosniff');response.setHeader('referrer-policy','no-referrer');response.setHeader('cache-control','no-store');
     response.end(request.method==='HEAD'?undefined:await readFile(join(publicDirectory,'league',name)));return;
   }
@@ -165,7 +169,7 @@ export const server = createServer(async (request, response) => {
   }
   if(url.pathname==='/api/all-stars'||url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='all-stars'){
     request.query=Object.fromEntries(url.searchParams);
-    if(request.method==='POST'){let body='';for await(const chunk of request){body+=chunk;if(Buffer.byteLength(body)>20000){response.writeHead(413);response.end();return;}}request.body=body;}
+    if(request.method==='POST'){let body='';for await(const chunk of request){body+=chunk;if(Buffer.byteLength(body)>1200000){response.writeHead(413);response.end();return;}}request.body=body;}
     await createAllStarsHandler()(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json; charset=utf-8');response.end(JSON.stringify(body));}});return;
   }
   const allStarsAsset=/^\/all-stars\/(app.js|app.css|index.html|graphics.js|presentation.js|assets\/(?:landscape|portrait)\.webp)$/.exec(url.pathname);
@@ -194,7 +198,7 @@ export const server = createServer(async (request, response) => {
     request.query=Object.fromEntries(url.searchParams);
     await createSeasonGamesHandler()(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json; charset=utf-8');response.end(JSON.stringify(body));}});return;
   }
-  if(['/game-center','/game-center/','/games/index.html','/games/app.js','/games/navigation.js','/games/styles.css'].includes(url.pathname)||/^\/games\/[a-z0-9-]+\/[a-z0-9-]+(?:\/[a-z0-9-]+)?\/?$/.test(url.pathname)){
+  if(['/game-center','/game-center/','/games/index.html','/games/app.js','/games/live.js','/games/navigation.js','/games/styles.css'].includes(url.pathname)||/^\/games\/[a-z0-9-]+\/[a-z0-9-]+(?:\/[a-z0-9-]+)?\/?$/.test(url.pathname)){
     const path=url.pathname.startsWith('/game-center')||/^\/games\/[a-z0-9-]+\//.test(url.pathname)?'/games/index.html':url.pathname;
     response.setHeader('content-type',path.endsWith('.html')?'text/html; charset=utf-8':path.endsWith('.css')?'text/css; charset=utf-8':'text/javascript; charset=utf-8');
     response.end(await readFile(join(publicDirectory,path)));return;
@@ -204,7 +208,7 @@ export const server = createServer(async (request, response) => {
   if(/^\/sponsors\/(model|picker|rotation)\.js$/.test(url.pathname)){response.setHeader('content-type','text/javascript');response.end(await readFile(join(publicDirectory,url.pathname)));return;}
   if(url.pathname==='/api/broadcast'||url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='broadcast'){
     if(['POST','PATCH'].includes(request.method)){
-      let body='';for await(const chunk of request){body+=chunk;if(Buffer.byteLength(body)>(url.searchParams.get('library')==='1'?1800100:4096)){response.statusCode=413;response.end();return;}}request.body=body;
+      let body='';for await(const chunk of request){body+=chunk;if(Buffer.byteLength(body)>(url.searchParams.get('library')==='1'?1800100:1200000)){response.statusCode=413;response.end();return;}}request.body=body;
     }
     request.query=Object.fromEntries(url.searchParams);
     await broadcastHandler(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json; charset=utf-8');response.end(JSON.stringify(body));}});return;

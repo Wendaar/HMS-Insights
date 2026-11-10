@@ -64,7 +64,7 @@ test('reset removes confirmed links and records the previous assignment in bound
 test('HTTP protects reads and writes before touching source/storage; accepts Operations cookie, blocks foreign origins',async()=>{
   let reads=0;const service={ready:true,catalog:async()=>{reads++;return [];}},handler=createPhotoArchiveHandler({env,service});
   const denied=response();await handler(request('catalog',null,{}),denied);assert.equal(denied.code,401);assert.equal(reads,0);
-  const otherOrg=response();await handler({...request('catalog'),query:{org:'euchl',action:'catalog'}},otherOrg);assert.equal(otherOrg.code,404);
+  const otherOrg=response();await handler({...request('catalog'),query:{org:'euchl',action:'catalog'}},otherOrg);assert.equal(otherOrg.code,503);
   const foreign=response();await handler(request('import',{gameId:game,revision:0},{authorization:'Bearer review-secret',origin:'https://other.test'}),foreign);assert.equal(foreign.code,403);
   const cookie=sessionCookie({code:'PHM'},'review-secret').split(';')[0],allowed=response();
   await handler(request('catalog',null,{cookie}),allowed);assert.equal(allowed.code,200);assert.equal(reads,1);
