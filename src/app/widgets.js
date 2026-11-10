@@ -30,7 +30,8 @@ export async function widgetContext(org,input={},options={}){
  if(phase&&!scope.groupId)scope.groupId=phase.group.id;
  let branding=null;try{branding=await(options.portalBranding??portalBranding)(org,season,options);}catch{/* Identity is optional. */}
  const effectiveGroup=group??phase?.group,competitionLogoUrl=branding?.competition?.logoUrl??season.competitionLogoUrl??null;
- return {scope,season,organization,directory,branding:{name:team?.name??(effectiveGroup?season.competition+' · '+effectiveGroup.name:season.competition),phase:phase?.name??null,logoUrl:team?.logoUrl??effectiveGroup?.logoUrl??competitionLogoUrl,color:effectiveGroup?.color??null,competitionLogoUrl,organizationLogoUrl:branding?.organization?.logoUrl??null}};
+ const scopeName=[season.competition,effectiveGroup?.name].filter(Boolean).filter((name,index,all)=>all.findIndex(v=>v.toLocaleLowerCase('cs')===name.toLocaleLowerCase('cs'))===index).join(' · ');
+ return {scope,season,organization,directory,branding:{name:team?.name??scopeName,phase:phase?.name??null,logoUrl:team?.logoUrl??effectiveGroup?.logoUrl??competitionLogoUrl,color:effectiveGroup?.color??null,competitionLogoUrl,organizationLogoUrl:branding?.organization?.logoUrl??null}};
 }
 export async function readWidgetScopeCatalog(org,input,options={}){
  const context=await widgetContext(org,input,options);
