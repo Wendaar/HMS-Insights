@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createVirtualCameraHandler,cameraTable} from '../src/web/virtual-camera-handler.js';
-import {crop,sourceURL,cameraKeyPatch} from '../public/virtual-camera/core.js';
+import {crop,cropSize,normalize,videoStats,sourceURL,cameraKeyPatch} from '../public/virtual-camera/core.js';
 const response=()=>({headers:{},setHeader(k,v){this.headers[k]=v;},status(code){this.code=code;return this;},json(body){this.body=body;return this;}});
 function memoryStore(){const rows=new Map();return {rows,async create(id,edit_hash,read_hash,state){const row={id,edit_hash,read_hash,state,revision:1,operator_at:0,output_at:0,output_status:'Neznámý'};rows.set(id,row);return row;},async get(id){return rows.get(id);},async update(id,hash,revision,state,now){const row=rows.get(id);if(!row||row.edit_hash!==hash||row.revision!==revision)return;Object.assign(row,{state,revision:revision+1,operator_at:now});return row;},async touch(id,hash,role,now,status){const row=rows.get(id);if(!row||row[role==='edit'?'edit_hash':'read_hash']!==hash)return;if(role==='edit')row.operator_at=now;else{row.output_at=now;row.output_status=status;}return row;}};}
 const req=(method,action,session,key,body)=>({method,headers:{host:'camera.test',origin:'https://camera.test','content-type':'application/json',...(key?{authorization:'Bearer '+key}:{})},query:{action,session},body});
@@ -36,4 +36,22 @@ test('W/S zoom, all four arrows pan, R resets and numeric plus/minus remain avai
  const s={x:.5,y:.5,zoom:2};assert.deepEqual(cameraKeyPatch(s,'w'),{zoom:2.1});assert.deepEqual(cameraKeyPatch(s,'W'),{zoom:2.1});assert.deepEqual(cameraKeyPatch(s,'s'),{zoom:1.9});assert.deepEqual(cameraKeyPatch(s,'S'),{zoom:1.9});
  assert(cameraKeyPatch(s,'ArrowLeft').x<s.x);assert(cameraKeyPatch(s,'ArrowRight').x>s.x);assert(cameraKeyPatch(s,'ArrowUp').y<s.y);assert(cameraKeyPatch(s,'ArrowDown').y>s.y);assert(cameraKeyPatch(s,'ArrowRight',true).x<cameraKeyPatch(s,'ArrowRight').x);
  assert.deepEqual(cameraKeyPatch(s,'R'),{x:.5,y:.5,zoom:1});assert.deepEqual(cameraKeyPatch(s,'+'),cameraKeyPatch(s,'w'));assert.deepEqual(cameraKeyPatch(s,'-'),cameraKeyPatch(s,'s'));assert.equal(cameraKeyPatch(s,'a'),undefined);
+});
+test('panoramic crop is 16:9, traverses the entire input, and survives normalization',()=>{
+ for(const aspectRatio of [5120/1440,2560/720,16/9,4/3])for(const zoom of [1,1.5,2,4])for(const x of [-1,0,.5,1,2]){
+  const s=normalize({aspectRatio,zoom,x,y:x}),size=cropSize(s);
+  assert(Math.abs(size.width*aspectRatio/size.height-16/9)<1e-9);
+  assert(s.x-size.width/2>=-1e-9&&s.x+size.width/2<=1+1e-9);
+  assert(s.y-size.height/2>=-1e-9&&s.y+size.height/2<=1+1e-9);
+ }
+ assert.equal(crop({aspectRatio:32/9,zoom:1,x:0}).x,.25);
+ assert.equal(crop({aspectRatio:32/9,zoom:1,x:1}).x,.75);
+ assert.equal(normalize({}).aspectRatio,16/9);
+ assert.equal(new URL(sourceURL('https://vdo.ninja/?view=test&scale=10')).searchParams.get('scale'),'100');
+});
+test('inbound VDO metadata uses delivered resolution, ignores outbound and malformed data',()=>{
+ const v=videoStats({inbound:{privateID:{video:{Resolution:'2560 x 720',_decodeFrames:50,_last_time:1000}}},outbound:{Resolution:'5120 x 1440'}});
+ assert.deepEqual(v,{width:2560,height:720,frames:50,stamp:1000});
+ assert.equal(videoStats({outbound:{Resolution:'5120 x 1440'}}),null);
+ assert.equal(videoStats({inbound:{video:{Resolution:'0 x 0'}}}),null);
 });
