@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {AutoDirector,settings} from '../public/virtual-camera/auto.js';
 import {normalize} from '../public/virtual-camera/core.js';
+import {cropSize} from '../public/virtual-camera/core.js';
 import {readFile} from 'node:fs/promises';
 import {cameraCSP} from '../public/virtual-camera/policy.js';
 const track=(id,x,vx=0,y=.5)=>({id,x,y,vx,vy:0,confidence:.8,age:5,box:[x-.01,y-.04,.02,.04]});
@@ -36,4 +37,14 @@ test('hosting permits only the local analyzer and snapshot/blob media; local ser
  const policy=hosting.headers.find(h=>h.source==='/virtual-camera/:path*').headers.find(h=>h.key==='Content-Security-Policy').value;
  assert.equal(policy,cameraCSP);assert(policy.includes("connect-src 'self' http://127.0.0.1:8766;"));
  const source=await readFile(new URL('../src/server.js',import.meta.url),'utf8');for(const file of ['auto.js','auto-settings.js','auto-client.js'])assert(source.includes("'"+file+"'"));
+});
+test('AUTO respects native panorama geometry, aspect changes, bounds and 16:9 output',()=>{
+ const d=new AutoDirector({aspectRatio:32/9,zoom:2});let previous=d.position;
+ for(let i=0;i<200;i++){
+  const aspectRatio=i<150?32/9:16/9;
+  const r=d.update(i<120?{tracks:[track(1,i<60?.12:.88,.035),track(2,i<60?.14:.86,.03)]}:null,i*.25,{aspectRatio});
+  const size=cropSize({...r,aspectRatio});assert(r.x-size.width/2>=-1e-9);assert(r.x+size.width/2<=1+1e-9);assert(Math.abs((size.width/size.height)*aspectRatio-16/9)<1e-9);
+  if(i<150)assert(Math.abs(r.x-previous.x)<=.16*.25+1e-9);previous=r;
+ }
+ assert.equal(previous.zoom,1);
 });

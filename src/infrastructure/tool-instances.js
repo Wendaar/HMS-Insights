@@ -22,6 +22,12 @@ export function toolStore({env=process.env,sql,tool='playoff-players'}={}){
       try{return await query("select slug,draft->>'title' as title,revision,published is not null as published from hms_tool_instances where tool=$1 and organization=$2 order by updated_at desc limit 100",[tool,org]);}
       catch(error){if(error.code==='42P01')return [];throw error;}
     },
+    async archiveRows(org,playerId=null){
+      if(!sql&&!env.DATABASE_URL)return [];
+      const playerFilter=playerId?`and exists(select 1 from jsonb_array_elements(coalesce(r.value->'players','[]'::jsonb)) p where lower(p->>'playerId')=lower($3))`:'';
+      try{return (await query(`select draft,published,revision,updated_at,published_at from hms_tool_instances where tool=$1 and organization=$2 and exists(select 1 from jsonb_each(case when jsonb_typeof(draft->'reviews')='object' then draft->'reviews' else '{}'::jsonb end) r where r.value->>'status'='confirmed' ${playerFilter})`,playerId?[tool,org,playerId]:[tool,org])).map(decode);}
+      catch(error){if(error.code==='42P01')return [];throw error;}
+    },
     async save(org,slug,draft,revision,bootstrap){
       // Schema creation is reached only after authorization in the handler.
       await query(toolSchema);

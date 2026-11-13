@@ -7,6 +7,7 @@ import {readPublicGameDay} from './season-games.js';
 import {graphicSettings} from '../../public/all-stars/presentation.js';
 import {sportingImage} from '../../public/game-report-media.js';
 import {refreshAllStarsPortraits} from './all-stars-portraits.js';
+import {photoChoice} from '../../public/photo-picker/model.js';
 export const limits={F:3,D:2,G:1};
 const lower=v=>String(v??'').toLowerCase();
 export function allStarsScope(input){
@@ -27,7 +28,9 @@ export function allStarsSettings(input,org='phm'){
       seen.add(id);return id;
     });
   }
-  return {...scope,title:input.title.trim(),selection,graphics:graphicSettings(input.graphics,org),rules:'calendar-manual-v1'};
+  const photos={};if(input.photoChoices!==undefined){if(!input.photoChoices || typeof input.photoChoices!=='object' || Array.isArray(input.photoChoices) || Object.keys(input.photoChoices).length>6)throw new TypeError('photos');
+    for(const [id,choice] of Object.entries(input.photoChoices)){if(!seen.has(id))throw new TypeError('photo player');photos[id]=photoChoice(choice);}}
+  return {...scope,title:input.title.trim(),selection,graphics:graphicSettings(input.graphics,org),rules:'calendar-manual-v1',...(Object.keys(photos).length?{photoChoices:photos}:{})};
 }
 // Only recorded sporting facts enter this read model. Never sum different teams.
 export function nominateAllStars(snapshots,fixtures,scope){
@@ -91,7 +94,7 @@ export function resolvedSelection(config,data,{complete=false}={}){
   const result={};
   for(const [role,count] of Object.entries(limits)){
     const ids=config.selection[role];if(complete&&ids.length!==count)throw new TypeError('six');
-    result[role]=ids.map(id=>{const player=data.candidates[role].find(p=>p.id===id);if(!player)throw new TypeError('candidate');return player;});
+    result[role]=ids.map(id=>{const player=data.candidates[role].find(p=>p.id===id);if(!player)throw new TypeError('candidate');return config.photoChoices?.[id]?{...player,photoChoice:config.photoChoices[id]}:player;});
   }
   return result;
 }

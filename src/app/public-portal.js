@@ -1,3 +1,4 @@
+import {portalWidgets} from '../../public/widgets/definitions.js';
 import {neon} from '@neondatabase/serverless';
 import {organizationConfig} from './organizations.js';
 import {isGameId} from '../domain/game-summary.js';
@@ -21,7 +22,7 @@ export function portalSettings(input){
  if(!/^#[a-f0-9]{6}$/i.test(input.color??''))throw new TypeError('color');
  if(input.logoUrl&&!safePortalUrl(input.logoUrl))throw new TypeError('logo');
  if(typeof input.extras!=='string'||input.extras.length>30000)throw new TypeError('extras');
- return {title:input.title.trim(),description:text(input.description,600),color:input.color,logoUrl:safePortalUrl(input.logoUrl),seasonIds,defaultSeasonId:id(input.defaultSeasonId),sections:input.sections,lang:input.lang==='en'?'en':'cs',extras:input.extras};
+ return {title:input.title.trim(),description:text(input.description,600),color:input.color,logoUrl:safePortalUrl(input.logoUrl),seasonIds,defaultSeasonId:id(input.defaultSeasonId),sections:input.sections,lang:input.lang==='en'?'en':'cs',extras:input.extras,widgets:portalWidgets(input)};
 }
 export async function portalCatalog(org,options={}){
  const config=organizationConfig(org,options.env??process.env);
@@ -64,6 +65,19 @@ export async function portalBranding(org,season,options={}){
 export async function validatePortalSeasons(org,settings,options={}){
  const catalog=await(options.portalCatalog??portalCatalog)(org,options);
  if(!settings.seasonIds.every(s=>catalog.items.some(i=>i.seasonId===s)))throw new TypeError('foreign season');
+ const organization=organizationConfig(org,options.env??process.env);
+ for(const widget of settings.widgets??[]){
+  const scope=widget.scope??{};
+  if(scope.organisationId&&scope.organisationId!==organization.id.toLowerCase())throw new TypeError('foreign widget organisation');
+  if(scope.seasonId&&!settings.seasonIds.includes(scope.seasonId))throw new TypeError('unpublished widget season');
+  const seasons=catalog.items.filter(s=>settings.seasonIds.includes(s.seasonId)&&(!scope.seasonId||s.seasonId===scope.seasonId));
+  if(scope.competitionId&&!seasons.some(s=>s.competitionId===scope.competitionId))throw new TypeError('foreign widget competition');
+  if(scope.groupId||scope.phaseId||scope.teamId){
+   const season=seasons.find(s=>s.seasonId===(scope.seasonId??settings.defaultSeasonId));if(!season||scope.competitionId&&scope.competitionId!==season.competitionId)throw new TypeError('widget season');
+   const directory=await(options.portalDirectory??portalDirectory)(org,season.seasonId,options),group=directory.groups.find(g=>g.id===scope.groupId),phase=directory.groups.flatMap(g=>g.phases.map(p=>({...p,groupId:g.id}))).find(p=>p.id===scope.phaseId);
+   if(scope.groupId&&!group||scope.phaseId&&(!phase||group&&phase.groupId!==group.id)||scope.teamId&&!directory.teams.some(t=>t.id===scope.teamId&&(!scope.groupId||t.groupIds.includes(scope.groupId))&&(!phase||t.groupIds.includes(phase.groupId)&&(!phase.teamIds?.length||phase.teamIds.includes(t.id)))))throw new TypeError('widget directory');
+  }
+ }
  return catalog.items.filter(i=>settings.seasonIds.includes(i.seasonId));
 }
 export async function portalDirectory(org,seasonId,options={}){
@@ -77,14 +91,18 @@ export async function portalDirectory(org,seasonId,options={}){
  for(const r of rows){
   if(id(r.organization_id)!==id(config.id)||id(r.season_id)!==seasonId)throw new Error('directory ownership');
   for(const side of ['home','away'])if(id(r[side+'_team_id'])){
-   const teamId=id(r[side+'_team_id']),team=teams.get(teamId)??{id:teamId,name:text(r[side+'_team_name']),logoUrl:null,groupIds:[]};
+   const teamId=id(r[side+'_team_id']),team=teams.get(teamId)??{id:teamId,name:text(r[side+'_team_name']),logoUrl:null,groupIds:[],phaseIds:[]};
+   if(id(r.phase_id)&&!team.phaseIds.includes(id(r.phase_id)))team.phaseIds.push(id(r.phase_id));
    team.logoUrl??=sportingImage(r[side+'_logo_url']);if(id(r.group_id)&&!team.groupIds.includes(id(r.group_id)))team.groupIds.push(id(r.group_id));teams.set(teamId,team);
   }
   if(text(r.venue_name))venues.set(text(r.venue_name),{name:text(r.venue_name),logoUrl:sportingImage(r.venue_logo_url)});
   if(id(r.group_id)){const g=groups.get(id(r.group_id))??{id:id(r.group_id),name:text(r.group_name),phases:[],logoUrl:null,color:null,teamIds:[]};
    g.logoUrl??=sportingImage(r.group_logo_url);g.color??=color(r.group_color);
    for(const side of ['home','away'])if(id(r[side+'_team_id'])&&!g.teamIds.includes(id(r[side+'_team_id'])))g.teamIds.push(id(r[side+'_team_id']));
-   if(id(r.phase_id)&&!g.phases.some(p=>p.id===id(r.phase_id)))g.phases.push({id:id(r.phase_id),name:text(r.phase_name)});groups.set(g.id,g);}
+   if(id(r.phase_id)){
+    let phase=g.phases.find(p=>p.id===id(r.phase_id));if(!phase){phase={id:id(r.phase_id),name:text(r.phase_name),teamIds:[]};g.phases.push(phase);}
+    for(const side of ['home','away'])if(id(r[side+'_team_id'])&&!phase.teamIds.includes(id(r[side+'_team_id'])))phase.teamIds.push(id(r[side+'_team_id']));
+   }groups.set(g.id,g);}
  }
  return {teams:[...teams.values()].sort((a,b)=>a.name.localeCompare(b.name,'cs')),teamCount:teams.size,venues:[...venues.values()],groups:[...groups.values()].sort((a,b)=>a.name.localeCompare(b.name,'cs')).map(g=>({...g,teamCount:g.teamIds.length})),source:'imported-hms-games'};
 }

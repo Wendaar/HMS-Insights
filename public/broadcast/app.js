@@ -1,4 +1,6 @@
 import {fetchSponsorCatalog,withSponsorOverrides} from '../sponsors/model.js';
+import {openPhotoPicker} from '/photo-picker/picker.js';
+import {broadcastPhotoChoices,applyBroadcastPhotos} from '/photo-picker/broadcast.js';
 import {rotationDefaults,readSponsorPreferences,saveSponsorPreferences} from '../sponsors/rotation.js';
 import {resolvePartnerFrame} from './extra-layers.js';
 import {hmsBrand} from '/hms-brand.js';
@@ -43,9 +45,11 @@ if(mode!=='control'&&!params.has('sponsorRotation'))state.sponsorRotation=null;
 let sandbox=false,rotationTimer,contextLoading=false,contextLoaded=false,lastPartnerRead=0,leagueLoading=false,lastLeagueRead=0;
 Object.assign(state,{layer:layers.includes(params.get('layer'))?params.get('layer'):'opening',side:['home','away','both'].includes(params.get('side'))?params.get('side'):'home',period:['1','2','3'].includes(params.get('period'))?params.get('period'):'current',page:Math.min(50,Math.max(1,Number.parseInt(params.get('page'),10)||1)),insight:params.get('insight')??''});
 let refreshing=false,lastSuccess=0,lastVisual='',pollTimer;
+function photoKey(){return `hms-broadcast-photos:${org}:${String(state.selectedId || '').toLowerCase()}`;}
+function currentPhotos(){if(mode!=='control' && state.channelPhotoChoices)return state.channelPhotoChoices;try{return broadcastPhotoChoices(JSON.parse(localStorage.getItem(photoKey()) || '{}'));}catch{return {};}}
 let previewObserver;
 const channel=mode==='control'&&source==='hms'?createChannelControl({api:API_BASE,base:location.href,
-  getState:()=>({org,gameId:state.selectedId,lang,layer:state.layer,side:state.side,period:state.period,page:state.page,insight:state.insight,corner:state.corner,metric:state.metric,assetId:state.assetId,rotateSeconds:state.rotateSeconds,partnerSource:state.partnerSource,partnerScope:state.partnerScope,standingsView:state.standingsView,sponsorRotation:state.sponsorRotation}),
+  getState:()=>({org,gameId:state.selectedId,lang,layer:state.layer,side:state.side,period:state.period,page:state.page,insight:state.insight,corner:state.corner,metric:state.metric,assetId:state.assetId,rotateSeconds:state.rotateSeconds,partnerSource:state.partnerSource,partnerScope:state.partnerScope,standingsView:state.standingsView,sponsorRotation:state.sponsorRotation,photoChoices:currentPhotos()}),
   onChange:()=>updateChannelPanel()}):null;
 function channelMarkup(){
   if(!channel)return '';
@@ -86,6 +90,7 @@ async function loadGame(id){
   game.league??=state.games.find(g=>String(g.ID).toLowerCase()===id.toLowerCase())?.league??null;
   game.context??=state.games.find(g=>String(g.ID).toLowerCase()===id.toLowerCase())?.context??null;
   state.games=[game,...state.games.filter(g=>String(g.ID).toLowerCase()!==id.toLowerCase())];state.selectedId=game.ID;state.readAt=data.readAt;
+  if(mode!=='control' && /^[a-f0-9]{48}$/.test(params.get('library') || '')){state.channelPhotoChoices={};try{const response=await fetch(API_BASE+'?'+new URLSearchParams({channel:params.get('library')}),{cache:'no-store',signal:AbortSignal.timeout(4000)});if(response.ok){const row=await response.json();if(row.state?.org===org && row.state.gameId.toLowerCase()===id.toLowerCase())state.channelPhotoChoices=broadcastPhotoChoices(row.state.photoChoices || {});}}catch{/* Optional photo overrides never break the live HMS output. */}}
   if(mode==='control'){const url=new URL(location.href);url.searchParams.set('game',game.ID);history.replaceState(null,'',url);}return game;
 }
 async function loadContext(game){
@@ -213,7 +218,7 @@ function gameModel(game) {
 
 function selectedGame() {
   const raw = state.games.find((game) => String(game.ID).toLowerCase() === String(state.selectedId).toLowerCase());
-  return raw&&!raw._thin ? gameModel(raw) : null;
+  return raw&&!raw._thin ? applyBroadcastPhotos(gameModel(raw),currentPhotos()) : null;
 }
 
 function logoMarkup(src, className, alt) {
@@ -369,6 +374,10 @@ function renderControl() {
 
 function wireControl() {
   updateChannelPanel();
+  const photoGame=selectedGame(),roster=photoGame?.match?.roster || [];
+  if(roster.length){const box=document.createElement('section');box.className='channel-panel';const label=document.createElement('label');label.textContent='Fotografie hráče';const select=document.createElement('select');select.setAttribute('aria-label','Hráč pro výběr fotografie');for(const player of roster)select.append(new Option(`${player.name} · #${player.number ?? '?'}`,player.id));label.append(select);const pick=document.createElement('button');pick.type='button';pick.className='button';pick.textContent='Vybrat fotografii · HMS / archiv / nahrát';const note=document.createElement('p');note.textContent='Volby platí pro tento zápas a organizaci. Do OBS se přenášejí přes stálý OBS kanál (nejvýše šest náhrad).';box.append(label,pick,note);document.querySelector('.workspace-toolbar')?.before(box);
+    pick.onclick=async()=>{const selectedOrg=org,gameId=state.selectedId,player=roster.find(p=>p.id===select.value);if(!player)return;try{const original=state.games.find(g=>g.ID===gameId)?.match?.roster?.find(p=>p.id===player.id);const choice=await openPhotoPicker({org,playerId:player.id,name:player.name,hmsUrl:original?.imageUrl});if(!choice || org!==selectedOrg || gameId!==state.selectedId)return;const choices=currentPhotos();if(choice.source==='hms')delete choices[player.id.toLowerCase()];else choices[player.id.toLowerCase()]=choice;localStorage.setItem(photoKey(),JSON.stringify(broadcastPhotoChoices(choices)));renderControl();channel?.publish();}catch(error){note.textContent=error.message;}};
+  }
   const leagueGame=selectedGame();if(leagueGame&&['leaders','leaders-strip','standings'].includes(state.layer)&&!leagueLoading&&(!leagueGame.league||Date.now()-lastLeagueRead>=60000))loadLeague(leagueGame);
   document.querySelector('.library-panel')?.addEventListener('toggle',event=>{if(event.target.open){mountLibrary(document.getElementById('library-slot'),{channel,org,game:selectedGame(),lang,onSaved:()=>{state.libraryLoaded='';renderControl();}});}});
   localize(app,lang);

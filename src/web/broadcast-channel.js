@@ -1,4 +1,6 @@
 import {normalizeRotation} from '../../public/sponsors/rotation.js';
+import {broadcastPhotoChoices} from '../../public/photo-picker/broadcast.js';
+import {validatePlayerPhotoChoices} from '../app/player-photo-choices.js';
 import {randomBytes,createHash} from 'node:crypto';
 import {neon} from '@neondatabase/serverless';
 import {organizationConfig,organizationEntry} from '../app/organizations.js';
@@ -17,6 +19,7 @@ export function channelState(value,env){
   if(value.assetId!==undefined){if(value.assetId!==''&&!isGameId(value.assetId))throw new TypeError();state.assetId=value.assetId;}
   if(value.rotateSeconds!==undefined){if(!Number.isInteger(value.rotateSeconds)||value.rotateSeconds<5||value.rotateSeconds>300)throw new TypeError();state.rotateSeconds=value.rotateSeconds;}
   if(value.sponsorRotation!==undefined)state.sponsorRotation=normalizeRotation(value.sponsorRotation);
+  if(value.photoChoices!==undefined)state.photoChoices=broadcastPhotoChoices(value.photoChoices);
   return state;
 }
 export const channelTables=env=>env.VERCEL_ENV==='production'&&env.BROADCAST_SANDBOX!=='1'?{channels:'broadcast_channels',library:'broadcast_libraries'}:{channels:'broadcast_channels_preview',library:'broadcast_libraries_preview'};
@@ -63,8 +66,9 @@ export function createChannelHandler(options={}){
         const items=broadcastLibrary(body.items,env),saved=await store.saveLibrary(id,digest(token),body.revision,items);
         return saved?res.status(200).json(saved):res.status(409).json({error:'Knihovna nebyla uložena. Obnovte ovládání a zkuste to znovu.'});
       }
-      if(JSON.stringify(body??{}).length>4096)throw new TypeError();
+      if(JSON.stringify(body??{}).length>1200000)throw new TypeError();
       const state=channelState(body?.state,env);
+      await validatePlayerPhotoChoices(state.org,{photoChoices:state.photoChoices},{...options,env});
       if(req.method==='POST'){
         const key=digest(String(req.headers?.['x-forwarded-for']??req.socket?.remoteAddress??'unknown')),now=Date.now();
         const hits=(limits.get(key)??[]).filter(t=>t>now-60000);if(hits.length>=5)return res.status(429).json({error:'Zkuste to prosím za minutu.'});

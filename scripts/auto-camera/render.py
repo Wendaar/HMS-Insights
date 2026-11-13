@@ -17,7 +17,7 @@ for item in json.loads((out/'inventory.json').read_text()):
     for frame,r in enumerate(records):
         ok,image=cap.read()
         if not ok: raise RuntimeError('Incomplete decode during render')
-        cw,ch=int(w/r['zoom']),int(h/r['zoom']);x=max(0,min(w-cw,round(r['x']*w-cw/2)));y=max(0,min(h-ch,round(r['y']*h-ch/2)))
+        cw,ch=int(w*r.get('cropWidth',1/r['zoom'])),int(h*r.get('cropHeight',1/r['zoom']));x=max(0,min(w-cw,round(r['x']*w-cw/2)));y=max(0,min(h-ch,round(r['y']*h-ch/2)))
         cropped=cv2.resize(image[y:y+ch,x:x+cw],(960,540));proc.stdin.write(cropped.tobytes())
         if len(samples)<8 and frame>=len(samples)*item['frames']/8:
             annotated=image.copy()

@@ -1,6 +1,7 @@
 import {organizationEntry,publicOrganizations} from '../app/organizations.js';
 import {hasBearerSecret} from '../security/bearer-secret.js';
 import {toolStore} from '../infrastructure/tool-instances.js';
+import {readWidgetScopeCatalog} from '../app/widgets.js';
 import {portalSettings,portalCatalog,validatePortalSeasons,portalDirectory,portalPartners,portalModule,portalSections,portalBranding} from '../app/public-portal.js';
 export const portalStorageNamespace=env=>env.VERCEL_ENV==='production'?'public-portal':'public-portal-preview';
 export function createPublicPortalHandler(options={}){
@@ -8,20 +9,21 @@ export function createPublicPortalHandler(options={}){
  return async(req,res)=>{
   res.setHeader('cache-control','no-store');res.setHeader('x-content-type-options','nosniff');
   const q=req.query??{},action=q.action??'public',fail=(code,error)=>res.status(code).json({error});
-  const actions=['organizations','catalog','manage','save','publish','pause','public','preview','data','preview-data','extras-document'];
+  const actions=['organizations','catalog','widget-catalog','manage','save','publish','pause','public','preview','data','preview-data','extras-document'];
   if(!actions.includes(action))return fail(400,'Neznámá operace.');
   const method=['save','publish','pause'].includes(action)?'POST':'GET';
   if(req.method!==method){res.setHeader('allow',method);return fail(405,'Nepovolená metoda.');}
   if(action==='organizations')return res.status(200).json({organizations:publicOrganizations(env)});
   let org;try{org=organizationEntry(q.org,env);}catch{return fail(404,'Neznámá organizace.');}
   const secret=env[`HMS_${org.code}_PORTAL_ADMIN_SECRET`]||env[`HMS_${org.code}_TOOLS_ADMIN_SECRET`]||env[`HMS_${org.code}_WEBHOOK_SECRET`]||(org.code==='PHM'?env.HMS_WEBHOOK_SECRET:null);
-  if(['catalog','manage','save','publish','pause','preview','preview-data'].includes(action)){
+  if(['catalog','widget-catalog','manage','save','publish','pause','preview','preview-data'].includes(action)){
    if(!secret)return fail(503,'Správa organizace zatím nemá nastavený přístup.');
    if(!hasBearerSecret(req,secret))return fail(401,'Zadejte platný přístupový kód organizace.');
    if(req.headers.origin){try{if(new URL(req.headers.origin).host!==req.headers.host)throw Error();}catch{return fail(403,'Nepovolený původ požadavku.');}}
   }
   try{
    if(action==='catalog')return res.status(200).json(await(options.portalCatalog??portalCatalog)(org.code,options));
+   if(action==='widget-catalog')return res.status(200).json(await readWidgetScopeCatalog(org.code,q,options));
    const instance=await store.get(org.code,'main'),path='/league/'+org.slug;
    if(action==='manage')return res.status(200).json({org:org.code,path,instance,sections:portalSections});
    if(['save','publish','pause'].includes(action)){

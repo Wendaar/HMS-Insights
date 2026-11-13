@@ -1,5 +1,8 @@
+import {createWidgetsHandler} from './web/widgets-handler.js';
 import {cameraCSP} from '../public/virtual-camera/policy.js';
 import {createVirtualCameraHandler} from './web/virtual-camera-handler.js';
+import {createPhotoArchiveHandler} from './web/photo-archive-handler.js';
+const photoArchiveHandler=createPhotoArchiveHandler();
 const virtualCameraHandler=createVirtualCameraHandler();
 import {createMatchPreviewHandler} from './web/match-preview-handler.js';
 const matchPreviewHandler=createMatchPreviewHandler();
@@ -86,6 +89,17 @@ const assets = {
 
 export const server = createServer(async (request, response) => {
   const url = new URL(request.url, `http://${request.headers.host ?? "localhost"}`);
+  if(url.pathname==='/api/photo-archive' || url.pathname==='/api/game-summary' && url.searchParams.get('view')==='photo-archive'){
+    request.query=Object.fromEntries(url.searchParams);
+    if(request.method==='POST'){let raw='';for await(const chunk of request){raw+=chunk;if(Buffer.byteLength(raw)>16000){response.writeHead(413);response.end();return;}}request.body=raw;}
+    await photoArchiveHandler(request,{setHeader:(k,v)=>response.setHeader(k,v),status(code){response.statusCode=code;return this;},json(body){response.setHeader('content-type','application/json; charset=utf-8');response.end(JSON.stringify(body));}});return;
+  }
+  if(/^\/photo-picker\/(picker.js|model.js|broadcast.js|style.css)$/.test(url.pathname)){response.setHeader('content-type',url.pathname.endsWith('.css')?'text/css':'text/javascript');response.end(await readFile(join(publicDirectory,url.pathname.slice(1))));return;}
+  if(['/photo-archive','/photo-archive/','/control/apps/photo-archive'].includes(url.pathname) || /^\/photo-archive\/(index.html|app.js|review-model.js|catalog-model.js|style.css)$/.test(url.pathname)){
+    const file=/\.(html|js|css)$/.test(url.pathname)?url.pathname.split('/').pop():'index.html';
+    response.setHeader('content-type',file.endsWith('.html')?'text/html; charset=utf-8':file.endsWith('.css')?'text/css':'text/javascript');response.setHeader('x-robots-tag','noindex, nofollow');response.setHeader('referrer-policy','no-referrer');
+    response.end(await readFile(join(publicDirectory,'photo-archive',file)));return;
+  }
   if(url.pathname==='/api/virtual-camera'||url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='virtual-camera'){
     request.query=Object.fromEntries(url.searchParams);
     if(request.method!=='GET'){let raw='';for await(const chunk of request){raw+=chunk;if(raw.length>12000){response.writeHead(413);response.end();return;}}request.body=raw;}
@@ -116,12 +130,19 @@ export const server = createServer(async (request, response) => {
     response.setHeader('content-security-policy',"default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' https://prod-hms-wootera.s3.eu-central-1.amazonaws.com https://hockeymanagementsystem.s3.amazonaws.com; base-uri 'none'; form-action 'self'; frame-ancestors 'none'");
     response.end(request.method==='HEAD'?undefined:await readFile(join(publicDirectory,'registrations',name)));return;
   }
+  if(url.pathname==='/api/widgets'||url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='widgets'){
+    request.query=Object.fromEntries(url.searchParams);await createWidgetsHandler()(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json; charset=utf-8');response.end(JSON.stringify(body));}});return;
+  }
+  if(/^\/widgets\/(definitions|statistics|renderers|picker|scope-options|scope-picker)\.js$/.test(url.pathname)||url.pathname==='/widgets/styles.css'||['/player-card.js','/player-card.css','/player-portrait.js'].includes(url.pathname)){
+    if(!['GET','HEAD'].includes(request.method)){response.writeHead(405,{allow:'GET, HEAD'});response.end();return;}
+    response.setHeader('content-type',url.pathname.endsWith('.css')?'text/css; charset=utf-8':'text/javascript; charset=utf-8');response.end(request.method==='HEAD'?undefined:await readFile(join(publicDirectory,url.pathname)));return;
+  }
   if(url.pathname==='/api/portal'||url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='portal'){
     request.query=Object.fromEntries(url.searchParams);
     if(request.method==='POST'){let body='';for await(const chunk of request){body+=chunk;if(Buffer.byteLength(body)>50000){response.writeHead(413);response.end();return;}}request.body=body;}
     await portalHandler(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json; charset=utf-8');response.end(JSON.stringify(body));},send(body){response.end(body);}});return;
   }
-  const portalAsset=/^\/league\/(app.js|app.css|widget.css|presentation.js|embed-code.js|index.html)$/.exec(url.pathname),insightsWidget=/^\/widgets\/insights\/[a-z0-9-]+\/?$/.test(url.pathname);
+  const portalAsset=/^\/league\/(app.js|app.css|widget.css|presentation.js|embed-code.js|index.html)$/.exec(url.pathname),insightsWidget=/^\/widgets\/[a-z0-9-]+\/[a-z0-9-]+\/?$/.test(url.pathname);
   if(portalAsset||insightsWidget||/^\/league\/[a-z0-9-]+\/?$/.test(url.pathname)||url.pathname==='/control/apps/public-portal'||url.pathname==='/'&&url.hostname==='public.heromanagementsystem.com'){
     if(!['GET','HEAD'].includes(request.method)){response.writeHead(405,{allow:'GET, HEAD'});response.end();return;}
     const name=portalAsset?.[1]??'index.html';
@@ -157,7 +178,7 @@ export const server = createServer(async (request, response) => {
   }
   if(url.pathname==='/api/all-stars'||url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='all-stars'){
     request.query=Object.fromEntries(url.searchParams);
-    if(request.method==='POST'){let body='';for await(const chunk of request){body+=chunk;if(Buffer.byteLength(body)>20000){response.writeHead(413);response.end();return;}}request.body=body;}
+    if(request.method==='POST'){let body='';for await(const chunk of request){body+=chunk;if(Buffer.byteLength(body)>1200000){response.writeHead(413);response.end();return;}}request.body=body;}
     await createAllStarsHandler()(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json; charset=utf-8');response.end(JSON.stringify(body));}});return;
   }
   const allStarsAsset=/^\/all-stars\/(app.js|app.css|index.html|graphics.js|presentation.js|assets\/(?:landscape|portrait)\.webp)$/.exec(url.pathname);
@@ -196,7 +217,7 @@ export const server = createServer(async (request, response) => {
   if(/^\/sponsors\/(model|picker|rotation)\.js$/.test(url.pathname)){response.setHeader('content-type','text/javascript');response.end(await readFile(join(publicDirectory,url.pathname)));return;}
   if(url.pathname==='/api/broadcast'||url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='broadcast'){
     if(['POST','PATCH'].includes(request.method)){
-      let body='';for await(const chunk of request){body+=chunk;if(Buffer.byteLength(body)>(url.searchParams.get('library')==='1'?1800100:4096)){response.statusCode=413;response.end();return;}}request.body=body;
+      let body='';for await(const chunk of request){body+=chunk;if(Buffer.byteLength(body)>(url.searchParams.get('library')==='1'?1800100:1200000)){response.statusCode=413;response.end();return;}}request.body=body;
     }
     request.query=Object.fromEntries(url.searchParams);
     await broadcastHandler(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json; charset=utf-8');response.end(JSON.stringify(body));}});return;

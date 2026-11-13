@@ -12,7 +12,7 @@ VDO.Ninja obraz zůstává v původním iframe; nevzniká druhý renderer. Sním
 
 Analytika vrací souřadnice, ID, stáří a rychlost stop, confidence a čas analýzy. `AutoDirector` vrací `targetX`, `targetZoom`, `confidence`, `trackingState`, `reason` a výsledný výřez. Upřednostňuje pohyb v lokální oblasti a krátkou predikci; vytrvalý rychlý předbíhající hráč může dostat přednost před skupinou. Krátce drží prostor u kalibrované branky. To jsou heuristiky, nikoli rozpoznané hokejové události. Puk se nedetekuje.
 
-Poloha Y se v běžné výchozí kalibraci drží na 0,5. X má mrtvou zónu a rychlostní limit; zoom má samostatný limit. Ošetřeno je i oddalování u hranice obrazu, které by jinak vynutilo skok středu. Při nízké jistotě se krátce drží poslední spolehlivá oblast, po delší nejistotě se kamera vrací na široký záběr. Snímky starší než 1,2 s se ignorují. Původní bezpečnostní návrat OBS při ztrátě režie po 8 s zůstává zachovaný.
+Poloha Y se v běžné výchozí kalibraci drží na 0,5. AUTO respektuje doručený poměr stran a geometrii 16:9 i u nativního panoramatu 32:9; při nejistotě používá nejširší výřez 1× této geometrie. Celé panorama s pruhy zobrazuje původní OBS záloha po ztrátě režie. Zachovány jsou aktuální opravy autoplay, metadat a reconnectu z hlavní větve. X má mrtvou zónu a rychlostní limit; zoom má samostatný limit. Ošetřeno je i oddalování u hranice obrazu, které by jinak vynutilo skok středu. Při nízké jistotě se krátce drží poslední spolehlivá oblast, po delší nejistotě se kamera vrací na široký záběr. Snímky starší než 1,2 s se ignorují. Původní bezpečnostní návrat OBS při ztrátě režie po 8 s zůstává zachovaný.
 
 V režii jsou MANUAL/AUTO, citlivost, preferovaný zoom, confidence/stav/důvod, přímé ruční převzetí a volitelná diagnostika. Ruční posun, zoom, reset i klávesové zkratky automat zastaví. Převzetí nemění X/Y/zoom ani videozdroj. Při konfliktu verzí se AUTO zastaví. Diagnostika existuje jen v režii; OBS HTML ji neobsahuje.
 
@@ -59,7 +59,7 @@ Při běžící službě lze navíc spustit `node scripts/auto-camera/check-serv
 
 ## Výsledky na dodaných záznamech
 
-Všechny vstupy mají 1920×1080, 25 FPS a H.264. Celkem 217,92 s, kompletně dekódováno i vyrenderováno 5 448 snímků; analyzováno 911 vzorků. Výřez zůstává uvnitř zdroje. Maximální horizontální rychlost ve výchozím nastavení byla 0,16 šířky zdroje/s, maximální změna zoomu 0,5×/s. Na testovacím počítači byla průměrná doba detektoru 49–56 ms/vzorek, P95 podle klipu 52–61 ms. Tyto časy nejsou měřením latence celé živé pipeline.
+Všechny vstupy mají 1920×1080, 25 FPS a H.264. Celkem 217,92 s, kompletně dekódováno i vyrenderováno 5 448 snímků; analyzováno 911 vzorků. Výřez zůstává uvnitř zdroje. Všechny testovací vstupy jsou skutečně zakódované jako 16:9 s vloženými pruhy; test nativního 32:9 je geometrický, nikoli záznam ZONEWAY. Maximální horizontální rychlost ve výchozím nastavení byla 0,16 šířky zdroje/s, maximální změna zoomu 0,5×/s. Na testovacím počítači byla průměrná doba detektoru 49–56 ms/vzorek, P95 podle klipu 52–61 ms. Tyto časy nejsou měřením latence celé živé pipeline.
 
 | ID / scénář (název zkrácen) | Délka | Snímky / vzorky | Průměr analýzy | Předběžná vizuální kontrola kontaktů |
 | --- | ---: | ---: | ---: | --- |
@@ -73,7 +73,7 @@ Všechny vstupy mají 1920×1080, 25 FPS a H.264. Celkem 217,92 s, kompletně de
 
 Kontaktů bylo vizuálně zkontrolováno osm na klip, nikoli každý snímek ručně. Nejsou k dispozici anotace polohy puku nebo správné oblasti hry. `activeTrackVisibility` v JSON je pouze podíl platných detekovaných stop uvnitř výřezu, **není přesnost sledování hry**. Plynulost, validita geometrie ani vysoká confidence nedokazují správnou volbu herní akce. Confidence je heuristické skóre, nikoli kalibrovaná pravděpodobnost.
 
-Ověřeno 519/519 Node testů a build media klienta. Testy zahrnují původní role edit/read, konflikty, persistenci, heartbeat, geometrii, zdrojové audio a klávesové ovládání; nové testy pokrývají maskování, nejistotu, kandidáta aktivního útočníka, hranice kalibrace, rychlost a shodu CSP. Sedm HTTP kontrol služby ověřilo health/verzi supervision, odmítnutí cizího originu, preflight, typ vstupu, vadný JPEG a skutečnou analýzu snímku.
+Ověřeno 627/627 Node testů a build media klienta. Testy zahrnují původní role edit/read, konflikty, persistenci, heartbeat, geometrii, zdrojové audio a klávesové ovládání; nové testy pokrývají maskování, nejistotu, kandidáta aktivního útočníka, hranice kalibrace, rychlost a shodu CSP. Sedm HTTP kontrol služby ověřilo health/verzi supervision, odmítnutí cizího originu, preflight, typ vstupu, vadný JPEG a skutečnou analýzu snímku.
 
 V prohlížeči byly ověřeny lokální video → skutečná služba → pohyb/zoom, MANUAL jako výchozí stav, ruční převzetí bez změny výřezu 2× (shodná geometrie před/po), přehrávání/pauza a bezpečný návrat na 1× po zastavení služby. Při funkční službě nebyly hlášeny chyby v konzoli. Ověření proběhlo i s CSP použitou v aplikaci. Skutečný živý přenos VDO.Ninja, skutečný OBS a chování HTTPS prohlížeče při povolení lokální sítě nebyly bez aktivního zdroje ověřeny.
 

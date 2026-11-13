@@ -34,3 +34,5 @@ Stávající stránky ani jejich původní pohled se tím nemění. Následujíc
 - Povolené weby: `https://phmcup.cz`, `https://www.phmcup.cz`, `https://bnhlh.cz`, `https://www.bnhlh.cz`. Není potřeba přihlášení ani secret.
 
 Pohled **Dnes** navíc automaticky obnovuje průběžné skóre po 30 sekundách. Rozehrané zápasy označuje zeleně jako Živě/Live. Skrytý panel nebo iframe obnovování pozastaví; ostatní pohledy se automaticky neobnovují. Při výpadku zůstává poslední skóre s upozorněním.
+
+CMS iframe detection: a schedule compares its own window with the top window, without reading the parent DOM. Being inside a frame enables embedded report links automatically, even when the CMS omits `embed=1`. Reports open in a new tab with `noopener noreferrer`; standalone schedules retain same-tab navigation. The report framing policy remains unchanged. This also applies to rows updated by Today polling.

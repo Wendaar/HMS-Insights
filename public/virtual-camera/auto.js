@@ -1,11 +1,13 @@
-import {clamp,crop} from './core.js';
+import {clamp,crop,aspect,OUTPUT_ASPECT} from './core.js';
 import {settings} from './auto-settings.js';
 export {settings,calibration} from './auto-settings.js';
 // Coordinates refer to the complete source including any letterboxing. No puck claim.
 export class AutoDirector {
  constructor(initial={}){this.reset(initial);}
- reset(initial={}){this.position=crop(initial);this.last=null;this.good=null;this.anchor=this.position.x;this.goalUntil=0;this.goalX=.5;this.candidate=null;this.candidateSince=0;}
+ reset(initial={}){this.aspectRatio=aspect(initial);this.position=crop(initial);this.last=null;this.good=null;this.anchor=this.position.x;this.goalUntil=0;this.goalX=.5;this.candidate=null;this.candidateSince=0;}
  update(packet,now,options={}) {
+  if(Number.isFinite(options.aspectRatio))this.aspectRatio=aspect(options);
+  const baseWidth=Math.min(1,OUTPUT_ASPECT/this.aspectRatio);
   const cfg=settings(options),c=cfg.calibration,dt=this.last===null?.25:clamp(now-this.last,.001,.5);this.last=now;
   const tracks=(packet?.tracks??[]).filter(t=>[t.x,t.y,t.vx,t.vy,t.confidence].every(Number.isFinite)&&t.confidence>=.18&&t.age>=2&&t.x>=c.left&&t.x<=c.right&&t.y>=c.top&&t.y<=c.bottom&&!(t.y>=c.benchTop&&t.y<=c.benchBottom));
   let targetX=this.anchor,targetZoom=1,confidence=0,trackingState='SAFE_WIDE',reason='Bez spolehlivé detekce; široký záběr';
@@ -30,7 +32,7 @@ export class AutoDirector {
    reason=selected===lead?'Pravděpodobný aktivní únik':trackingState==='TRANSITION'?'Pohyb hry a krátká predikce':'Aktivní oblast hráčů';
    if(!moving.length){confidence*=.65;reason='Malý pohyb; konzervativní přehled';trackingState='STOPPAGE_CANDIDATE';}
    const spread=Math.max(...group.map(t=>t.x))-Math.min(...group.map(t=>t.x));
-   targetZoom=Math.min(cfg.preferredZoom,1/Math.max(.45,spread+.32));
+   targetZoom=Math.max(1,Math.min(cfg.preferredZoom,baseWidth/Math.max(baseWidth*.45,spread+baseWidth*.32)));
    if(trackingState==='TRANSITION'||selected===lead)targetZoom=Math.max(1,targetZoom-.25);
    if(confidence>=.34){this.good=now;this.anchor=targetX;
     if(moving.length&&Math.min(Math.abs(targetX-c.left),Math.abs(targetX-c.right))<.16){this.goalUntil=now+1.5;this.goalX=targetX;}
@@ -42,9 +44,9 @@ export class AutoDirector {
   const maxSpeed=.08+cfg.sensitivity*.16,delta=targetX-this.position.x;
   const x=this.position.x+(Math.abs(delta)<.012?0:clamp(delta*(1-Math.exp(-dt/ .7)),-maxSpeed*dt,maxSpeed*dt));
   // Widening near an edge must not force crop() to snap the center inward.
-  const safeZoom=.5/Math.min(.5,Math.min(this.position.x,1-this.position.x)+maxSpeed*dt);
+  const safeZoom=baseWidth/2/Math.min(.5,Math.min(this.position.x,1-this.position.x)+maxSpeed*dt);
   const zoom=Math.max(safeZoom,this.position.zoom+clamp(targetZoom-this.position.zoom,-.5*dt,.25*dt));
-  this.position=crop({x,y:this.position.y,zoom});
+  this.position=crop({x,y:this.position.y,zoom,aspectRatio:this.aspectRatio});
   return {...this.position,targetX,targetZoom,confidence,trackingState,reason,tracks};
  }
 }

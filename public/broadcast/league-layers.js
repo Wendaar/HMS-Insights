@@ -1,3 +1,4 @@
+import {rankLeaders} from '../widgets/statistics.js';
 import {translate} from './i18n.js';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const same=(a,b)=>typeof a==='string'&&typeof b==='string'&&a.toLowerCase()===b.toLowerCase();
@@ -23,6 +24,6 @@ export function renderLeagueLayer(game,settings){
   }
   if(!league.leadersAvailable)return unavailable('Hráčské statistiky HMS nyní nejsou dostupné.');
   const stats=['goals','assists','points'].includes(metric)?metric:'points',metricName={points:'Body',goals:'Góly',assists:'Asistence'}[stats];
-  const players=[...(league.leaders?.[selected]??[])].sort((a,b)=>b[stats]-a[stats]||b.points-a.points||b.goals-a.goals||a.games-b.games||a.name.localeCompare(b.name)).slice(0,5);
-  return shell(`${team}<div class="league-metric">${t(metricName)}</div>${players.length?`<ol class="strip-players">${players.map((p,i)=>`<li><b class="strip-rank">${i+1}</b>${p.imageUrl?`<img src="${esc(p.imageUrl)}" alt="${esc(p.name)}">`:'<span class="strip-photo missing-portrait" aria-hidden="true">●</span>'}<div><strong>${esc(p.name)}</strong><small>${p.games} ${t('zápasů')}</small></div><b class="strip-value">${p[stats]}</b></li>`).join('')}</ol>`:`<p class="league-empty">${t('Tým zatím nemá dostupné hráčské statistiky.')}</p>`}`,`${t('Aktuální statistiky HMS')} · ${t(league.statsScope==='group'?'Skupina':'Fáze')}`);
+  const players=rankLeaders(league.leaders?.[selected]??[],stats,5);
+  return shell(`${team}<div class="league-metric">${t(metricName)}</div>${players.length?`<ol class="strip-players">${players.map((p,i)=>`<li><b class="strip-rank">${p.tied?'T':''}${p.rank}</b>${p.imageUrl?`<img src="${esc(p.imageUrl)}" alt="${esc(p.name)}">`:'<span class="strip-photo missing-portrait" aria-hidden="true">●</span>'}<div><strong>${esc(p.name)}</strong><small>${p.games} ${t('zápasů')}</small></div><b class="strip-value">${p[stats]}</b></li>`).join('')}</ol>`:`<p class="league-empty">${t('Tým zatím nemá dostupné hráčské statistiky.')}</p>`}`,`${t('Aktuální statistiky HMS')} · ${t(league.statsScope==='group'?'Skupina':'Fáze')}`);
 }
