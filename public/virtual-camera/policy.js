@@ -1,0 +1,1 @@
+export const cameraCSP="default-src 'self'; frame-src https://vdo.ninja; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://127.0.0.1:8766; img-src 'self' data:; media-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'";
