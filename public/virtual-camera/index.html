@@ -8,7 +8,7 @@
 <button id="takeManual" type="button">Převzít ruční řízení</button><p id="autoStatus" class="hint" aria-live="polite">MANUAL · ruční řízení</p>
 <label for="sensitivity">Citlivost</label><input id="sensitivity" type="range" min="0.1" max="1" step="0.05" value="0.5">
 <label for="preferredZoom">Preferovaný zoom AUTO</label><input id="preferredZoom" type="range" min="1" max="3" step="0.05" value="1.8">
-<label class="check"><input id="showDiagnostics" type="checkbox" checked> Diagnostika pouze v režii</label>
+<label class="check"><input id="filterOfficials" type="checkbox" checked> Omezit pravděpodobné rozhodčí</label><p class="hint">Odhad pruhovaného dresu. U podobných týmových dresů jej vypněte.</p><label class="check"><input id="showDiagnostics" type="checkbox" checked> Diagnostika pouze v režii</label>
 <details><summary>Kalibrace stadionu</summary><p class="hint">Souřadnice 0–1 v celém zdroji včetně černých okrajů. Maska ledu je obdélníková; pás střídaček se ignoruje. Výchozí hodnoty odpovídají dodaným videím.</p><div class="calibration">
 <label>Levá branka X<input id="cal-left" type="number" min="0" max="1" step="0.01"></label>
 <label>Střed X<input id="cal-center" type="number" min="0" max="1" step="0.01"></label>

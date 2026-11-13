@@ -13,7 +13,7 @@ test('AUTO ignores benches and invalid detections; empty video widens without ra
 });
 test('isolated moving attacker can beat a larger inactive group; no instant candidate switch',()=>{
  const d=new AutoDirector();const tracks=[track(1,.35),track(2,.38),track(3,.4),track(4,.43),track(9,.75,.12)];
- let r;for(let i=0;i<20;i++)r=d.update({tracks},i*.25);
+ let r;for(let i=0;i<20;i++)r=d.update({time:i*.25,tracks:tracks.map(t=>t.id===9?{...t,x:.55+i*.02}:t)},i*.25);
  assert(r.targetX>.7);assert(r.x>.5);assert(r.zoom>1);
 });
 test('low certainty holds last good region, then returns to wide; pan and zoom bounded',()=>{
@@ -47,4 +47,37 @@ test('AUTO respects native panorama geometry, aspect changes, bounds and 16:9 ou
   if(i<150)assert(Math.abs(r.x-previous.x)<=.16*.25+1e-9);previous=r;
  }
  assert.equal(previous.zoom,1);
+});
+test('moving striped official cannot win over players, and officials alone cause a wide fallback',()=>{
+ const referee={...track(99,.1,.15),officialScore:.95,playerScore:0};
+ const d=new AutoDirector();let r;
+ for(let i=0;i<20;i++)r=d.update({time:i*.25,tracks:[referee,{...track(1,.75,.025),playerScore:.9},{...track(2,.78,.025),playerScore:.9}]},i*.25);
+ assert(r.targetX>.7);assert.equal(r.ignoredOfficials.length,1);assert.notEqual(r.focusId,99);
+ const alone=new AutoDirector();r=alone.update({tracks:[referee]},0);assert.equal(r.trackingState,'SAFE_WIDE');assert.equal(r.zoom,1);
+ r=new AutoDirector().update({tracks:[referee]},0,{filterOfficials:false});assert.equal(r.ignoredOfficials.length,0);assert.equal(normalize({autoSettings:{filterOfficials:false}}).autoSettings.filterOfficials,false);
+});
+test('a fast sparse counterattacker wins despite opposite majority flow and releases goal hold',()=>{
+ const d=new AutoDirector();let r;
+ for(let i=0;i<8;i++)d.update({time:i*.25,tracks:[track(1,.13,-.02),track(2,.16,-.02)]},i*.25);
+ for(let i=0;i<18;i++){
+  const runner={...track(9,.4+i*.02,.08),playerScore:.95};
+  r=d.update({time:2+i*.25,tracks:[runner,track(1,.2,-.12),track(2,.78,-.12),track(3,.82,-.12)]},2+i*.25);
+  if(i===0)assert.notEqual(r.trackingState,'GOAL_HOLD');
+ }
+ assert.equal(r.breakawayId,9);assert(r.targetX>.72);assert(r.targetZoom<=1.35);
+});
+test('a repeated frame and a single positional outlier cannot confirm a breakaway',()=>{
+ const d=new AutoDirector();const tracks=[track(1,.2),track(2,.25),{...track(9,.75,.2),playerScore:1}];
+ for(let i=0;i<30;i++){const r=d.update({time:1,tracks},i*.04);assert.equal(r.breakawayId,null);}
+ const r=d.update({time:2,tracks:tracks.map(t=>t.id===9?{...t,x:.8}:t)},1.25);assert.equal(r.breakawayId,null);
+});
+test('unresolved or plain dark jerseys remain eligible; only confident stripe evidence excludes',()=>{
+ const d=new AutoDirector();let r;
+ for(let i=0;i<10;i++)r=d.update({time:i*.25,tracks:[{...track(1,.75,.02),officialScore:0,playerScore:0}]},i*.25);
+ assert.equal(r.tracks.length,1);assert(r.targetX>.7);assert.equal(r.ignoredOfficials.length,0);
+});
+test('colour motion blobs alone cannot steer the camera or confirm a breakaway',()=>{
+ const d=new AutoDirector();let r;
+ for(let i=0;i<20;i++)r=d.update({time:i*.25,tracks:[{...track(-1,.25+i*.02,.08),source:'colour_motion',playerScore:.8},{...track(-2,.1,.05),source:'colour_motion',playerScore:.8}]},i*.25);
+ assert.equal(r.breakawayId,null);assert.equal(r.tracks.length,0);assert.equal(r.trackingState,'SAFE_WIDE');assert.equal(r.zoom,1);
 });

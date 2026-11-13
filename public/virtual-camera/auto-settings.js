@@ -7,4 +7,4 @@ export function calibration(value={}) {
  return {left,right,center:number(value.center,.5,left,right),top,bottom,
   benchTop:number(value.benchTop,.27,0,1),benchBottom:number(value.benchBottom,.34,0,1)};
 }
-export function settings(value={}) {value=value&&typeof value==='object'?value:{};return {sensitivity:number(value.sensitivity,.5,.1,1),preferredZoom:number(value.preferredZoom,1.8,1,3),calibration:calibration(value.calibration)};}
+export function settings(value={}) {value=value&&typeof value==='object'?value:{};return {sensitivity:number(value.sensitivity,.5,.1,1),preferredZoom:number(value.preferredZoom,1.8,1,3),filterOfficials:value.filterOfficials!==false,calibration:calibration(value.calibration)};}

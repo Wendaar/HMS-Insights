@@ -1,4 +1,4 @@
-"""Local YOLOX-Nano ONNX (Apache-2.0) + Supervision ByteTrack (MIT).
+"""Local YOLOX Tiny/Nano ONNX (Apache-2.0) + Supervision ByteTrack (MIT).
 No images are sent to HERO servers. No new detector is trained here.
 """
 import argparse, json, time, pathlib, threading
@@ -6,13 +6,17 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import cv2
 import numpy as np
 import supervision as sv
+from appearance import jersey_evidence
+from colour_motion import ColourMotion
 if not hasattr(sv, 'ByteTrack'):
     raise RuntimeError('ByteTrack unavailable: install requirements.txt in a clean environment (supervision==0.27.0)')
 
 class Analyzer:
-    def __init__(self, model, fps=4):
+    def __init__(self, model, fps=4, colour_motion=True):
         cv2.setNumThreads(2)
         self.net=cv2.dnn.readNetFromONNX(str(model))
+        self.detector='YOLOX-Tiny' if 'tiny' in str(model).lower() else 'YOLOX-Nano'
+        self.motion=ColourMotion() if colour_motion else None
         self.tracker=sv.ByteTrack(frame_rate=fps, track_activation_threshold=.25, minimum_consecutive_frames=2)
         self.previous={}; self.last_time=None
         grids=[]; strides=[]
@@ -24,6 +28,7 @@ class Analyzer:
 
     def reset(self):
         self.tracker.reset(); self.previous={}; self.last_time=None
+        if self.motion:self.motion=ColourMotion()
 
     def analyze(self, image, timestamp):
         started=time.perf_counter(); height,width=image.shape[:2]; boxes=[]; scores=[]
@@ -58,14 +63,22 @@ class Analyzer:
         for box,score,tid in zip(tracked.xyxy,tracked.confidence,tracked.tracker_id):
             x1,y1,x2,y2=box; x=float((x1+x2)/2/width); y=float(y2/height)
             old=self.previous.get(int(tid)); vx=vy=0.; age=1
+            evidence=jersey_evidence(image,box)
+            official=evidence['officialEvidence']; player=evidence['playerEvidence']
             if old:
                 vx=.5*old['vx']+.5*(x-old['x'])/dt; vy=.5*old['vy']+.5*(y-old['y'])/dt; age=old['age']+1
+                official=.65*old['officialScore']+.35*official
+                player=.65*old['playerScore']+.35*player
             track=dict(id=int(tid),x=x,y=y,vx=vx,vy=vy,age=age,confidence=float(score),
-                box=[float(x1/width),float(y1/height),float((x2-x1)/width),float((y2-y1)/height)])
+                box=[float(x1/width),float(y1/height),float((x2-x1)/width),float((y2-y1)/height)],
+                officialScore=official,playerScore=player,appearance=evidence,
+                role='official_candidate' if official>=.55 and player<.35 else 'player' if player>=.45 else 'unknown')
             tracks.append(track); current[int(tid)]=track
         self.previous=current; self.last_time=timestamp
+        assisted=self.motion.update(image,timestamp,tracked.xyxy) if self.motion else []
+        tracks.extend(assisted)
         return dict(time=timestamp,tracks=tracks,analysisMs=(time.perf_counter()-started)*1000,
-                    detector='YOLOX-Nano COCO / ByteTrack',width=width,height=height)
+                    detector=self.detector+' COCO / ByteTrack + jersey evidence',colourMotionCandidates=len(assisted),width=width,height=height)
 
 def offline(args):
     out=pathlib.Path(args.out); out.mkdir(parents=True,exist_ok=True); inventory=[]
@@ -75,7 +88,7 @@ def offline(args):
         try:
             cap=cv2.VideoCapture(str(path)); fps=cap.get(5); count=int(cap.get(7)); w=int(cap.get(3)); h=int(cap.get(4)); codec=int(cap.get(6))
             if fps<=0: raise ValueError('Video cannot be decoded')
-            analyzer=Analyzer(args.model,args.fps); records=[]; samples=[]; step=max(1,round(fps/args.fps)); frame=0
+            analyzer=Analyzer(args.model,args.fps,not args.no_colour_motion); records=[]; samples=[]; step=max(1,round(fps/args.fps)); frame=0
             while True:
                 ok,image=cap.read()
                 if not ok: break
@@ -84,7 +97,8 @@ def offline(args):
                     if len(samples)<6 and frame>=len(samples)*count/6:
                         annotated=image.copy()
                         for t in result['tracks']:
-                            x,y,bw,bh=t['box']; cv2.rectangle(annotated,(int(x*w),int(y*h)),(int((x+bw)*w),int((y+bh)*h)),(0,255,0),2)
+                            x,y,bw,bh=t['box']; colour=(0,0,255) if t['role']=='official_candidate' else (0,255,0)
+                            cv2.rectangle(annotated,(int(x*w),int(y*h)),(int((x+bw)*w),int((y+bh)*h)),colour,2)
                         samples.append(cv2.resize(annotated,(640,360)))
                 frame+=1
             cap.release(); stem=f'{i+1:02d}'
@@ -101,7 +115,7 @@ def offline(args):
     if any('error' in item for item in inventory): raise SystemExit(1)
 
 def serve(args):
-    analyzer=Analyzer(args.model); lock=threading.Lock(); allowed=set(args.origin)
+    analyzer=Analyzer(args.model,colour_motion=not args.no_colour_motion); lock=threading.Lock(); allowed=set(args.origin)
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self):
             if not self.authorized() or self.path!='/health': self.send_error(403); return
@@ -139,4 +153,5 @@ if __name__=='__main__':
     p=argparse.ArgumentParser(); p.add_argument('command',choices=['analyze','serve']); p.add_argument('--model',required=True)
     p.add_argument('--videos'); p.add_argument('--out',default='artifacts/auto-camera'); p.add_argument('--fps',type=int,default=4)
     p.add_argument('--port',type=int,default=8766); p.add_argument('--origin',action='append',default=['http://localhost:3015','http://127.0.0.1:3015'])
+    p.add_argument('--no-colour-motion',action='store_true',help='Disable experimental fixed-camera jersey motion assistance')
     args=p.parse_args(); offline(args) if args.command=='analyze' else serve(args)

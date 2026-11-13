@@ -4,9 +4,11 @@ Stav ověření: 13. listopadu 2026. Vývojová větev `codex/hero-auto-cameragu
 V1 je lokálně funkční experiment, nikoli ověřený autonomní kameraman pro ostré vysílání.
 Produkce nebyla nasazena. Výchozí režim při každém otevření režie je MANUAL.
 
+Aktuální revize omezuje pravděpodobné rozhodčí a rozšiřuje předstih při rychlém přesunu. Srovnání všech sedmi videí, včetně regresí a vyšší výpočetní ceny, je v [HERO_AUTO_CAMERAGUY_COMPARISON.md](HERO_AUTO_CAMERAGUY_COMPARISON.md). Výsledky níže pod původní revizí jsou zachovaným srovnávacím základem, nikoli aktuálním benchmarkem.
+
 ## Architektura a ovládání
 
-Živý tok: VDO.Ninja iframe → požadavek `getSnapshotByStreamID` přibližně 2× za sekundu → JPEG → lokální Python služba na `127.0.0.1:8766` → YOLOX-Nano COCO person detector → Supervision ByteTrack → společný JS `AutoDirector` → existující stav X/Y/zoom a synchronizace relace → původní OBS renderer.
+Živý tok: VDO.Ninja iframe → požadavek `getSnapshotByStreamID` přibližně 2× za sekundu → JPEG → lokální Python služba na `127.0.0.1:8766` → YOLOX-Tiny COCO person detector (volitelně Nano) → Supervision ByteTrack a odhad dresu → společný JS `AutoDirector` → existující stav X/Y/zoom a synchronizace relace → původní OBS renderer.
 
 VDO.Ninja obraz zůstává v původním iframe; nevzniká druhý renderer. Snímky z iframe se přijímají jen z `https://vdo.ninja`, z aktuálního okna a se správným identifikátorem požadavku. Nelze číst DOM cizího iframe. Zpracovává se celý zdroj, včetně černých okrajů; přenos snímku se omezuje na šířku 1920 px. Detektor používá tři překrývající se části zmenšené na 416×416. Snímky neodcházejí na HERO server ani do externí AI služby.
 
@@ -31,8 +33,10 @@ Parametr `-Python` může být plná cesta k Pythonu 3.12. Skript vytvoří odd�
 
 První terminál — služba:
 
+Výchozí model je nyní Tiny. `setup.ps1 -Python python -Model nano` ponechává dostupnou rychlejší variantu; pro ni v příkazech použijte `yolox_nano.onnx`. Filtr **Omezit pravděpodobné rozhodčí** je výchozí zapnutý, pro podobné týmové dresy jej lze vypnout. Pohybové barevné návrhy pouze mírně rozšiřují koridor před již potvrzeným rychlým hráčem, nikdy nejsou samostatnými hráči. Volba služby `--no-colour-motion` tuto pomoc vypne.
+
 ```powershell
-./.auto-camera-venv/Scripts/python.exe scripts/auto-camera/analyzer.py serve --model artifacts/auto-camera-models/yolox_nano.onnx
+./.auto-camera-venv/Scripts/python.exe scripts/auto-camera/analyzer.py serve --model artifacts/auto-camera-models/yolox_tiny.onnx
 ```
 
 Druhý terminál — oddělená lokální režie s relacemi pouze v paměti, bez databáze a produkčních klíčů:
@@ -48,7 +52,7 @@ Služba je určena jednomu operátorovi/trackeru v jednom procesu. Váže se jen
 ## Opakovatelná analýza všech videí
 
 ```powershell
-./.auto-camera-venv/Scripts/python.exe scripts/auto-camera/analyzer.py analyze --model artifacts/auto-camera-models/yolox_nano.onnx --videos 'C:/PRAGUE HOCKEY MASTERS/2026-2027/deve/AI camera'
+./.auto-camera-venv/Scripts/python.exe scripts/auto-camera/analyzer.py analyze --model artifacts/auto-camera-models/yolox_tiny.onnx --videos 'C:/PRAGUE HOCKEY MASTERS/2026-2027/deve/AI camera'
 node scripts/auto-camera/evaluate.mjs
 ./.auto-camera-venv/Scripts/python.exe scripts/auto-camera/render.py
 node --test
@@ -57,7 +61,7 @@ node scripts/build-media-client.js
 
 Při běžící službě lze navíc spustit `node scripts/auto-camera/check-service.mjs` (po offline analýze, která vytvoří testovací JPEG). Výstupy jsou v ignorovaném `artifacts/auto-camera/`: inventář, detekce, trajektorie každého snímku, vyhodnocení, detekční a srovnávací kontaktní listy a sedm `NN.auto.mp4`. Render používá stejné JS rozhodování jako prohlížeč; výstupy jsou 960×540 / 25 FPS / H.264, bez diagnostické grafiky a bez zvuku. Původní panoramatické MP4 zůstávají beze změn. Detekce offline běží po šesti snímcích (25/6 = 4,17 Hz); živé snímkování má přibližně 2 Hz, takže nejde o přesně stejný časový průběh živé pipeline.
 
-## Výsledky na dodaných záznamech
+## Výsledky původní revize a692b16 — srovnávací základ
 
 Všechny vstupy mají 1920×1080, 25 FPS a H.264. Celkem 217,92 s, kompletně dekódováno i vyrenderováno 5 448 snímků; analyzováno 911 vzorků. Výřez zůstává uvnitř zdroje. Všechny testovací vstupy jsou skutečně zakódované jako 16:9 s vloženými pruhy; test nativního 32:9 je geometrický, nikoli záznam ZONEWAY. Maximální horizontální rychlost ve výchozím nastavení byla 0,16 šířky zdroje/s, maximální změna zoomu 0,5×/s. Na testovacím počítači byla průměrná doba detektoru 49–56 ms/vzorek, P95 podle klipu 52–61 ms. Tyto časy nejsou měřením latence celé živé pipeline.
 
@@ -78,6 +82,8 @@ Ověřeno 627/627 Node testů a build media klienta. Testy zahrnují původní r
 V prohlížeči byly ověřeny lokální video → skutečná služba → pohyb/zoom, MANUAL jako výchozí stav, ruční převzetí bez změny výřezu 2× (shodná geometrie před/po), přehrávání/pauza a bezpečný návrat na 1× po zastavení služby. Při funkční službě nebyly hlášeny chyby v konzoli. Ověření proběhlo i s CSP použitou v aplikaci. Skutečný živý přenos VDO.Ninja, skutečný OBS a chování HTTPS prohlížeče při povolení lokální sítě nebyly bez aktivního zdroje ověřeny.
 
 ## Licence a další kroky
+
+Aktuální výchozí Tiny má SHA256 `427cc366d34e27ff7a03e2899b5e3671425c262ea2291f88bb942bc1cc70b0f7`; pochází ze stejného oficiálního vydání YOLOX. Následující hash Nano zůstává pro volitelný rychlejší model a srovnávací základ.
 
 YOLOX-Nano pochází z [oficiálního vydání YOLOX](https://github.com/Megvii-BaseDetection/YOLOX/releases/tag/0.1.1rc0), zdrojový projekt používá Apache-2.0. Supervision 0.27.0 používá MIT; texty jsou v `docs/auto-camera-licenses/`. Model má SHA256 `c789161ed43c8269fcd4e67c67eeeb4e80c622da2eb296a20bc6007bd18a0b7d`. Použit je obecný COCO model, nikoli nově natrénovaný hokejový model. Knihovny a FFmpeg mají vlastní licenční podmínky; setup je stahuje lokálně, jejich binární soubory se tímto PR nedistribuují. Dokumentace VDO.Ninja: [iframe API](https://docs.vdo.ninja/guides/iframe-api-documentation), [zdroj implementace snapshotů](https://github.com/steveseguin/vdo.ninja/blob/master/main.js).
 
