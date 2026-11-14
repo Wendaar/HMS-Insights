@@ -106,7 +106,7 @@ async function loadLeague(game){
   leagueLoading=true;lastLeagueRead=Date.now();
   try{const data=await apiRequest({gameId:game.ID,league:'1'});game.league=apiGame(data,org,game.ID).league??{standingsAvailable:false,leadersAvailable:false};}
   catch{game.league={standingsAvailable:false,leadersAvailable:false};}
-  finally{leagueLoading=false;const current=selectedGame();if(current?.ID===game.ID)current.league=game.league;if(mode==='overlay')renderOverlay(current??game);else renderControl();}
+  finally{leagueLoading=false;const stored=state.games.find(g=>String(g.ID).toLowerCase()===String(game.ID).toLowerCase());if(stored)stored.league=game.league;const current=selectedGame();if(mode==='overlay')renderOverlay(current??game);else renderControl();}
 }
 async function loadPartners(){
   lastPartnerRead=Date.now();
