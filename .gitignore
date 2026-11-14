@@ -13,3 +13,5 @@ test-output/
 test-results.txt
 
 artifacts/
+.auto-camera-venv/
+__pycache__/

@@ -60,3 +60,7 @@ Reference opravy: [VDO autoplay](https://docs.vdo.ninja/common-errors-and-known-
 V2: asistované sledování označené oblasti hry s ručním převzetím, limity rychlosti pohybu a zoomu, kalibrace rybího oka, knihovna stanovišť. Nejprve vyřešit oprávněný přístup ke snímkům mimo cizí iframe a ověřit kvalitu zdroje.
 
 V3: autonomní odhad oblasti hry a plánování záběru, měření kvality na reálných záznamech stadionů, při nízké jistotě široký obraz a okamžité ruční převzetí. Samotná detekce puku není záruka dobré režie. O případné mediální infrastruktuře rozhodnou výsledky; nejde o vlastnost současné výstupní stránky.
+
+## Experimentální AUTO Cameraguy
+
+Volitelné lokální rozšíření nyní přidává AUTO nad stávající renderer. Výchozí je MANUAL. Detekce hráčů, kalibrace, bezpečné oddálení, postup spuštění a výsledky všech sedmi klipů jsou v [HERO_AUTO_CAMERAGUY.md](HERO_AUTO_CAMERAGUY.md). Jde o experimentální odhad herní oblasti; předchozí plán V2/V3 neznamená, že je autonomní režie ověřená pro ostré vysílání.

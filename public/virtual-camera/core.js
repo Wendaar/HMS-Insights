@@ -1,3 +1,4 @@
+import {settings} from './auto-settings.js';
 export const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
 export const OUTPUT_WIDTH=1920,OUTPUT_HEIGHT=1080,OUTPUT_ASPECT=OUTPUT_WIDTH/OUTPUT_HEIGHT;
 export const aspect=s=>Number.isFinite(Number(s.aspectRatio))&&Number(s.aspectRatio)>=.25&&Number(s.aspectRatio)<=8?Number(s.aspectRatio):OUTPUT_ASPECT;
@@ -22,4 +23,4 @@ export function cameraKeyPatch(state,key,shift=false){
  const step=(shift?.003:.02)/state.zoom;
  return {arrowleft:{x:state.x-step},arrowright:{x:state.x+step},arrowup:{y:state.y-step},arrowdown:{y:state.y+step},w:{zoom:state.zoom+.1},s:{zoom:state.zoom-.1},'+':{zoom:state.zoom+.1},'=':{zoom:state.zoom+.1},'-':{zoom:state.zoom-.1},r:{x:.5,y:.5,zoom:1}}[key.toLowerCase()];
 }
-export function normalize(s){if(typeof s!=='object'||!s)throw Error('Neplatná konfigurace');return {...crop(s),aspectRatio:aspect(s),source:s.source?sourceURL(s.source):'',smooth:s.smooth===true,venue:String(s.venue||'').slice(0,80)};}
+export function normalize(s){if(typeof s!=='object'||!s)throw Error('Neplatná konfigurace');return {...crop(s),aspectRatio:aspect(s),source:s.source?sourceURL(s.source):'',smooth:s.smooth===true,venue:String(s.venue||'').slice(0,80),autoSettings:settings(s.autoSettings)};}

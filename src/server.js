@@ -1,4 +1,5 @@
 import {createWidgetsHandler} from './web/widgets-handler.js';
+import {cameraCSP} from '../public/virtual-camera/policy.js';
 import {createVirtualCameraHandler} from './web/virtual-camera-handler.js';
 import {createPhotoArchiveHandler} from './web/photo-archive-handler.js';
 const photoArchiveHandler=createPhotoArchiveHandler();
@@ -56,7 +57,7 @@ const assets = {
   '/hms-favicon-control-v2.png':['image/png','hms-favicon-white-v3.png'],
   '/hms-favicon-public-v2.png':['image/png','hms-favicon-white-v3.png'],
   '/hms-favicon-32.png':['image/png','hms-favicon-white-v3.png'],
-  ...Object.fromEntries(['index.html','output.html','style.css','app.js','core.js','demo.svg'].map(file=>['/virtual-camera/'+file,[file.endsWith('.js')?'text/javascript; charset=utf-8':file.endsWith('.css')?'text/css':file.endsWith('.svg')?'image/svg+xml':'text/html; charset=utf-8','virtual-camera/'+file]])),
+  ...Object.fromEntries(['index.html','output.html','style.css','app.js','core.js','auto.js','auto-settings.js','auto-client.js','demo.svg'].map(file=>['/virtual-camera/'+file,[file.endsWith('.js')?'text/javascript; charset=utf-8':file.endsWith('.css')?'text/css':file.endsWith('.svg')?'image/svg+xml':'text/html; charset=utf-8','virtual-camera/'+file]])),
   '/virtual-camera':['text/html; charset=utf-8','virtual-camera/index.html'],
   '/virtual-camera/output':['text/html; charset=utf-8','virtual-camera/output.html'],
   '/venue-media.js':['text/javascript; charset=utf-8','venue-media.js'],
@@ -354,6 +355,7 @@ export const server = createServer(async (request, response) => {
     return;
   }
   if (assets[url.pathname]) {
+    if(url.pathname.startsWith('/virtual-camera'))response.setHeader('Content-Security-Policy',cameraCSP);
     const [contentType, filename] = assets[url.pathname];
     response.writeHead(200, { "content-type": contentType, "cache-control": "no-store" });
     response.end(await readFile(join(publicDirectory, filename)));
