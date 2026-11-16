@@ -16,6 +16,6 @@ http.createServer(async(req,res)=>{try{
  }
  let path=decodeURIComponent(u.pathname);if(path==='/')path='/virtual-camera/';if(path==='/virtual-camera'||path==='/virtual-camera/')path='/virtual-camera/index.html';if(path==='/virtual-camera/output')path='/virtual-camera/output.html';
  const file=resolve(root,'.'+path);if(!file.startsWith(root+sep)){res.writeHead(403);res.end();return;}
- const type={'.html':'text/html; charset=utf-8','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.png':'image/png'}[extname(file)]??'application/octet-stream';
+ const type={'.html':'text/html; charset=utf-8','.js':'text/javascript','.mjs':'text/javascript','.wasm':'application/wasm','.json':'application/json','.css':'text/css','.svg':'image/svg+xml','.png':'image/png'}[extname(file)]??'application/octet-stream';
  const data=await readFile(file);res.setHeader('Content-Type',type);res.setHeader('Cache-Control','no-store');res.setHeader('Content-Security-Policy',cameraCSP);res.end(data);
  }catch{res.writeHead(404);res.end('Not found');}}).listen(port,'127.0.0.1',()=>console.log('Local isolated camera: http://127.0.0.1:'+port+'/virtual-camera/'));

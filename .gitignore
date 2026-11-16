@@ -15,3 +15,5 @@ test-results.txt
 artifacts/
 .auto-camera-venv/
 __pycache__/
+public/virtual-camera/runtime/
+.env*

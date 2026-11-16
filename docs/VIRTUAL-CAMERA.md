@@ -63,4 +63,4 @@ V3: autonomní odhad oblasti hry a plánování záběru, měření kvality na r
 
 ## Experimentální AUTO Cameraguy
 
-Volitelné lokální rozšíření nyní přidává AUTO nad stávající renderer. Výchozí je MANUAL. Detekce hráčů, kalibrace, bezpečné oddálení, postup spuštění a výsledky všech sedmi klipů jsou v [HERO_AUTO_CAMERAGUY.md](HERO_AUTO_CAMERAGUY.md). Jde o experimentální odhad herní oblasti; předchozí plán V2/V3 neznamená, že je autonomní režie ověřená pro ostré vysílání.
+Volitelné rozšíření přidává AUTO nad stávající renderer. Výchozí je MANUAL; webová analýza běží v Chrome/Edge bez instalace Pythonu. Připojte VDO.Ninja zdroj, ponechte Web · rychlá a zapněte AUTO. Režie musí zůstat otevřená a notebook nesmí usnout. Vyšší kvalita používá větší model, kompatibilní CPU umožňuje obejít problém s GPU. Detekce hráčů, kalibrace, bezpečné oddálení, volitelná Python varianta a výsledky sedmi klipů jsou v [HERO_AUTO_CAMERAGUY.md](HERO_AUTO_CAMERAGUY.md). Jde o experimentální odhad herní oblasti; předchozí plán V2/V3 neznamená, že je autonomní režie ověřená pro ostré vysílání.

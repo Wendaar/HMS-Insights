@@ -20,6 +20,7 @@
     "@vercel/blob": "^2.8.2"
   },
   "devDependencies": {
-    "esbuild": "^0.28.2"
+    "esbuild": "^0.28.2",
+    "onnxruntime-web": "1.31.1"
   }
 }

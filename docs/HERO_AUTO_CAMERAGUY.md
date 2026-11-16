@@ -1,14 +1,25 @@
 # HERO Auto Cameraguy V1 — experimentální rozšíření
 
-Stav ověření: 13. listopadu 2026. Vývojová větev `codex/hero-auto-cameraguy`.
-V1 je lokálně funkční experiment, nikoli ověřený autonomní kameraman pro ostré vysílání.
-Produkce nebyla nasazena. Výchozí režim při každém otevření režie je MANUAL.
+Stav ověření: 16. listopadu 2026. Vývojová větev `codex/hero-auto-cameraguy`.
+V1 je experimentální kameraman; před použitím v ostrém vysílání vyžaduje přejímku na konkrétním stadionu. Výchozí režim při každém otevření režie je MANUAL.
+
+## Webové AUTO bez instalace
+
+Režie nyní ve výchozím nastavení analyzuje obraz přímo ve Web Workeru v aktuálním Chrome nebo Edge. Python není potřeba. Připojte přijímací VDO.Ninja URL, ponechte **Web · rychlá (bez instalace)** a přepněte na AUTO. Režie musí zůstat otevřená, aktivní a počítač nesmí usnout. OBS použije výstupní URL vygenerovanou touto režijní relací na stejném hostiteli. Preview a produkční relace jsou oddělené.
+
+První zapnutí stahuje z téhož hostitele ONNX Runtime Web a model: rychlý režim YOLOX-Nano (3,7 MB), vyšší kvalita YOLOX-Tiny (20,2 MB). WebGPU běží s jedním vláknem WASM a bez požadavku na COOP/COEP; GPU bootstrap používá přibližně 29 MB WASM. Při nedostupném WebGPU se použije Nano na CPU; volba **Web · kompatibilní CPU** jej umožňuje vynutit. Stav ukazuje skutečný backend i model. Výkon závisí na notebooku, ovladačích a nastavení prohlížeče. Při chybě nebo chybějící čerstvé analýze se kamera bezpečně oddálí; ruční převzetí zůstává dostupné.
+
+Web používá stejné tři výřezy, dekódování YOLOX, odhad pruhovaného dresu a společný `AutoDirector`. Browser tracker je vlastní omezené přiřazování detekcí s predikcí pohybu a vzhledem, **není to Python ByteTrack**. Webová cesta nepoužívá doplňkové barevné pohybové stopy z Pythonu. Výsledky Python benchmarku sedmi videí nelze automaticky připsat webové variantě.
+
+Test záznamu je dostupný i na HTTPS: vybraný MP4 se čte pouze v prohlížeči, nenahrává se na server. Ovládá náhled režie; OBS nadále používá živý VDO.Ninja zdroj. Pro návrat k živému obrazu klikněte Obnovit video. Kontrola místního MP4 sama neověřuje živé VDO snímky ani přehrání v OBS.
+
+Build `node scripts/build-media-client.js` připravuje ignorovaný adresář `public/virtual-camera/runtime` z pevné npm verze `onnxruntime-web@1.31.1`; modely stahuje z oficiálního YOLOX release a ověřuje SHA256. Lokálně může využít ověřenou výzkumnou cache. K runtime se přikládají licence ONNX Runtime a YOLOX. CSP na kamerové cestě povoluje WebAssembly a vlastní worker; ostatní části webu se nemění. Instalace Pythonu níže je volitelná pro pokročilý režim a offline benchmark.
 
 Aktuální revize omezuje pravděpodobné rozhodčí a rozšiřuje předstih při rychlém přesunu. Srovnání všech sedmi videí, včetně regresí a vyšší výpočetní ceny, je v [HERO_AUTO_CAMERAGUY_COMPARISON.md](HERO_AUTO_CAMERAGUY_COMPARISON.md). Výsledky níže pod původní revizí jsou zachovaným srovnávacím základem, nikoli aktuálním benchmarkem.
 
 ## Architektura a ovládání
 
-Živý tok: VDO.Ninja iframe → požadavek `getSnapshotByStreamID` přibližně 2× za sekundu → JPEG → lokální Python služba na `127.0.0.1:8766` → YOLOX-Tiny COCO person detector (volitelně Nano) → Supervision ByteTrack a odhad dresu → společný JS `AutoDirector` → existující stav X/Y/zoom a synchronizace relace → původní OBS renderer.
+Živý tok: VDO.Ninja iframe → požadavek `getSnapshotByStreamID` přibližně 2× za sekundu → webový worker s YOLOX a browser trackerem (výchozí), nebo volitelná lokální Python služba na `127.0.0.1:8766` s YOLOX-Tiny a Supervision ByteTrack → společný JS `AutoDirector` → existující stav X/Y/zoom a synchronizace relace → původní OBS renderer.
 
 VDO.Ninja obraz zůstává v původním iframe; nevzniká druhý renderer. Snímky z iframe se přijímají jen z `https://vdo.ninja`, z aktuálního okna a se správným identifikátorem požadavku. Nelze číst DOM cizího iframe. Zpracovává se celý zdroj, včetně černých okrajů; přenos snímku se omezuje na šířku 1920 px. Detektor používá tři překrývající se části zmenšené na 416×416. Snímky neodcházejí na HERO server ani do externí AI služby.
 
