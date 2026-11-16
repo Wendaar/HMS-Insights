@@ -1,5 +1,7 @@
 # HMS / Vercel architecture audit — 2026-11-17
 
+> **Phase 2 supersedes the preliminary conclusions below:** see [full inventory, final seven-project decision and implementation plan](VERCEL-ARCHITECTURE-PHASE-2.md). This original text is retained as the historical Phase 1 baseline. Its five/six-project proposal, incomplete inventory and next-action statements are no longer the current recommendation. Historical usage figures below have no attached verifiable export and must not be used for per-app traffic attribution.
+
 **Status:** AUDIT ONLY; proposal, not implementation. **Scope:** `Wendaar/HMS-Insights` default branch, selected implementation files and existing `docs/` documents. No infrastructure changes, deployment, schema migration, or production write. The original request is `HMS Architecture & Vercel Optimization`.
 
 ## Executive decision
