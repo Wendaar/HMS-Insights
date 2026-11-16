@@ -15,6 +15,26 @@ Test záznamu je dostupný i na HTTPS: vybraný MP4 se čte pouze v prohlížeč
 
 Build `node scripts/build-media-client.js` připravuje ignorovaný adresář `public/virtual-camera/runtime` z pevné npm verze `onnxruntime-web@1.31.1`; modely stahuje z oficiálního YOLOX release a ověřuje SHA256. Lokálně může využít ověřenou výzkumnou cache. K runtime se přikládají licence ONNX Runtime a YOLOX. CSP na kamerové cestě povoluje WebAssembly a vlastní worker; ostatní části webu se nemění. Instalace Pythonu níže je volitelná pro pokročilý režim a offline benchmark.
 
+### Ověření webové varianty 16. 11. 2026
+
+Prošel build a všech 637 Node testů, včetně pěti nových testů dekódování modelu, překryvů, dresu, pohybu/ID a jednoznačného přiřazování. V lokální webové režii na `127.0.0.1:3015` bez spuštěné Python služby byly otevřeny všechny původní MP4 a přímo ve stavu režie ověřen výsledek modelu. Následující časy jsou jednotlivé pozorované vzorky, nikoli průměry či benchmark výkonu:
+
+| Klip | Režim | Pozorovaný stav | Čas analýzy |
+| --- | --- | --- | --- |
+| 01 Attack of yellow… | Web GPU, vyšší kvalita | PLAY_AREA | 154 ms |
+| 02 counter attack… | Web GPU, rychlá | BREAKAWAY_CANDIDATE | 143 ms |
+| 03 Faceoff in offensive… | Web GPU, rychlá | BREAKAWAY_CANDIDATE | 90 ms |
+| 04 gameplaye… | Web GPU, rychlá | PLAY_AREA | 99 ms |
+| 05 long pass… | Web GPU / vynucené CPU | BREAKAWAY_CANDIDATE / BREAKAWAY_HOLD | 161 / 163 ms |
+| 06 Pause and pregame | Web GPU, rychlá | SAFE_WIDE | 162 ms |
+| 07 Puck drop… | Web GPU, rychlá | PLAY_AREA | 99 ms |
+
+Ověřeno také ruční převzetí a návrat na široký záběr po skončení videa. Jde o funkční zkoušku browser cesty, nikoli nezávisle anotované srovnání přesnosti nebo kompletní nový export sedmi trajektorií. Štítky situací jsou heuristický odhad. Původní porovnání Python revizí zůstává v samostatném reportu. Živý VDO.Ninja přenos a skutečný OBS z tohoto nasazení dosud ověřené nejsou.
+
+### Blokace nasazení
+
+Preview nasazení přes oficiální Vercel CLI bylo 16. 11. odmítnuto: `Your Team exceeded our fair use limits and has been blocked.` Dashboard týmu `wendaar` potvrdil pozastavení od 15. 11. 2026 kvůli Edge Requests na Hobby tarifu, s koncem 15. 12. 2026. Nabízí Upgrade to Pro; tarif ani fakturace nebyly změněny. Veřejná URL nové webové varianty proto zatím není ověřená a produkce nebyla aktualizovaná.
+
 Aktuální revize omezuje pravděpodobné rozhodčí a rozšiřuje předstih při rychlém přesunu. Srovnání všech sedmi videí, včetně regresí a vyšší výpočetní ceny, je v [HERO_AUTO_CAMERAGUY_COMPARISON.md](HERO_AUTO_CAMERAGUY_COMPARISON.md). Výsledky níže pod původní revizí jsou zachovaným srovnávacím základem, nikoli aktuálním benchmarkem.
 
 ## Architektura a ovládání
