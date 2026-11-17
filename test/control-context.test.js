@@ -13,6 +13,15 @@ test('named season catalog retains identity and rejects cross-organization rows'
  await assert.rejects(controlContextCatalog('PHM',{...options,loadLeagues:async()=>[{...row,organization_id:game}]}));
  await assert.rejects(controlContextCatalog('unknown',options));
 });
+
+test('Control Centre includes upcoming HMS tournaments without importing a game',async()=>{
+ const options={env:{},loadLeagues:async()=>[],fetchOrganization:async()=>({organizationId:org}),fetchCompetitions:async()=>[{competitionId:game,name:'PRAGUE - NOVEMBER - 2026',Seasons:[{seasonId:season,name:'PRAGUE 2026'}]}]};
+ const result=await controlContextCatalog('PHM',options);
+ assert.equal(result.items[0].seasonId,season.toLowerCase());
+ assert.match(result.items[0].name,/PRAGUE/);assert.ok(result.items[0].gamesPath);
+ assert.equal(result.source,'hms-and-imported-seasons');
+ await assert.rejects(controlContextCatalog('PHM',{...options,fetchOrganization:async()=>({organizationId:game})}),/mismatch/);
+});
 test('named game choices are bound to organization and season',async()=>{
  const options={env:{},loadControlGames:async()=>[{...row,game_id:game,played_on:'2026-10-24',home_team_name:'Domácí',away_team_name:'Hosté'}]};
  const result=await controlGameCatalog('PHM',season,options);assert.equal(result.items[0].label,'Domácí — Hosté · 2026-10-24');assert.equal(result.items[0].gameId,game);

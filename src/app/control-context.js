@@ -2,6 +2,7 @@ import {organizationConfig,organizationForId} from './organizations.js';
 import {loadControlLeagues,loadControlGames,loadControlSeason} from '../infrastructure/postgres-repository.js';
 import {seasonLinks} from '../domain/season-links.js';
 import {isGameId} from '../domain/game-summary.js';
+import {loadPortalHmsCatalog} from './portal-hms-catalog.js';
 export async function controlContextCatalog(org,options={}){
   const config=organizationConfig(org,options.env??process.env);
   const rows=await(options.loadLeagues??loadControlLeagues)(config.id,options);
@@ -11,7 +12,10 @@ export async function controlContextCatalog(org,options={}){
     if(!isGameId(row.season_id)||!row.competition_name||!row.season_name)continue;
     items.set(row.season_id.toLowerCase(),{seasonId:row.season_id.toLowerCase(),competition:String(row.competition_name).slice(0,120),season:String(row.season_name).slice(0,80),name:`${String(row.competition_name).slice(0,120)} · ${String(row.season_name).slice(0,80)}`});
   }
-  return {org:config.code,items:seasonLinks(config.slug,[...items.values()]).sort((a,b)=>a.name.localeCompare(b.name,'cs')),source:'imported-hms-seasons'};
+  const live=await loadPortalHmsCatalog(config,options);
+  for(const item of live??[])items.set(item.seasonId,{seasonId:item.seasonId,competition:item.competition,season:item.season,name:item.name});
+  if(items.size>300)throw new Error('Catalog size');
+  return {org:config.code,items:seasonLinks(config.slug,[...items.values()]).sort((a,b)=>a.name.localeCompare(b.name,'cs')),source:live===null?'imported-hms-seasons':'hms-and-imported-seasons'};
 }
 export async function controlSeasonLink(seasonId,options={}){
  if(!isGameId(seasonId))throw new TypeError('Neplatná sezona.');
