@@ -5,6 +5,7 @@ import {isGameId} from '../domain/game-summary.js';
 import {sportingImage} from '../../public/game-report-media.js';
 import {loadSponsorCatalog} from './broadcast-sponsors.js';
 import {fetchOrganization,fetchGameDetail,hmsConfigFromEnv} from '../hms/client.js';
+import {loadPortalHmsCatalog} from './portal-hms-catalog.js';
 
 export const portalSections=['home','venues','rules','system','teams','standings','statistics','goalies','disciplinaries','games','insights','comparison','extras'];
 const text=(v,max=160)=>typeof v==='string'?v.trim().slice(0,max):'';
@@ -35,7 +36,14 @@ export async function portalCatalog(org,options={}){
   const item={seasonId:id(r.season_id),competitionId:id(r.competition_id),competition:text(r.competition_name),season:text(r.season_name),name:text(r.competition_name)+' · '+text(r.season_name),sampleGameId:id(r.sample_game_id),competitionLogoUrl:sportingImage(r.competition_logo_url),seasonLogoUrl:sportingImage(r.season_logo_url),organizationLogoUrl:sportingImage(r.organization_logo_url)};
   if(items.has(item.seasonId)&&items.get(item.seasonId).competitionId!==item.competitionId)throw new Error('ambiguous season');items.set(item.seasonId,item);
  }
- return {org:config.code,items:[...items.values()].sort((a,b)=>a.competition.localeCompare(b.competition,'cs')||b.season.localeCompare(a.season,'cs')),source:'imported-hms-seasons'};
+ const live=await loadPortalHmsCatalog(config,options);
+ for(const item of live??[]){
+  const previous=items.get(item.seasonId);
+  if(previous&&previous.competitionId!==item.competitionId)throw new Error('ambiguous HMS season');
+  items.set(item.seasonId,{...item,sampleGameId:previous?.sampleGameId??null});
+ }
+ if(items.size>300)throw new Error('catalog size');
+ return {org:config.code,items:[...items.values()].sort((a,b)=>a.competition.localeCompare(b.competition,'cs')||b.season.localeCompare(a.season,'cs')),source:live===null?'imported-hms-seasons':'hms-and-imported-seasons'};
 }
 const brandingCache=new Map(),brandingPending=new Map();
 export async function portalBranding(org,season,options={}){
