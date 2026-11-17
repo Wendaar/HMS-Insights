@@ -20,3 +20,12 @@ export function teamDivisions(teams,groups){
  if(unassigned.length)divisions.push({id:'unassigned',name:null,teams:unassigned,teamCount:unassigned.length});
  return {teamCount:new Set(teams.map(t=>t.id)).size,divisions};
 }
+export function directorySourceMessage(data,lang='cs'){
+ if(data.source?.startsWith('hms-live'))return data.membershipComplete===false
+  ?(lang==='en'?'Groups and phases are read from HMS. Some team assignments are temporarily unavailable; counts are incomplete.':'Skupiny a fáze načítáme z HMS. Část přiřazení týmů je dočasně nedostupná; počty nejsou úplné.')
+  :(lang==='en'?'Teams and their group/phase assignments are read directly from HMS, including before the first game.':'Týmy a jejich přiřazení ke skupinám a fázím načítáme přímo z HMS, i před prvním zápasem.');
+ return lang==='en'?'This overview uses imported games for the selected season. Newly registered teams, venues and phases without imported games may be missing.':'Přehled vychází z importovaných zápasů této sezony. Nově přihlášené týmy, stadiony a fáze bez importovaného zápasu zde zatím nemusí být.';
+}
+export function teamPhaseNames(team,groups){
+ return groups.flatMap(g=>g.phases.filter(p=>team.phaseIds?.includes(p.id)).map(p=>g.name+' · '+p.name));
+}

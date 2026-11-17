@@ -26,7 +26,7 @@ export async function widgetContext(org,input={},options={}){
  const group=scope.groupId?directory.groups.find(g=>g.id===scope.groupId):null;
  const phase=scope.phaseId?directory.groups.flatMap(g=>g.phases.map(p=>({...p,group:g}))).find(p=>p.id===scope.phaseId):null;
  const team=scope.teamId?directory.teams.find(t=>t.id===scope.teamId):null;
- if(scope.groupId&&!group||scope.phaseId&&(!phase||group&&phase.group.id!==group.id)||scope.teamId&&(!team||group&&!team.groupIds.includes(group.id)||phase&&(!team.groupIds.includes(phase.group.id)||phase.teamIds?.length&&!phase.teamIds.includes(team.id))))throw new TypeError('Unknown widget group/phase/team');
+ if(scope.groupId&&!group||scope.phaseId&&(!phase||group&&phase.group.id!==group.id)||scope.teamId&&(!team||group&&!team.groupIds.includes(group.id)||phase&&(!team.groupIds.includes(phase.group.id)||phase.teamIds&&!phase.teamIds.includes(team.id))))throw new TypeError('Unknown widget group/phase/team');
  if(phase&&!scope.groupId)scope.groupId=phase.group.id;
  let branding=null;try{branding=await(options.portalBranding??portalBranding)(org,season,options);}catch{/* Identity is optional. */}
  const effectiveGroup=group??phase?.group,competitionLogoUrl=branding?.competition?.logoUrl??season.competitionLogoUrl??null;
@@ -35,7 +35,7 @@ export async function widgetContext(org,input={},options={}){
 }
 export async function readWidgetScopeCatalog(org,input,options={}){
  const context=await widgetContext(org,input,options);
- return {organization:{name:context.organization.name,id:context.organization.id.toLowerCase()},season:context.season,groups:context.directory.groups,teams:context.directory.teams,source:'imported-hms-games'};
+ return {organization:{name:context.organization.name,id:context.organization.id.toLowerCase()},season:context.season,groups:context.directory.groups,teams:context.directory.teams,source:context.directory.source};
 }
 export function visitorPhaseScope(context,input){
  if(input.visitorPhaseId===undefined)return context.scope;

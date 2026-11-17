@@ -6,14 +6,15 @@ const same=(a,b)=>typeof a==='string'&&typeof b==='string'&&a.toLowerCase()===b.
 const label=v=>typeof v==='string'?v.trim().slice(0,200):null;
 const count=v=>v!==null&&v!==undefined&&v!==''&&Number.isSafeInteger(Number(v))&&Number(v)>=0?Number(v):null;
 const points=v=>v!==null&&v!==undefined&&v!==''&&Number.isFinite(Number(v))&&Math.abs(Number(v))<=1000000?Number(v):null;
-export function officialStandings(rows){
+export function officialStandings(rows,{allowMissing=false}={}){
   if(!Array.isArray(rows)||rows.length>2000)throw new Error('Invalid standings');
   const seen=new Set();
   // The official public table renders rows in API order. Rank the complete table
   // before selecting the two match teams; never renumber a filtered excerpt.
   return rows.map((r,index)=>{
     const id=isGameId(r.TeamId)?r.TeamId.toLowerCase():null,name=label(r['Team Name']),games=count(r['Total Games']),totalPoints=points(r['Total Points']);
-    if(!id||seen.has(id)||!name||games===null||totalPoints===null)throw new Error('Invalid standings row');seen.add(id);
+    const missing=v=>v===null||v===undefined||v==='';
+    if(!id||seen.has(id)||!name||games===null&&(!allowMissing||!missing(r['Total Games']))||totalPoints===null&&(!allowMissing||!missing(r['Total Points'])))throw new Error('Invalid standings row');seen.add(id);
     return {id,name,shortName:label(r['Team Name Short']),logoUrl:sportingImage(r.TeamLogo),rank:index+1,games,points:totalPoints,
       wins:count(r.Wins),draws:count(r.Draws),losses:count(r.Losses),score:typeof r.Score==='string'&&/^\d{1,4}:\d{1,4}$/.test(r.Score)?r.Score:null};
   });
@@ -38,6 +39,20 @@ async function readTable(endpoint,params,options){
   const buffer=new Uint8Array(size);let offset=0;for(const chunk of chunks){buffer.set(chunk,offset);offset+=chunk.length;}return JSON.parse(new TextDecoder().decode(buffer));
 }
 const statisticsCache=new Map(),statisticsPending=new Map(),testCaches=new WeakMap();
+// Membership is published by HMS even before games exist. Scope IDs must first
+// be verified through the organization-bound competition hierarchy by the caller.
+export async function readDirectoryTeams(scope,options={}){
+ const entries=Object.entries(scope).filter(([key])=>['seasonId','groupId','phaseId'].includes(key));
+ if(entries.length!==1||!isGameId(entries[0][1]))throw new TypeError('directory scope');
+ const rows=await readTable('standings',Object.fromEntries(entries),options);
+ if(!Array.isArray(rows)||rows.length>2000)throw new Error('Invalid membership table');
+ const seen=new Set();
+ return rows.map(row=>{
+  const id=isGameId(row.TeamId)?row.TeamId.toLowerCase():null,name=label(row['Team Name']);
+  if(!id||!name||seen.has(id))throw new Error('Invalid membership identity');seen.add(id);
+  return {id,name,logoUrl:sportingImage(row.TeamLogo)};
+ });
+}
 // One bounded official table per scope/role. All metrics and instances reuse it.
 export async function readOfficialStatistics(scope,role,options={}){
   const params=scope.phaseId?{[role==='goalie'?'phaseId':'phaseIds']:scope.phaseId}:scope.groupId?{groupId:scope.groupId}:scope.seasonId?{seasonId:scope.seasonId}:null;

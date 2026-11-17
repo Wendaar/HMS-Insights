@@ -24,9 +24,12 @@ server-verified organization/season/group/phase ownership, with no Sheet fallbac
 
 ## Data and scope
 
-- Season catalogue: shared `controlContextCatalog`; groups and phases currently
-  require at least one imported game in that season. This is not a complete API
-  season directory. An unimported phase will not appear yet.
+- Season catalogue: shared `controlContextCatalog`. Groups and phases use the
+  organization-verified HMS hierarchy and shared live directory, so they are
+  selectable before the first imported game. Official scoped standings provide
+  the assigned teams, including zero-game teams. Imported scope is retained as
+  a fallback for unavailable/legacy hierarchies; no organization-wide team list
+  or cross-season history is substituted.
 - Standings: official public HMS `standings?phaseId=…`. API order is retained as
   official rank, including teams with zero games. No local standings tiebreaks.
 - Player / goalie lists: `playersStats?phaseIds=…` and `goaliesStats?phaseIds=…`.
@@ -35,6 +38,11 @@ server-verified organization/season/group/phase ownership, with no Sheet fallbac
   list; no positions are inferred from points. Goalie lists remain separate.
   A neutral avatar reserves the same space for missing or failed images.
   Null source is visibly unavailable, not zero.
+- If a statistics table is temporarily unavailable but phase membership has been
+  verified, selectors retain only that phase's assigned teams and unknown rank,
+  games, points and results remain null/dashes. Official zeros stay zero. Form,
+  per-game ratings and history-dependent metrics stay unavailable before games
+  or without enough verified history. No forecasts are generated.
 - All these numbers cover the selected phase, **not a calendar month**.
 - Form: shared imported FINISHED results, same organization, season, group and
   phase. All counts and goal totals must match the official team table. If the

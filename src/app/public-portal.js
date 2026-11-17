@@ -6,6 +6,7 @@ import {sportingImage} from '../../public/game-report-media.js';
 import {loadSponsorCatalog} from './broadcast-sponsors.js';
 import {fetchOrganization,fetchGameDetail,hmsConfigFromEnv} from '../hms/client.js';
 import {loadPortalHmsCatalog} from './portal-hms-catalog.js';
+import {loadPortalHmsDirectory} from './portal-hms-directory.js';
 
 export const portalSections=['home','venues','rules','system','teams','standings','statistics','goalies','disciplinaries','games','insights','comparison','extras'];
 const text=(v,max=160)=>typeof v==='string'?v.trim().slice(0,max):'';
@@ -83,12 +84,21 @@ export async function validatePortalSeasons(org,settings,options={}){
   if(scope.groupId||scope.phaseId||scope.teamId){
    const season=seasons.find(s=>s.seasonId===(scope.seasonId??settings.defaultSeasonId));if(!season||scope.competitionId&&scope.competitionId!==season.competitionId)throw new TypeError('widget season');
    const directory=await(options.portalDirectory??portalDirectory)(org,season.seasonId,options),group=directory.groups.find(g=>g.id===scope.groupId),phase=directory.groups.flatMap(g=>g.phases.map(p=>({...p,groupId:g.id}))).find(p=>p.id===scope.phaseId);
-   if(scope.groupId&&!group||scope.phaseId&&(!phase||group&&phase.groupId!==group.id)||scope.teamId&&!directory.teams.some(t=>t.id===scope.teamId&&(!scope.groupId||t.groupIds.includes(scope.groupId))&&(!phase||t.groupIds.includes(phase.groupId)&&(!phase.teamIds?.length||phase.teamIds.includes(t.id)))))throw new TypeError('widget directory');
+   if(scope.groupId&&!group||scope.phaseId&&(!phase||group&&phase.groupId!==group.id)||scope.teamId&&!directory.teams.some(t=>t.id===scope.teamId&&(!scope.groupId||t.groupIds.includes(scope.groupId))&&(!phase||t.groupIds.includes(phase.groupId)&&(!phase.teamIds||phase.teamIds.includes(t.id)))))throw new TypeError('widget directory');
   }
  }
  return catalog.items.filter(i=>settings.seasonIds.includes(i.seasonId));
 }
 export async function portalDirectory(org,seasonId,options={}){
+ const config=organizationConfig(org,options.env??process.env);
+ const live=await loadPortalHmsDirectory(config,seasonId,options);
+ if(live){
+  let venues=[];try{venues=(await importedPortalDirectory(org,seasonId,options)).venues;}catch{/* Optional legacy venues never block live teams/hierarchy. */}
+  return {...live,venues,venuesSource:'imported-hms-games'};
+ }
+ return importedPortalDirectory(org,seasonId,options);
+}
+async function importedPortalDirectory(org,seasonId,options={}){
  const config=organizationConfig(org,options.env??process.env);
  const rows=await(options.loadPortalDirectory??(async()=>(options.sql??neon((options.env??process.env).DATABASE_URL)).query(`SELECT DISTINCT g.organization_id,g.season_id,g.group_id,g.group_name,g.group_color,g.group_logo_url,g.phase_id,g.phase_name,g.home_team_id,g.home_team_name,g.away_team_id,g.away_team_name,g.venue_name,g.venue_logo_url,
  coalesce(h.team_logo_template_url,h.team_logo_url) AS home_logo_url,coalesce(a.team_logo_template_url,a.team_logo_url) AS away_logo_url

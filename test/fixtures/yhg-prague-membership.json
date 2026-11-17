@@ -1,0 +1,363 @@
+{
+  "recorded": "2026-11-17",
+  "competition": {
+    "competitionId": "DB9C8EC0-D39E-11F1-8BC3-B7DBB7AA0EFD",
+    "name": "PRAGUE - NOVEMBER - 2026",
+    "Seasons": [
+      {
+        "seasonId": "F8900E80-D39E-11F1-8BC3-B7DBB7AA0EFD",
+        "competitionId": "DB9C8EC0-D39E-11F1-8BC3-B7DBB7AA0EFD",
+        "name": "November 2026",
+        "startDate": null,
+        "endDate": null,
+        "Groups": [
+          {
+            "groupId": "1C92CE80-D39F-11F1-8BC3-B7DBB7AA0EFD",
+            "seasonId": "F8900E80-D39E-11F1-8BC3-B7DBB7AA0EFD",
+            "name": "PRAGUE NOV 2026",
+            "Phases": [
+              {
+                "phaseId": "27D70520-DF40-11F1-8C62-0D8FE8534D81",
+                "groupId": "1C92CE80-D39F-11F1-8BC3-B7DBB7AA0EFD",
+                "name": "Play off",
+                "startDate": null,
+                "endDate": null
+              },
+              {
+                "phaseId": "2AB40E20-D39F-11F1-8BC3-B7DBB7AA0EFD",
+                "groupId": "1C92CE80-D39F-11F1-8BC3-B7DBB7AA0EFD",
+                "name": "GROUP B",
+                "startDate": null,
+                "endDate": null
+              },
+              {
+                "phaseId": "21466B80-D39F-11F1-8BC3-B7DBB7AA0EFD",
+                "groupId": "1C92CE80-D39F-11F1-8BC3-B7DBB7AA0EFD",
+                "name": "GROUP A",
+                "startDate": null,
+                "endDate": null
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "tables": [
+    {
+      "scope": {
+        "seasonId": "f8900e80-d39e-11f1-8bc3-b7dbb7aa0efd"
+      },
+      "rows": [
+        {
+          "id": "b4e90c80-5a20-11ef-be7f-f9912bb006b1",
+          "name": "Booze Brothers - Scotland",
+          "games": 0,
+          "points": 0,
+          "score": "0:0"
+        },
+        {
+          "id": "3a7ee890-cd1c-11f1-aaa3-59c8b8b50369",
+          "name": "HC Lions Zlín",
+          "games": 0,
+          "points": 0,
+          "score": "0:0"
+        },
+        {
+          "id": "ea3ebb60-c7af-11f1-a727-a533d1487fd1",
+          "name": "Košice Flyers",
+          "games": 0,
+          "points": 0,
+          "score": "0:0"
+        },
+        {
+          "id": "eb5b10c0-8c79-11ef-b2ec-9fe622992631",
+          "name": "Lake Boys Bratislava",
+          "games": 0,
+          "points": 0,
+          "score": "0:0"
+        },
+        {
+          "id": "fe884690-8c79-11ef-b2ec-9fe622992631",
+          "name": "Måndagsklubben HC",
+          "games": 0,
+          "points": 0,
+          "score": "0:0"
+        },
+        {
+          "id": "75c22580-c7b2-11f1-a727-a533d1487fd1",
+          "name": "Mollvero Hockey Team",
+          "games": 0,
+          "points": 0,
+          "score": "0:0"
+        },
+        {
+          "id": "d8e32130-8c79-11ef-b2ec-9fe622992631",
+          "name": "Preshow",
+          "games": 0,
+          "points": 0,
+          "score": "0:0"
+        },
+        {
+          "id": "889494e0-be08-11f0-9457-7952c3f565be",
+          "name": "REME Stallions",
+          "games": 0,
+          "points": 0,
+          "score": "0:0"
+        },
+        {
+          "id": "5d327c90-bc0a-11f0-a1a1-3d2d45e6d5ef",
+          "name": "Samorosti",
+          "games": 0,
+          "points": 0,
+          "score": "0:0"
+        },
+        {
+          "id": "85a39330-bc0a-11f0-a1a1-3d2d45e6d5ef",
+          "name": "Vendangeurs de Bordeaux",
+          "games": 0,
+          "points": 0,
+          "score": "0:0"
+        }
+      ]
+    },
+    {
+      "scope": {
+        "groupId": "1c92ce80-d39f-11f1-8bc3-b7dbb7aa0efd"
+      },
+      "rows": [
+        {
+          "id": "b4e90c80-5a20-11ef-be7f-f9912bb006b1",
+          "name": "Booze Brothers - Scotland",
+          "games": 0,
+          "points": 0,
+          "score": "0:0"
+        },
+        {
+          "id": "3a7ee890-cd1c-11f1-aaa3-59c8b8b50369",
+          "name": "HC Lions Zlín",
+          "games": 0,
+          "points": 0,
+          "score": "0:0"
+        },
+        {
+          "id": "ea3ebb60-c7af-11f1-a727-a533d1487fd1",
+          "name": "Košice Flyers",
+          "games": 0,
+          "points": 0,
+          "score": "0:0"
+        },
+        {
+          "id": "eb5b10c0-8c79-11ef-b2ec-9fe622992631",
+          "name": "Lake Boys Bratislava",
+          "games": 0,
+          "points": 0,
+          "score": "0:0"
+        },
+        {
+          "id": "fe884690-8c79-11ef-b2ec-9fe622992631",
+          "name": "Måndagsklubben HC",
+          "games": 0,
+          "points": 0,
+          "score": "0:0"
+        },
+        {
+          "id": "75c22580-c7b2-11f1-a727-a533d1487fd1",
+          "name": "Mollvero Hockey Team",
+          "games": 0,
+          "points": 0,
+          "score": "0:0"
+        },
+        {
+          "id": "d8e32130-8c79-11ef-b2ec-9fe622992631",
+          "name": "Preshow",
+          "games": 0,
+          "points": 0,
+          "score": "0:0"
+        },
+        {
+          "id": "889494e0-be08-11f0-9457-7952c3f565be",
+          "name": "REME Stallions",
+          "games": 0,
+          "points": 0,
+          "score": "0:0"
+        },
+        {
+          "id": "5d327c90-bc0a-11f0-a1a1-3d2d45e6d5ef",
+          "name": "Samorosti",
+          "games": 0,
+          "points": 0,
+          "score": "0:0"
+        },
+        {
+          "id": "85a39330-bc0a-11f0-a1a1-3d2d45e6d5ef",
+          "name": "Vendangeurs de Bordeaux",
+          "games": 0,
+          "points": 0,
+          "score": "0:0"
+        }
+      ]
+    },
+    {
+      "scope": {
+        "phaseId": "21466b80-d39f-11f1-8bc3-b7dbb7aa0efd"
+      },
+      "rows": [
+        {
+          "id": "eb5b10c0-8c79-11ef-b2ec-9fe622992631",
+          "name": "Lake Boys Bratislava",
+          "games": 0,
+          "points": 0,
+          "score": "0:0"
+        },
+        {
+          "id": "fe884690-8c79-11ef-b2ec-9fe622992631",
+          "name": "Måndagsklubben HC",
+          "games": 0,
+          "points": 0,
+          "score": "0:0"
+        },
+        {
+          "id": "75c22580-c7b2-11f1-a727-a533d1487fd1",
+          "name": "Mollvero Hockey Team",
+          "games": 0,
+          "points": 0,
+          "score": "0:0"
+        },
+        {
+          "id": "d8e32130-8c79-11ef-b2ec-9fe622992631",
+          "name": "Preshow",
+          "games": 0,
+          "points": 0,
+          "score": "0:0"
+        },
+        {
+          "id": "889494e0-be08-11f0-9457-7952c3f565be",
+          "name": "REME Stallions",
+          "games": 0,
+          "points": 0,
+          "score": "0:0"
+        }
+      ]
+    },
+    {
+      "scope": {
+        "phaseId": "2ab40e20-d39f-11f1-8bc3-b7dbb7aa0efd"
+      },
+      "rows": [
+        {
+          "id": "b4e90c80-5a20-11ef-be7f-f9912bb006b1",
+          "name": "Booze Brothers - Scotland",
+          "games": 0,
+          "points": 0,
+          "score": "0:0"
+        },
+        {
+          "id": "3a7ee890-cd1c-11f1-aaa3-59c8b8b50369",
+          "name": "HC Lions Zlín",
+          "games": 0,
+          "points": 0,
+          "score": "0:0"
+        },
+        {
+          "id": "ea3ebb60-c7af-11f1-a727-a533d1487fd1",
+          "name": "Košice Flyers",
+          "games": 0,
+          "points": 0,
+          "score": "0:0"
+        },
+        {
+          "id": "5d327c90-bc0a-11f0-a1a1-3d2d45e6d5ef",
+          "name": "Samorosti",
+          "games": 0,
+          "points": 0,
+          "score": "0:0"
+        },
+        {
+          "id": "85a39330-bc0a-11f0-a1a1-3d2d45e6d5ef",
+          "name": "Vendangeurs de Bordeaux",
+          "games": 0,
+          "points": 0,
+          "score": "0:0"
+        }
+      ]
+    },
+    {
+      "scope": {
+        "phaseId": "27d70520-df40-11f1-8c62-0d8fe8534d81"
+      },
+      "rows": [
+        {
+          "id": "b4e90c80-5a20-11ef-be7f-f9912bb006b1",
+          "name": "Booze Brothers - Scotland",
+          "games": 0,
+          "points": 0,
+          "score": "0:0"
+        },
+        {
+          "id": "3a7ee890-cd1c-11f1-aaa3-59c8b8b50369",
+          "name": "HC Lions Zlín",
+          "games": 0,
+          "points": 0,
+          "score": "0:0"
+        },
+        {
+          "id": "ea3ebb60-c7af-11f1-a727-a533d1487fd1",
+          "name": "Košice Flyers",
+          "games": 0,
+          "points": 0,
+          "score": "0:0"
+        },
+        {
+          "id": "eb5b10c0-8c79-11ef-b2ec-9fe622992631",
+          "name": "Lake Boys Bratislava",
+          "games": 0,
+          "points": 0,
+          "score": "0:0"
+        },
+        {
+          "id": "fe884690-8c79-11ef-b2ec-9fe622992631",
+          "name": "Måndagsklubben HC",
+          "games": 0,
+          "points": 0,
+          "score": "0:0"
+        },
+        {
+          "id": "75c22580-c7b2-11f1-a727-a533d1487fd1",
+          "name": "Mollvero Hockey Team",
+          "games": 0,
+          "points": 0,
+          "score": "0:0"
+        },
+        {
+          "id": "d8e32130-8c79-11ef-b2ec-9fe622992631",
+          "name": "Preshow",
+          "games": 0,
+          "points": 0,
+          "score": "0:0"
+        },
+        {
+          "id": "889494e0-be08-11f0-9457-7952c3f565be",
+          "name": "REME Stallions",
+          "games": 0,
+          "points": 0,
+          "score": "0:0"
+        },
+        {
+          "id": "5d327c90-bc0a-11f0-a1a1-3d2d45e6d5ef",
+          "name": "Samorosti",
+          "games": 0,
+          "points": 0,
+          "score": "0:0"
+        },
+        {
+          "id": "85a39330-bc0a-11f0-a1a1-3d2d45e6d5ef",
+          "name": "Vendangeurs de Bordeaux",
+          "games": 0,
+          "points": 0,
+          "score": "0:0"
+        }
+      ]
+    }
+  ]
+}

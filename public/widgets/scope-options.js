@@ -1,9 +1,9 @@
 import {resolveWidgetContext} from './definitions.js';
 export const allScopeValue='__all__';
 export function scopedEntities(directory={},scope={},site={}){
- const effective=resolveWidgetContext(scope,{},site),groups=directory.groups??[],team=(directory.teams??[]).find(t=>t.id===effective.teamId);
- const phases=groups.filter(g=>!effective.groupId||g.id===effective.groupId).flatMap(g=>g.phases.map(p=>({...p,groupId:g.id,label:effective.groupId?p.name:g.name+' · '+p.name}))).filter(p=>!team?.phaseIds?.length||team.phaseIds.includes(p.id));
- const teams=(directory.teams??[]).filter(t=>(!effective.groupId||t.groupIds?.includes(effective.groupId))&&(!effective.phaseId||!t.phaseIds?.length||t.phaseIds.includes(effective.phaseId)));
+ const effective=resolveWidgetContext(scope,{},site),groups=directory.groups??[],team=(directory.teams??[]).find(t=>t.id===effective.teamId),strict=directory.source?.startsWith('hms-live');
+ const phases=groups.filter(g=>!effective.groupId||g.id===effective.groupId).flatMap(g=>g.phases.map(p=>({...p,groupId:g.id,label:effective.groupId?p.name:g.name+' · '+p.name}))).filter(p=>!team||(!strict&&!team.phaseIds?.length)||team.phaseIds?.includes(p.id));
+ const teams=(directory.teams??[]).filter(t=>(!effective.groupId||t.groupIds?.includes(effective.groupId))&&(!effective.phaseId||(!strict&&!t.phaseIds?.length)||t.phaseIds?.includes(effective.phaseId)));
  return {effective,groups,phases,teams};
 }
 // Called on a deliberate parent change, never while hydrating stored settings.
