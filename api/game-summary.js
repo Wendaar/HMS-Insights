@@ -1,3 +1,4 @@
+import '../src/security/preview-environment.js';
 import {createWidgetsHandler} from '../src/web/widgets-handler.js';
 const widgets=createWidgetsHandler();
 import {createVirtualCameraHandler} from '../src/web/virtual-camera-handler.js';

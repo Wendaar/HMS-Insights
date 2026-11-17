@@ -1,3 +1,4 @@
+import '../src/security/preview-environment.js';
 import { sampleAnalysis } from "../src/app/sample.js";
 import { rowsFor } from "../src/infrastructure/supabase-repository.js";
 

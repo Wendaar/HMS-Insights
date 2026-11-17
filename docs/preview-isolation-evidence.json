@@ -1,0 +1,282 @@
+{
+  "at": "2026-11-17T11:27:24.542Z",
+  "status": "Database/access isolation verified; application deployment pending platform bootstrap decision",
+  "freeResource": {
+    "id": "store_aDY57twQaDqb7h2v",
+    "name": "hms-insights-preview-db",
+    "status": "ready",
+    "externalResourceId": "bold-dawn-88451319",
+    "ownership": "owned"
+  },
+  "plan": {
+    "id": "free_v3",
+    "name": "Free",
+    "type": "subscription"
+  },
+  "previewProject": {
+    "at": "2026-11-16T23:51:39.290Z",
+    "id": "prj_ZevOpX8rnsypB6yAkcNThRNxh2Zi",
+    "name": "hms-insights-preview",
+    "framework": null,
+    "nodeVersion": "24.x",
+    "buildCommand": "node scripts/build-media-client.js",
+    "ssoProtection": {
+      "deploymentType": "all_except_custom_domains"
+    },
+    "createdAt": 1794873099113
+  },
+  "production": {
+    "projectId": "prj_BlCu86WpDG3wOoF6BC3GGpMJccHw",
+    "deploymentId": "dpl_5CxhVh1NkE26m3zdTj8eH2peEZqS",
+    "sha": "8ca4fe74b2bc948bd38e976b111c89093fdeae5d"
+  },
+  "database": {
+    "at": "2026-11-16T23:55:02.509Z",
+    "projectId": "prj_ZevOpX8rnsypB6yAkcNThRNxh2Zi",
+    "neonProject": "bold-dawn-88451319",
+    "host": "ep-ancient-tree-bbl53ck0.c-15.us-east-1.aws.neon.tech",
+    "initialPublicTableCount": 5,
+    "migrations": [
+      "001_mvp.sql",
+      "002_media_context.sql",
+      "003_vercel_public_feed.sql",
+      "004_fractional_penalty_minutes.sql",
+      "005_extended_insights.sql",
+      "005_game_event_snapshot.sql",
+      "006_tool_instances.sql",
+      "007_pregame_rankings.sql",
+      "008_game_day_reminders.sql"
+    ],
+    "role": {
+      "database": "hms_preview",
+      "username": "hms_preview_app",
+      "rolsuper": false,
+      "rolcreatedb": false,
+      "rolcreaterole": false,
+      "rolreplication": false,
+      "rolbypassrls": false,
+      "rolinherit": false
+    },
+    "defaultDatabaseConnect": false,
+    "tables": [
+      "detected_priklepy",
+      "games",
+      "goalie_game_stats",
+      "hms_reminder_attempts",
+      "hms_reminder_jobs",
+      "hms_reminder_settings",
+      "hms_tool_instances",
+      "player_game_stats",
+      "pregame_rankings",
+      "team_game_stats"
+    ]
+  },
+  "verification": {
+    "at": "2026-11-17T11:22:48.739Z",
+    "projectId": "prj_ZevOpX8rnsypB6yAkcNThRNxh2Zi",
+    "preflight": {
+      "enforced": true,
+      "project": "prj_ZevOpX8rnsypB6yAkcNThRNxh2Zi",
+      "host": "ep-ancient-tree-bbl53ck0.c-15.us-east-1.aws.neon.tech",
+      "database": "hms_preview",
+      "user": "hms_preview_app"
+    },
+    "initialCounts": {
+      "detected_priklepy": 0,
+      "games": 0,
+      "goalie_game_stats": 0,
+      "hms_reminder_attempts": 0,
+      "hms_reminder_jobs": 0,
+      "hms_reminder_settings": 0,
+      "hms_tool_instances": 4,
+      "player_game_stats": 0,
+      "pregame_rankings": 0,
+      "team_game_stats": 0
+    },
+    "results": [
+      {
+        "name": "dedicated database/role, no membership of resource administrator",
+        "passed": true
+      },
+      {
+        "name": "cannot create database or role",
+        "passed": true
+      },
+      {
+        "name": "no connection to administrator default database",
+        "passed": true
+      },
+      {
+        "name": "independent PHM/EUCHL/BNHLH/YHG draft and published fixture rows",
+        "passed": true
+      },
+      {
+        "name": "each organization accepts only its own Preview admin code",
+        "passed": true
+      },
+      {
+        "name": "stale revision cannot overwrite another editor",
+        "passed": true
+      },
+      {
+        "name": "new isolated Camera session keeps read/edit roles and revisions",
+        "passed": true
+      },
+      {
+        "name": "Broadcast store preserves channel/library revision in Preview tables",
+        "passed": true
+      },
+      {
+        "name": "no live API, AI, Blob or bootstrap credentials present",
+        "passed": true
+      }
+    ],
+    "notes": [
+      "Fixtures only; no production data copied or queried",
+      "Camera fixture IDs/keys and admin codes intentionally omitted",
+      "Broadcast store smoke test is not an OBS end-to-end test",
+      "No HMS API, AI, Blob, cron or webhook was invoked"
+    ]
+  },
+  "checks": {
+    "productionDeploymentUnchanged": true,
+    "productionShaUnchanged": true,
+    "productionProjectUpdatedAtUnchanged": true,
+    "productionEnvironmentMetadataUnchanged": true,
+    "productionDomainsUnchanged": true,
+    "previewHasNoProductionDeployment": true,
+    "previewHasNoDeployments": true,
+    "previewHasNoGitLink": true,
+    "previewEnvOnly": true,
+    "previewBootstrapCredentialsRemoved": true,
+    "previewLiveProviderKeysAbsent": true
+  },
+  "previewEnvironmentMetadata": [
+    {
+      "key": "HMS_YHG_OPERATIONS_SECRET",
+      "type": "encrypted",
+      "target": [
+        "preview"
+      ]
+    },
+    {
+      "key": "HMS_YHG_PORTAL_ADMIN_SECRET",
+      "type": "encrypted",
+      "target": [
+        "preview"
+      ]
+    },
+    {
+      "key": "HMS_YHG_TOOLS_ADMIN_SECRET",
+      "type": "encrypted",
+      "target": [
+        "preview"
+      ]
+    },
+    {
+      "key": "HMS_BNHLH_OPERATIONS_SECRET",
+      "type": "encrypted",
+      "target": [
+        "preview"
+      ]
+    },
+    {
+      "key": "HMS_BNHLH_PORTAL_ADMIN_SECRET",
+      "type": "encrypted",
+      "target": [
+        "preview"
+      ]
+    },
+    {
+      "key": "HMS_BNHLH_TOOLS_ADMIN_SECRET",
+      "type": "encrypted",
+      "target": [
+        "preview"
+      ]
+    },
+    {
+      "key": "HMS_EUCHL_OPERATIONS_SECRET",
+      "type": "encrypted",
+      "target": [
+        "preview"
+      ]
+    },
+    {
+      "key": "HMS_EUCHL_PORTAL_ADMIN_SECRET",
+      "type": "encrypted",
+      "target": [
+        "preview"
+      ]
+    },
+    {
+      "key": "HMS_EUCHL_TOOLS_ADMIN_SECRET",
+      "type": "encrypted",
+      "target": [
+        "preview"
+      ]
+    },
+    {
+      "key": "HMS_PHM_OPERATIONS_SECRET",
+      "type": "encrypted",
+      "target": [
+        "preview"
+      ]
+    },
+    {
+      "key": "HMS_PHM_PORTAL_ADMIN_SECRET",
+      "type": "encrypted",
+      "target": [
+        "preview"
+      ]
+    },
+    {
+      "key": "HMS_PHM_TOOLS_ADMIN_SECRET",
+      "type": "encrypted",
+      "target": [
+        "preview"
+      ]
+    },
+    {
+      "key": "HMS_PREVIEW_DATABASE_NAME",
+      "type": "encrypted",
+      "target": [
+        "preview"
+      ]
+    },
+    {
+      "key": "HMS_PREVIEW_DATABASE_USER",
+      "type": "encrypted",
+      "target": [
+        "preview"
+      ]
+    },
+    {
+      "key": "HMS_PREVIEW_DATABASE_HOST",
+      "type": "encrypted",
+      "target": [
+        "preview"
+      ]
+    },
+    {
+      "key": "HMS_PREVIEW_PROJECT_ID",
+      "type": "encrypted",
+      "target": [
+        "preview"
+      ]
+    },
+    {
+      "key": "DATABASE_URL",
+      "type": "encrypted",
+      "target": [
+        "preview"
+      ]
+    }
+  ],
+  "activationGate": "Vercel requires a first Production-labelled deployment for a new project; --environment preview attempt refused, no --prod run",
+  "limitations": [
+    "Existing legacy Preview deployments remain unchanged and are not certified isolated",
+    "Neon automatic deployment-time branching of legacy Preview was not independently inspected",
+    "No real OBS, phone, video, audio or deployed HTTP runtime tested",
+    "No production credential values downloaded or production DB queries executed"
+  ]
+}

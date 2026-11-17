@@ -1,3 +1,4 @@
+import '../src/security/preview-environment.js';
 import {build} from 'esbuild';
 import {fileURLToPath} from 'node:url';
 import {buildMediaCatalog} from './build-media-catalog.js';

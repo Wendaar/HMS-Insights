@@ -1,3 +1,4 @@
+import '../src/security/preview-environment.js';
 import { readFile } from "node:fs/promises";
 import { analyzeHmsResponses } from "../src/app/analyze.js";
 import { persistAnalysis } from "../src/infrastructure/supabase-repository.js";
