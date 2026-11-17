@@ -1,6 +1,6 @@
 # HMS — etapa 1: izolovaná Preview databáze a přístupy
 
-Stav: **připraveno a databázově ověřeno, aplikace zatím nenasazena**. Žádný merge, produkční deployment, změna produkčních env/domén nebo existujících OBS/Camera relací. Souhrn živých kontrol je v [preview-isolation-evidence.json](preview-isolation-evidence.json). Podrobná lokální provozní evidence a inicializační nástroje zůstávají v pracovním adresáři `work/hms-stage1/`; neobsahují uložené plaintext secrets.
+Stav: **izolované Preview je aktivní, databáze i nasazené HTTP kontrakty ověřené**. Uživatel schválil prázdnou statickou inicializaci pouze nového sandboxu a následné Preview nasazení. Žádný merge, deployment do stávající HMS produkce, změna jejích env/domén nebo existujících OBS/Camera relací. Souhrn živých kontrol je v [preview-isolation-evidence.json](preview-isolation-evidence.json). Podrobná lokální provozní evidence a inicializační nástroje zůstávají v pracovním adresáři `work/hms-stage1/`; neobsahují uložené plaintext secrets.
 
 ## Vytvořené prostředí
 
@@ -14,11 +14,11 @@ Stav: **připraveno a databázově ověřeno, aplikace zatím nenasazena**. Žá
 | DB endpoint | `ep-ancient-tree-bbl53ck0.c-15.us-east-1.aws.neon.tech` |
 | Vercel env scope | všechny nové aplikační/proměnné pouze `preview`, bez Git propojení a produkčních custom domén |
 | Deployment protection | `all_except_custom_domains`; žádná ochrana produkce se nemění |
-| Nasazení | zatím žádné: Vercel vyžaduje první deployment nového projektu jako Production; tato inicializace nebyla provedena |
+| Nasazení | READY Preview `dpl_2Z89nfLnH49VpAeFGir8Cht37N9h`, žádné crony; nový sandbox má jen schválený prázdný statický první Production-labelled deployment |
 
 DB vznikla jako nový Neon projekt, **nikoli klon nebo branch produkční databáze**. Nebyly kopírovány registrační údaje, jobs, session hashes, kamerové relace, OBS kanály ani produkční role. Samostatný Free projekt také odděluje jeho projektovou kvótu od současného Neon prostředku, nikoli billing a limity celého Vercel účtu.
 
-Provider použil výchozí DB region US East. Jsou zde jen syntetická data a tato instance zatím není vhodná pro srovnávací latency benchmark s produkční DB/regionem. Přesun regionu ani nové placené kapacity tento krok nezahrnuje. Vercel projekt deklaruje Node 24; skutečný runtime nového deploymentu dosud není měřen, protože deployment neproběhl.
+Provider použil výchozí DB region US East. Jsou zde jen syntetická data a tato instance zatím není vhodná pro srovnávací latency benchmark s produkční DB/regionem. Přesun regionu ani nové placené kapacity tento krok nezahrnuje. Vercel projekt deklaruje Node 24; nasazený Preview snapshot uvádí Node 26.x / fra1, stejně jako dříve pozorovaný rozdíl dashboard/runtime. Tento krok nemění Node verzi produkce.
 
 ## Privilegia a secrets
 
@@ -61,13 +61,15 @@ Lokální sada: **624 passed, 0 failed, 0 skipped** (620 původních + 4 nové t
 
 Neplatné Portal main drafty z prvního testovacího běhu byly odstraněny **jen z nové DB** a fixture data jsou v samostatném `stage1-fixture` namespace. Nové syntetické Camera/Broadcast řádky nemají živý video zdroj a jejich klíče nebyly publikované. Reálné OBS ani video/audio zde nebyly testovány. Broadcast store test není důkaz živého OBS end-to-end fungování.
 
+Po nasazení prošlo také **6 HTTP kontrol** chráněného Preview: Control shell 200, Studio katalog bez nakonfigurovaných živých HMS přístupů, vlastní/cizí administrační kódy všech čtyř organizací, odmítnutí cronů bez klíče a nenakonfigurovaného webhooku, nová syntetická Camera relace (201/200, read PUT 403, stará revize 409) a Camera output HTML s původním CSP. Nebyl spuštěn browserový JavaScript ani video. Pro HTTP test vznikl dočasný automation bypass pouze v novém sandboxu; v `finally` byl odvolán a následná anonymní žádost znovu skončila na SSO ochraně. Žádný bypass nebo aplikační klíč se neukládá do evidence.
+
 ## Nasazení a meze dokončení
 
-Deployment konfigurace je lokálně připravená z původního vercel.json s **prázdným crons polem**. Produkční vercel.json v repozitáři se nemění. Pokus výslovně cílený na nový projekt a `--environment preview` Vercel zastavil před vytvořením deploymentu: první deployment nového projektu musí být označený Production. Automatické doporučení CLI použít `--prod` nebylo následováno.
+Vercel vyžaduje pro nový projekt první deployment označený Production. Po výslovném souhlasu uživatele vznikl pouze v novém sandboxu statický bootstrap `dpl_H3DBN5h85dkr55kb3X1gL5hMeLvy`: dvě statické položky, nulové funkce/crony/aplikační secrets, bez přiřazených aliasů díky `--skip-domain`. Produkční URL HMS se nepřepínaly. Aplikace byla potom nasazena výhradně jako Preview.
 
-Aktivace HTTP Preview tedy zůstává samostatným krokem. Konkrétní minimální varianta je nejprve prázdná statická iniciační stránka **jen v novém sandbox projektu**, bez API, DB proměnných či cronů, a potom skutečná aplikace jako Preview. Není to změna současné HMS produkce, ale vyžaduje výslovné rozhodnutí vzhledem k zadanému zákazu produkčních deploymentů. Nezaměňovat připravenou databázi a zelené DB testy s už nasazenou aplikací.
+Aktivní chráněná adresa: [Preview Control Center](https://hms-insights-preview-df7sdu7jn-wendaar.vercel.app/control). Uživatel potřebuje svůj Vercel přístup; žádný veřejný bypass odkaz se nevytváří. Runtime kód odpovídá commitu `6d556225ac2678609499549912be528e96f89db1`; pozdější změny tohoto PR doplňují dokumentaci a důkazy aktivace.
 
-Před spuštěním aplikace musí deployment snapshot prokázat správné project ID, Preview target, žádné crony a projití guardu při buildu. Následně ověřit `/control`, read/admin/auth kontrakty a nové syntetické relace přes HTTP; přístup k SSO chráněnému URL řešit jen v novém projektu. Pozdější změny ve Vercelu nemají automaticky aktualizovat produkci.
+Nasazovací snapshot obsahuje fyzicky upravený `vercel.json` s **prázdným crons polem**; produkční soubor v repozitáři se nemění. První Preview pokus převzal původní cron definice, které se v Preview targetu nespouštějí. Proto byl vytvořen oddělený snapshot pouze z tracked souborů a správný konfigurační soubor přímo nahrán. Aktivní deployment má `crons=[]` a také projektové naplánované cron definice jsou prázdné. Samotný `--local-config` přepis nestačil jako důkaz obsahu nasazeného souboru. Guard úspěšně prošel buildem i HTTP runtime.
 
 ## Staré Preview a další postup
 
@@ -75,7 +77,7 @@ Současný projekt `hms-insights` a jeho původní Neon/Blob propojení, produk�
 
 Důležité upřesnění etapy 0: společný DATABASE_URL metadata záznam není sám o sobě důkaz, že konkrétní starý Preview deployment skutečně běží na produkční větvi. Neon native integrace může ve chvíli deploye injektovat vlastní branch URL mimo project env settings. Tento mechanismus u starých deploymentů nebyl nezávisle ověřen. Nové prostředí se této nejistotě vyhýbá vlastním prázdným projektem a DB/rolí, bez závislosti na automatickém branchingu.
 
-Při pushi této pracovní větve může původní Git propojení automaticky spustit Preview build na starém projektu. Guard ho úmyslně odmítne, protože to není povolený nový sandbox. Takový červený Preview check není produkční výpadek; tuto větev nemergovat, dokud nebude rollout nové Preview cesty rozhodnutý. V dlouhodobém monorepu bude mít každá aplikace svůj explicitní projektový binding; nynější politika je pro první společný fixture sandbox, ne definitivní obecný deployment systém.
+Při pushi této pracovní větve může původní Git propojení automaticky spustit Preview build na starém projektu. Guard ho úmyslně odmítne, protože to není povolený nový sandbox; toto odmítnutí bylo ověřeno i v build logu. Takový červený Preview check není produkční výpadek. Samostatný nový sandbox se nasazuje explicitně a není připojen ke Git auto-deployům. Větev nemergovat bez samostatné autorizace produkčního rollout plánu. V dlouhodobém monorepu bude mít každá aplikace svůj explicitní projektový binding; nynější politika je pro první společný fixture sandbox, ne definitivní obecný deployment systém.
 
 Rollback: nenastavovat zpátky produkční DB do Preview. Pro deaktivaci stačí přestat prostředí používat a zablokovat nové Preview deploye. Nové projekty/databázi nemažte bez samostatného rozhodnutí; produkci není potřeba vracet, protože se neměnila. Pozdější smazání izolovaných prostředků nikdy nesmí použít původní production project/store ID.
 

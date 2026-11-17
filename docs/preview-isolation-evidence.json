@@ -1,6 +1,6 @@
 {
-  "at": "2026-11-17T11:27:24.542Z",
-  "status": "Database/access isolation verified; application deployment pending platform bootstrap decision",
+  "at": "2026-11-17T11:39:39.682Z",
+  "status": "Dedicated Preview active; database/access isolation and deployed HTTP contracts verified",
   "freeResource": {
     "id": "store_aDY57twQaDqb7h2v",
     "name": "hms-insights-preview-db",
@@ -138,18 +138,121 @@
       "No HMS API, AI, Blob, cron or webhook was invoked"
     ]
   },
+  "activation": {
+    "userApprovedStaticBootstrap": true,
+    "bootstrap": {
+      "at": "2026-11-17T11:34:18.885Z",
+      "id": "dpl_H3DBN5h85dkr55kb3X1gL5hMeLvy",
+      "projectId": "prj_ZevOpX8rnsypB6yAkcNThRNxh2Zi",
+      "url": "hms-insights-preview-p7tvnnyce-wendaar.vercel.app",
+      "state": "READY",
+      "target": "production",
+      "aliases": [],
+      "crons": [],
+      "functionCount": 0,
+      "productionApplicationEnvCount": 0,
+      "projectSettings": {
+        "buildCommand": "",
+        "devCommand": null,
+        "framework": null,
+        "commandForIgnoringBuildStep": null,
+        "installCommand": "",
+        "outputDirectory": "public",
+        "speedInsights": {
+          "id": "Y9w9xWppi0uPFrXahVQ4HumSYp4",
+          "hasData": false
+        },
+        "webAnalytics": {
+          "id": "PVBgLOzA9EuYPf9EK2BAPX1pr"
+        },
+        "nodeVersion": "24.x"
+      }
+    },
+    "preview": {
+      "at": "2026-11-17T11:38:38.174Z",
+      "projectId": "prj_ZevOpX8rnsypB6yAkcNThRNxh2Zi",
+      "deploymentId": "dpl_2Z89nfLnH49VpAeFGir8Cht37N9h",
+      "url": "https://hms-insights-preview-df7sdu7jn-wendaar.vercel.app",
+      "target": "preview",
+      "regions": [
+        "fra1"
+      ],
+      "runtime": "26.x",
+      "crons": [],
+      "results": [
+        {
+          "name": "Protected Control shell accessible through temporary sandbox automation",
+          "passed": true,
+          "status": 200
+        },
+        {
+          "name": "Preview guard passed build and API runtime; no live HMS connection",
+          "passed": true,
+          "status": 200
+        },
+        {
+          "name": "Portal codes are organization-specific over HTTP",
+          "passed": true
+        },
+        {
+          "name": "Cron and webhook access refused without secrets",
+          "passed": true,
+          "cronStatus": 401,
+          "unconfiguredWebhookStatus": 503
+        },
+        {
+          "name": "New Camera HTTP fixture respects read/edit capabilities and revisions",
+          "passed": true,
+          "created": 201,
+          "read": 200,
+          "readWriteDenied": 403,
+          "revisionConflict": 409
+        },
+        {
+          "name": "Camera output HTML keeps CSP without executing video or polling",
+          "passed": true,
+          "status": 200
+        }
+      ],
+      "notes": [
+        "No camera/control keys, admin codes or bypass secret stored",
+        "Only one new synthetic Camera session on isolated Preview DB; no browser/video/OBS execution",
+        "Production domains and existing sessions were never requested",
+        "No real HMS, AI or Blob credentials provided"
+      ]
+    },
+    "snapshot": {
+      "at": "2026-11-17T11:35:56.341Z",
+      "sourceCommit": "6d556225ac2678609499549912be528e96f89db1",
+      "fileCount": 552,
+      "overlay": {
+        "crons": []
+      },
+      "credentialsCopied": false
+    },
+    "automation": {
+      "at": "2026-11-17T11:38:38.521Z",
+      "projectId": "prj_ZevOpX8rnsypB6yAkcNThRNxh2Zi",
+      "temporaryAutomationRevoked": true
+    }
+  },
   "checks": {
     "productionDeploymentUnchanged": true,
     "productionShaUnchanged": true,
     "productionProjectUpdatedAtUnchanged": true,
     "productionEnvironmentMetadataUnchanged": true,
     "productionDomainsUnchanged": true,
-    "previewHasNoProductionDeployment": true,
-    "previewHasNoDeployments": true,
+    "sandboxProductionOnlyApprovedStaticBootstrap": true,
+    "previewDeploymentReady": true,
+    "previewCronFree": true,
+    "projectHasNoScheduledCrons": true,
     "previewHasNoGitLink": true,
     "previewEnvOnly": true,
+    "sandboxProductionHasNoAppCredentials": true,
     "previewBootstrapCredentialsRemoved": true,
-    "previewLiveProviderKeysAbsent": true
+    "previewLiveProviderKeysAbsent": true,
+    "temporaryAutomationRevoked": true,
+    "anonymousAccessStillProtected": true
   },
   "previewEnvironmentMetadata": [
     {
@@ -272,11 +375,11 @@
       ]
     }
   ],
-  "activationGate": "Vercel requires a first Production-labelled deployment for a new project; --environment preview attempt refused, no --prod run",
   "limitations": [
     "Existing legacy Preview deployments remain unchanged and are not certified isolated",
     "Neon automatic deployment-time branching of legacy Preview was not independently inspected",
-    "No real OBS, phone, video, audio or deployed HTTP runtime tested",
-    "No production credential values downloaded or production DB queries executed"
+    "No real OBS, phone, video or audio test; HTTP Camera test is synthetic",
+    "No production credential values downloaded or production DB queries executed",
+    "First Preview attempt retained cron definitions but never scheduled them; corrected active snapshot has none"
   ]
 }
