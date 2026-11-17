@@ -39,6 +39,19 @@ function harness(extra={}){
  const call=async(action,body,query={},secret='phm-secret',headers={})=>{const res={headers:{},setHeader(k,v){this.headers[k.toLowerCase()]=v;},status(c){this.code=c;return this;},json(b){this.body=b;return this;},send(b){this.body=b;return this;}};await handler({method:body?'POST':'GET',query:{org:'phm',action,...query},body,headers:{host:'localhost',authorization:'Bearer '+secret,...headers}},res);return res;};
  return {call,store,options};
 }
+
+test('builder saves and publishes a tournament directly from HMS with no imported games',async()=>{
+ const {call}=harness({loadPortalSeasons:async()=>[],fetchOrganization:async()=>({organizationId:id(1),name:'PHM'}),fetchCompetitions:async()=>[{competitionId:id(10),name:'New tournament',Seasons:[{seasonId:id(11),name:'Upcoming'}]}]});
+ assert.equal((await call('catalog')).body.items[0].sampleGameId,null);
+ assert.equal((await call('public')).code,404);
+ assert.equal((await call('save',{revision:0,config:settings()})).code,200);
+ assert.equal((await call('public')).code,404);
+ assert.equal((await call('preview')).body.season.competition,'New tournament');
+ assert.equal((await call('publish',{revision:1})).code,200);
+ const published=await call('public');assert.equal(published.code,200);assert.equal(published.body.season.seasonId,id(11));
+ assert.equal((await call('save',{revision:2,config:{...settings(),seasonIds:[id(99)],defaultSeasonId:id(99)}})).code,400);
+ assert.equal((await call('public')).body.season.seasonId,id(11));
+});
 test('portal validates explicit seasons, navigation visibility and safe logos',()=>{
  assert.equal(portalSettings(settings()).seasonIds[0],id(11));
  for(const patch of [{seasonIds:[]},{seasonIds:[id(99)]},{defaultSeasonId:id(99)},{sections:['teams']},{sections:['home','home']},{sections:['home','unknown']},{color:'red'},{logoUrl:'javascript:alert(1)'},{logoUrl:'https://a:b@example.com/logo.png'},{extras:'x'.repeat(30001)}]){
