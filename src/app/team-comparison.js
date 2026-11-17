@@ -7,6 +7,7 @@ import {controlContextCatalog} from './control-context.js';
 import {isGameId} from '../domain/game-summary.js';
 import {officialStandings,readComparisonTables} from './broadcast-league.js';
 import {sportingImage} from '../../public/game-report-media.js';
+import {loadPortalHmsDirectory} from './portal-hms-directory.js';
 const id=v=>isGameId(v)?v.toLowerCase():null;
 const count=v=>v!==null&&v!==undefined&&v!==''&&Number.isSafeInteger(Number(v))&&Number(v)>=0?Number(v):null;
 const decimal=v=>v!==null&&v!==undefined&&v!==''&&Number.isFinite(Number(v))&&Number(v)>=0?Number(v):null;
@@ -37,6 +38,8 @@ export async function comparisonCatalog(org,input,options={}){
   const config=organizationConfig(org,options.env??process.env),seasonId=id(input.seasonId);
   const catalog=await (options.catalog??controlContextCatalog)(org,options);
   const season=catalog.items.find(s=>id(s.seasonId)===seasonId);if(!season)throw new TypeError('season');
+  const live=await loadPortalHmsDirectory(config,seasonId,options);
+  if(live)return {org:config.code,season,groups:live.groups,teams:live.teams,source:live.source};
   const rows=await(options.loadScope??loadComparisonScope)(config,seasonId,options);
   if(!Array.isArray(rows)||rows.length>500)throw new Error('Large scope');
   const groups=new Map();
@@ -53,15 +56,15 @@ function penalty(value){
   if(typeof value==='string'&&/^\d{1,6}:[0-5]\d$/.test(value)){const [m,s]=value.split(':').map(Number);return m+s/60;}
   return decimal(value);
 }
-export function compareTeams(tables,games,scope,{minStarts=null}={}){
-  const standings=officialStandings(tables.standings),seen=new Set();
+export function compareTeams(tables,games,scope,{minStarts=null,members=null}={}){
+  const standings=tables.standings===null&&Array.isArray(members)?members.map(t=>({...t,rank:null,games:null,points:null,wins:null,draws:null,losses:null,score:null})):officialStandings(tables.standings,{allowMissing:true}),seen=new Set();
   if(!Array.isArray(games)||games.length>5000)throw new Error('Large history');
   for(const g of games){
     if(id(g.organization_id)!==id(scope.organizationId)||id(g.season_id)!==id(scope.seasonId)||id(g.group_id)!==id(scope.groupId)||id(g.phase_id)!==id(scope.phaseId)||!id(g.game_id)||seen.has(id(g.game_id)))throw new Error('Foreign or duplicate history');
     seen.add(id(g.game_id));
   }
   const teams=standings.map((row,index)=>{
-    const score=row.score?.split(':').map(Number),raw=tables.standings[index];
+    const score=row.score?.split(':').map(Number),raw=tables.standings?.[index]??{};
     return {...row,goalsFor:score?.[0]??null,goalsAgainst:score?.[1]??null,pim:penalty(raw['Total Penalty Minutes']),pimDisplay:typeof raw['Total Penalty Minutes']==='string'?raw['Total Penalty Minutes']:decimal(raw['Total Penalty Minutes']),players:[],goalies:[],form:[],metrics:{}};
   });
   const byId=new Map(teams.map(t=>[t.id,t]));
@@ -122,7 +125,8 @@ export async function readTeamComparison(org,input,options={}){
   if(pending.size>=12)throw new Error('Busy');
   const task=(async()=>{
     const [tables,history]=await Promise.all([(options.loadTables??readComparisonTables)(scope,options),(options.loadGames??loadComparisonGames)(config,scope,options).catch(()=>null)]);
-    const comparison=compareTeams(tables,history??[],scope,{minStarts});
+    const members=context.teams?.filter(t=>phase.teamIds?.includes(t.id));
+    const comparison=compareTeams(tables,history??[],scope,{minStarts,members});
     let meetings=null;try{meetings=comparisonMeetings(await(options.loadMeetings??loadComparisonMeetings)(config,scope,comparison.teams,options),scope,comparison.teams);}catch{}
     const value={...context,group,phase,...comparison,meetings,historyAvailable:history!==null,readAt:new Date().toISOString(),source:'HMS public statistics / shared imported results'};
     if(useCache){if(cache.size>=64)cache.delete(cache.keys().next().value);cache.set(key,{value,until:Date.now()+60000});}return value;
