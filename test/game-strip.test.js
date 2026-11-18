@@ -5,11 +5,27 @@ import {stripMedia} from '../src/app/game-strip-media.js';
 import {loadStripReports} from '../src/infrastructure/postgres-repository.js';
 import {publicSeasonGame} from '../src/domain/season-games.js';
 import {newWidget,resolveWidgetContext} from '../public/widgets/definitions.js';
+import {stripActions,stripCardMarkup,stripDateMarkup} from '../public/widgets/strip-view.js';
 const id=n=>`${String(n).padStart(8,'0')}-1111-4111-8111-111111111111`;
 const season={seasonId:id(10),competitionId:id(11),competition:'Cup',season:'2026'};
 const directory={groups:[{id:id(30),name:'Group A',phases:[{id:id(40),name:'Phase'}]}],teams:[{id:id(20),name:'Home',groupIds:[id(30)]},{id:id(21),name:'Away',groupIds:[id(30)]}]};
 const game=(date='2026-11-20',n=1)=>({id:id(n),date,time:'15:00',status:'NOT PLAYED',home:{id:id(20),name:'Home',score:null},away:{id:id(21),name:'Away',score:null},group:{id:id(30)},phase:{id:id(40)}});
 const options=(extra={})=>({env:{HMS_YHG_ORGANIZATION_ID:id(2)},portalCatalog:async()=>({items:[season]}),portalDirectory:async()=>directory,portalBranding:async()=>null,readSeason:async()=>[game()],stripMedia:async()=>new Map(),readStandings:async()=>[{id:id(20),rank:3,shortName:'HM'},{id:id(21),rank:7}],now:new Date('2026-11-18T12:00Z'),...extra});
+test('compact overlay offers reports only for running/finished games and preserves conditional media',()=>{
+ const g={...game(),reportUrl:'/report',detailUrl:'https://prod.hms.wootera.net/embed/game',media:{youtubeUrl:'https://www.youtube.com/watch?v=abcdefghijk',albumUrl:'https://www.flickr.com/photos/test/albums/123'}};
+ assert.deepEqual(stripActions(g).map(a=>a.type),['video','photos']);
+ assert.deepEqual(stripActions({...g,status:'FINISHED'}).map(a=>a.type),['report','video','photos']);
+ assert.equal(stripActions({...g,live:true})[0].type,'report');
+ assert.equal(stripActions({...g,status:'FINISHED',reportUrl:null})[0].label,'Detail zápasu (HMS)');
+ assert.deepEqual(stripActions({...g,media:{}}),[]);
+});
+test('icon overlay is hidden without adding a content row; accessible labels and escaped team names remain',()=>{
+ const g={...game(),status:'FINISHED',reportUrl:'/report',home:{name:'<script>Home</script>',score:0},media:{youtubeUrl:'https://www.youtube.com/watch?v=abcdefghijk'}};
+ const markup=stripCardMarkup(g,newWidget('game-strip'));
+ assert.match(markup,/strip-overlay[^>]+hidden/);assert.match(markup,/aria-expanded="false"/);assert.match(markup,/aria-label="Game Report"/);assert.match(markup,/rel="noopener noreferrer"/);assert.match(markup,/&lt;script&gt;/);assert.match(markup,/<b>0<\/b>/);assert.doesNotMatch(markup,/<details|<summary|<script/);
+ const planned=stripCardMarkup(game(),newWidget('game-strip'));assert.doesNotMatch(planned,/strip-toggle|strip-overlay/);
+ const divider=stripDateMarkup('2026-11-20');assert.match(divider,/datetime="2026-11-20"/);assert.match(divider,/2026/);assert.doesNotMatch(divider,/<select|<input/);
+});
 test('playing days skip gaps, anchor today/next/last, expose four each side and paginate chronologically',()=>{
  const rows=Array.from({length:12},(_,i)=>game('2026-11-'+String(i*2+1).padStart(2,'0'),i+1));
  const p=stripSelection(rows,{},new Date('2026-11-12T10:00Z'));assert.equal(p.date,'2026-11-13');assert.equal(p.previous,'2026-11-11');assert.equal(p.next,'2026-11-15');assert.equal(p.dates.length,9);
