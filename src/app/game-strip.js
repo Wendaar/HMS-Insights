@@ -35,9 +35,9 @@ async function buildGameStrip(org,input={},options={}){
  const teams=new Map(directory.teams.map(t=>[t.id,t]));
  const items=page.items.map(g=>{
   const team=t=>{const official=tables.get(g.group.id)?.find(r=>r.id===t.id),member=teams.get(t.id),ownGroup=member?.groupIds?.includes(g.group.id);
-   return {...t,shortName:official?.shortName??null,logoUrl:t.logoUrl??official?.logoUrl??member?.logoUrl??null,rank:['NOT PLAYED','SCHEDULED'].includes(g.status)&&ownGroup?official?.rank??null:null,rankGroup:ownGroup?groups.get(g.group.id).name:null};};
+   return {...t,shortName:official?.shortName??null,logoUrl:t.logoUrl??official?.logoUrl??member?.logoUrl??null,rank:!g.live&&!['FINISHED','CANCELLED'].includes(g.status)&&(g.date>page.today||['NOT PLAYED','SCHEDULED'].includes(g.status))&&ownGroup?official?.rank??null:null,rankGroup:ownGroup?groups.get(g.group.id).name:null};};
   const links=media.get(g.id)??{};
-  return {...g,home:team(g.home),away:team(g.away),media:{albumUrl:links.albumUrl??flickrAlbum(reports.get(g.id)?.album_url),youtubeUrl:links.youtubeUrl??null},reportUrl:reports.has(g.id)?'/game-center/'+g.id+'/public':null,detailUrl:reports.has(g.id)?null:'https://prod.hms.wootera.net/embed/game?'+new URLSearchParams({gameId:g.id})};
+  return {id:g.id,date:g.date,time:g.time,status:g.status,live:g.live,group:g.group,phase:g.phase,reportAvailable:reports.has(g.id),home:team(g.home),away:team(g.away),media:{albumUrl:links.albumUrl??flickrAlbum(reports.get(g.id)?.album_url),youtubeUrl:links.youtubeUrl??null},reportUrl:reports.has(g.id)?'/game-center/'+g.id+'/public':null,detailUrl:reports.has(g.id)?null:'https://prod.hms.wootera.net/embed/game?'+new URLSearchParams({gameId:g.id})};
  });
  return {...page,items,scope,branding:context.branding,source:'HMS',readAt:new Date().toISOString()};
 }

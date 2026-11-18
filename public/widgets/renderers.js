@@ -65,7 +65,7 @@ export async function renderGameStrip(container,instance,options){
    }
    const more=container.querySelector('[data-more]');more.hidden=!data.hasMore;more.onclick=()=>load(selected,true);
    container.querySelectorAll('img').forEach(img=>img.onerror=()=>{img.hidden=true;});
-   container.querySelectorAll('.strip-card').forEach(card=>{card.onpointerenter=e=>{if(e.pointerType==='mouse'){const actions=card.querySelector('details');if(actions)actions.open=true;}};card.onpointerleave=()=>{if(!card.contains(document.activeElement)){const actions=card.querySelector('details');if(actions)actions.open=false;}};});
+   container.querySelectorAll('.strip-card').forEach(card=>{card.onfocusin=e=>{if(e.target.matches(':focus-visible')){const actions=card.querySelector('details');if(actions)actions.open=true;}};card.onpointerenter=e=>{if(e.pointerType==='mouse'){const actions=card.querySelector('details');if(actions)actions.open=true;}};card.onpointerleave=()=>{if(!card.contains(document.activeElement)){const actions=card.querySelector('details');if(actions)actions.open=false;}};});
    if(focusSelector&&!append)(container.querySelector(focusSelector+':not(:disabled)')??container.querySelector('select')).focus({preventScroll:true});
   }catch(e){if(current!==generation||options.signal?.aborted)return;const host=container.querySelector('.strip-feedback')??container;host.innerHTML=`<p role="alert">${en?'Games could not be loaded.':'Zápasy se nepodařilo načíst.'}</p><button type="button">${en?'Retry':'Zkusit znovu'}</button>`;host.querySelector('button').onclick=()=>load(date,append);}
   finally{if(current===generation)container.removeAttribute('aria-busy');}

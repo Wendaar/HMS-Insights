@@ -10,7 +10,7 @@ picker, inheritance/explicit-null semantics and server ownership checks apply.
 
 The instance's **Standalone** link and **Kód pro vložení** field use
 `/widgets/game-strip/<org>?seasonId=<uuid>`. Copy the iframe HTML from that field
-(default height 260px; increase it if desired). Reports open outside the iframe;
+(default height 420px; increase it if desired). The generated link retains the portal accent color. Reports open outside the iframe;
 fixtures without an imported report link to the existing public HMS game detail.
 
 The shared Game Center season index supplies fixtures without imports. The API
