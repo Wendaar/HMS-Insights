@@ -13,6 +13,7 @@ export const metrics={
  savePercentage:{field:'sv',role:'goalie',cs:'Úspěšnost %',en:'Save %',direction:-1,digits:2},
 };
 export const widgetRegistry={
+ "game-strip":{widgetType:"game-strip",name:"Zápasový pás / Game Strip",description:"Rozpis, výsledky a odkazy po hracích dnech.",category:"Games",icon:"↔",supportedScopes:scopeKeys,supportedDisplayModes:["auto"],renderer:"game-strip",dataRequirements:["season-games"],configSchema:{}},
  insights:{widgetType:'insights',name:'Insights / Příklepy',description:'To nejlepší z ledu · veřejný výběr organizace.',category:'Content',icon:'✦',supportedScopes:['organisationId'],supportedDisplayModes:['auto'],renderer:'insights',dataRequirements:['public-insights'],configSchema:{}},
  leaders:{widgetType:'leaders',name:'Leaders',description:'Jedna statistika, TOP 5 nebo TOP 10. Hráči i brankáři.',category:'Statistics',icon:'#',supportedScopes:scopeKeys,supportedDisplayModes:['auto','standard','compact'],renderer:'leaders',dataRequirements:['official-player-statistics'],configSchema:{metric:{enum:Object.keys(metrics),default:'points'},limit:{enum:[5,10],default:5},displayMode:{enum:['auto','standard','compact'],default:'auto'}}},
 };
@@ -30,7 +31,7 @@ export function normalizeWidget(input){
  if(typeof display!=='object'||Array.isArray(display)||input.enabled!==undefined&&typeof input.enabled!=='boolean'||['showPlayerPhoto','showTeamLogo','showScopeBranding'].some(k=>display[k]!==undefined&&typeof display[k]!=='boolean'))throw new TypeError('widget display/enabled');
  if(!widgetRegistry[input.widgetType].supportedDisplayModes.includes(mode))throw new TypeError('widget display');
  const placement=input.placement??'home';if(!['home','competition','group','phase'].includes(placement))throw new TypeError('widget placement');
- const layout=input.layout??{},section=layout.section??'bottom',width=layout.width??'full';
+ const layout=input.layout??{},section=layout.section??(input.widgetType==='game-strip'?'top':'bottom'),width=layout.width??'full';
  if(!['top','main','bottom'].includes(section)||!['full','half','third'].includes(width))throw new TypeError('widget layout');
  const result={widgetInstanceId:input.widgetInstanceId,widgetType:input.widgetType,enabled:input.enabled!==false,placement,scope,layout:{section,width},display:{mode,showPlayerPhoto:display.showPlayerPhoto!==false,showTeamLogo:display.showTeamLogo!==false,showScopeBranding:display.showScopeBranding!==false}};
  if(input.widgetType==='insights'&&Object.keys(scope).some(k=>k!=='organisationId'&&scope[k]))throw new TypeError('Insights supports organisation scope only');

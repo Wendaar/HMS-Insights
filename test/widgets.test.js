@@ -15,7 +15,7 @@ const players=Array.from({length:7},(_,i)=>({PlayerId:id(100+i),TeamId:i===6?id(
 function options(extra={}){return {env,portalCatalog:async()=>({items:[season]}),portalDirectory:async()=>directory,portalBranding:async()=>null,fetchImpl:async url=>({ok:true,json:async()=>url.searchParams.has('groupId')||url.searchParams.has('phaseId')||url.searchParams.has('phaseIds')?players.slice(0,6):players}),...extra};}
 const widget=(patch={})=>normalizeWidget({widgetInstanceId:'points-1',widgetType:'leaders',...patch});
 test('catalog exposes definitions, extensible metric schemas and supported scopes without builder special cases',()=>{
- assert.deepEqual(Object.keys(widgetRegistry),['insights','leaders']);assert.equal(Object.keys(metrics).length,9);
+ assert.deepEqual(Object.keys(widgetRegistry),['game-strip','insights','leaders']);assert.equal(Object.keys(metrics).length,9);
  for(const definition of Object.values(widgetRegistry))for(const key of ['widgetType','name','description','category','configSchema','supportedScopes','supportedDisplayModes','renderer','dataRequirements'])assert.ok(Object.hasOwn(definition,key));
  assert.equal(widget().limit,5);assert.equal(widget().metric,'points');assert.equal(widget().display.mode,'auto');
  assert.throws(()=>widget({metric:'constructor'}));assert.throws(()=>widget({limit:20}));assert.throws(()=>widget({widgetType:'toString'}));

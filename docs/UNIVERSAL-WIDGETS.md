@@ -1,5 +1,43 @@
 # HMS Universal Widgets + Leaders V1.1
 
+## Game Strip
+
+**Widgets → Add Widget → Zápasový pás / Game Strip** adds an independent instance.
+New strips default to Top / Full, in the main column above the homepage introduction.
+Existing published configurations are never changed by deployment. Save, preview
+and publish through the existing Site Builder workflow. The same named context
+picker, inheritance/explicit-null semantics and server ownership checks apply.
+
+The instance's **Standalone** link and **Kód pro vložení** field use
+`/widgets/game-strip/<org>?seasonId=<uuid>`. Copy the iframe HTML from that field
+(default height 260px; increase it if desired). Reports open outside the iframe;
+fixtures without an imported report link to the existing public HMS game detail.
+
+The shared Game Center season index supplies fixtures without imports. The API
+`/api/widgets?action=game-strip&org=<slug>&seasonId=<uuid>` returns at most twenty
+fixtures for one playing day, with `offset` in multiples of twenty. `date` must
+be an actual playing day in the owned selection. Navigation exposes four earlier
+and four later playing days, skipping empty dates. The default is today, then the
+next playing day, then the last earlier day. Empty selections remain empty.
+
+Group standings supply official short names and optional ranks for upcoming
+fixtures, checked against each team's own group membership. Phase/season rankings
+are never substituted. Unavailable short names use the actual team name, visually
+truncated with the full name available. Missing scores/ranks stay absent. No form,
+overtime or shootout label is inferred from the present schedule payload.
+
+Visible-batch media uses the existing Flickr/YouTube validators, organization-bound
+HMS read and public gameMultimedia, plus stored report album metadata. Reads are
+bounded, cached and coalesced; media failure hides links while retaining fixtures.
+Hover/focus reveals links, and the explicit disclosure also works by touch/keyboard.
+
+The bounded season index retains its two-minute TTL; strip responses cache for one
+minute, optional media for two. There is currently no automatic score polling.
+The displayed timestamp identifies the snapshot. Tournament timezone is used when
+present in verified season metadata; current HMS catalog does not expose it, so
+the established Game Center timezone **Europe/Prague** is the explicit fallback.
+No API token, raw integration response or private metadata reaches the client.
+
 ## V1.1 scope controls, layout and phases
 
 The builder now selects competition, season, group, phase and team by name. Its
