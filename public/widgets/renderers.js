@@ -1,3 +1,4 @@
+import {stripCardMarkup,stripDateMarkup} from './strip-view.js';
 import {portrait} from '../player-portrait.js';
 import {widgetRegistry,normalizeWidget,resolveWidgetContext,metrics} from './definitions.js';
 import {mountInsightsCarousel} from '../insights-carousel.js';
@@ -8,7 +9,7 @@ const requests=new Map();
 export function widgetData(org,scope,extra={}){
  const q=new URLSearchParams({org,...Object.fromEntries(Object.entries(scope).filter(([,v])=>v!=null)),...extra}),key=q.toString();
  if(requests.get(key)?.until>Date.now())return requests.get(key).promise;
- const promise=fetch('/api/widgets?'+q,{headers:{accept:'application/json'},signal:AbortSignal.timeout(15000)}).then(async r=>{const d=await r.json();if(!r.ok)throw Error(d.error);return d;}).catch(e=>{requests.delete(key);throw e;});
+ const promise=fetch('/api/widgets?'+q,{headers:{accept:'application/json'},signal:AbortSignal.timeout(35000)}).then(async r=>{const d=await r.json();if(!r.ok)throw Error(d.error);return d;}).catch(e=>{requests.delete(key);throw e;});
  if(requests.size>=100)requests.delete(requests.keys().next().value);requests.set(key,{promise,until:Date.now()+60000});return promise;
 }
 function playerDialog(container,items,options,scope,role){
@@ -36,7 +37,104 @@ export async function renderLeaders(container,instance,options,selection={}){
  }catch(e){if(signal?.aborted)return;container.innerHTML=`<p class="notice error" role="alert">${esc(e.message??(en?'Statistics unavailable.':'Statistiky nejsou dostupné.'))}</p><button type="button">${en?'Try again':'Zkusit znovu'}</button>`;container.querySelector('button').onclick=()=>renderLeaders(container,instance,options,selection);}
  finally{container.removeAttribute('aria-busy');}
 }
+export async function renderGameStrip(container,instance,options){
+ const en=options.lang==='en',scope=resolveWidgetContext(instance.scope,options.pageContext,options.siteContext);
+ container.className='hms-widget game-strip';container.setAttribute('aria-label',en?'Games':'Zápasy');
+ let track,observer,dates=[],activeDate,scrollTimer,activeRequests=0;const queue=[],states=new Map();
+ const alive=()=>container.isConnected&&!options.signal?.aborted;
+ const fetchDay=(date,offset=0)=>widgetData(options.org,scope,{action:'game-strip',...(date?{date}:{}),offset:String(offset)});
+ function openCard(card,open){
+  const nav=card.querySelector('.strip-overlay'),toggle=card.querySelector('.strip-toggle');
+  if(!nav)return;nav.hidden=!open;card.classList.toggle('is-open',open);toggle.setAttribute('aria-expanded',String(open));
+ }
+ function bindCards(root){
+  root.querySelectorAll('.strip-card').forEach(card=>{
+   const toggle=card.querySelector('.strip-toggle');if(!toggle||card.dataset.stripBound)return;card.dataset.stripBound='true';
+   toggle.onclick=()=>{const open=toggle.getAttribute('aria-expanded')!=='true';container.querySelectorAll('.strip-card.is-open').forEach(c=>openCard(c,false));openCard(card,open);};
+   card.querySelector('.strip-overlay').onclick=e=>{if(e.target===e.currentTarget)openCard(card,false);};
+   card.onpointerenter=e=>{if(e.pointerType==='mouse')openCard(card,true);};
+   card.onpointerleave=e=>{if(e.pointerType==='mouse'&&!card.contains(document.activeElement))openCard(card,false);};
+   card.addEventListener('focusin',e=>{if(e.target.matches(':focus-visible'))openCard(card,true);});
+   card.addEventListener('focusout',e=>{if(!card.contains(e.relatedTarget))openCard(card,false);});
+   card.onkeydown=e=>{if(e.key==='Escape'){openCard(card,false);toggle.focus({preventScroll:true});openCard(card,false);e.stopPropagation();}};
+   card.querySelectorAll('img').forEach(img=>img.onerror=()=>{img.hidden=true;});
+  });
+ }
+ function updateControls(){
+  const index=dates.indexOf(activeDate);container.querySelector('[data-strip-prev]').disabled=index<=0;container.querySelector('[data-strip-next]').disabled=index>=dates.length-1;
+ }
+ function move(direction){
+  const index=dates.indexOf(activeDate),date=dates[index+direction];if(!date)return;
+  activeDate=date;updateControls();ensure(date);
+  track.scrollTo({left:states.get(date).node.offsetLeft,behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});
+ }
+ function observeMore(state){
+  const more=state.node.querySelector('[data-strip-more]');if(!more)return;
+  more.onclick=()=>ensure(state.date);observer?.observe(more);
+ }
+ function paint(state,data,append=false){
+  const content=state.node.querySelector('.strip-day-content'),oldWidth=state.node.offsetWidth,oldScroll=track.scrollLeft,adjust=state.node.offsetLeft<oldScroll-1;
+  const focused=content.contains(document.activeElement);
+  content.querySelector('[data-strip-more]')?.remove();
+  const cards=data.items.map(g=>stripCardMarkup(g,instance,options.lang)).join('');
+  if(append)content.insertAdjacentHTML('beforeend',cards);else content.innerHTML=cards;
+  state.loaded=true;state.offset=data.offset+data.items.length;state.hasMore=data.hasMore;
+  if(data.hasMore)content.insertAdjacentHTML('beforeend',`<button type="button" class="strip-inline-load" data-strip-more aria-label="${en?'Load more games':'Načíst další zápasy'}">…</button>`);
+  bindCards(content);observeMore(state);
+  if(adjust)track.scrollLeft=oldScroll+state.node.offsetWidth-oldWidth;
+  if(focused){const target=content.querySelector('[data-strip-more],.strip-toggle')??track;target.focus({preventScroll:true});}
+ }
+ function pump(){
+  while(activeRequests<2&&queue.length){const state=queue.shift();activeRequests++;
+   fetchDay(state.date,state.loaded?state.offset:0).then(data=>{if(alive())paint(state,data,state.loaded);}).catch(()=>{
+    if(!alive())return;
+    const content=state.node.querySelector('.strip-day-content');content.querySelector('[data-strip-more]')?.remove();
+    const button=document.createElement('button');button.type='button';button.className='strip-inline-load strip-load-error';button.textContent=en?'Retry':'Zkusit znovu';button.onclick=()=>{button.remove();ensure(state.date);};content.append(button);
+    container.querySelector('.strip-feedback').textContent=en?'Some games could not be loaded. Retry in the strip.':'Některé zápasy se nepodařilo načíst. Zkuste to znovu v pásu.';
+   }).finally(()=>{state.pending=false;activeRequests--;if(alive())pump();});
+  }
+ }
+ function ensure(date){
+  const state=states.get(date);if(!state||state.pending||state.loaded&&!state.hasMore||!alive())return;
+  state.pending=true;queue.push(state);pump();
+ }
+ async function start(){
+  container.setAttribute('aria-busy','true');container.innerHTML=`<p role="status">${en?'Loading games…':'Načítám zápasy…'}</p>`;
+  try{
+   const data=await fetchDay();if(!alive())return;
+   if(!data.date){container.innerHTML=`<p role="status">${en?'No games are available for this selection.':'Pro tento výběr nejsou dostupné žádné zápasy.'}</p>`;return;}
+   dates=data.dates;activeDate=data.date;
+   container.innerHTML=`<button type="button" class="strip-arrow" data-strip-prev aria-label="${en?'Previous playing day':'Předchozí hrací den'}">‹</button><div class="strip-track" tabindex="0" role="region" aria-label="${en?'Games · swipe to browse playing days':'Zápasy · posunem procházejte hrací dny'}"></div><button type="button" class="strip-arrow" data-strip-next aria-label="${en?'Next playing day':'Následující hrací den'}">›</button><span class="strip-feedback strip-sr" aria-live="polite"></span>`;
+   track=container.querySelector('.strip-track');
+   if(/^#[a-f0-9]{6}$/i.test(data.branding?.color??''))container.style.setProperty('--widget-accent',data.branding.color);
+   for(const date of dates){
+    const node=document.createElement('section');node.className='strip-day';node.dataset.stripDay=date;node.setAttribute('aria-label',date);
+    node.innerHTML=stripDateMarkup(date,options.lang)+'<div class="strip-day-content"><button class="strip-inline-load" type="button" data-strip-more aria-label="'+(en?'Load games':'Načíst zápasy')+'">…</button></div>';
+    track.append(node);states.set(date,{date,node,loaded:false,pending:false,offset:0,hasMore:false});
+   }
+   paint(states.get(data.date),data);track.scrollLeft=states.get(data.date).node.offsetLeft;
+   observer=typeof IntersectionObserver==='function'?new IntersectionObserver(entries=>{for(const entry of entries)if(entry.isIntersecting){observer.unobserve(entry.target);ensure(entry.target.closest('[data-strip-day]').dataset.stripDay);}},{root:track,rootMargin:'0px 180px'}):null;
+   for(const state of states.values())observeMore(state);
+   container.querySelector('[data-strip-prev]').onclick=()=>move(-1);container.querySelector('[data-strip-next]').onclick=()=>move(1);updateControls();
+   track.onkeydown=e=>{if(e.target!==track||!['ArrowLeft','ArrowRight'].includes(e.key))return;e.preventDefault();move(e.key==='ArrowLeft'?-1:1);};
+   track.onscroll=()=>{clearTimeout(scrollTimer);scrollTimer=setTimeout(()=>{
+    if(!alive())return;
+    if(track.scrollLeft>=track.scrollWidth-track.clientWidth-2)activeDate=dates.at(-1);
+    else activeDate=dates.filter(d=>states.get(d).node.offsetLeft<=track.scrollLeft+8).at(-1)??dates[0];
+    updateControls();
+    // Native touch/trackpad scrolling reaches the same lazy day loaders.
+    if(!observer)for(const state of states.values()){const x=state.node.offsetLeft-track.scrollLeft;if(x<track.clientWidth+180&&x+state.node.offsetWidth>-180)ensure(state.date);}
+   },120);};
+   track.addEventListener('pointerdown',e=>{if(!e.target.closest('.strip-card.is-open'))container.querySelectorAll('.strip-card.is-open').forEach(c=>openCard(c,false));});
+  }catch(e){if(!alive())return;container.innerHTML=`<p role="alert">${en?'Games could not be loaded.':'Zápasy se nepodařilo načíst.'}</p><button type="button">${en?'Retry':'Zkusit znovu'}</button>`;container.querySelector('button').onclick=start;}
+  finally{container.removeAttribute('aria-busy');}
+ }
+ options.signal?.addEventListener('abort',()=>{observer?.disconnect();clearTimeout(scrollTimer);queue.length=0;},{once:true});
+ await start();
+}
+
 const renderers={
+ 'game-strip':renderGameStrip,
  leaders:renderLeaders,
  insights:async(container,instance,options)=>{container.className='hms-widget insights-widget';await mountInsightsCarousel(container,{org:options.org,lang:options.lang,allHref:options.insightsHref??('/priklepy/'+options.org+'?'+new URLSearchParams({lang:options.lang??'cs'})),openAllInNewTab:options.standalone===true,signal:options.signal});if(!options.signal?.aborted&&!container.children.length)container.textContent=options.lang==='en'?'No highlights are available yet.':'Zatím nejsou dostupné žádné Příklepy.';},
 };

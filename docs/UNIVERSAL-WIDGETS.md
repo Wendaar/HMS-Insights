@@ -1,5 +1,53 @@
 # HMS Universal Widgets + Leaders V1.1
 
+## Game Strip
+
+**Widgets → Add Widget → Zápasový pás / Game Strip** adds an independent instance.
+New strips default to Top / Full, in the main column above the homepage introduction.
+Existing published configurations are never changed by deployment. Save, preview
+and publish through the existing Site Builder workflow. The same named context
+picker, inheritance/explicit-null semantics and server ownership checks apply.
+
+The instance's **Standalone** link and **Kód pro vložení** field use
+`/widgets/game-strip/<org>?seasonId=<uuid>`. Copy the iframe HTML from that field
+(default height 160px; increase it if desired). The generated link retains the portal accent color. Completed/running fixtures offer a report icon opening outside the iframe, with
+the existing public HMS detail as fallback when no imported report exists. Future
+fixtures offer only available media links. Existing external iframe snippets keep
+their own fixed height; change older 420px snippets to 160px for the compact strip.
+
+The shared Game Center season index supplies fixtures without imports. The API
+`/api/widgets?action=game-strip&org=<slug>&seasonId=<uuid>` returns at most twenty
+fixtures for one playing day, with `offset` in multiples of twenty. `date` must
+be an actual playing day in the owned selection. Navigation exposes four earlier
+and four later playing days, skipping empty dates. The default is today, then the
+next playing day, then the last earlier day. Empty selections remain empty.
+
+The view is one approximately 104px-high horizontal ribbon with date dividers, no
+heading, date selector, Today button or visible snapshot timestamp. Arrows and
+track keyboard arrows move between playing days; native touch/trackpad scrolling
+flows across fixtures and dates. Adjacent days and further twenty-game batches
+load near the viewport, with at most two client reads at once and inline retry.
+Loading an earlier day preserves the visible scroll position.
+
+Group standings supply official short names and optional ranks for upcoming
+fixtures, checked against each team's own group membership. Phase/season rankings
+are never substituted. Unavailable short names use the actual team name, visually
+truncated with the full name available. Missing scores/ranks stay absent. No form,
+overtime or shootout label is inferred from the present schedule payload.
+
+Visible-batch media uses the existing Flickr/YouTube validators, organization-bound
+HMS read and public gameMultimedia, plus stored report album metadata. Reads are
+bounded, cached and coalesced; media failure hides links while retaining fixtures.
+A dark in-card overlay reveals labelled report/video/photo icons on hover,
+keyboard focus or tap, without adding a content row. Escape closes the overlay.
+
+The bounded season index retains its two-minute TTL; strip responses cache for one
+minute, optional media for two. There is currently no automatic score polling.
+The response retains its snapshot timestamp without displaying another row. Tournament timezone is used when
+present in verified season metadata; current HMS catalog does not expose it, so
+the established Game Center timezone **Europe/Prague** is the explicit fallback.
+No API token, raw integration response or private metadata reaches the client.
+
 ## V1.1 scope controls, layout and phases
 
 The builder now selects competition, season, group, phase and team by name. Its
