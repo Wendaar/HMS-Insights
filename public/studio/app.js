@@ -183,7 +183,7 @@ async function initialize(){
     $('org').replaceChildren();for(const org of organizations){const option=document.createElement('option');option.value=org.code;option.textContent=org.name+(org.configured?'':` · ${tr('Nepřipojeno')}`);$('org').append(option);}
     $('org').disabled=false;
     const org=studioOrganization(location.pathname,organizations);if(!org){$('org').value='';resetSelection();$('list').textContent=tr('Organizace není v tomto Studiu dostupná.');status(tr('Organizace není v tomto Studiu dostupná.'));return;}
-    $('org').value=org.code;history.replaceState(null,'',studioUrl(org,language));await editorSettings();if(initialStudioSection==='game-day')$('gameDay').click();else if(initialStudioSection==='team-compare')$('teamCompare').click();else await browse();
+    $('org').value=org.code;const canonical=new URL(studioUrl(org,language),location.origin);if(initialStudioSection==='team-compare'){const current=new URLSearchParams(location.search);for(const key of ['section','publicRange','seasonId','groupId','phaseId'])if(current.has(key))canonical.searchParams.set(key,current.get(key));}history.replaceState(null,'',canonical.pathname+canonical.search);await editorSettings();if(initialStudioSection==='game-day')$('gameDay').click();else if(initialStudioSection==='team-compare')$('teamCompare').click();else await browse();
   }catch{status(tr('Seznam organizací nelze načíst. Zkuste stránku obnovit.'));$('list').textContent=tr('Seznam organizací nelze načíst. Zkuste stránku obnovit.');}
 }
 initialize();

@@ -518,7 +518,7 @@ export async function loadStudioPage(options = {}) {
 // One bounded metadata query for the selected HMS page; no per-game snapshots.
 export async function loadControlLeagues(organizationId,options={}) {
   const sql=options.sql??createSql(databaseUrlFromEnv(options.env));
-  return sql.query(`select distinct organization_id,season_id,competition_name,season_name
+  return sql.query(`select distinct organization_id,competition_id,season_id,competition_name,season_name
     from games where organization_id=$1::uuid and season_id is not null
     and competition_name is not null and season_name is not null
     order by competition_name,season_name desc limit 300`,[organizationId]);

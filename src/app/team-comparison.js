@@ -33,13 +33,27 @@ export function comparisonMeetings(rows,scope,teams){
     return {id:id(g.game_id),date:day(g.played_on),phase:label(g.phase_name),home:{id:id(g.home_team_id),name:label(g.home_team_name),logoUrl:teams.find(t=>t.id===id(g.home_team_id))?.logoUrl??null,score:count(g.home_score)},away:{id:id(g.away_team_id),name:label(g.away_team_name),logoUrl:teams.find(t=>t.id===id(g.away_team_id))?.logoUrl??null,score:count(g.away_score)}};
   });
 }
+export async function publicComparisonCatalog(org,input={},options={}){
+ for(const key of ['competitionId','seasonId','groupId','phaseId','left','right'])if(input[key]!==undefined&&!id(input[key]))throw new TypeError(key);
+ if(input.lockSeason!==undefined&&input.lockSeason!=='1')throw new TypeError('lockSeason');
+ if(input.lockSeason==='1'&&!id(input.seasonId))throw new TypeError('lockSeason requires seasonId');
+ const catalog=await(options.catalog??controlContextCatalog)(org,options),competitionId=id(input.competitionId),seasonId=id(input.seasonId);
+ if(competitionId&&!catalog.items.some(s=>id(s.competitionId)===competitionId))throw new TypeError('competition');
+ const season=catalog.items.find(s=>id(s.seasonId)===seasonId);
+ if(seasonId&&(!season||(competitionId&&id(season.competitionId)!==competitionId)))throw new TypeError('season competition');
+ return {...catalog,items:catalog.items.filter(s=>(!competitionId||id(s.competitionId)===competitionId)&&(input.lockSeason!=='1'||id(s.seasonId)===seasonId))};
+}
+function validateSelectionScope(groups,input){
+ if(input.groupId&&!groups.some(g=>g.id===id(input.groupId)))throw new TypeError('group');
+ if(input.phaseId&&!groups.filter(g=>!input.groupId||g.id===id(input.groupId)).some(g=>g.phases.some(p=>p.id===id(input.phaseId))))throw new TypeError('phase');
+}
 export async function comparisonCatalog(org,input,options={}){
   if(!id(input.seasonId))throw new TypeError('season');
   const config=organizationConfig(org,options.env??process.env),seasonId=id(input.seasonId);
-  const catalog=await (options.catalog??controlContextCatalog)(org,options);
+  const catalog=await publicComparisonCatalog(org,input,options);
   const season=catalog.items.find(s=>id(s.seasonId)===seasonId);if(!season)throw new TypeError('season');
   const live=await loadPortalHmsDirectory(config,seasonId,options);
-  if(live)return {org:config.code,season,groups:live.groups,teams:live.teams,source:live.source};
+  if(live){validateSelectionScope(live.groups,input);return {org:config.code,season,groups:live.groups,teams:live.teams,source:live.source};}
   const rows=await(options.loadScope??loadComparisonScope)(config,seasonId,options);
   if(!Array.isArray(rows)||rows.length>500)throw new Error('Large scope');
   const groups=new Map();
@@ -50,7 +64,8 @@ export async function comparisonCatalog(org,input,options={}){
     if(!group.phases.some(p=>p.id===id(r.phase_id)))group.phases.push({id:id(r.phase_id),name:label(r.phase_name)});
     groups.set(group.id,group);
   }
-  return {org:config.code,season,groups:[...groups.values()]};
+  validateSelectionScope([...groups.values()],input);
+ return {org:config.code,season,groups:[...groups.values()]};
 }
 function penalty(value){
   if(typeof value==='string'&&/^\d{1,6}:[0-5]\d$/.test(value)){const [m,s]=value.split(':').map(Number);return m+s/60;}
@@ -113,15 +128,16 @@ export function compareTeams(tables,games,scope,{minStarts=null,members=null}={}
   return {teams,rankings,playersAvailable:tables.players!==null,goaliesAvailable:tables.goalies!==null,minStarts,rules:'official-phase-v1'};
 }
 const cache=new Map(),pending=new Map();
+function selectedTeams(value,input){for(const key of ['left','right'])if(input[key]&&!value.teams.some(t=>t.id===id(input[key])))throw new TypeError('team');return value;}
 export async function readTeamComparison(org,input,options={}){
   const context=await comparisonCatalog(org,input,options),group=context.groups.find(g=>g.id===id(input.groupId)),phase=group?.phases.find(p=>p.id===id(input.phaseId));
   if(!group||!phase)throw new TypeError('scope');
   const minStarts=input.minStarts===undefined||input.minStarts===''?null:Number(input.minStarts);
   if(minStarts!==null&&(!Number.isInteger(minStarts)||minStarts<1||minStarts>200))throw new TypeError('starts');
   const config=organizationConfig(org,options.env??process.env),scope={organizationId:config.id,seasonId:context.season.seasonId,groupId:group.id,phaseId:phase.id};
-  const key=[config.code,scope.seasonId,group.id,phase.id,minStarts].join(':'),useCache=!options.loadTables&&!options.loadGames;
-  if(useCache&&cache.get(key)?.until>Date.now())return cache.get(key).value;
-  if(useCache&&pending.has(key))return pending.get(key);
+  const key=[config.code,id(input.competitionId),input.lockSeason,scope.seasonId,group.id,phase.id,minStarts].join(':'),useCache=!options.loadTables&&!options.loadGames;
+  if(useCache&&cache.get(key)?.until>Date.now())return selectedTeams(cache.get(key).value,input);
+  if(useCache&&pending.has(key))return selectedTeams(await pending.get(key),input);
   if(pending.size>=12)throw new Error('Busy');
   const task=(async()=>{
     const [tables,history]=await Promise.all([(options.loadTables??readComparisonTables)(scope,options),(options.loadGames??loadComparisonGames)(config,scope,options).catch(()=>null)]);
@@ -131,5 +147,5 @@ export async function readTeamComparison(org,input,options={}){
     const value={...context,group,phase,...comparison,meetings,historyAvailable:history!==null,readAt:new Date().toISOString(),source:'HMS public statistics / shared imported results'};
     if(useCache){if(cache.size>=64)cache.delete(cache.keys().next().value);cache.set(key,{value,until:Date.now()+60000});}return value;
   })();
-  if(useCache){pending.set(key,task);task.finally(()=>pending.delete(key)).catch(()=>{});}return task;
+  if(useCache){pending.set(key,task);task.finally(()=>pending.delete(key)).catch(()=>{});}return selectedTeams(await task,input);
 }
