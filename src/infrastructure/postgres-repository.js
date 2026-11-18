@@ -540,6 +540,13 @@ export async function loadAvailableGameReports(gameIds,seasonId,options={}) {
   return rows.map(row=>row.game_id);
 }
 
+export async function loadStripReports(gameIds,seasonId,organizationId,options={}) {
+ if(!gameIds.length)return [];
+ const sql=options.sql??createSql(databaseUrlFromEnv(options.env));
+ return sql.query(`select game_id, event_snapshot #>> '{media,albumUrl}' as album_url
+ from games where organization_id=$1::uuid and season_id=$2::uuid and game_id=any($3::uuid[])`,[organizationId,seasonId,gameIds.slice(0,20)]);
+}
+
 export async function loadStudioGameLabels(gameIds,organizationId,options={}) {
   if(!gameIds.length)return [];
   const sql=options.sql??createSql(databaseUrlFromEnv(options.env));

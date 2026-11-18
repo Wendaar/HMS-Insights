@@ -6,10 +6,10 @@ const seasons=new Map(),seasonPending=new Map();
 let cooldownUntil=0;
 const MAX_BYTES=4*1024*1024;
 export class ScheduleSourceError extends Error{constructor(status=503,retryAfter=30){super('Schedule source unavailable');this.status=status;this.retryAfter=Math.min(300,Math.max(1,Number(retryAfter)||30));}}
-async function publicRead(endpoint,params,options){
+export async function publicRead(endpoint,params,options={}){
   if(!options.fetchImpl&&cooldownUntil>Date.now())throw new ScheduleSourceError(429,Math.ceil((cooldownUntil-Date.now())/1000));
   const url=new URL('https://api.prod.hms.wootera.net/public/'+endpoint);for(const [key,value]of Object.entries(params))url.searchParams.set(key,value);
-  const response=await(options.fetchImpl??fetch)(url.href,{headers:{accept:'application/json'},signal:AbortSignal.timeout(6000)});
+  const response=await(options.fetchImpl??fetch)(url.href,{headers:{accept:'application/json'},signal:AbortSignal.timeout(options.timeoutMs??6000)});
   if(!response.ok){const error=new ScheduleSourceError(response.status===429?429:503,response.headers?.get('retry-after'));if(error.status===429&&!options.fetchImpl)cooldownUntil=Date.now()+error.retryAfter*1000;throw error;}
   const maxBytes=options.maxBytes??MAX_BYTES;
   if(Number(response.headers?.get('content-length'))>maxBytes)throw new ScheduleSourceError();
@@ -67,7 +67,7 @@ async function seasonLabels(seasonId,options){
   }catch{return {};}
 }
 // Whole-season search uses one shared, bounded index, never a walk over empty weeks.
-async function readSeason(seasonId,options){
+export async function readSeason(seasonId,options={}){
   const cacheable=!options.fetchImpl;
   if(cacheable&&seasons.get(seasonId)?.until>Date.now())return seasons.get(seasonId).value;
   if(cacheable&&seasonPending.has(seasonId))return seasonPending.get(seasonId);

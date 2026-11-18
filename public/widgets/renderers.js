@@ -1,3 +1,4 @@
+import {gameReportNavigation} from '../games/navigation.js';
 import {portrait} from '../player-portrait.js';
 import {widgetRegistry,normalizeWidget,resolveWidgetContext,metrics} from './definitions.js';
 import {mountInsightsCarousel} from '../insights-carousel.js';
@@ -8,7 +9,7 @@ const requests=new Map();
 export function widgetData(org,scope,extra={}){
  const q=new URLSearchParams({org,...Object.fromEntries(Object.entries(scope).filter(([,v])=>v!=null)),...extra}),key=q.toString();
  if(requests.get(key)?.until>Date.now())return requests.get(key).promise;
- const promise=fetch('/api/widgets?'+q,{headers:{accept:'application/json'},signal:AbortSignal.timeout(15000)}).then(async r=>{const d=await r.json();if(!r.ok)throw Error(d.error);return d;}).catch(e=>{requests.delete(key);throw e;});
+ const promise=fetch('/api/widgets?'+q,{headers:{accept:'application/json'},signal:AbortSignal.timeout(35000)}).then(async r=>{const d=await r.json();if(!r.ok)throw Error(d.error);return d;}).catch(e=>{requests.delete(key);throw e;});
  if(requests.size>=100)requests.delete(requests.keys().next().value);requests.set(key,{promise,until:Date.now()+60000});return promise;
 }
 function playerDialog(container,items,options,scope,role){
@@ -36,7 +37,43 @@ export async function renderLeaders(container,instance,options,selection={}){
  }catch(e){if(signal?.aborted)return;container.innerHTML=`<p class="notice error" role="alert">${esc(e.message??(en?'Statistics unavailable.':'Statistiky nejsou dostupné.'))}</p><button type="button">${en?'Try again':'Zkusit znovu'}</button>`;container.querySelector('button').onclick=()=>renderLeaders(container,instance,options,selection);}
  finally{container.removeAttribute('aria-busy');}
 }
+export async function renderGameStrip(container,instance,options){
+ const en=options.lang==='en',scope=resolveWidgetContext(instance.scope,options.pageContext,options.siteContext);
+ let selected,offset=0,generation=0;
+ container.className='hms-widget game-strip';
+ async function load(date,append=false){
+  const active=container.contains(document.activeElement)?document.activeElement:null,focusSelector=active?.hasAttribute('data-today')?'[data-today]':active?.hasAttribute('data-prev')?'[data-prev]':active?.hasAttribute('data-next')?'[data-next]':active?.tagName==='SELECT'?'select':null;
+  const current=++generation;container.setAttribute('aria-busy','true');
+  if(!container.children.length)container.innerHTML=`<p role="status">${en?'Loading games…':'Načítám zápasy…'}</p>`;
+  try{
+   const data=await widgetData(options.org,scope,{action:'game-strip',...(date?{date}:{}),offset:String(append?offset:0)});
+   if(current!==generation||options.signal?.aborted||!container.isConnected)return;
+   selected=data.date;offset=data.offset+data.items.length;
+   const format=d=>new Intl.DateTimeFormat(en?'en-GB':'cs-CZ',{day:'numeric',month:'short',year:'numeric',timeZone:'UTC'}).format(new Date(d+'T12:00:00Z'));
+   const status=g=>({FINISHED:en?'Final':'Konec',RUNNING:en?'In progress':'Probíhá','NOT PLAYED':en?'Scheduled':'Plánováno',CANCELLED:en?'Cancelled':'Zrušeno',POSTPONED:en?'Postponed':'Odloženo'}[g.status]??(g.live?(en?'In progress':'Probíhá'):g.status==='UNKNOWN'?(en?'Status unavailable':'Stav není dostupný'):g.status));
+   const team=t=>`<div class="strip-team">${instance.display.showTeamLogo&&t.logoUrl?`<img src="${esc(t.logoUrl)}" alt="" loading="lazy">`:''}<strong title="${esc(t.name)}">${esc(t.shortName??t.name??(en?'Team to be announced':'Tým bude upřesněn'))}</strong>${t.rank!=null?`<small title="${esc(t.rankGroup)}">${t.rank}. <span>${esc(t.rankGroup)}</span></small>`:''}${t.score!=null?`<b>${t.score}</b>`:''}</div>`;
+   const cards=data.items.map(g=>`<article class="strip-card" aria-label="${esc([g.home.name,g.away.name].filter(Boolean).join(' – '))}"><div class="strip-meta"><span>${esc(status(g))}</span>${g.time?`<time datetime="${g.date}T${g.time}">${g.time}</time>`:''}</div>${team(g.home)}${team(g.away)}${g.reportUrl||g.detailUrl||g.media?.albumUrl||g.media?.youtubeUrl?`<details class="strip-actions"><summary>${en?'Game links':'Odkazy k zápasu'} ↗</summary><nav aria-label="${en?'Game links':'Odkazy k zápasu'}">${g.reportUrl?`<a href="${esc(gameReportNavigation(g.id,options.lang,true).href)}" target="_blank" rel="noopener noreferrer">Game Report ↗</a>`:g.detailUrl?`<a href="${esc(g.detailUrl)}" target="_blank" rel="noopener noreferrer">HMS detail ↗</a>`:''}${g.media?.albumUrl?`<a href="${esc(g.media.albumUrl)}" target="_blank" rel="noopener noreferrer">▧ ${en?'Photos':'Fotografie'}</a>`:''}${g.media?.youtubeUrl?`<a href="${esc(g.media.youtubeUrl)}" target="_blank" rel="noopener noreferrer">▶ ${en?'Video':'Přenos / video'}</a>`:''}</nav></details>`:''}</article>`).join('');
+   if(append)container.querySelector('.strip-track').insertAdjacentHTML('beforeend',cards);
+   else{
+    container.innerHTML=`<header class="strip-heading"><div><span class="eyebrow">${esc(data.branding?.name??'HMS')}</span><h3>${en?'Game Strip':'Zápasový pás'}</h3></div><button type="button" data-today>${en?'Today / next games':'Dnes / nejbližší zápasy'}</button></header><nav class="strip-days" aria-label="${en?'Playing days':'Hrací dny'}"><button type="button" data-prev ${data.previous?'':'disabled'} aria-label="${en?'Previous playing day':'Předchozí hrací den'}">‹</button><select aria-label="${en?'Playing day':'Hrací den'}">${data.dates.map(d=>`<option value="${d}" ${d===data.date?'selected':''}>${format(d)}</option>`).join('')}</select><button type="button" data-next ${data.next?'':'disabled'} aria-label="${en?'Next playing day':'Následující hrací den'}">›</button><span>${esc(data.timeZone)}</span></nav><div class="strip-scroll"><button type="button" data-scroll="-1" aria-label="${en?'Scroll games back':'Posunout zápasy zpět'}">‹</button><div class="strip-track" tabindex="0" role="region" aria-label="${en?'Games':'Zápasy'}">${cards||`<p role="status">${en?'No games are available for this selection.':'Pro tento výběr nejsou dostupné žádné zápasy.'}</p>`}</div><button type="button" data-scroll="1" aria-label="${en?'Scroll games forward':'Posunout zápasy vpřed'}">›</button></div><p class="strip-source">${en?'HMS snapshot':'Snímek HMS'} · ${esc(new Intl.DateTimeFormat(en?'en-GB':'cs-CZ',{dateStyle:'short',timeStyle:'short',timeZone:data.timeZone}).format(new Date(data.readAt)))}</p><div class="strip-feedback" aria-live="polite"></div><button type="button" data-more>${en?'Load more games':'Načíst další zápasy'}</button>`;
+    if(/^#[a-f0-9]{6}$/i.test(data.branding?.color??''))container.style.setProperty('--widget-accent',data.branding.color);
+    container.querySelector('[data-today]').onclick=()=>load();
+    container.querySelector('select').onchange=e=>load(e.target.value);
+    container.querySelector('[data-prev]').onclick=()=>load(data.previous);
+    container.querySelector('[data-next]').onclick=()=>load(data.next);
+    container.querySelectorAll('[data-scroll]').forEach(b=>b.onclick=()=>container.querySelector('.strip-track').scrollBy({left:Number(b.dataset.scroll)*300,behavior:'smooth'}));
+   }
+   const more=container.querySelector('[data-more]');more.hidden=!data.hasMore;more.onclick=()=>load(selected,true);
+   container.querySelectorAll('img').forEach(img=>img.onerror=()=>{img.hidden=true;});
+   container.querySelectorAll('.strip-card').forEach(card=>{card.onfocusin=e=>{if(e.target.matches(':focus-visible')){const actions=card.querySelector('details');if(actions)actions.open=true;}};card.onpointerenter=e=>{if(e.pointerType==='mouse'){const actions=card.querySelector('details');if(actions)actions.open=true;}};card.onpointerleave=()=>{if(!card.contains(document.activeElement)){const actions=card.querySelector('details');if(actions)actions.open=false;}};});
+   if(focusSelector&&!append)(container.querySelector(focusSelector+':not(:disabled)')??container.querySelector('select')).focus({preventScroll:true});
+  }catch(e){if(current!==generation||options.signal?.aborted)return;const host=container.querySelector('.strip-feedback')??container;host.innerHTML=`<p role="alert">${en?'Games could not be loaded.':'Zápasy se nepodařilo načíst.'}</p><button type="button">${en?'Retry':'Zkusit znovu'}</button>`;host.querySelector('button').onclick=()=>load(date,append);}
+  finally{if(current===generation)container.removeAttribute('aria-busy');}
+ }
+ await load();
+}
 const renderers={
+ 'game-strip':renderGameStrip,
  leaders:renderLeaders,
  insights:async(container,instance,options)=>{container.className='hms-widget insights-widget';await mountInsightsCarousel(container,{org:options.org,lang:options.lang,allHref:options.insightsHref??('/priklepy/'+options.org+'?'+new URLSearchParams({lang:options.lang??'cs'})),openAllInNewTab:options.standalone===true,signal:options.signal});if(!options.signal?.aborted&&!container.children.length)container.textContent=options.lang==='en'?'No highlights are available yet.':'Zatím nejsou dostupné žádné Příklepy.';},
 };
