@@ -1,8 +1,10 @@
 import {build} from 'esbuild';
 import {fileURLToPath} from 'node:url';
 import {buildMediaCatalog} from './build-media-catalog.js';
+import {buildCameraAssets} from './auto-camera/build-web-assets.mjs';
 const root=fileURLToPath(new URL('../',import.meta.url));
 await buildMediaCatalog(root);
+await buildCameraAssets();
 await build({absWorkingDir:root,entryPoints:['src/browser/media-blob-upload.js'],outfile:'public/media-mapping/blob-client.js',bundle:true,platform:'browser',format:'esm',target:['es2020'],minify:true,legalComments:'eof'});
 console.log('Media catalog and direct Blob upload client built.');
 if(process.env.VERCEL_ENV==='production' && (process.env.VERCEL_GIT_COMMIT_MESSAGE || '').includes('[photo-archive-releasecheck]')){
