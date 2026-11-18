@@ -1,3 +1,5 @@
+import {createOfficialClosingHandler} from './web/official-closing-handler.js';
+const officialClosingHandler=createOfficialClosingHandler();
 import {createWidgetsHandler} from './web/widgets-handler.js';
 import {createVirtualCameraHandler} from './web/virtual-camera-handler.js';
 import {createPhotoArchiveHandler} from './web/photo-archive-handler.js';
@@ -135,6 +137,15 @@ export const server = createServer(async (request, response) => {
   if(/^\/widgets\/(definitions|statistics|renderers|picker|scope-options|scope-picker|strip-view)\.js$/.test(url.pathname)||url.pathname==='/widgets/styles.css'||['/player-card.js','/player-card.css','/player-portrait.js'].includes(url.pathname)){
     if(!['GET','HEAD'].includes(request.method)){response.writeHead(405,{allow:'GET, HEAD'});response.end();return;}
     response.setHeader('content-type',url.pathname.endsWith('.css')?'text/css; charset=utf-8':'text/javascript; charset=utf-8');response.end(request.method==='HEAD'?undefined:await readFile(join(publicDirectory,url.pathname)));return;
+  }
+  if(url.pathname==='/api/closing'||url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='closing'){
+    request.query=Object.fromEntries(url.searchParams);
+    if(request.method==='POST'){let body='';for await(const chunk of request){body+=chunk;if(Buffer.byteLength(body)>100000){response.writeHead(413);response.end();return;}}request.body=body;}
+    await officialClosingHandler(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json; charset=utf-8');response.end(JSON.stringify(body));}});return;
+  }
+  if(url.pathname==='/league/closing.js'){
+    if(!['GET','HEAD'].includes(request.method)){response.writeHead(405,{allow:'GET, HEAD'});response.end();return;}
+    response.setHeader('content-type','text/javascript; charset=utf-8');response.end(request.method==='HEAD'?undefined:await readFile(join(publicDirectory,'league','closing.js')));return;
   }
   if(url.pathname==='/api/portal'||url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='portal'){
     request.query=Object.fromEntries(url.searchParams);

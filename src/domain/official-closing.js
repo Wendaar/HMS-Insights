@@ -31,7 +31,7 @@ export function closingScope(input) {
 
 // rank is an official placement, not an index: joint placements are supported.
 // Medal labels are explicit, because not every group/phase grants medals.
-export function closingStandings(rows, eligibleTeamIds) {
+export function closingStandings(rows, eligibleTeamIds, {allowUnplaced=false}={}) {
   if (!Array.isArray(rows) || rows.length > 256 || !Array.isArray(eligibleTeamIds)) throw new TypeError('standings');
   const eligible = new Set(eligibleTeamIds.map(id => cleanId(id, 'eligible team')));
   const seen = new Set();
@@ -40,11 +40,13 @@ export function closingStandings(rows, eligibleTeamIds) {
     const teamId = cleanId(row.teamId, 'teamId');
     if (!eligible.has(teamId) || seen.has(teamId)) throw new TypeError('duplicate or ineligible team');
     seen.add(teamId);
-    if (!Number.isInteger(row.rank) || row.rank < 1 || row.rank > 256) throw new TypeError('rank');
+    const unplaced=allowUnplaced&&row.rank==null;
+    if (!unplaced&&(!Number.isInteger(row.rank) || row.rank < 1 || row.rank > 256)) throw new TypeError('rank');
     const medal = row.medal ?? null;
     if (![null, 'gold', 'silver', 'bronze'].includes(medal)) throw new TypeError('medal');
-    return {teamId, rank: row.rank, medal};
-  }).sort((a,b) => a.rank - b.rank || a.teamId.localeCompare(b.teamId));
+    if(unplaced&&medal)throw new TypeError('unplaced medal');
+    return {teamId, rank: unplaced?null:row.rank, medal};
+  }).sort((a,b) => (a.rank??257) - (b.rank??257) || a.teamId.localeCompare(b.teamId));
 }
 
 export function closingAwards(rows, eligiblePlayerTeamPairs) {
@@ -54,7 +56,7 @@ export function closingAwards(rows, eligiblePlayerTeamPairs) {
   return rows.map(row => {
     if (!plain(row)) throw new TypeError('award');
     const category = label(row.category, 'category', 60).toLowerCase();
-    if (!AWARDS.has(category) && !category.startsWith('custom:')) throw new TypeError('category');
+    if (!AWARDS.has(category) && !/^custom:[a-z0-9-]{1,40}$/.test(category)) throw new TypeError('category');
     const playerId = cleanId(row.playerId, 'playerId');
     const teamId = cleanId(row.teamId, 'teamId');
     if (!eligible.has(playerId+'|'+teamId)) throw new TypeError('ineligible player');
@@ -69,7 +71,7 @@ export function closingDraft(input, eligibility) {
   return {
     title: label(input.title, 'title'),
     scope: closingScope(input.scope),
-    standings: closingStandings(input.standings ?? [], eligibility.teamIds),
+    standings: closingStandings(input.standings ?? [], eligibility.teamIds,{allowUnplaced:true}),
     awards: closingAwards(input.awards ?? [], eligibility.playerTeamPairs),
     allStarsPublicationId: input.allStarsPublicationId == null ? null : label(input.allStarsPublicationId,'allStarsPublicationId'),
     status: 'draft',
@@ -81,6 +83,7 @@ export function closingDraft(input, eligibility) {
 export function approveClosing(draft, {actorId, approvedAt, version} = {}) {
   if (!plain(draft) || draft.status !== 'draft') throw new TypeError('draft status');
   if (!Array.isArray(draft.standings) || !draft.standings.length) throw new TypeError('empty standings');
+  if(draft.standings.some(r=>!Number.isInteger(r.rank)||r.rank<1))throw new TypeError('unplaced standings');
   if (!Number.isInteger(version) || version < 1) throw new TypeError('version');
   const snapshot = structuredClone({...draft, status:'closed', published:false,
     approval: {actorId: cleanId(actorId,'actorId'), approvedAt: label(approvedAt,'approvedAt',40), version}});

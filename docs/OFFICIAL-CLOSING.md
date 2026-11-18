@@ -1,40 +1,70 @@
-# HMS Official Closing — V1 (implementation in progress)
+# HMS Official Closing — V1
 
-## Outcome
-Create one official, reusable closing record for a season/competition, group, or phase. Its confirmed results must be independent from live score/statistics changes and reusable later by the Site Builder, public widgets, Social Studio, and Awards.
+Implemented in this companion repository; **not deployed by this PR**. Closing is independent of the Site Builder's website publication and never changes games, statistics or sporting rules in HMS.
 
-## Verified architecture
-- This is the **HMS-Insights companion repository**, not the HMS core backend (see `AGENTS.md`).
-- Site Builder: `/control/apps/public-portal?org=<slug>`; its draft/publication settings already have a different lifecycle and must not be repurposed as an official sporting close.
-- Site Builder uses organisation-validated HMS competition/season/group/phase hierarchy (see `docs/PUBLIC-PORTAL.md`).
-- All-Stars has its own verified candidates, draft and published immutable snapshots (see `docs/ALL-STARS.md`).
-- Existing Vercel routes are multiplexed through `api/game-summary.js`; check Hobby function limits before adding a function.
-- Shared `hms_tool_instances` persistence can likely be reused with a separate tool namespace, production/preview separation, revision checks and the existing auth pattern — inspect real handlers before implementing.
-- Universal widget registry is under `public/widgets`, but **no public Closing UI or API has been connected yet**.
+## Administration
 
-## Current branch contents
-- `src/domain/official-closing.js`: pure input validation and snapshot assembly; no persistence, API or side effects.
-- `test/official-closing.test.js`: focused domain tests (not yet executed in a runnable checkout).
-- This is a **domain foundation, NOT a released V1**.
+Open `/control/apps/public-portal?org=<slug>&lang=cs` (or `lang=en`), enter the organization's existing access code and use **Closing**. Its panel works even before a portal configuration exists.
 
-## Remaining V1 work
-1. Read actual `src/web/public-portal-handler.js`, `src/web/all-stars-handler.js`, `src/app/public-portal*.js`, organisation/catalog and persistence modules. Determine the precise reusable APIs and avoid introducing alternate data stores.
-2. Build server-side organisation-bound scope picker data and verify season/competition/group/phase parentage (not just UUID format). Explicitly mark partial standings/data and never infer unobserved match placement. Support Competition / Group / Phase, including phase-within-group.
-3. Produce suggested order from **verified official standings** and expose provenance, coverage, ties, uncertainty. Editing order is permitted, but must never mutate source games or official HMS standings.
-4. Add authenticated protected draft CRUD, revision-safe save, validation/approval, immutable versioned snapshots and a reasoned admin reopening/revision workflow. Protect organisation boundaries server-side and separate production/preview state.
-5. Add structured award nominations based on legitimate scoped players and official statistics. Distinguish statistical leaders from subjective choices (MVP, goalie, defenseman), allow optional custom awards and skipped awards; integrate published All-Stars by verified reference/snapshot, never duplicate its admin UI.
-6. Expose a **read-only public approved Closing contract** with private/published toggle, no drafts or secrets. Use the shared application route; no new Vercel function unless justified.
-7. Add Site Builder navigation `Closing`, named pickers, editable ordered standings (including joint positions and medals), awards selection, review panel, confirmation lock, version and publish controls. Provide CS/EN. Do not disturb existing portal published configurations.
-8. Add API/UI tests for mismatched scope, cross-org access, unavailable data, incomplete results, draft conflicts, concurrent approvals, duplicate medals/ranks, source data changing after approval and rollback/revisions. Run `npm test`, report output.
-9. Document new API and migration/deployment requirements, then submit reviewable PR. Do not merge/deploy without authorization.
+1. Load Closing, select an existing record or enter a new URL identifier.
+2. Choose a named competition/season and Competition, Group or Phase scope. A phase may be selected within a group or across the named groups; the server checks its unique parent. Approved history fixes the record's scope; use a separate identifier for a different scope.
+3. Load HMS sources. Apply the suggested table order or enter final positions manually. Arrow buttons move teams and renumber positions; enter equal ranks explicitly for joint placements. Medals are optional and must match gold/1, silver/2 or bronze/3.
+4. Choose awards using scoped player/team pairs. Points, goals and assists show statistical leaders, including ties. MVP, goalie and defenseman are manual choices, not computed sporting judgments. The goalie award requires an official goalie candidate. Empty selections skip awards; custom categories use `custom:<code>` and a title.
+5. Save the draft, inspect the named review and source coverage, then validate the saved revision. Confirm finality. Joint ranks/medals require explicit consent and a reason; missing standings or player-statistics coverage additionally requires acknowledgment and a reason. All scoped teams need final positions before approval.
+6. Approve and lock a new version. Approval remains private. Explicitly publish one approved version or make it private again. Publishing an older approved version provides rollback without rewriting history.
+7. Reopening requires a reason and preserves all earlier versions and the existing public version. A new approval appends a new immutable snapshot. Only a draft with no approved history can be removed (soft deletion reserves its identifier).
 
-## Initial domain assumptions to revisit
-- UUID-format validation is only input validation. Real ownership/membership must be checked against HMS server-side before saving/approval.
-- Sharing a rank and medal is allowed for tournaments with tied bronze places. Whether additional ties or medals are allowed is policy decided at approval time.
-- Custom award categories currently use `custom:<code>` and a title.
-- A player award is bound to a specific player/team pair, never to a name alone.
-- An approved snapshot is detached from its draft; database must enforce immutability and revision history.
-- Closing and publication are independent: approval does not automatically make the results public.
+The admin credential stays in page memory and request headers. CS/EN is selected through the URL. Authentication identifies an **organization admin credential, not an individual user**; approval `actorId` is the organization's configured UUID. Reopening and publication events are private audit metadata.
 
-## Out of scope for V1
-Visual public Final Results widget, Social Studio graphic templates, historical awards pages and changes to HMS core scoring rules.
+## Verified HMS sources and limits
+
+`src/app/official-closing.js` reuses the organization-bound integration catalog (`fetchOrganization` plus `fetchCompetitions`), `loadPortalHmsSeason`, public membership, official standings and official player/goalie tables. No imported-game inference or fallback to another organization's data is permitted. The membership table is mandatory; unavailable membership/hierarchy fails closed. Other unavailable tables are explicitly marked incomplete.
+
+The HMS table's row order is a **suggestion**, not proof of final placement, tie policy or completed fixtures. V1 does not claim verified game completion or derive playoff positions from unobserved games. Combined Competition/season placement is manual because the existing standings reader verifies group/phase order. Competition scope covers one selected season. Approval records reviewed coverage and policy acknowledgment. A human confirms sporting finality.
+
+Statistical totals come from the exact chosen scope, retain player/team identity and do not sum across transfers. Missing values remain unknown. The shared statistics reader can cache tables for up to 60 seconds; snapshots record the Closing read time and provenance. Approval reloads the verified source model and checks eligibility again. Approved snapshots detach team/player labels, selected awards, source suggestions and coverage from future HMS changes.
+
+Optional All Stars uses a published record's identifier and a detached copy of its verified output. V1 accepts only the same organization, season and exact group; phase/competition references are rejected because monthly All Stars does not certify those scopes. The existing All Stars UI is reused via a published-identifier picker. Preview approval cannot reference production All Stars because that tool currently has no isolated preview namespace. No duplicated All Stars editor is introduced.
+
+## API
+
+`/api/closing` rewrites to `/api/game-summary?view=closing`; local and Vercel routing share the handler. No new Vercel function. Common query: `org=<slug>&action=<action>&instance=<identifier>&lang=cs|en`.
+
+| Method | Action | Contract |
+| --- | --- | --- |
+| GET | `catalog` | Organization-verified named competition/season list |
+| GET | `context` | Supply seasonId, competitionId, type, optional groupId/phaseId; returns validated hierarchy |
+| GET | `sources` | Same scope query; scoped teams, candidates, suggestions, nominations and explicit provenance/coverage |
+| GET | `manage` | Without instance: record list; with instance: private draft, revision, history and publication pointer |
+| POST | `save` | `{revision,config}`; validated draft CRUD |
+| POST | `review` | `{revision,policy}`; validates saved draft against refreshed HMS data without writing |
+| POST | `approve` | `{revision,policy}`; atomically appends a snapshot and locks editing |
+| POST | `reopen` | `{revision,reason}`; unlocks a working revision, preserves history |
+| POST | `publish` | `{revision,version}`; chooses an existing approved public version |
+| POST | `pause` | `{revision}`; makes the record private |
+| POST | `delete` | `{revision}`; removes only a never-approved draft |
+| GET | `public` (default) | Read-only approved public snapshot or 404 |
+| GET | `list` | Only public records, using approved title/scope/version |
+
+Every action except `public`/`list` requires the Site Builder's existing organization bearer credential and same-origin validation. Credential precedence: `HMS_<ORG>_PORTAL_ADMIN_SECRET`, then tools admin secret, then existing webhook-secret fallback. Unknown organizations fail closed. Policy fields: `confirmFinal`, `allowTies`, `acceptPartial`, `reason`.
+
+Draft config: `{title,scope,standings:[{teamId,rank,medal}],awards:[{category,playerId,teamId,title?}],allStarsPublicationId?}`. A draft may contain `rank:null` for unplaced teams; approval rejects these. Scope includes `organization` (slug), `competitionId`, `seasonId`, `type`, and appropriate group/phase UUIDs. Ownership and parentage is verified server-side; UUID syntax alone is insufficient.
+
+Public schema version 1 returns `{schemaVersion,org,slug,title,scope,standings,awards,allStars,provenance,approvedAt,version,teams,players}`. It excludes drafts, credential audit metadata, private reasons and revision history. Public reads use only the selected snapshot; HMS outages/changes do not rewrite it. Widgets, Social Studio and Awards can reuse this contract; visual public Closing widgets and graphics are outside V1.
+
+Responses: 400 malformed input, 401 unauthorized, 403 cross-origin, 404 private/missing, 405 method mismatch, 409 revision conflict, 422 incomplete review, 423 locked edits, 503 unavailable sources/storage/migration. All use `no-store` and `nosniff`. Concurrent approvals use one compare-and-swap write.
+
+## Storage and migration (required before deployment)
+
+Uses existing `hms_tool_instances`, with `official-closing` only for explicit `VERCEL_ENV=production`; other environments use `official-closing-preview`. Portal/All Stars records are unchanged. The stored draft envelope contains `config`, append-only `versions`, `locked`, `publishedVersion`, `events` and optional deletion status. The generic `published` column is unused; the explicit version pointer changes atomically with the row revision.
+
+After migration 006, apply **`db/migrations/009_official_closing.sql`** to the intended database. Its trigger rejects changes/removal of approved snapshots, record identity changes and deletion of approved history. Approval checks trigger readiness and refuses to proceed without the migration. No new secrets or environment variables. This PR does not apply migrations, merge or deploy.
+
+Limits: 256 teams, 100 awards, 100 versions and 500 audit events per record; lists use the existing 100-row store bound. Database owners can intentionally disable triggers; protection covers ordinary application writes, not hostile database administrators.
+
+## Verification
+
+- `node --test` is the repository's `npm test` script. Focused tests: `test/official-closing*.test.js`.
+- `scripts/verify-official-closing-ui.mjs [playwright-entry-path]` runs headless Edge against a local fixture API, tests the actual editor/lifecycle and writes desktop/mobile screenshots under ignored `artifacts/closing-qa`. `CLOSING_BROWSER_CHANNEL` may select another installed Chromium channel. Playwright is optional QA tooling, not an application dependency.
+- `scripts/verify-official-closing-db.mjs [pglite-entry-path]` runs the migration on in-memory PostgreSQL: immutable history, deletion rejection, concurrent compare-and-swap, tenant/tool isolation. PGlite is optional QA tooling. It never connects to `DATABASE_URL`.
+- Fixture verification uses no live HMS credentials or production database. Real-organization integration and migration rollout require verification in an authorized environment before release.
