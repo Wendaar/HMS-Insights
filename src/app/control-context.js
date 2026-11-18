@@ -10,10 +10,10 @@ export async function controlContextCatalog(org,options={}){
   for(const row of rows){
     if(String(row.organization_id).toLowerCase()!==config.id.toLowerCase())throw new Error('Catalog organization mismatch');
     if(!isGameId(row.season_id)||!row.competition_name||!row.season_name)continue;
-    items.set(row.season_id.toLowerCase(),{seasonId:row.season_id.toLowerCase(),competition:String(row.competition_name).slice(0,120),season:String(row.season_name).slice(0,80),name:`${String(row.competition_name).slice(0,120)} · ${String(row.season_name).slice(0,80)}`});
+    items.set(row.season_id.toLowerCase(),{seasonId:row.season_id.toLowerCase(),competitionId:isGameId(row.competition_id)?row.competition_id.toLowerCase():null,competition:String(row.competition_name).slice(0,120),season:String(row.season_name).slice(0,80),name:`${String(row.competition_name).slice(0,120)} · ${String(row.season_name).slice(0,80)}`});
   }
   const live=await loadPortalHmsCatalog(config,options);
-  for(const item of live??[])items.set(item.seasonId,{seasonId:item.seasonId,competition:item.competition,season:item.season,name:item.name});
+  for(const item of live??[])items.set(item.seasonId,{seasonId:item.seasonId,competitionId:item.competitionId,competition:item.competition,season:item.season,name:item.name});
   if(items.size>300)throw new Error('Catalog size');
   return {org:config.code,items:seasonLinks(config.slug,[...items.values()]).sort((a,b)=>a.name.localeCompare(b.name,'cs')),source:live===null?'imported-hms-seasons':'hms-and-imported-seasons'};
 }

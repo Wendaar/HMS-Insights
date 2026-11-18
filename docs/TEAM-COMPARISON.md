@@ -6,13 +6,15 @@ the same reusable editor module in a scoped component (not another iframe/app).
 The old `/control/apps/team-comparison?org=phm&lang=cs` definition URL also works.
 The public page keeps the organization fixed in its route and exposes competition/season,
 division, phase and both team selectors. Export/share/embed controls and the Control
-link remain hidden. Embed also hides the page header but retains all public selectors.
+link remain hidden. Embed also hides the page header. A locked season is a fixed
+competition/season label; division, phase and both team selectors remain interactive.
 
 Public interactive view: `/team-comparison/phm?lang=cs` (also `euchl`).
-Open public page and Copy public link use the stable production-domain organization
-entry, with language only: `/team-comparison/phm?lang=cs`. Administrators do not
-prepare pairs or generate a link for every game. Visitors select their own scope
-and teams. Optional deep links and reload retain the selected scope/teams in the
+Open public page, Copy public link and iframe use the same selected public output
+scope on the production domain: whole organization (default), selected competition,
+or selected season. Team pairs are never automatically pinned. Visitors select
+division, phase and teams within that scope. Studio always retains the full
+organization catalog; the public output scope does not filter its editor. Optional deep links and reload retain the selected scope/teams in the
 address bar; existing selection URLs remain supported. Embed adds `embed=1`. No organization code is needed: this is read-only public sporting
 data and this app cannot save, publish or change HMS records.
 
@@ -112,7 +114,7 @@ opponent marks use verified club logos; hover, click or keyboard activation
 reveals date, venue, score and lineup count. Missing venue/logo stays explicit or
 uses a neutral fallback. Meetings also display both verified team logos.
 
-In the editor, the production public link is the stable organization entry. **Open public page** opens that clean output directly; **Copy public
+In the editor, the production public link uses the selected public output scope. **Open public page** opens that clean output directly; **Copy public
 link** copies it, and the embed code uses the same configuration. Public links do
 not depend on a successful PNG/font/image render. These controls remain absent
 from the rendered public page and embed.
@@ -141,3 +143,54 @@ The deferred feedback from 2026-10-28 is implemented:
   time. Badge details identify the season/division/phase, the record population,
   and qualification. These are calculated sporting badges, not official awards
   or cross-division/cross-season rankings.
+
+## Public URL scope (2026-11-18)
+
+Existing routes and preselection links remain supported. The shared Team Compare
+module is used by Studio, the legacy editor, public page and iframe.
+
+| Parameter | Contract |
+| --- | --- |
+| competitionId=UUID | Only seasons belonging to this competition in the route organization. |
+| seasonId=UUID | Preselection; season switching remains available within the allowed competition unless locked. |
+| lockSeason=1 | Requires seasonId; the public catalog contains exactly this season. |
+| embed=1 | Presentation only; never adds a data restriction. |
+| groupId, phaseId, left, right | Optional preselection within the verified allowed scope. |
+
+Studio output scopes: organization adds no restriction; competition adds
+competitionId; season adds competitionId, seasonId and lockSeason=1. Both public
+link and iframe use the same scope, without copying the editor's team pair.
+Studio stores publicRange and the selected season/division/phase in its URL for
+reloads and language changes. Changing organization clears this state. Public
+selection URLs retain competitionId and lockSeason across selection, language and
+reload changes. No automatic “current season” resolution is used.
+
+The server validates organization → competition → season before scope reads and
+comparison cache access. Both imported metadata and the verified live HMS catalog
+retain competitionId. Groups/phases are checked against their season on both live
+and imported paths. Catalog, scope and compare reject malformed/foreign IDs,
+competition/season conflicts and a lock without a season with HTTP 400 and a
+localized scope error, rather than choosing replacement data. Compare cache keys
+include competition and lock; warm hits still validate scope and team preselection.
+Unavailable upstream data returns an unavailable state/503; a valid empty season
+stays selected and displays an empty state. These URL constraints describe a public
+view, not an authorization boundary for otherwise public sporting data.
+
+Verified on 2026-11-18 against the public organization catalog and
+https://public.heromanagementsystem.com/api/portal?org=phm&action=public:
+PHM Cup competitionId=c7c0bb15-5d29-415d-851e-5d777c6cc621;
+2026–2027 seasonId=e6134160-47cf-11f1-a223-bfdfbdd3a64b.
+After deploying this change, the fixed public URL is:
+
+https://app.phmcup.cz/team-comparison/phm?competitionId=c7c0bb15-5d29-415d-851e-5d777c6cc621&seasonId=e6134160-47cf-11f1-a223-bfdfbdd3a64b&lockSeason=1&lang=cs
+
+~~~html
+<iframe src="https://app.phmcup.cz/team-comparison/phm?competitionId=c7c0bb15-5d29-415d-851e-5d777c6cc621&amp;seasonId=e6134160-47cf-11f1-a223-bfdfbdd3a64b&amp;lockSeason=1&amp;lang=cs&amp;embed=1" title="Porovnání týmů – PHM Cup 2026–2027" width="100%" height="1000" loading="lazy" style="border:0"></iframe>
+~~~
+
+Regression checks: node --test (including team-comparison-scope.test.js) and
+scripts/team-comparison-browser.mjs cover legacy links, all three export scopes,
+locked public selectors, division/language/reload persistence, Studio full catalog
+and organization reset, API validation, empty seasons and warm-cache rejection.
+No production deployment is included in this change. Game Center, its routes and
+iframe, statistical calculations and other widget implementations are unchanged.
