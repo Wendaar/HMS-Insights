@@ -1,3 +1,4 @@
+import './security/preview-environment.js';
 import {createWidgetsHandler} from './web/widgets-handler.js';
 import {createVirtualCameraHandler} from './web/virtual-camera-handler.js';
 import {createPhotoArchiveHandler} from './web/photo-archive-handler.js';

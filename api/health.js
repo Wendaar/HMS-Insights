@@ -1,3 +1,4 @@
+import '../src/security/preview-environment.js';
 export default function handler(_request, response) {
   const checks = {
     database: Boolean(process.env.DATABASE_URL),
