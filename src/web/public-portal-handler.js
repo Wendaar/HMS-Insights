@@ -2,6 +2,7 @@ import {organizationEntry,publicOrganizations} from '../app/organizations.js';
 import {hasBearerSecret} from '../security/bearer-secret.js';
 import {toolStore} from '../infrastructure/tool-instances.js';
 import {readWidgetScopeCatalog} from '../app/widgets.js';
+import {publishedClosings} from '../app/official-closing-public.js';
 import {portalSettings,portalCatalog,validatePortalSeasons,portalDirectory,portalPartners,portalModule,portalSections,portalBranding} from '../app/public-portal.js';
 export const portalStorageNamespace=env=>env.VERCEL_ENV==='production'?'public-portal':'public-portal-preview';
 export function createPublicPortalHandler(options={}){
@@ -42,9 +43,12 @@ export function createPublicPortalHandler(options={}){
    if(!raw)return fail(404,'Portál není zveřejněný.');
    const config=portalSettings(raw),seasons=await validatePortalSeasons(org.code,config,options);
    const section=action==='extras-document'?'extras':q.section??'home';
-   if(!config.sections.includes(section))return fail(404,'Tato sekce není zveřejněná.');
+   if(section!=='closing'&&!config.sections.includes(section))return fail(404,'Tato sekce není zveřejněná.');
    const season=seasons.find(s=>s.seasonId===(q.seasonId??config.defaultSeasonId));
    if(!season)return fail(404,'Tato sezona není zveřejněná.');
+   let closings=[],closingAvailable=true;
+   if(['public','preview'].includes(action)||['home','closing'].includes(section))try{closings=await publishedClosings(org,{...options,env});}catch{closingAvailable=false;}
+   if(section==='closing'&&!closings.length)return fail(closingAvailable?404:503,closingAvailable?'Zatím nejsou zveřejněné žádné konečné výsledky.':'Konečné výsledky se nepodařilo načíst.');
    if(action==='extras-document'){
     res.setHeader('content-type','text/html; charset=utf-8');
     res.setHeader('referrer-policy','no-referrer');
@@ -54,10 +58,11 @@ export function createPublicPortalHandler(options={}){
    if(['public','preview'].includes(action)){
     const {extras,...publicConfig}=config;
     let branding=null;try{branding=await(options.portalBranding??portalBranding)(org.code,season,options);}catch{/* Optional HMS media never blocks the portal. */}
-    return res.status(200).json({org:{code:org.code,slug:org.slug,name:org.name},path,config:publicConfig,seasons,season,branding,publishedAt:instance.publishedAt,preview});
+    return res.status(200).json({org:{code:org.code,slug:org.slug,name:org.name},path,config:publicConfig,seasons,season,branding,publishedAt:instance.publishedAt,preview,hasClosing:closings.length>0});
    }
    let data={};
-   if(section==='extras')data={html:config.extras};
+   if(section==='closing')data={closings};
+   else if(section==='extras')data={html:config.extras};
    else if(['teams','venues','system'].includes(section)){
     const directory=await(options.portalDirectory??portalDirectory)(org.code,season.seasonId,options);
     data=section==='teams'?{teams:directory.teams,groups:directory.groups,teamCount:directory.membershipComplete===false?null:directory.teamCount??directory.teams.length,membershipComplete:directory.membershipComplete,source:directory.source}:section==='venues'?{venues:directory.venues,source:directory.venuesSource??directory.source}:{groups:directory.groups,membershipComplete:directory.membershipComplete,source:directory.source};
@@ -65,7 +70,7 @@ export function createPublicPortalHandler(options={}){
    }else if(section==='home'){
     try{data={sponsors:(await portalPartners(org.code,season,options)).items,sponsorsAvailable:true};}catch{data={sponsors:[],sponsorsAvailable:false};}
    }else data={moduleUrl:portalModule(section,org,season,q.lang==='en'?'en':config.lang)};
-   return res.status(200).json({section,seasonId:season.seasonId,...data});
+   return res.status(200).json({section,seasonId:season.seasonId,...data,...(section==='home'?{closings,closingAvailable}:{})});
   }catch(e){return e instanceof TypeError?fail(400,'Zkontrolujte nastavení portálu a vybrané sezony.'):fail(503,'Data portálu nejsou dostupná. Zkuste načtení znovu.');}
  };
 }

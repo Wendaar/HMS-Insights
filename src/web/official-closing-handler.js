@@ -3,7 +3,8 @@ import {hasBearerSecret} from '../security/bearer-secret.js';
 import {toolStore} from '../infrastructure/tool-instances.js';
 import {closingCatalog,closingContext,closingSources} from '../app/official-closing.js';
 import {closingDraft,approveClosing} from '../domain/official-closing.js';
-export const closingStorageNamespace=env=>env.VERCEL_ENV==='production'?'official-closing':'official-closing-preview';
+import {closingStorageNamespace,publicClosing,publishedClosings} from '../app/official-closing-public.js';
+export {closingStorageNamespace};
 const slugOK=v=>typeof v==='string'&&v.length<=64&&/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(v);
 const reason=v=>{if(typeof v!=='string'||v.trim().length<8||v.length>1000||/[<>\x00-\x1f]/.test(v))throw new TypeError('reason');return v.trim();};
 export function closingReview(draft,data,policy={},lang='en'){
@@ -43,18 +44,17 @@ export function createOfficialClosingHandler(options={}){
    if(action==='catalog')return res.status(200).json(await(options.closingCatalog??closingCatalog)(org.code,{...options,env}));
    if(['context','sources'].includes(action))return res.status(200).json(await(action==='context'?(options.closingContext??closingContext):sources)(org.code,{...q,organization:org.slug},{...options,env}));
    if(action==='list'){
-    const items=[];for(const row of await store.list(org.code)){const i=await store.get(org.code,row.slug),record=i?.draft;if(record?.publishedVersion&&!record.deleted){const p=record.versions.find(v=>v.approval.version===record.publishedVersion);if(p)items.push({slug:row.slug,title:p.title,scope:p.scope,version:p.approval.version});}}
+    const items=(await publishedClosings(org,{env,closingStore:store})).map(({slug,title,scope,version})=>({slug,title,scope,version}));
     return res.status(200).json({items});
    }
    if(action==='manage'&&!q.instance)return res.status(200).json({items:await store.list(org.code)});
    if(!slugOK(q.instance))throw new TypeError('instance');
    const instance=await store.get(org.code,q.instance),state=instance?.draft??{config:null,versions:[],publishedVersion:null,locked:false,events:[]};
    if(action==='public'){
-    const snapshot=state.versions.find(v=>v.approval.version===state.publishedVersion);
+    const snapshot=publicClosing(instance,org,q.instance);
     if(!snapshot||state.deleted)return fail(404,'Closing is private.');
     // Deliberate projection: no draft, credential audit, revision reasons or editor fields.
-    const {title,scope,standings,awards,allStars,provenance,approval,teams,players}=snapshot;
-    return res.status(200).json({schemaVersion:1,org:org.slug,slug:q.instance,title,scope,standings,awards,allStars,provenance,approvedAt:approval.approvedAt,version:approval.version,teams,players});
+    return res.status(200).json(snapshot);
    }
    if(action==='manage')return res.status(200).json({instance});
    if(!env.DATABASE_URL&&!options.store)return fail(503,'Central storage unavailable.');
@@ -91,7 +91,7 @@ export function createOfficialClosingHandler(options={}){
      allStarsSnapshot={slug:config.allStarsPublicationId,publishedAt:ref.publishedAt,snapshot:p.output};
     }
     const actorId=organizationConfig(org.code,env).id;
-    const snapshot=approveClosing({...config,provenance:data.provenance,teams:data.teams,
+    const snapshot=approveClosing({...config,scopeLabel:data.season?.name??config.title,provenance:data.provenance,teams:data.teams,
      players:data.players.filter(p=>config.awards.some(a=>a.playerId===p.playerId&&a.teamId===p.teamId)),allStars:allStarsSnapshot,
      policy:{confirmFinal:true,allowTies:body.policy?.allowTies===true,acceptPartial:body.policy?.acceptPartial===true,reason:body.policy?.reason?reason(body.policy.reason):null}},
      {actorId,approvedAt:at,version:state.versions.length+1});

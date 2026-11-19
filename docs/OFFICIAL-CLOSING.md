@@ -1,18 +1,22 @@
 # HMS Official Closing — V1
 
-Implemented in this companion repository; **not deployed by this PR**. Closing is independent of the Site Builder's website publication and never changes games, statistics or sporting rules in HMS.
+Implemented in this companion repository and available in isolated preview; not released to production. Closing is independent of the Site Builder's website publication and never changes games, statistics or sporting rules in HMS.
 
 ## Administration
 
 Open `/control/apps/public-portal?org=<slug>&lang=cs` (or `lang=en`), enter the organization's existing access code and use **Closing**. Its panel works even before a portal configuration exists.
 
-1. Load Closing, select an existing record or enter a new URL identifier.
+1. Load Closing and open an existing record or create a new one. The URL identifier is optional and generated automatically when empty; the form never creates an unaddressable record.
 2. Choose a named competition/season and Competition, Group or Phase scope. A phase may be selected within a group or across the named groups; the server checks its unique parent. Approved history fixes the record's scope; use a separate identifier for a different scope.
 3. Load HMS sources. Apply the suggested table order or enter final positions manually. Arrow buttons move teams and renumber positions; enter equal ranks explicitly for joint placements. Medals are optional and must match gold/1, silver/2 or bronze/3.
 4. Choose awards using scoped player/team pairs. Points, goals and assists show statistical leaders, including ties. MVP, goalie and defenseman are manual choices, not computed sporting judgments. The goalie award requires an official goalie candidate. Empty selections skip awards; custom categories use `custom:<code>` and a title.
 5. Save the draft, inspect the named review and source coverage, then validate the saved revision. Confirm finality. Joint ranks/medals require explicit consent and a reason; missing standings or player-statistics coverage additionally requires acknowledgment and a reason. All scoped teams need final positions before approval.
 6. Approve and lock a new version. Approval remains private. Explicitly publish one approved version or make it private again. Publishing an older approved version provides rollback without rewriting history.
 7. Reopening requires a reason and preserves all earlier versions and the existing public version. A new approval appends a new immutable snapshot. Only a draft with no approved history can be removed (soft deletion reserves its identifier).
+
+The primary **Approve and publish on portal** button performs save (when needed), approval and publication in order. It requires the same explicit finality confirmation, coverage/tie policy and revision checks as the separate actions; failure leaves the successful preceding stage visible for correction. Confirmation checkboxes/reason survive review and validation errors. Empty version selectors show an explanation rather than a blank control. Advanced separate approval, publication and rollback controls remain available.
+
+An already published `/league/<org>` automatically displays published Closings on its homepage and adds **Final results** navigation. Each record shows its own competition/season label, ranks/medals and player awards. These are organization-wide approved records with independent scopes, not live standings for the website's selected season. No portal settings/season selections are rewritten by Closing publication. A private Closing or a draft never appears; pausing Closing removes it from the public portal. A paused/unpublished portal remains unavailable even when its independent Closing API has a published record.
 
 The admin credential stays in page memory and request headers. CS/EN is selected through the URL. Authentication identifies an **organization admin credential, not an individual user**; approval `actorId` is the organization's configured UUID. Reopening and publication events are private audit metadata.
 
@@ -50,7 +54,7 @@ Every action except `public`/`list` requires the Site Builder's existing organiz
 
 Draft config: `{title,scope,standings:[{teamId,rank,medal}],awards:[{category,playerId,teamId,title?}],allStarsPublicationId?}`. A draft may contain `rank:null` for unplaced teams; approval rejects these. Scope includes `organization` (slug), `competitionId`, `seasonId`, `type`, and appropriate group/phase UUIDs. Ownership and parentage is verified server-side; UUID syntax alone is insufficient.
 
-Public schema version 1 returns `{schemaVersion,org,slug,title,scope,standings,awards,allStars,provenance,approvedAt,version,teams,players}`. It excludes drafts, credential audit metadata, private reasons and revision history. Public reads use only the selected snapshot; HMS outages/changes do not rewrite it. Widgets, Social Studio and Awards can reuse this contract; visual public Closing widgets and graphics are outside V1.
+Public schema version 1 returns `{schemaVersion,org,slug,title,scope,scopeLabel?,standings,awards,allStars,provenance,approvedAt,version,teams,players}`. It excludes drafts, credential audit metadata, private reasons and revision history. Public reads use only the selected snapshot; HMS outages/changes do not rewrite it. Widgets, Social Studio and Awards can reuse this contract. The portal now has a basic native results view; configurable visual widgets and graphics remain outside V1. Portal metadata adds `hasClosing`, and portal home/closing data returns only projected approved publications.
 
 Responses: 400 malformed input, 401 unauthorized, 403 cross-origin, 404 private/missing, 405 method mismatch, 409 revision conflict, 422 incomplete review, 423 locked edits, 503 unavailable sources/storage/migration. All use `no-store` and `nosniff`. Concurrent approvals use one compare-and-swap write.
 

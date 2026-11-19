@@ -143,9 +143,9 @@ export const server = createServer(async (request, response) => {
     if(request.method==='POST'){let body='';for await(const chunk of request){body+=chunk;if(Buffer.byteLength(body)>100000){response.writeHead(413);response.end();return;}}request.body=body;}
     await officialClosingHandler(request,{setHeader:(k,v)=>response.setHeader(k,v),status(c){response.statusCode=c;return this;},json(body){response.setHeader('content-type','application/json; charset=utf-8');response.end(JSON.stringify(body));}});return;
   }
-  if(url.pathname==='/league/closing.js'){
+  if(['/league/closing.js','/league/closing-results.js'].includes(url.pathname)){
     if(!['GET','HEAD'].includes(request.method)){response.writeHead(405,{allow:'GET, HEAD'});response.end();return;}
-    response.setHeader('content-type','text/javascript; charset=utf-8');response.end(request.method==='HEAD'?undefined:await readFile(join(publicDirectory,'league','closing.js')));return;
+    response.setHeader('content-type','text/javascript; charset=utf-8');response.end(request.method==='HEAD'?undefined:await readFile(join(publicDirectory,url.pathname)));return;
   }
   if(url.pathname==='/api/portal'||url.pathname==='/api/game-summary'&&url.searchParams.get('view')==='portal'){
     request.query=Object.fromEntries(url.searchParams);

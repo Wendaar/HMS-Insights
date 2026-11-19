@@ -18,4 +18,5 @@ body{font-family:'Segoe UI',Arial,sans-serif}h1,h2,h3,.hms,.monogram{font-family
 .closing-admin .adminbar{flex-wrap:wrap}
 .closing-admin .notice{overflow-wrap:anywhere;line-height:1.6}
 .closing-admin .check input{width:auto}
+.closing-table{overflow:auto}.closing-result table{width:100%;border-collapse:collapse;text-align:left}.closing-result th,.closing-result td{padding:12px 8px;border-bottom:1px solid #dfe6ee}.closing-result dt{font-weight:700;margin-top:12px}.closing-result dd{margin:4px 0 0}.closing-result h3{margin-top:12px}.closing-admin [data-stage]{margin-top:16px}
 @media(max-width:600px){.closing-admin .order-row{grid-template-columns:minmax(60px,1fr) 60px 85px 32px 32px;gap:4px}.closing-admin .order-row input,.closing-admin .order-row select{padding:8px}.closing-admin .panel{padding:16px}.closing-admin .adminbar>*{max-width:100%}}
