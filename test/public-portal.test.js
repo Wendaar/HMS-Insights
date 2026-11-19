@@ -6,10 +6,25 @@ import {createPublicPortalHandler,portalStorageNamespace} from '../src/web/publi
 import {toolStore} from '../src/infrastructure/tool-instances.js';
 import {gameReportNavigation} from '../public/games/navigation.js';
 import {insightsAccent,insightsEmbedCode,insightsWidgetUrl} from '../public/league/embed-code.js';
+import {closingResults} from '../public/league/closing-results.js';
 const id=n=>`${String(n).padStart(8,'0')}-1111-4111-8111-111111111111`;
 const env={HMS_PHM_ORGANIZATION_ID:id(1),HMS_EUCHL_ORGANIZATION_ID:id(2),HMS_PHM_TOOLS_ADMIN_SECRET:'phm-secret',HMS_EUCHL_TOOLS_ADMIN_SECRET:'euchl-secret'};
 const seasons=[{organization_id:id(1),competition_id:id(10),competition_name:'PHM Cup',season_id:id(11),season_name:'2026–2027'},{organization_id:id(1),competition_id:id(12),competition_name:'Other PHM Cup',season_id:id(13),season_name:'2026–2027'}];
 const settings=()=>({title:'PHM Cup',description:'Public hub',seasonIds:[id(11)],defaultSeasonId:id(11),sections:['home','teams','games','rules','extras'],color:'#087b91',lang:'cs',logoUrl:'',extras:'<script>privateDraft()</script>'});
+test('portal shows only published Closing snapshots and preserves independent portal configuration',async()=>{
+ let active=null;
+ const snapshot={status:'closed',title:'Final <script>',scope:{organization:'phm',seasonId:id(99)},scopeLabel:'Other season',approval:{version:1,approvedAt:'2026-11-19T00:00:00Z'},standings:[{teamId:id(20),rank:1,medal:'gold'}],teams:[{id:id(20),name:'Team <A>'}],players:[],awards:[],policy:{reason:'private audit'}};
+ const record={draft:{config:{title:'PRIVATE draft'},versions:[snapshot],publishedVersion:null}},closingStore={async list(org){return org==='PHM'?[{slug:'final'}]:[];},async get(){return {...record,draft:{...record.draft,publishedVersion:active}};}};
+ const {call}=harness({closingStore});await call('save',{revision:0,config:settings()});await call('publish',{revision:1});
+ assert.equal((await call('public')).body.hasClosing,false);assert.equal((await call('data',undefined,{section:'closing'})).code,404);
+ active=1;const publicConfig=(await call('public')).body;assert.equal(publicConfig.hasClosing,true);assert.deepEqual(publicConfig.config.sections,settings().sections);
+ const home=(await call('data',undefined,{section:'home'})).body,section=(await call('data',undefined,{section:'closing'})).body;
+ assert.equal(home.closings.length,1);assert.equal(section.closings[0].title,snapshot.title);assert.equal(Object.hasOwn(section.closings[0],'policy'),false);assert.equal(Object.hasOwn(section.closings[0],'config'),false);
+ const html=closingResults(section.closings);assert.match(html,/Team &lt;A&gt;/);assert.match(html,/Other season/);assert.doesNotMatch(html,/<script>|PRIVATE|private audit/);
+ active=null;assert.equal((await call('public')).body.hasClosing,false);assert.deepEqual((await call('data',undefined,{section:'home'})).body.closings,[]);
+ active=1;snapshot.scope.organization='euchl';assert.equal((await call('public')).body.hasClosing,false);snapshot.scope.organization='phm';
+ await call('pause',{revision:2});assert.equal((await call('data',undefined,{section:'closing'})).code,404);
+});
 test('preview and unknown deployment environments never share the production publication namespace',()=>{
  const production=portalStorageNamespace({VERCEL_ENV:'production'});
  for(const value of [undefined,'','preview','development','unknown'])assert.notEqual(portalStorageNamespace({VERCEL_ENV:value}),production);

@@ -12,6 +12,10 @@ export function toolStore({env=process.env,sql,tool='playoff-players'}={}){
     return (sql??neon(env.DATABASE_URL)).query(text,values);
   };
   return {
+    async closingHistoryReady(){
+      const rows=await query("select 1 from pg_trigger where tgrelid=to_regclass('hms_tool_instances') and tgname='hms_closing_history_guard' and tgenabled='O' and not tgisinternal");
+      return rows.length===1;
+    },
     async get(org,slug){
       if(!sql&&!env.DATABASE_URL)return null;
       try{return decode((await query('select draft,published,revision,updated_at,published_at from hms_tool_instances where tool=$1 and organization=$2 and slug=$3',[tool,org,slug]))[0]);}
