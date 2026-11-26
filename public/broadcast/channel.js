@@ -62,6 +62,11 @@ export async function runChannelView({id,api,root,base}){
       if(!response.ok)throw new Error('Channel unavailable');
       const row=await response.json(),s=row.state;
       if(row.id!==id||!s||typeof s.visible!=='boolean'||!/^([A-Z][A-Z0-9_]{1,23})$/.test(s.org))throw new Error('Invalid state');
+      if(s.directorVersion===2){
+        stopFitting?.();root.replaceChildren();
+        const {runDirectorOutput}=await import('./director-output.js');
+        await runDirectorOutput({id,api,root,base});return;
+      }
       lastSuccess=Date.now();document.body.dataset.connection='ok';
       const next=JSON.stringify([s,row.libraryRevision??0]);
       if(next!==signature){
@@ -71,7 +76,7 @@ export async function runChannelView({id,api,root,base}){
     }catch{
       document.body.dataset.connection='stale';
       if(!lastSuccess||Date.now()-lastSuccess>=10000){stopFitting?.();stopFitting=null;root.replaceChildren();signature='';}
-    }finally{setTimeout(poll,2000);}
+    }finally{if(!root.classList.contains('director-compositor'))setTimeout(poll,2000);}
   }
   await poll();
 }
