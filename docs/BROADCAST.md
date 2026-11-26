@@ -1,5 +1,9 @@
 # Opening Studio / OBS · předzápasová vrstva
 
+Testovací Director Control V2: `/broadcast/v2.html`. Audit, oddělení PREVIEW/PROGRAM,
+vícevrstvé kanály, testování a bezpečný rollback popisuje [BROADCAST-V2.md](BROADCAST-V2.md).
+Původní vstup a OBS adresy zůstávají zachovány; V2 se nenasazuje automaticky.
+
 Frontend pochází z `Wendaar/Youtube-Overlays`. Zde je synchronizovaná kopie v
 `public/broadcast`, aby mohl OBS používat UI a API na jedné doméně. Aktualizace:
 `node scripts/sync-broadcast.js cesta/k/Youtube-Overlays`. Nepřepisujte kopii ručně.
