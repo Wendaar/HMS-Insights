@@ -2,7 +2,7 @@ import {teamSpecialTeams} from '../domain/team-performance.js';
 import {neon} from '@neondatabase/serverless';
 import {isGameId} from '../domain/game-summary.js';
 import {sportingImage} from '../../public/game-report-media.js';
-import {browseSeasonGames} from './season-games.js';
+import {readSeason} from './season-games.js';
 const same=(a,b)=>String(a??'').toLowerCase()===String(b??'').toLowerCase();
 const date=v=>v instanceof Date?v.toISOString().slice(0,10):String(v??'').slice(0,10);
 const time=v=>{const s=v instanceof Date?v.toISOString():String(v??'');return (/T(\d{2}:\d{2})/.exec(s)??/^(\d{2}:\d{2})/.exec(s))?.[1]??null;};
@@ -48,6 +48,14 @@ export function summarizeBroadcastHistory(rows,detail){
   return teams;
 }
 const cache=new Map(),pending=new Map();
+export async function loadBroadcastNext(detail,options={}){
+ const scope=broadcastScope(detail);if(!scope.seasonId)throw new Error('Missing season');
+ // Reuse the existing bounded, cached season index instead of 28 team/day reads.
+ const rows=await(options.readSeason??readSeason)(scope.seasonId,options);
+ const end=new Date(detail.startDate+'T12:00:00Z');end.setUTCDate(end.getUTCDate()+13);
+ const until=end.toISOString().slice(0,10),teams=[detail.homeTeamId??detail.HomeTeam?.teamId,detail.awayTeamId??detail.AwayTeam?.teamId];
+ return rows.filter(g=>g.date>=detail.startDate&&g.date<=until&&[g.home.id,g.away.id].some(id=>teams.some(team=>same(id,team))));
+}
 export async function broadcastContext(detail,options={}){
   const scope=broadcastScope(detail),key=[scope.organizationId,scope.seasonId,scope.competitionId,detail.gameId].join(':');
   if(!options.loadHistory&&cache.get(key)?.until>Date.now())return cache.get(key).value;
@@ -57,11 +65,7 @@ export async function broadcastContext(detail,options={}){
     const value={scope,source:'imported-hms',asOf:detail.startDate,historyAvailable:false,teams:null,next:{home:[],away:[]},nextAvailable:false};
     const [history,future]=await Promise.allSettled([
       (options.loadHistory??loadBroadcastHistory)(detail,options),
-      scope.seasonId?(options.loadNext??(async()=>{
-        const days=Array.from({length:14},(_,i)=>{const d=new Date(detail.startDate+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+i);return d.toISOString().slice(0,10);});
-        const all=new Map(),teamIds=[detail.homeTeamId??detail.HomeTeam?.teamId,detail.awayTeamId??detail.AwayTeam?.teamId];let cursor=0;
-        await Promise.all(Array.from({length:4},async()=>{while(cursor<days.length){const d=days[cursor++];const pages=await Promise.all(teamIds.map(teamId=>browseSeasonGames({seasonId:scope.seasonId,teamId,filter:'Date',date:d},{...options,loadReports:async()=>[]})));for(const page of pages){if(page.hasMore)throw new Error('Incomplete schedule');for(const g of page.items)all.set(g.id,g);}}}));return [...all.values()];
-      }))():Promise.reject(new Error('Missing season')),
+      scope.seasonId?(options.loadNext??loadBroadcastNext)(detail,options):Promise.reject(new Error('Missing season')),
     ]);
     if(history.status==='fulfilled'){value.teams=summarizeBroadcastHistory(history.value,detail);value.historyAvailable=true;value.historyTruncated=history.value.length>=500;}
     if(future.status==='fulfilled'){

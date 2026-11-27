@@ -1,23 +1,25 @@
 import {translate} from './i18n.js';
 import {extraNames,renderExtraLayer} from './extra-layers.js';
+import {compactPageSize} from './director-model.js';
 export const layers=['opening','periods','lineup','scoresheet','insights',...Object.keys(extraNames)];
 export const layerNames={opening:'Před zápasem',periods:'Stav po třetinách',lineup:'Soupiska',scoresheet:'Přehled gólů',insights:'Malé insights',...extraNames};
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export function renderMatchLayer(game,settings){
   const {layer,side='home',period='current',page=1,insight='',lang='cs'}=settings;
+  const compact=settings.layout==='compact';
   if(extraNames[layer])return renderExtraLayer(game,settings);
   const t=v=>esc(translate(v,lang)),m=game.match,team=s=>esc(game[s==='home'?'Home Team':'Away Team']);
   const heading=layerNames[layer],title=`<header><span>${esc(game.Competition||'HMS')} · ${esc(game.Date)}</span><h1>${t(heading)}</h1><p>${team('home')} — ${team('away')}</p></header>`;
   const empty=message=>`<div class="layer-empty">${t(message)}</div>`;
   const rowTeam=s=>`<div class="match-team">${game[s+'Logo']?`<img src="${esc(game[s+'Logo'])}" alt="">`:''}<strong>${team(s)}</strong></div>`;
-  const shell=content=>`<main class="match-layer ${layer==='insights'?'compact-layer':''}" data-layer="${esc(layer)}">${title}${content}<footer>${t(layer==='lineup'?'Zápasová soupiska z HMS':'Podle zapsaných gólových událostí · bez živé časomíry')}</footer></main>`;
+  const shell=content=>`<main class="match-layer ${layer==='insights'?'compact-layer':''} ${compact?'compact-broadcast':''}" data-layer="${esc(layer)}">${title}${content}<footer>${t(layer==='lineup'?'Zápasová soupiska z HMS':'Podle zapsaných gólových událostí · bez živé časomíry')}</footer></main>`;
   if(!m)return shell(empty('Čekáme na data v HMS'));
   if(layer==='lineup'){
     if(m.lineupAvailable===false)return shell(empty('Čekáme na data v HMS'));
-    const selected=side==='both'?['home','away']:[side],size=side==='both'?12:20;
+    const selected=side==='both'?['home','away']:[side],size=compact?compactPageSize(layer,game,side):(side==='both'?12:20);
     return shell(`<div class="lineup-columns ${selected.length===1?'single-team':''}">${selected.map(s=>{
       const all=m.roster.filter(p=>p.side===s),rows=all.slice((page-1)*size,page*size);
-      return `<section>${rowTeam(s)}${rows.length?`<ol class="roster-list">${rows.map(p=>`<li><b>${esc(p.number??'—')}</b>${p.imageUrl?`<img class="roster-portrait" src="${esc(p.imageUrl)}" alt="${esc(p.name)}">`:'<i class="roster-portrait missing-portrait" aria-hidden="true">●</i>'}<span>${esc(p.name)}</span>${p.goalie?`<small>${t('Brankář')}</small>`:''}</li>`).join('')}</ol><p class="page-label">${t('Strana')} ${page} / ${Math.ceil(all.length/size)}</p>`:empty(all.length?'Na této stránce nejsou další hráči.':'Soupiska ještě není v HMS vyplněná.')}</section>`;
+      return `<section data-side="${s}">${rowTeam(s)}${rows.length?`<ol class="roster-list">${rows.map(p=>`<li><b>${esc(p.number??'—')}</b>${p.imageUrl?`<img class="roster-portrait" src="${esc(p.imageUrl)}" alt="${esc(p.name)}">`:'<i class="roster-portrait missing-portrait" aria-hidden="true">●</i>'}<span>${esc(p.name)}</span>${p.goalie?`<small>${t('Brankář')}</small>`:''}</li>`).join('')}</ol>${!compact||all.length>size?`<p class="page-label">${t('Strana')} ${page} / ${Math.ceil(all.length/size)}</p>`:''}`:empty(all.length?'Na této stránce nejsou další hráči.':'Soupiska ještě není v HMS vyplněná.')}</section>`;
     }).join('')}</div>`);
   }
   if(layer==='periods'){
@@ -34,8 +36,8 @@ export function renderMatchLayer(game,settings){
   }
   if(layer==='scoresheet'){
     if(m.coverage!=='matches-score')return shell(empty('Neúplné gólové události v HMS'));
-    const goals=m.goals.filter(g=>side==='both'||g.side===side),rows=goals.slice((page-1)*8,page*8);
-    return shell(rows.length?`<p class="score-caption">${t('Čas dle HMS')}</p><ol class="goal-list">${rows.map(g=>`<li data-side="${esc(g.side)}"><b>${esc(g.clock??'—')}<small>${g.period===null?'—':g.period+'.'}</small></b><span class="goal-team-logo">${game[g.side+'Logo']?`<img src="${esc(game[g.side+'Logo'])}" alt="${team(g.side)}">`:`<strong>${team(g.side)}</strong>`}</span>${g.scorer.imageUrl?`<img class="goal-portrait" src="${esc(g.scorer.imageUrl)}" alt="">`:''}<div><strong>${esc(g.scorer.name||translate('Střelec neuveden',lang))}</strong><small class="goal-team-name">${team(g.side)}</small><small>${g.assists.length?t('Asistence')+': '+g.assists.map(p=>esc(p.name||'—')).join(', '):''}</small></div><em>${g.scoreAfter?`${g.scoreAfter.home}:${g.scoreAfter.away}`:'—'}</em></li>`).join('')}</ol><p class="page-label">${t('Strana')} ${page} / ${Math.ceil(goals.length/8)}</p>`:empty('Zatím žádný zapsaný gól'));
+    const goals=m.goals.filter(g=>side==='both'||g.side===side),size=compact?compactPageSize(layer,game,side):8,rows=goals.slice((page-1)*size,page*size);
+    return shell(rows.length?`<p class="score-caption">${t('Čas dle HMS')}</p><ol class="goal-list" style="--goal-rows:${Math.ceil(rows.length/2)}" data-density="${rows.length>10?'dense':'normal'}">${rows.map(g=>`<li data-side="${esc(g.side)}"><b>${esc(g.clock??'—')}<small>${g.period===null?'—':g.period+'.'}</small></b><span class="goal-team-logo">${game[g.side+'Logo']?`<img src="${esc(game[g.side+'Logo'])}" alt="${team(g.side)}">`:`<strong>${compact?t(g.side==='home'?'Domácí':'Hosté'):team(g.side)}</strong>`}</span>${g.scorer.imageUrl?`<img class="goal-portrait" src="${esc(g.scorer.imageUrl)}" alt="">`:''}<div><strong>${esc(g.scorer.name||translate('Střelec neuveden',lang))}</strong><small class="goal-team-name">${team(g.side)}</small><small>${g.assists.length?t('Asistence')+': '+g.assists.map(p=>esc(p.name||'—')).join(', '):''}</small></div><em>${g.scoreAfter?`${g.scoreAfter.home}:${g.scoreAfter.away}`:'—'}</em></li>`).join('')}</ol>${!compact||goals.length>size?`<p class="page-label">${t('Strana')} ${page} / ${Math.ceil(goals.length/size)}</p>`:''}`:empty('Zatím žádný zapsaný gól'));
   }
   if(layer==='insights'){
     const item=insight?m.insights.find(i=>i.id===insight):m.insights[0];

@@ -20,6 +20,16 @@ export function channelState(value,env){
   if(value.rotateSeconds!==undefined){if(!Number.isInteger(value.rotateSeconds)||value.rotateSeconds<5||value.rotateSeconds>300)throw new TypeError();state.rotateSeconds=value.rotateSeconds;}
   if(value.sponsorRotation!==undefined)state.sponsorRotation=normalizeRotation(value.sponsorRotation);
   if(value.photoChoices!==undefined)state.photoChoices=broadcastPhotoChoices(value.photoChoices);
+  if(value.libraryItems!==undefined)state.libraryItems=broadcastLibrary(value.libraryItems,env);
+  if(value.directorVersion!==undefined){
+    if(value.directorVersion!==2||typeof value.mainVisible!=='boolean'||!value.sponsors||typeof value.sponsors.visible!=='boolean'||value.sponsors.layer!=='sponsors'||!['top-left','top-right','bottom-left','bottom-right'].includes(value.sponsors.corner))throw new TypeError('Invalid director state');
+    if(value.sponsors.stacking!==undefined&&!['above','auto-hide'].includes(value.sponsors.stacking))throw new TypeError('Invalid sponsor stacking');
+    if(value.sponsors.directorVersion!==undefined||value.sponsors.sponsors!==undefined)throw new TypeError('Nested director state');
+    const sponsor=channelState({...value.sponsors,org:state.org,gameId:state.gameId,lang:state.lang,insight:'',page:1,period:'current'},env);
+    state.directorVersion=2;state.mainVisible=value.mainVisible;
+    state.sponsors=Object.fromEntries(Object.entries(sponsor).filter(([k])=>!['org','gameId','lang','photoChoices'].includes(k)));
+    state.sponsors.stacking=value.sponsors.stacking??'above';
+  }
   return state;
 }
 export const channelTables=env=>env.VERCEL_ENV==='production'&&env.BROADCAST_SANDBOX!=='1'?{channels:'broadcast_channels',library:'broadcast_libraries'}:{channels:'broadcast_channels_preview',library:'broadcast_libraries_preview'};
@@ -36,6 +46,7 @@ export function createChannelStore(env){
     async create(id,hash,state){const dbsql=await db();const rows=await dbsql.query(`INSERT INTO ${table.channels} (id,control_hash,state) VALUES ($1,$2,$3::jsonb) RETURNING id,state,revision,updated_at`,[id,hash,JSON.stringify(state)]);return rows[0];},
     async get(id){const dbsql=await db();return (await dbsql.query(`SELECT c.id,c.state,c.revision,c.updated_at,coalesce(l.revision,0) as library_revision FROM ${table.channels} c LEFT JOIN ${table.library} l ON l.channel_id=c.id WHERE c.id=$1`,[id]))[0];},
     async update(id,hash,revision,state){const dbsql=await db();return (await dbsql.query(`UPDATE ${table.channels} SET state=$4::jsonb,revision=revision+1,updated_at=now() WHERE id=$1 AND control_hash=$2 AND revision=$3 RETURNING id,state,revision,updated_at`,[id,hash,revision,JSON.stringify(state)]))[0];},
+    async hide(id,hash){const dbsql=await db();return (await dbsql.query(`UPDATE ${table.channels} SET state=CASE WHEN state->>'directorVersion'='2' THEN jsonb_set(jsonb_set(jsonb_set(state,'{visible}','false'::jsonb),'{mainVisible}','false'::jsonb),'{sponsors,visible}','false'::jsonb) ELSE jsonb_set(state,'{visible}','false'::jsonb) END,revision=revision+1,updated_at=now() WHERE id=$1 AND control_hash=$2 RETURNING id,state,revision,updated_at`,[id,hash]))[0];},
     async library(id){const dbsql=await db();return (await dbsql.query(`SELECT items,revision FROM ${table.library} WHERE channel_id=$1`,[id]))[0]??{items:[],revision:0};},
     async saveLibrary(id,hash,revision,items){const dbsql=await db();return (await dbsql.query(`INSERT INTO ${table.library} (channel_id,items,revision) SELECT id,$4::jsonb,1 FROM ${table.channels} WHERE id=$1 AND control_hash=$2 AND $3::int=0 ON CONFLICT (channel_id) DO NOTHING RETURNING items,revision`,[id,hash,revision,JSON.stringify(items)]))[0]??(await dbsql.query(`UPDATE ${table.library} l SET items=$4::jsonb,revision=l.revision+1 FROM ${table.channels} c WHERE l.channel_id=c.id AND c.id=$1 AND c.control_hash=$2 AND l.revision=$3 RETURNING l.items,l.revision`,[id,hash,revision,JSON.stringify(items)]))[0];},
   };
@@ -59,6 +70,13 @@ export function createChannelHandler(options={}){
       if(!['POST','PATCH'].includes(req.method)){res.setHeader('allow','GET, POST, PATCH, OPTIONS');return res.status(405).json({error:'Nepovolená metoda.'});}
       if(!String(req.headers?.['content-type']??'').startsWith('application/json'))throw new TypeError();
       const body=typeof req.body==='string'?JSON.parse(req.body):req.body;
+      if(body?.action==='hide-all'){
+        if(req.method!=='PATCH'||!channelId(id)||req.query?.library==='1')throw new TypeError();
+        const token=/^Bearer ([a-f0-9]{64})$/.exec(req.headers?.authorization??'')?.[1];
+        if(!token)return res.status(403).json({error:'Chybí oprávnění ovládat kanál.'});
+        const row=await store.hide(id,digest(token));
+        return row?res.status(200).json(publicRow(row)):res.status(403).json({error:'Kanál nebyl skryt. Ověřte ovládací klíč.'});
+      }
       if(req.query?.library==='1'){
         if(req.method!=='PATCH'||!channelId(id)||!Number.isSafeInteger(body?.revision)||body.revision<0)throw new TypeError();
         if(Buffer.byteLength(JSON.stringify(body))>LIBRARY_BYTES+100)return res.status(413).json({error:'Knihovna je příliš velká. Maximum je 1,8 MB a 16 položek.'});
@@ -66,7 +84,7 @@ export function createChannelHandler(options={}){
         const items=broadcastLibrary(body.items,env),saved=await store.saveLibrary(id,digest(token),body.revision,items);
         return saved?res.status(200).json(saved):res.status(409).json({error:'Knihovna nebyla uložena. Obnovte ovládání a zkuste to znovu.'});
       }
-      if(JSON.stringify(body??{}).length>1200000)throw new TypeError();
+      if(Buffer.byteLength(JSON.stringify(body??{}))>4000000)throw new TypeError();
       const state=channelState(body?.state,env);
       await validatePlayerPhotoChoices(state.org,{photoChoices:state.photoChoices},{...options,env});
       if(req.method==='POST'){
