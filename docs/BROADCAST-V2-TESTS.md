@@ -1,5 +1,9 @@
 # Broadcast V2 — výsledky ověření
 
+Aktualizace po uživatelském feedbacku: **659/659** regresních testů. Rozšířené browser scénáře ověřují příští zápasy a výsledky v PRE-GAME / IN-GAME / BREAK / POST, shodu READY s již hydratovaným náhledem bez opakovaných context requestů, sponzory nad velkou grafikou, změnu rohu až po SHOW, volitelné skrytí při kolizi a pořadí gólů po sloupcích. Záměrně zpožděný context nesmí blokovat TOP 5 ani sponzory. Původní výsledky níže zachycují první implementaci; pravidlo překrývání bylo podle feedbacku změněno na výchozí sponzory nad MAIN.
+
+27. 11. 2026 ověřeno i skutečné utkání PHM `F62DABC4-98CA-11F1-8BDF-EF2495D048F3` (Fanklub Lev Praha – Voholto Karlín): veřejná data obsahovala 19 gólů, pět předchozích výsledků domácích a jeden příští zápas. Po načtení kontextu byl preview osmi kombinací sekce/grafika připraven za **33–47 ms**, pouze s jedním context requestem za celé přepínání. První ověřovací pokus odhalil 18s čekání na externí exportní knihovnu; po přesunu html2canvas na explicitní stažení miniatury tento blok zmizel. Nejde o měření studeného HMS API nebo výkonu OBS. Jednotlivě zvolený GNB Chem se objevil bez nutnosti zařazení do rotačního checklistu. Skutečný přehled gólů byl geometricky i vizuálně ověřen: 16 na první straně, čtení dolů levým a potom pravým sloupcem, bez překrytí footeru. Zbývající tři mají ruční druhou stránku. Artefakty `feedback-browser-results.json`, `feedback-announcement.png` a `feedback-scoring-real.png` v lokálním `artifacts/broadcast-v2/`.
+
 Datum: 26. 11. 2026. Izolovaná větev `codex/broadcast-studio-v2`, základ `95e7b43`. Žádné nasazení, žádný zápis do produkčního kanálu ani HMS.
 
 - `pnpm install --frozen-lockfile`: úspěšně, bez změny lockfile.

@@ -39,7 +39,7 @@ Na Vercel preview ponechte ochranu preview zapnutou. URL se automaticky nepřesm
 - Desktop má karty a kontextové ovládání vlevo, sticky PREVIEW a PROGRAM s bezpečnostními tlačítky vpravo. Dialog zápasů se po výběru zavře. Na úzké obrazovce je náhled nad kartami.
 - V2 stav rozšiřuje dosavadní JSONB o `directorVersion:2`, `mainVisible`, samostatné `sponsors` a snapshot prezentačního výběru `libraryItems`. Staré stavy a URL jsou nadále platné. Snapshot kopíruje vysílací volby/referenční UUID, nikoli další upravitelný katalog HMS. Vlastní malé rastrové doplňky využívají dosavadní validaci knihovny; celkový request má limit 4 MB.
 - Jeden Browser Source obsahuje dvě nezávislé iframe se stávajícím rendererem. Při změně grafiky/parametrů stejného zápasu se MAIN aktualizuje přes ověřenou zprávu od rodiče na stejném originu. SPONSORS nepřechází na novou URL ani nezačíná rotaci od začátku. Při změně organizace/zápasu se rámec vymění, aby stará data nemohla proniknout do nového scope.
-- MAIN má přednost: plná nebo prostorově kolidující grafika dočasně vizuálně skryje SPONSORS. Horní levé kompaktní panely mohou současně běžet s pravým dolním partnerem. Překrytý partner má stále zapnutý uživatelský stav a jeho fáze pokračuje podle absolutního začátku rotace. HIDE MAIN jej znovu odkryje.
+- SPONSORS jsou standardně nad MAIN, včetně plných infografik. V panelu SPONSOR LAYER lze vybrat každý ze čtyř rohů a režim **Nad hlavní grafikou** / **Skrýt při kolizi s hlavní grafikou**. Druhý režim je výslovná volba; překrytý partner má stále zapnutý uživatelský stav a fáze rotace pokračuje. Pozice a režim se do PROGRAM přenesou až přes SHOW SPONSORS.
 - `PATCH {action:'hide-all'}` je autentizovaný atomický zápis. Nečte HMS ani fotografie, nepotřebuje aktuální klientskou revizi, zvýší serverovou revizi a skryje obě vrstvy. Starší SHOW pak selže na CAS. Lokální BroadcastChannel/storage signál ihned vyprázdní stejný origin, včetně ochrany před opožděnou odpovědí. Neúspěšné potvrzení se označí a opakuje.
 - Vzdálené OBS dostane HIDE přes dosavadní dvousekundové čtení kanálu. Při výpadku spojení zůstává původní fail-closed limit 10 s. Okamžité doručení vzdálenému OBS bez funkční sítě nelze garantovat; UI nezaměňuje lokální skrytí a potvrzení serveru. Samotná HMS chyba nemá vliv na nouzový příkaz.
 - Příprava dalšího insightu nemá implicitního hráče. Je nutný explicitní výběr výkonu před SHOW. Globální panel fotografie V2 neobsahuje; V1 a datové integrace zůstávají zachovány.
@@ -49,7 +49,7 @@ Na Vercel preview ponechte ochranu preview zapnutou. URL se automaticky nepřesm
 Opt-in `layout=compact` a V2 používají původní renderery a ověřený model, s novým stylesheetem `compact.css`. Staré přímé URL mají původní layout.
 
 - Soupiska: dva sloupce hráčů na tým, běžných 20 hráčů jednoho týmu nebo 20+20 najednou. Bez stránkového ovládání, pokud obsah nepřesáhne bezpečnou kapacitu. Výchozí limit je 24 hráčů jednoho týmu / 20 na tým při obou. Neobvykle dlouhá jména kapacitu konzervativně sníží. Větší soupiska má ruční, předvídatelné stránky bez automatického otáčení.
-- Góly: chronologická dvousloupcová mřížka respektující pořadí HMS, čas, střelce, asistence a tým. Běžných sedm na jednom obrazu; výchozí limit 12 se sníží pro extrémně dlouhá jména střelců/asistentů, více s ručním stránkováním. Neověřené události se nevydávají za platný přehled.
+- Góly: chronologická dvousloupcová mřížka respektující pořadí HMS, čas, střelce, asistence a tým. Čte se **shora dolů vlevo, potom shora dolů vpravo**. Běžných sedm na jednom obrazu; kapacita až 16 se sníží pro delší jména střelců/asistentů, více s ručním stránkováním. Neověřené události se nevydávají za platný přehled.
 - Čísla, jména a loga mají fallbacky bez smyšlených hodnot. Fotografie nejsou podmínkou dostupnosti soupisky; takový stav je INCOMPLETE.
 
 ## V2.1 a hranice
@@ -61,6 +61,12 @@ Další etapa: přímo sdílet Team Compare canvas/model s kontrolou scope zápa
 ## Výkon a navazující měření
 
 V2 controller obnovuje detail po 15 s, metadata/kontext/katalog nejvýše jednou za 60 s. Seznam zápasů čte pouze dialog. Existující serverové cache a coalescing zůstávají; rotace samotná nevolá API, používá `sponsorFrame()` a mění DOM jen při změně položky, průhlednost podle původního algoritmu. Nezměněné parametry nevyvolávají navigaci rámce.
+
+Po uživatelském testování se V2 renderer plní daty z rodiče: pracovní PREVIEW okamžitě použije už ověřený model controlleru a nespouští vlastní čtení HMS. PROGRAM má jeden společný omezený reader `director-data.js` pro obě vrstvy, s oddělením organizace/zápasu a slučováním souběžných čtení. Doručení dat samo nemění publikační stav. League, context a katalog se v controlleru dokončují nezávisle, takže pomalý context nezablokuje partnery nebo TOP 5. Pracovní preview partnera drží zvoleného/prvního partnera, zatímco PROGRAM dál respektuje rotaci/pauzy.
+
+Program příštích zápasů server nově získává přes existující `readSeason()` (omezený a cachovaný index), nikoli 28 volání `browseSeasonGames()` pro dvojici týmů a 14 dnů. Filtr týmů, ověřená sezona a 14denní okno zůstávají. Tato serverová optimalizace je zatím pouze ve větvi; lokální náhled čte dosavadní veřejné produkční API s vlastní krátkou cache a slučováním dotazů. Zrychlení skutečného studeného HMS/Neon čtení se tím automaticky neprohlašuje za produkčně nasazené.
+
+Exportní html2canvas se načte až po požadavku na stažení YouTube miniatury. OBS/preview jej nepotřebují a při startu již nečekají na CDN. V2 renderer oznamuje připravenost rodiči přímo po inicializaci modulu, nikoli teprve po dokončení všech vedlejších zdrojů stránky. Původní thumbnail export zůstává dostupný.
 
 Pro následnou optimalizaci měřit odděleně: počet skutečných upstream HMS čtení (ne pouze požadavků browseru), cache hit rate, p95 endpointů, paměť a CPU OBS Browser Source při dvou vrstvách, dekódování obrazových doplňků a skryté vrstvy, obnovení po síťovém výpadku. Potom zvážit sdílený datový přenos oběma rendererům, samostatnou cache sestavy a log a delší obnovu čistě sponzorského rámce. Bez reálného OBS/YouTube měření se zde neuvádí úspora CPU nebo změna kvality přenosu.
 
