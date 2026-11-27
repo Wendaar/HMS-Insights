@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {broadcastLibrary} from '../src/domain/broadcast-library.js';
 import {channelTables,channelState,createChannelHandler} from '../src/web/broadcast-channel.js';
-import {broadcastContext,loadBroadcastHistory,summarizeBroadcastHistory} from '../src/app/broadcast-context.js';
+import {broadcastContext,loadBroadcastHistory,summarizeBroadcastHistory,loadBroadcastNext} from '../src/app/broadcast-context.js';
 import {eligibleAssets,renderExtraLayer} from '../public/broadcast/extra-layers.js';
 import {renderMatchLayer} from '../public/broadcast/match-layers.js';
 const id=n=>`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
@@ -61,6 +61,11 @@ test('context preserves partial availability and filters next matches to selecte
   const context=await broadcastContext(detail,{loadHistory:async()=>[row()],loadNext:async()=>[fixture,{...fixture,id:id(51),date:'2026-10-23'},{...fixture,id:detail.gameId},{...fixture,id:id(52),home:{id:id(56)}}]});
   assert.equal(context.historyAvailable,true);assert.equal(context.next.home.length,1);assert.equal(context.next.away.length,0);
   const missing=await broadcastContext(detail,{loadHistory:async()=>{throw new Error('secret');},loadNext:async()=>{throw new Error('secret');}});assert.equal(missing.historyAvailable,false);assert.equal(missing.nextAvailable,false);assert.doesNotMatch(JSON.stringify(missing),/secret/);
+});
+test('next broadcast games reuse one bounded season index and keep the exact 14-day window and teams',async()=>{
+ let reads=0;const base={id:id(50),date:'2026-10-25',time:'19:00',home:{id:id(3)},away:{id:id(55)}};
+ const rows=await loadBroadcastNext(detail,{readSeason:async season=>{reads++;assert.equal(season,id(5));return [base,{...base,id:id(51),date:'2026-11-07'},{...base,id:id(52),date:'2026-10-23'},{...base,id:id(53),home:{id:id(54)}}];}});
+ assert.equal(reads,1);assert.deepEqual(rows.map(g=>g.id),[id(50)]);
 });
 test('new public layers escape labels, clearly identify imported coverage, render no management UI and keep team identity on every goal',()=>{
   const game={ID:id(1),homeId:id(3),awayId:id(4),'Home Team':'Home <script>','Away Team':'Away',homeLogo:'https://example.com/home.png',Date:'24. 10. 2026',Competition:'League',context:{historyAvailable:true,scope:{competition:'League',season:'2026/27'},teams:summarizeBroadcastHistory([row()],detail),nextAvailable:false}};

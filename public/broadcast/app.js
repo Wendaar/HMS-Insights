@@ -56,8 +56,12 @@ if(director){
     Object.assign(state,presentation(value));lang=language(value.lang);document.documentElement.lang=lang;
     state.items=Array.isArray(value.libraryItems)?value.libraryItems:[];
     state.channelPhotoChoices=broadcastPhotoChoices(value.photoChoices??{});
+    const supplied=value.gameData;
+    if(!supplied){state.games=[];clearInterval(rotationTimer);rotationTimer=null;app.replaceChildren();return;}
+    if(supplied&&String(supplied.ID).toLowerCase()===String(state.selectedId).toLowerCase()&&supplied['Home Team']&&supplied['Away Team'])state.games=[structuredClone(supplied)];
+    state.sponsorCatalog=value.sponsorCatalog?.org===org?value.sponsorCatalog:null;
     clearInterval(rotationTimer);rotationTimer=null;
-    const game=selectedGame();if(game){renderOverlay(game);if(['leaders','leaders-strip','standings'].includes(state.layer)&&!leagueLoading&&!game.league)loadLeague(game);if(!game.match&&!['opening','sponsors','announcement','cta'].includes(state.layer))refreshRenderMode();}
+    const game=selectedGame();if(game)renderOverlay(game);
   });
 }
 let refreshing=false,lastSuccess=0,lastVisual='',pollTimer;
@@ -267,8 +271,8 @@ function renderOverlay(game) {
   if(state.layer!=='opening'){
     const sameLayer=app.querySelector('[data-layer]')?.dataset.layer===state.layer;
     app.innerHTML=renderMatchLayer(game,{...state,org,lang});if(sameLayer)app.querySelector('.slide-panel')?.classList.add('is-update');
-    if(['leaders','leaders-strip','standings'].includes(state.layer)&&!leagueLoading&&(!game.league||Date.now()-lastLeagueRead>=60000))loadLeague(game);
-    if(['powerplay','next','results'].includes(state.layer)&&!contextLoading&&!contextLoaded)loadContext(game);
+    if(!director&&['leaders','leaders-strip','standings'].includes(state.layer)&&!leagueLoading&&(!game.league||Date.now()-lastLeagueRead>=60000))loadLeague(game);
+    if(!director&&['powerplay','next','results'].includes(state.layer)&&!contextLoading&&!contextLoaded)loadContext(game);
     if(['sponsors','announcement'].includes(state.layer)&&state.sponsorRotation){
       clearInterval(rotationTimer);let last='';
       const paint=()=>{const current=selectedGame()??game,settings={...state,org,lang},frame=resolvePartnerFrame(current,settings);const html=renderMatchLayer(current,{...settings,partnerFrame:frame});if(html!==last||!app.firstElementChild&&html){app.innerHTML=html;last=html;}const el=app.querySelector('[data-sponsor-layer]');if(el)el.style.opacity=String(frame.opacity);};
@@ -324,12 +328,22 @@ function renderThumbnail(game) {
   localize(app,lang);
 }
 
+let thumbnailExporterPromise;
+function loadThumbnailExporter(){
+  if(window.html2canvas)return Promise.resolve();
+  if(!thumbnailExporterPromise)thumbnailExporterPromise=new Promise((resolve,reject)=>{
+    const script=document.createElement('script');script.async=true;script.src='https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+    const fail=()=>{clearTimeout(timer);script.remove();thumbnailExporterPromise=null;reject(new Error('Nástroj pro export není dostupný. Zkuste stažení znovu.'));};
+    const timer=setTimeout(fail,16000);script.onerror=fail;script.onload=()=>{if(!window.html2canvas){fail();return;}clearTimeout(timer);resolve();};document.head.append(script);
+  });
+  return thumbnailExporterPromise;
+}
 async function downloadThumbnail() {
   const button = document.querySelector("#download-thumbnail");
   const original = button?.textContent;
   if(button){button.textContent = "Připravuji…";button.disabled = true;}
   try {
-    if (!window.html2canvas) throw new Error("Nástroj pro export není načtený.");
+    await loadThumbnailExporter();
     const canvas = await html2canvas(document.querySelector("#thumbnail"), { width: innerWidth, height: innerHeight, scale: 1280 / innerWidth, useCORS: true, backgroundColor: "#061115", logging: false });
     const link = document.createElement("a");
     link.download = `${org}-${norm(selectedGame()?.Name || "thumbnail").replace(/[^a-z0-9]+/g, "-")}.png`;
@@ -514,4 +528,4 @@ async function start() {
   }
 }
 
-if(mode==='channel')runChannelView({id:params.get('channel'),api:API_BASE,root:app,base:location.href});else start();
+if(mode==='channel')runChannelView({id:params.get('channel'),api:API_BASE,root:app,base:location.href});else if(director)parent.postMessage({type:'hms-director-ready'},location.origin);else start();

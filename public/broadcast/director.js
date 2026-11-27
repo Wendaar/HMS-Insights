@@ -22,17 +22,18 @@ root.innerHTML=`<header class="director-head">${hmsBrand()}<div class="game-titl
 <details class="panel sponsor-panel" id="sponsor-settings"><summary id="sponsor-heading"></summary><div id="sponsor-controls" class="context-controls"></div><p class="note" id="sponsor-note"></p><div id="partner-slot" class="partner-panel"></div><details id="asset-library"><summary id="library-heading"></summary><div id="library-slot"></div></details><p><a id="catalog-link" target="_blank" rel="noopener"></a></p></details></section>
 <aside class="director-right"><section class="panel"><div class="preview-heading"><span>PREVIEW</span><small id="preview-label"></small></div><div id="working-preview" class="director-preview"></div><p class="note" id="preview-composition"></p></section><section class="panel"><h2>PROGRAM / LIVE · OBS</h2><p id="program-status" role="status"></p><div id="program-layers"></div><div class="output-actions"><button id="show-main" class="show">SHOW MAIN</button><button id="hide-main">HIDE MAIN</button><button id="show-sponsors" class="show">SHOW SPONSORS</button><button id="hide-sponsors">HIDE SPONSORS</button><button id="hide-all" class="panic">HIDE ALL NOW</button></div><div class="output-links"><button id="create-channel"></button><button id="copy-obs">COPY OBS URL</button><button id="open-obs">OPEN OBS PREVIEW</button></div><p class="message" id="channel-error" role="status"></p><details class="technical"><summary id="technical-heading"></summary><label>OBS URL<input id="obs-url" readonly></label><button id="backup-control"></button><p id="technical-help"></p><a id="legacy-overlay" target="_blank" rel="noopener"></a><br><a id="legacy-control" target="_blank" rel="noopener"></a><br><a id="thumbnail" target="_blank" rel="noopener"></a></details></section></aside></main>
 <dialog id="game-dialog"><div class="dialog-title"><h2 id="dialog-title"></h2><button id="close-games" aria-label="Close">✕</button></div><div class="filters"></div><p id="games-status" role="status"></p><div class="games-list"></div><details><summary id="manual-heading"></summary><form class="manual-form"><input id="game-input" aria-label="HMS Game ID or URL" required><button id="load-id"></button></form></details></dialog>`;
-const $=id=>document.getElementById(id),frames=createDirectorFrames($('working-preview'));
+const $=id=>document.getElementById(id),frames=createDirectorFrames($('working-preview'),{getData:scope=>scope.org===org&&String(scope.gameId).toLowerCase()===String(game?.ID).toLowerCase()?{game,sponsorCatalog:sponsors,errors:sourceProblems}:null});
 $('change-game').after($('hide-all'));
 const headerStatus=document.createElement('small');headerStatus.id='obs-head-status';$('game-meta').after(headerStatus);
 new ResizeObserver(()=>{$('working-preview').style.setProperty('--preview-scale',String($('working-preview').clientWidth/1920));}).observe($('working-preview'));
-function partnerOptions(settings){if(!game)return [];if(settings.layer==='cta')return eligibleAssets(items,{org,gameId:game.ID,homeId:game.homeId,awayId:game.awayId,side:settings.side,kind:'cta'});return settings.partnerSource==='hms'?sponsors?.org===org?teamPartners(sponsors,game,settings.side,items,settings.partnerScope,{requireSelection:!settings.assetId}):[]:eligibleAssets(items,{org,gameId:game.ID,homeId:game.homeId,awayId:game.awayId,side:settings.side,kind:'sponsor'});}
+function partnerOptions(settings){if(!game)return [];if(settings.layer==='cta')return eligibleAssets(items,{org,gameId:game.ID,homeId:game.homeId,awayId:game.awayId,side:settings.side,kind:'cta'});return settings.partnerSource==='hms'?sponsors?.org===org?teamPartners(sponsors,game,settings.side,settings.assetId?[]:items,settings.partnerScope,{requireSelection:!settings.assetId}):[]:eligibleAssets(items,{org,gameId:game.ID,homeId:game.homeId,awayId:game.awayId,side:settings.side,kind:'sponsor'});}
 function status(id,settings=draft){const source=['leaders','leaders-strip','standings'].includes(id)?'league':['powerplay','next','results'].includes(id)?'context':['sponsors','announcement'].includes(id)&&settings.partnerSource==='hms'?'sponsors':null;if(source&&sourceProblems[source])return {state:'UNAVAILABLE',usable:false,cs:'Zdroj HMS neodpověděl. Obnovte data.',en:'HMS source failed. Refresh data.'};return availability(id,game,{error:!!error,settings,partnerCount:partnerOptions(settings).filter(p=>!settings.assetId||p.id===settings.assetId).length,libraryReady});}
 function option(value,label,current){return `<option value="${esc(value)}" ${String(current)===String(value)?'selected':''}>${esc(label)}</option>`;}
 function select(key,label,values,current,prefix='draft'){return `<label>${esc(label)}<select data-${prefix}="${key}">${values.map(([v,l])=>option(v,l,current)).join('')}</select></label>`;}
 function teamOptions(both=true){return [['home',game?.['Home Team']??tr('Domácí','Home')],['away',game?.['Away Team']??tr('Hosté','Away')],...(both?[['both',tr('Oba týmy','Both teams')]]:[])];}
 function settingsControls(settings,prefix){
  const id=settings.layer;let html='';
+ if(prefix==='sponsor')html+=select('corner',tr('Pozice sponzora','Sponsor position'),[['top-left',tr('Vlevo nahoře','Top left')],['top-right',tr('Vpravo nahoře','Top right')],['bottom-left',tr('Vlevo dole','Bottom left')],['bottom-right',tr('Vpravo dole','Bottom right')]],settings.corner,prefix)+select('stacking',tr('Vrstvení sponzora','Sponsor stacking'),[['above',tr('Nad hlavní grafikou','Above main graphics')],['auto-hide',tr('Skrýt při kolizi s hlavní grafikou','Hide on collision with main graphics')]],settings.stacking??'above',prefix);
  if(prefix==='draft'&&['cta','powerplay','leaders-strip','standings'].includes(id))html+=select('corner',tr('Umístění','Position'),[['top-left',tr('Vlevo nahoře','Top left')],['top-right',tr('Vpravo nahoře','Top right')],['bottom-left',tr('Vlevo dole','Bottom left')],['bottom-right',tr('Vpravo dole','Bottom right')]],settings.corner,prefix);
  if(['lineup','scoresheet','leaders','leaders-strip','powerplay','next','results'].includes(id))html+=select('side',tr('Tým','Team'),teamOptions(['lineup','scoresheet'].includes(id)),settings.side,prefix);
  if(['lineup','scoresheet','standings'].includes(id)){
@@ -72,7 +73,7 @@ function paint(){
  $('preview-composition').textContent=tr('Pracovní náhled hlavní grafiky. Partneři mají vlastní nastavení a SHOW SPONSORS.','Prepared main graphic. Partners have their own settings and SHOW SPONSORS.');
  $('sponsor-heading').textContent='SPONSOR LAYER · '+tr('nastavení a výběr','settings and selection');
  $('sponsor-controls').innerHTML=settingsControls(sponsorDraft,'sponsor');
- $('sponsor-note').textContent=tr('Rotace pokračuje při přepínání MAIN. Celoobrazovková nebo kolidující MAIN ji dočasně překryje; stav partnerů zůstane zapnutý. Změny výběru odešlete přes SHOW SPONSORS.','Rotation continues when MAIN changes. Full-screen or colliding MAIN temporarily covers partners without switching them off. Apply edits with SHOW SPONSORS.');
+ $('sponsor-note').textContent=tr('Sponzor je standardně nad hlavní grafikou. Zvolte jeho roh a případně automatické skrytí při kolizi. Rotace pokračuje nezávisle. Připravené změny odešlete přes SHOW SPONSORS.','Sponsors appear above main graphics by default. Choose a corner and optionally hide on collision. Rotation continues independently. Apply prepared changes with SHOW SPONSORS.');
  $('library-heading').textContent=tr('Doplňky kanálu · mimořádný partner / QR','Channel extras · special partner / QR');$('catalog-link').textContent=tr('Otevřít centrální katalog HMS','Open HMS sponsor catalog');$('catalog-link').href='/sponsors?org='+encodeURIComponent(org);
  $('technical-heading').textContent=tr('Technické odkazy a záloha','Technical links and backup');$('backup-control').textContent=tr('Zálohovat soukromé ovládání V2','Back up private V2 control');
  $('technical-help').textContent=tr('Doporučená je stálá OBS URL. Přímý overlay slouží pevným scénám; nereaguje na SHOW/HIDE kanálu. Soukromý ovládací odkaz nesdílejte.','Use the stable OBS URL. Direct overlays are for fixed scenes and do not follow channel SHOW/HIDE. Keep private control links secret.');
@@ -86,6 +87,8 @@ function paintPreview(){
  if(selected==='insights'&&!draft.insight){frames.clear();return;}
  if(graphics.find(g=>g.id===selected)?.planned){frames.clear();return;}
  const s=selected==='sponsors'?{...getDraft(),...sponsorDraft}:getDraft();
+ // Working preview always shows the held/first item immediately. Live keeps its rotation.
+ if(['sponsors','announcement'].includes(s.layer))s.sponsorRotation={...s.sponsorRotation,enabled:false,startedAt:0};
  frames.render({...s,directorVersion:2,visible:true,mainVisible:true,sponsors:{visible:false}});
 }
 function paintOutput(){
@@ -124,12 +127,13 @@ async function loadSelected(id,{newGame=false}={}){
 }
 async function loadOptional(target,epoch){
  const scope=org;
- const results=await Promise.allSettled([api({gameId:target.ID,league:'1'}),api({gameId:target.ID,context:'1'},AbortSignal.timeout(60000)),fetchSponsorCatalog(org).then(withSponsorOverrides)]);
- if(org!==scope||game?.ID!==target.ID||results.some(r=>r.status==='fulfilled'&&r.value.org&&r.value.org!==org))return;
- sourceProblems=Object.fromEntries(['league','context','sponsors'].map((key,i)=>[key,results[i].status==='rejected']));
- if(results[0].status==='fulfilled')game.league=apiGame(results[0].value,org,target.ID).league;
- if(results[1].status==='fulfilled')game.context=apiGame(results[1].value,org,target.ID).context;
- sponsors=results[2].status==='fulfilled'&&results[2].value.org===org?results[2].value:null;paint();if($('sponsor-settings').open)mountPartners();
+ const jobs={league:()=>api({gameId:target.ID,league:'1'}),context:()=>api({gameId:target.ID,context:'1'},AbortSignal.timeout(65000)),sponsors:()=>fetchSponsorCatalog(scope).then(withSponsorOverrides)};
+ await Promise.allSettled(Object.entries(jobs).map(async([part,load])=>{
+  try{const value=await load();if(org!==scope||game?.ID!==target.ID)return;if(value.org!==scope)throw new Error('Organization mismatch');
+   if(part==='sponsors')sponsors=value;else game[part]=apiGame(value,scope,target.ID)[part];sourceProblems[part]=false;
+  }catch{if(org!==scope||game?.ID!==target.ID)return;sourceProblems[part]=true;}
+  paint();if(part==='sponsors'&&$('sponsor-settings').open)mountPartners();
+ }));
 }
 async function loadLibrary(){try{const value=await channel.library();items=(value.items??[]).filter(item=>item.org===org);libraryReady=true;paint();}catch{libraryReady=false;}}
 function mountPartners(){if(!game||!$('sponsor-settings').open)return;const settings=selected==='announcement'?draft:sponsorDraft;mountPartnerPlaylist($('partner-slot'),{catalog:sponsors,game,side:settings.side,partnerScope:settings.partnerScope,rotation:settings.sponsorRotation,channel,lang,onSaved:async()=>{await loadLibrary();mountPartners();}});}

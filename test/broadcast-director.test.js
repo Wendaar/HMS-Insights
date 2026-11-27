@@ -3,14 +3,32 @@ import assert from 'node:assert/strict';
 import {createChannelHandler,channelState} from '../src/web/broadcast-channel.js';
 import {directorDefaults,mixerFromState,effectiveLayers,availability,graphics} from '../public/broadcast/director-model.js';
 import {renderMatchLayer,layers} from '../public/broadcast/match-layers.js';
+import {createDirectorData} from '../public/broadcast/director-data.js';
+import {resolvePartnerFrame} from '../public/broadcast/extra-layers.js';
 const id='6C02DF50-CE27-11F1-A5F0-6320901B5AD5';
 const env={HMS_EUCHL_ORGANIZATION_ID:'11111111-1111-1111-1111-111111111111',HMS_EUCHL_API_TOKEN:'test'};
 const legacy={...directorDefaults(),org:'EUCHL',gameId:id,lang:'cs',layer:'lineup',visible:true};
 const response=()=>({setHeader(){},status(code){this.code=code;return this;},json(body){this.body=body;}});
+test('director data coalesces layer requests and hydrates late context into the same scoped model',async()=>{
+ const reads=[];let release;
+ const raw={schemaVersion:1,org:'EUCHL',gameId:id,home:{name:'Home'},away:{name:'Away'}};
+ const source=createDirectorData({fetchImpl:async url=>{const q=new URL(url).searchParams;reads.push(q.has('context')?'context':'game');if(q.has('context'))await new Promise(resolve=>release=resolve);return {ok:true,json:async()=>({...raw,...(q.has('context')?{context:{historyAvailable:true,nextAvailable:true}}:{})})};}});
+ const scope={org:'EUCHL',gameId:id,layer:'next'};
+ source.get(scope);source.get({...scope,layer:'results'});await new Promise(resolve=>setTimeout(resolve,0));
+ assert.deepEqual(reads,['game','context']);assert.equal(source.get(scope).game.context,null);
+ release();await new Promise(resolve=>setTimeout(resolve,0));assert.equal(source.get(scope).game.context.nextAvailable,true);assert.equal(reads.length,2);source.stop();
+});
+test('V2 explicit partner selection is independent of its rotation checklist and stays scoped',()=>{
+ const game={ID:id,homeId:id},catalog={org:'EUCHL',items:[{id,name:'Selected partner'}],bindings:[]};
+ const settings={org:'EUCHL',layout:'compact',layer:'announcement',partnerScope:'organization',partnerSource:'hms',assetId:id,sponsorCatalog:catalog,items:[{kind:'hms-sponsor',org:'EUCHL',scope:'game',targetId:id,sponsorId:id,enabled:false}],sponsorRotation:{enabled:false,showSeconds:15,pauseSeconds:0,startedAt:0}};
+ assert.equal(resolvePartnerFrame(game,settings).item.title,'Selected partner');
+ assert.equal(resolvePartnerFrame(game,{...settings,org:'PHM'}).item,null);
+});
 test('V2 state preserves legacy contracts and validates both independent layers',()=>{
  assert.equal(channelState(legacy,env).directorVersion,undefined);
  const v2=mixerFromState(legacy);assert.equal(channelState(v2,env).sponsors.visible,false);
- for(const patch of [{directorVersion:3},{mainVisible:'true'},{sponsors:{...v2.sponsors,layer:'opening'}},{sponsors:{...v2.sponsors,corner:'top-left'}},{sponsors:{...v2.sponsors,directorVersion:2}},{sponsors:{...v2.sponsors,sponsorRotation:{enabled:true}}}])assert.throws(()=>channelState({...v2,...patch},env));
+ for(const corner of ['top-left','top-right','bottom-left','bottom-right'])assert.equal(channelState({...v2,sponsors:{...v2.sponsors,corner}},env).sponsors.corner,corner);
+ for(const patch of [{directorVersion:3},{mainVisible:'true'},{sponsors:{...v2.sponsors,layer:'opening'}},{sponsors:{...v2.sponsors,corner:'wrong'}},{sponsors:{...v2.sponsors,stacking:'script'}},{sponsors:{...v2.sponsors,directorVersion:2}},{sponsors:{...v2.sponsors,sponsorRotation:{enabled:true}}}])assert.throws(()=>channelState({...v2,...patch},env));
  for(const layer of layers)assert.ok(graphics.some(g=>g.id===layer),layer+' omitted from director');
 });
 test('atomic emergency hide wins against late publishes, bypasses HMS and remains authenticated',async()=>{
@@ -26,6 +44,8 @@ test('atomic emergency hide wins against late publishes, bypasses HMS and remain
 test('collision rules cover partners without changing their logical state',()=>{
  const state=mixerFromState({...legacy,layer:'leaders-strip',corner:'top-left'});state.sponsors.visible=true;
  assert.deepEqual(effectiveLayers(state),{main:true,sponsors:true,covered:false});
+ state.layer='lineup';assert.deepEqual(effectiveLayers(state),{main:true,sponsors:true,covered:false});
+ state.sponsors.stacking='auto-hide';state.layer='leaders-strip';
  state.layer='lineup';assert.deepEqual(effectiveLayers(state),{main:true,sponsors:false,covered:true});assert.equal(state.sponsors.visible,true);
  state.mainVisible=false;assert.equal(effectiveLayers(state).sponsors,true);
  state.visible=false;assert.deepEqual(effectiveLayers(state),{main:false,sponsors:false,covered:false});

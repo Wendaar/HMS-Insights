@@ -13,9 +13,9 @@ export const graphics=[
  {id:'scoresheet',phases:['game','break','post'],cs:'Scoring Summary',en:'Scoring Summary'},
  {id:'powerplay',phases:['game'],cs:'Přesilovka / oslabení',en:'Power Play / Penalty Kill'},
  {id:'standings',phases:['pre','break','post'],cs:'Tabulka soutěže',en:'Standings'},
- {id:'next',phases:['pre','break','post'],cs:'Příští zápasy',en:'Next games'},
- {id:'results',phases:['pre','break','post'],cs:'Poslední výsledky',en:'Recent results'},
- {id:'announcement',phases:['pre','break','post'],cs:'Velké partnerské oznámení',en:'Partner announcement'},
+ {id:'next',phases:['pre','game','break','post'],cs:'Příští zápasy',en:'Next games'},
+ {id:'results',phases:['pre','game','break','post'],cs:'Poslední výsledky',en:'Recent results'},
+ {id:'announcement',phases:['pre','game','break','post'],cs:'Velké partnerské oznámení',en:'Partner announcement'},
  {id:'cta',phases:['pre','game','break','post'],cs:'QR výzva',en:'QR call to action'},
  {id:'sponsors',phases:['pre','game','break','post'],cs:'Partners · samostatná vrstva',en:'Partners · independent layer',sponsor:true},
  ...[['goal','Goal','Gól'],['goalie-stats','Goalie Statistics','Statistiky brankáře'],['highlights','Highlights','Highlights'],['next-period','Next Period','Další třetina'],['game-stats','Game Statistics','Statistiky zápasu'],['stars','Three Stars','Tři hvězdy'],['mvp','MVP','MVP'],['thanks','Thank You','Poděkování']].map(([id,en,cs])=>({id,en,cs,phases:['goal','goalie-stats'].includes(id)?['game']:['highlights','next-period'].includes(id)?['break']:['post'],planned:true})),
@@ -29,7 +29,7 @@ export function compactPageSize(layer,game,side='home'){
  }
  if(layer==='scoresheet'){
   const longest=Math.max(0,...(match?.goals??[]).filter(g=>side==='both'||g.side===side).map(g=>String(g.scorer?.name??'').length+(g.assists??[]).reduce((n,p)=>n+String(p.name??'').length,0)));
-  return longest>180?6:longest>100?8:12;
+  return longest>180?6:longest>100?8:longest>85?12:16;
  }
  return 8;
 }
@@ -42,9 +42,10 @@ export function mixerFromState(state){
 export function effectiveLayers(state){
  if(!state?.visible)return {main:false,sponsors:false,covered:false};
  const main=state.mainVisible===true;
- // Main always wins. Compact upper-left panels coexist with lower-right sponsors.
+ // Sponsors are above MAIN unless the operator explicitly chooses collision hiding.
  const upperCompact=['insights','powerplay','cta','sponsors','leaders-strip'].includes(state.layer)||state.layer==='standings'&&state.standingsView!=='full';
- const covered=main&&(!upperCompact||state.corner!=='top-left');
+ const mainCorner=state.layer==='insights'?'top-left':state.corner??'top-left';
+ const covered=state.sponsors?.stacking==='auto-hide'&&main&&(!upperCompact||mainCorner===(state.sponsors?.corner??'bottom-right'));
  return {main,sponsors:state.sponsors?.visible===true&&!covered,covered:state.sponsors?.visible===true&&covered};
 }
 export function availability(id,game,{error=false,settings=directorDefaults(),partnerCount=0,libraryReady=false}={}){

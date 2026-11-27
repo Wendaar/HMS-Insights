@@ -16,10 +16,10 @@ export function createDirectorChannel({api='/api/broadcast',base=location.href,o
  async function request(method,body,library=false){
   const url=new URL(api,location.origin);url.search=new URLSearchParams(binding?{channel:binding.id,...(library?{library:'1'}:{})}:{channels:'1'});
   const response=await fetch(url,{method,cache:'no-store',credentials:'same-origin',signal:AbortSignal.timeout(8000),headers:{...(method!=='GET'?{'content-type':'application/json',...(binding?{authorization:'Bearer '+binding.key}:{})}:{})},...(body?{body:JSON.stringify(body)}:{})});
-  const data=await response.json();if(!response.ok)throw new Error(data.error||'OBS connection failed');return data;
+  const data=await response.json();if(!response.ok){const failure=new Error(data.error||'OBS connection failed');failure.status=response.status;throw failure;}return data;
  }
  function accept(next){if(!row||next.revision>=row.revision){row=next;sandbox=next.sandbox===true;}error='';}
- async function refresh(){if(!binding||pending)return;try{accept(await request('GET'));}catch(e){error=e.message;}notify();}
+ async function refresh(){if(!binding||pending)return;try{accept(await request('GET'));}catch(e){error=e.message;if(e.status===404){binding=null;row=null;try{localStorage.removeItem(storage);}catch{}}}notify();}
  async function publish(build){
   if(!row||pending||hidePending)return;
   const epoch=generation;pending++;notify();
@@ -39,7 +39,7 @@ export function createDirectorChannel({api='/api/broadcast',base=location.href,o
   refresh,
   showMain:()=>publish(current=>{const draft=getDraft();return {...current,...draft,directorVersion:2,visible:true,mainVisible:true,sponsors:sameGame(current,draft)?current.sponsors:{...current.sponsors,visible:false}};}),
   hideMain:()=>publish(current=>({...current,mainVisible:false})),
-  showSponsors:sponsors=>publish(current=>{const draft=getDraft();return {...current,...(!sameGame(current,draft)?{...draft,mainVisible:false}:{}),visible:true,sponsors:{...sponsors,layer:'sponsors',corner:'bottom-right',visible:true}};}),
+  showSponsors:sponsors=>publish(current=>{const draft=getDraft();return {...current,...(!sameGame(current,draft)?{...draft,mainVisible:false}:{}),visible:true,sponsors:{...sponsors,layer:'sponsors',corner:sponsors.corner??'bottom-right',visible:true}};}),
   hideSponsors:()=>publish(current=>({...current,sponsors:{...current.sponsors,visible:false}})),
   async hideAll(){
    if(!binding)return;

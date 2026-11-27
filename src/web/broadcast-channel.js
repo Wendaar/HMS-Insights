@@ -22,11 +22,13 @@ export function channelState(value,env){
   if(value.photoChoices!==undefined)state.photoChoices=broadcastPhotoChoices(value.photoChoices);
   if(value.libraryItems!==undefined)state.libraryItems=broadcastLibrary(value.libraryItems,env);
   if(value.directorVersion!==undefined){
-    if(value.directorVersion!==2||typeof value.mainVisible!=='boolean'||!value.sponsors||typeof value.sponsors.visible!=='boolean'||value.sponsors.layer!=='sponsors'||value.sponsors.corner!=='bottom-right')throw new TypeError('Invalid director state');
+    if(value.directorVersion!==2||typeof value.mainVisible!=='boolean'||!value.sponsors||typeof value.sponsors.visible!=='boolean'||value.sponsors.layer!=='sponsors'||!['top-left','top-right','bottom-left','bottom-right'].includes(value.sponsors.corner))throw new TypeError('Invalid director state');
+    if(value.sponsors.stacking!==undefined&&!['above','auto-hide'].includes(value.sponsors.stacking))throw new TypeError('Invalid sponsor stacking');
     if(value.sponsors.directorVersion!==undefined||value.sponsors.sponsors!==undefined)throw new TypeError('Nested director state');
     const sponsor=channelState({...value.sponsors,org:state.org,gameId:state.gameId,lang:state.lang,insight:'',page:1,period:'current'},env);
     state.directorVersion=2;state.mainVisible=value.mainVisible;
     state.sponsors=Object.fromEntries(Object.entries(sponsor).filter(([k])=>!['org','gameId','lang','photoChoices'].includes(k)));
+    state.sponsors.stacking=value.sponsors.stacking??'above';
   }
   return state;
 }

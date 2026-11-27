@@ -1,4 +1,6 @@
 /* Opt-in layouts: legacy OBS URLs retain their original appearance. */
+.compact-broadcast .goal-list{grid-auto-flow:column;grid-template-rows:repeat(var(--goal-rows),auto)}
+.compact-broadcast.match-layer .goal-list[data-density=dense] li{min-height:66px;padding-top:5px;padding-bottom:5px}
 .compact-broadcast.match-layer[data-layer=lineup] .roster-list,.compact-broadcast.match-layer[data-layer=lineup] .single-team .roster-list{grid-template-rows:none;grid-auto-rows:auto;grid-auto-flow:row;height:auto;column-gap:14px}
 .compact-broadcast.match-layer[data-layer=lineup] .roster-list li{min-height:40px;font-size:22px}
 .compact-broadcast.match-layer[data-layer=lineup] .lineup-columns:not(.single-team) .roster-list li{min-height:48px;font-size:19px}

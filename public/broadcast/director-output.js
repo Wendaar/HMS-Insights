@@ -2,27 +2,31 @@ import {viewUrl} from './hms-source.js';
 import {fitBroadcastCanvas} from './channel.js';
 import {effectiveLayers,presentation} from './director-model.js';
 import {safetyKey} from './director-channel.js';
+import {createDirectorData} from './director-data.js';
 // Reuse the existing overlay renderer in persistent, independently updated frames.
-export function createDirectorFrames(root,{base=location.href}={}){
- const slots=new Map();
+export function createDirectorFrames(root,{base=location.href,getData}={}){
+ const slots=new Map();let current=null;
+ const data=getData?null:createDirectorData({onChange:()=>{if(current)render(current.state,current.options);}});
+ const ready=event=>{if(event.origin!==location.origin||event.data?.type!=='hms-director-ready')return;for(const slot of slots.values())if(slot.frame.contentWindow===event.source)event.source.postMessage({type:'hms-director-render',...slot.config},location.origin);};
+ addEventListener('message',ready);
  function update(name,state,visible,library='',libraryRevision=0){
   let slot=slots.get(name);
   if(!visible){if(slot){slot.frame.remove();slot.fit();slots.delete(name);}return;}
   const scope=JSON.stringify([state.org,state.gameId,library]);
-  const config={...presentation(state),org:state.org,gameId:state.gameId,lang:state.lang,libraryRevision};
+  const loaded=getData?getData(state):data.get(state);
+  const gameData=loaded?.game&&['sponsors','announcement','cta'].includes(state.layer)?{...loaded.game,match:null,context:null,league:null}:loaded?.game??null;
+  const config={...presentation(state),org:state.org,gameId:state.gameId,lang:state.lang,libraryRevision,gameData,sponsorCatalog:loaded?.sponsorCatalog??null,dataErrors:loaded?.errors??{}};
   const signature=JSON.stringify(config);
   if(!slot||slot.scope!==scope){
    if(slot){slot.frame.remove();slot.fit();}
    const frame=document.createElement('iframe');frame.title=name==='main'?'MAIN GRAPHICS':'SPONSOR LAYER';frame.dataset.directorLayer=name;frame.style.border='0';
    frame.src=viewUrl(base,{...state,library,mode:'overlay',source:'hms'});const url=new URL(frame.src);url.searchParams.set('director','1');url.searchParams.set('layout','compact');frame.src=url.href;
-   frame.style.zIndex=name==='main'?'2':'1';slot={frame,scope,signature,config,fit:fitBroadcastCanvas(frame)};slots.set(name,slot);root.append(frame);
+   frame.style.zIndex=name==='main'?'2':'3';slot={frame,scope,signature,config,fit:fitBroadcastCanvas(frame)};slots.set(name,slot);root.append(frame);
    frame.addEventListener('load',()=>frame.contentWindow?.postMessage({type:'hms-director-render',...slot.config},location.origin));
   }else if(slot.signature!==signature){slot.signature=signature;slot.config=config;slot.frame.contentWindow?.postMessage({type:'hms-director-render',...config},location.origin);}
  }
- return {
-  render(state,{library='',libraryRevision=0}={}){const visible=effectiveLayers(state);update('main',state,visible.main,library,libraryRevision);update('sponsors',{org:state.org,gameId:state.gameId,lang:state.lang,...state.sponsors},state.visible&&state.sponsors?.visible===true,library,libraryRevision);const sponsor=slots.get('sponsors');if(sponsor)sponsor.frame.style.visibility=visible.covered?'hidden':'visible';},
-  clear(){for(const s of slots.values()){s.frame.remove();s.fit();}slots.clear();},
- };
+ function render(state,options={}){current={state,options};const {library='',libraryRevision=0}=options;const visible=effectiveLayers(state);update('main',state,visible.main,library,libraryRevision);update('sponsors',{org:state.org,gameId:state.gameId,lang:state.lang,...state.sponsors},state.visible&&state.sponsors?.visible===true,library,libraryRevision);const sponsor=slots.get('sponsors');if(sponsor)sponsor.frame.style.visibility=visible.covered?'hidden':'visible';}
+ return {render,clear(){current=null;for(const s of slots.values()){s.frame.remove();s.fit();}slots.clear();},stop(){this.clear();data?.stop();removeEventListener('message',ready);}};
 }
 export async function runDirectorOutput({id,api,root,base}){
  document.body.className='render-mode director-output';root.classList.add('director-compositor');root.replaceChildren();

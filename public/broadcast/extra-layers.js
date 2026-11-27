@@ -12,7 +12,7 @@ export function eligibleAssets(items,{org,gameId,homeId,awayId,side='home',kind}
 export function resolvePartnerFrame(game,settings,now=Date.now()){
   const {layer,org='PHM',side='home',items=[],assetId='',rotationIndex=0}=settings;
   const hms=settings.partnerSource==='hms';
-  const available=hms?(settings.sponsorCatalog?.org===org?teamPartners(settings.sponsorCatalog,game,side,items,settings.partnerScope,{requireSelection:!!settings.sponsorRotation&&!assetId}):[]):eligibleAssets(items,{org,gameId:game.ID,homeId:game.homeId,awayId:game.awayId,side,kind:'sponsor'});
+  const available=hms?(settings.sponsorCatalog?.org===org?teamPartners(settings.sponsorCatalog,game,side,assetId&&settings.layout==='compact'?[]:items,settings.partnerScope,{requireSelection:!!settings.sponsorRotation&&!assetId}):[]):eligibleAssets(items,{org,gameId:game.ID,homeId:game.homeId,awayId:game.awayId,side,kind:'sponsor'});
   const list=assetId?available.filter(a=>a.id===assetId):available;
   return settings.sponsorRotation?sponsorFrame(list,settings.sponsorRotation,now):{item:list[rotationIndex%list.length]??null,phase:list.length?'show':'blank',opacity:list.length?1:0};
 }
