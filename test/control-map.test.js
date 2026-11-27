@@ -15,7 +15,12 @@ test('launchers keep season-level entry points and omit duplicate or single-game
  for(const id of ['game-report','obs-output','obs-definition','portal-preview','social-output','social-setup','awards-definition','sponsor-broadcast','sponsor-output'])assert.equal(find('phm',id),undefined);
  assert.equal(nodeUrl(find('phm','games-view'),'phm',{seasonId:'bad'}),null);
  const schedule=new URL(nodeUrl(find('euchl','games-view'),'euchl',{seasonId:id}));assert.equal(schedule.searchParams.get('seasonId'),id);
- assert.equal(nodeUrl(find('euchl','obs-studio'),'euchl'),'/broadcast/index.html?org=EUCHL');
+ for(const org of ['phm','euchl']){
+  const broadcast=find(org,'obs-studio');assert.equal(broadcast.label,'Broadcast Studio V2');
+  assert.equal(nodeUrl(broadcast,org),'/broadcast/v2.html?org='+org.toUpperCase());
+  assert.equal(broadcast.application.links.manage,'/broadcast/v2.html?org='+org.toUpperCase());
+  for(const origin of ['https://app.phmcup.cz','https://public.heromanagementsystem.com'])assert.equal(new URL(nodeUrl(broadcast,org),origin).origin,origin);
+ }
  assert.equal(nodeUrl(find('phm','all-stars'),'phm'),'/control/apps/all-stars?org=phm');
  assert.equal(nodeUrl(find('phm','social-studio'),'phm'),'/studio/phm?lang=cs');
 });

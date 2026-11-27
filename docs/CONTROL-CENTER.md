@@ -17,6 +17,11 @@ Kategorie, popisky, stav, zdroj dat, poznámka a odkazy jsou na jednom místě.
 `public/control/app.js` pouze skládá rozhraní a filtruje záznamy.
 Hledání podporuje češtinu bez diakritiky; kombinuje se s kategorií a stavem.
 
+Broadcast Studio se z mapy, detailu i seznamu odkazů standardně otevírá ve V2
+(`/broadcast/v2.html?org=<CODE>`), se zachováním vybrané organizace a aktuální
+domény Control Center. Původní `/broadcast/index.html` a existující OBS URL
+zůstávají kompatibilní; mění se výchozí vstup do ovládání. Viz [Broadcast V2](BROADCAST-V2.md).
+
 Význam odkazů: Open = aplikace, Public = veřejný výstup, Manage = správa,
 Source = datový zdroj, GitHub = zdrojový kód nebo dokumentace.
 Chybějící odkaz je neaktivní a přístupně označený jako Nenastaveno.
