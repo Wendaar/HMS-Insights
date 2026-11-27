@@ -1,6 +1,8 @@
-# Broadcast Studio V2 — testovací Director Control
+# Broadcast Studio V2 — Director Control
 
-Větev: `codex/broadcast-studio-v2`. Výchozí auditovaný commit: `95e7b43` z `origin/main`, 26. 11. 2026. Produkce se touto prací nenasazuje a produkční kanály se neovládají.
+V2 je od 27. 11. 2026 dostupná na `https://app.phmcup.cz/broadcast/v2.html` po výslovném schválení vlastníkem, PR #83. Původní studio a OBS adresy zůstávají zachované; žádný existující živý kanál se automaticky nepřevádí. Ovladač rozlišuje produkci a sandbox podle serverového capabilities endpointu, nikoli podle hostname. Testovací postupy níže patří lokálnímu/sandbox prostředí.
+
+Původní větev: `codex/broadcast-studio-v2`. Výchozí auditovaný commit: `95e7b43` z `origin/main`, 26. 11. 2026. Během implementace a testů nebyly ovládány produkční kanály.
 
 ## Audit před implementací
 

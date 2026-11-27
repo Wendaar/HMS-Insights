@@ -43,6 +43,7 @@ try{
  }
  const page=await controlContext.newPage();console.log('Opening V2 and selecting a game');await page.goto(base+'/broadcast/v2.html?org=EUCHL');
  await page.locator('#game-dialog[open]').waitFor();await page.locator('[data-game]').click();await page.waitForFunction(()=>!document.querySelector('#game-dialog').open);
+ assert.equal(await page.locator('#test-banner').getAttribute('data-environment'),'sandbox');
  assert.match(await page.locator('#game-title').textContent(),/EUCHL Home/);
  assert.equal(await page.getByText('Fotografie hráče',{exact:true}).count(),0);
  await page.locator('#create-channel').click();await page.waitForFunction(()=>document.querySelector('#obs-url').value.includes('channel='));
@@ -121,6 +122,8 @@ try{
  await thumbnail.goto(base+'/broadcast/index.html?mode=thumbnail&org=EUCHL&game='+id);await thumbnail.locator('.thumbnail-stage').waitFor();assert.equal(exportReads,0);
  const [download]=await Promise.all([thumbnail.waitForEvent('download'),thumbnail.locator('#download-thumbnail').click()]);assert.match(download.suggestedFilename(),/\.png$/);assert.equal(exportReads,1);await thumbnail.close();
  for(const size of [{width:1280,height:800},{width:1920,height:1080},{width:390,height:844}]){await page.setViewportSize(size);await page.evaluate(()=>scrollTo(0,0));await page.screenshot({path:`artifacts/broadcast-v2/control-${size.width}.png`,fullPage:true});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'No horizontal overflow');const panic=await page.locator('#hide-all').boundingBox();assert.ok(panic.y>=0&&panic.y+panic.height<size.height,'Emergency hide always visible');if(size.width>700){const hide=await page.locator('#hide-sponsors').boundingBox();assert.ok(hide.y+hide.height<size.height,'Layer controls visible with preview on desktop');}}
+ await page.route('**/api/broadcast?capabilities=1',route=>route.fulfill({json:{sandbox:false}}));await page.reload();await page.waitForFunction(()=>document.querySelector('#test-banner').dataset.environment==='production');
+ assert.doesNotMatch(await page.locator('#test-banner').textContent(),/TEST V2|TESTOVACÍ/);assert.equal(await page.locator('#create-channel').textContent(),'Create OBS channel');assert.equal(rows.get(channelId).state.visible,false);
  assert.deepEqual(errors,[]);
  await writeFile('artifacts/broadcast-v2/browser-results.json',JSON.stringify({passed:true,scenarios:12,fixtureOnly:true,counts},null,2));
  console.log(JSON.stringify({passed:true,scenarios:12,counts}));

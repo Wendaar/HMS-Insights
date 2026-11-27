@@ -1,5 +1,6 @@
 .director-preview iframe{position:absolute!important;width:1920px!important;height:1080px!important;left:0!important;top:0!important;right:auto!important;bottom:auto!important;transform:scale(var(--preview-scale,.3))!important;transform-origin:top left!important}
 #obs-head-status{display:block;color:var(--cyan);font-size:14px;margin-top:3px}
+.test-banner[data-environment=production]{background:#102b31;color:var(--cyan)}
 .director-head .hms-logo{width:84px;height:38px}.director-head .panic{width:auto;min-height:44px;font-size:14px;white-space:nowrap}.director-preview iframe{color-scheme:normal;background:transparent}.director-head .game-title{overflow-wrap:anywhere}
 @media(min-width:701px){.director-right .output-actions button{padding:9px 10px;font-size:14px}.director-right .program-line{padding:7px 0}.director-right .panel{padding:13px}.director-right .note{margin:7px 0}.director-right .output-links{margin:8px 0}.director-right .message:empty{display:none}.director-right .technical{margin-top:8px}}
 @media(max-width:700px){.director-head .panic{font-size:13px;padding:8px}.director-head .game-title{min-width:170px}}

@@ -15,6 +15,7 @@ let lang=params.get('lang')==='en'?'en':'cs',org=(params.get('org')??'PHM').toUp
 let draft={...directorDefaults(),layer:'opening',side:'both'},sponsorDraft={...directorDefaults(),layer:'sponsors',corner:'bottom-right',sponsorRotation:{enabled:true,showSeconds:15,pauseSeconds:0,startedAt:0}};
 const tr=(cs,en)=>lang==='en'?en:cs;
 let sourceProblems={};
+let environmentSandbox=null;
 const getDraft=()=>{let photoChoices={};try{photoChoices=broadcastPhotoChoices(JSON.parse(localStorage.getItem(`hms-broadcast-photos:${org}:${String(game?.ID??'').toLowerCase()}`)||'{}'));}catch{}return {org,gameId:game?.ID,lang,...draft,libraryItems:structuredClone(items),photoChoices};};
 const channel=createDirectorChannel({getDraft,onChange:()=>paintOutput()});
 root.innerHTML=`<header class="director-head">${hmsBrand()}<div class="game-title"><h1>Broadcast Studio V2</h1><strong id="game-title"></strong><p id="game-meta"></p></div><label><span id="org-label"></span><select id="org"></select></label><button id="change-game"></button><label class="language"><span id="lang-label"></span><select id="language"><option value="cs">CZ</option><option value="en">EN</option></select></label></header><div class="test-banner" id="test-banner"></div>
@@ -60,7 +61,8 @@ function paint(){
  document.documentElement.lang=lang;$('language').value=lang;
  $('org-label').textContent=tr('Organizace','Organization');$('lang-label').textContent=tr('Jazyk','Language');$('change-game').textContent=tr('Změnit zápas','Change game');
  $('game-title').textContent=game?game.Name:tr('Vyberte zápas','Select a game');$('game-meta').textContent=game?`${org} · ${game.Date} ${game.Time} · ${game.status??'—'}`:org;
- $('test-banner').textContent=tr('TESTOVACÍ V2 · samostatný kanál · původní OBS výstupy zůstávají v dosavadním studiu.','TEST V2 · separate channel · existing OBS outputs remain in the original studio.');
+ $('test-banner').dataset.environment=environmentSandbox===false?'production':'sandbox';
+ $('test-banner').textContent=environmentSandbox===false?tr('Broadcast V2 · PREVIEW připravuje, SHOW vysílá. MAIN a SPONSORS se ovládají nezávisle.','Broadcast V2 · prepare in PREVIEW, publish with SHOW. MAIN and SPONSORS are independent.'):environmentSandbox===true?tr('TESTOVACÍ V2 · samostatný kanál · původní OBS výstupy zůstávají v dosavadním studiu.','TEST V2 · separate channel · existing OBS outputs remain in the original studio.'):tr('Ověřuji prostředí vysílacího kanálu…','Checking channel environment…');
  root.querySelector('.phase-tabs').innerHTML=[['pre','PRE-GAME'],['game','IN-GAME'],['break','BREAK'],['post','POST-GAME']].map(([id,title])=>`<button role="tab" data-phase="${id}" aria-selected="${phase===id}">${title}</button>`).join('');
  $('graphics').innerHTML=graphics.filter(g=>g.phases.includes(phase)).map(g=>{const a=status(g.id,g.sponsor?sponsorDraft:{...draft,layer:g.id});return `<button class="graphic-card" data-graphic="${g.id}" data-status="${a.state}" aria-pressed="${selected===g.id}" title="${esc(a[lang])}"><span>${esc(g[lang])}</span><small>${a.state}</small></button>`;}).join('');
  const graphic=graphics.find(g=>g.id===selected);$('selected-title').textContent=graphic?.[lang]??selected;
@@ -102,7 +104,7 @@ function paintOutput(){
  $('show-sponsors').disabled=!info.ready||!!info.error||info.pending||info.hidePending||!game||!status('sponsors',sponsorDraft).usable;
  $('hide-main').disabled=$('hide-sponsors').disabled=!info.ready||info.pending||info.hidePending;
  $('hide-all').disabled=!info.bound; // Never disabled by HMS failures or a pending publish.
- $('create-channel').hidden=info.bound;$('create-channel').textContent=tr('Vytvořit testovací OBS kanál','Create test OBS channel');$('create-channel').disabled=!game||info.pending;
+ $('create-channel').hidden=info.bound;$('create-channel').textContent=environmentSandbox===false?tr('Vytvořit OBS kanál','Create OBS channel'):tr('Vytvořit testovací OBS kanál','Create test OBS channel');$('create-channel').disabled=!game||info.pending||environmentSandbox===null;
  $('obs-url').value=info.url;$('copy-obs').disabled=$('open-obs').disabled=$('backup-control').disabled=!info.bound;
  $('channel-error').textContent=info.error||'';
  if(info.ready&&libraryRevision!==info.revision&&!busy){libraryRevision=info.revision;loadLibrary();}
@@ -166,5 +168,15 @@ $('sponsor-settings').ontoggle=()=>{if($('sponsor-settings').open)mountPartners(
 $('asset-library').ontoggle=()=>{if($('asset-library').open)mountLibrary($('library-slot'),{channel,org,game,lang,onSaved:async()=>{await loadLibrary();$('asset-library').open=false;}});};
 async function tick(){if(disposed)return;if(game&&!busy)await loadSelected(game.ID);refreshTimer=setTimeout(tick,15000);}
 addEventListener('pagehide',()=>{disposed=true;clearTimeout(refreshTimer);channel.stop();frames.clear();});
-async function start(){paint();await channel.init();try{catalog=await loadOrganizationCatalog();setBroadcastOrganizations(catalog);$('org').innerHTML=catalog.map(o=>option(o.code,`${o.name}${o.configured?'':tr(' · nepřipojeno',' · not connected')}`,org)).join('');if(!organizationFromCatalog(catalog,org)?.configured)throw new Error(tr('Organizace nemá HMS připojení.','Organization has no HMS connection.'));if(params.get('game'))await loadSelected(params.get('game'));else openGames();}catch(e){error=e.message;paint();}refreshTimer=setTimeout(tick,15000);}
+async function start(){
+ paint();await channel.init();
+ try{
+  const [organizations,capabilities]=await Promise.all([loadOrganizationCatalog(),fetch('/api/broadcast?capabilities=1',{cache:'no-store',signal:AbortSignal.timeout(10000)}).then(async response=>{if(!response.ok)throw new Error('Channel environment unavailable');const value=await response.json();if(typeof value.sandbox!=='boolean')throw new Error('Invalid channel environment');return value;})]);
+  environmentSandbox=capabilities.sandbox;catalog=organizations;setBroadcastOrganizations(catalog);
+  $('org').innerHTML=catalog.map(o=>option(o.code,`${o.name}${o.configured?'':tr(' · nepřipojeno',' · not connected')}`,org)).join('');
+  if(!organizationFromCatalog(catalog,org)?.configured)throw new Error(tr('Organizace nemá HMS připojení.','Organization has no HMS connection.'));
+  if(params.get('game'))await loadSelected(params.get('game'));else{paint();openGames();}
+ }catch(e){error=e.message;paint();}
+ refreshTimer=setTimeout(tick,15000);
+}
 start();
