@@ -6,7 +6,7 @@ export const branches=[
  {id:'administration',name:'Administration',color:'cyan',nodes:[stage('operations','HMS Operations','operations')]},
  {id:'website',name:'Web / Hub',color:'blue',nodes:[stage('portal-definition','Site Builder','public-portal','manage',{note:'Nastavení webu, náhled a publikace na jednom místě.'}),stage('portal-public','League Page · veřejný web','public-portal','public')]},
  {id:'competition',name:'Competition basics',color:'blue',nodes:[stage('games-view','Games View','games-view'),stage('player-cards','Player Cards','player-cards'),stage('statistics','Statistics','statistics'),stage('standings','Standings','standings'),stage('team-profiles','Team Profiles','team-profiles'),stage('playoff-bracket','Playoff pavouk','playoff-bracket'),stage('playoff-players','Hráči do playoff','playoff-players')]},
- {id:'broadcast',name:'Broadcast',color:'violet',nodes:[stage('obs-studio','Broadcast Studio','broadcast'),stage('virtual-camera','HERO Virtual Camera','virtual-camera')]},
+ {id:'broadcast',name:'Broadcast',color:'violet',nodes:[stage('obs-studio','Broadcast Studio V2','broadcast'),stage('virtual-camera','HERO Virtual Camera','virtual-camera')]},
  {id:'content',name:'Content creation',color:'pink',nodes:[stage('social-studio','Social Media Studio','studio','open',{note:'Game Day, Team Compare, Insights grafiky, náhledy a export PNG.'}),stage('photo-archive','Photo Archive','photo-archive'),stage('betting','Sázkovka','betting')]},
  {id:'sponsors',name:'Sponsors',color:'amber',nodes:[stage('sponsor-definition','Sponsors','sponsors-catalog')]},
  {id:'gameshow',name:'Media & Game Show',color:'pink',nodes:[stage('gameshow-definition','Media Mapping','media-mapping'),stage('gameshow-control','LIVE Show Control','show-control')]},
